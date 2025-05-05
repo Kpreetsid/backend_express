@@ -35,7 +35,7 @@ app.use(compression({
   }
 }));
 
-import userTokenController from './user/userToken.controller';
+import userTokenController from './user/token/userToken.controller';
 import accountMaster from './masters/company/company.controller';
 import assetMaster from './masters/asset/asset.controller';
 import locationMaster from './masters/location/location.controller';

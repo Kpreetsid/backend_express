@@ -9,9 +9,10 @@ async function getData(req: Request, res: Response, next: NextFunction) {
   try {
     const data = await getAllUserTokens(req, res, next);
     if(data.length === 0) {
-      res.status(404).json({ message: 'No user tokens found' });
+      res.status(404).json({ status: false, message: 'No user tokens found' });
+    } else {
+      res.status(200).json({ status: true, message: "User Token Data list retrieved.", data });
     }
-    res.status(200).json({ status: true, message: "User Token Data list retrieved.", data });
   } catch (error) {
     next(error);
   }
