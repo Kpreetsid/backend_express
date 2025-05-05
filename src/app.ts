@@ -1,8 +1,39 @@
-import express from 'express';
+import express, { Application } from 'express';
 import { errorMiddleware } from './middlewares/error.middleware';
-const app = express();
-const router = express.Router();
+const app: Application = express();
+
 app.use(express.json());
+
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import compression from 'compression';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import morgan from 'morgan';
+
+app.use(helmet());
+app.use(morgan('dev'));
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests, please try again later.'
+});
+app.use(limiter);
+const router = express.Router();
+
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(cors());
+app.use(compression({
+  level: 9,
+  threshold: 0,
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res)
+  }
+}));
 
 import userTokenController from './user/userToken.controller';
 import accountMaster from './masters/company/company.controller';
