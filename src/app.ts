@@ -1,30 +1,60 @@
 import express from 'express';
 import { errorMiddleware } from './middlewares/error.middleware';
 const app = express();
+const router = express.Router();
 app.use(express.json());
 
 import userTokenController from './user/userToken.controller';
 import accountMaster from './masters/company/company.controller';
 import assetMaster from './masters/asset/asset.controller';
 import locationMaster from './masters/location/location.controller';
-import userController from './masters/user/user.controller';
+import userMaster from './masters/user/user.controller';
+import partMaster from './masters/part/part.controller';
+import observationMaster from './masters/observation/observation.controller';
+import formCategoryMaster from './masters/formCategory/formCategory.controller';
+import workRequest from './work/request/request.controller';
 import locationReport from './reports/location/location.controller';
 import logsController from './user/logs/logs.controller';
 import assetReportController from './reports/asset/asset.controller';
 import floorMapController from './floorMap/floorMap.controller';
+import userRoleMenuController from './masters/user/role/role.controller';
+import userLocationController from './transaction/mapUserLocation/userLocation.controller';
 import { activityLogger } from './middlewares/activityLogger.middleware';
 
 app.use(activityLogger);
 
-app.use('/api/account', accountMaster);
-app.use('/api/asset', assetMaster);
-app.use('/api/location', locationMaster);
-app.use('/api/user', userController);
-app.use('/api/logs', logsController);
-app.use('/api/reports/asset', assetReportController);
-app.use('/api/user-tokens', userTokenController);
-app.use('/api/floor-map', floorMapController);
-app.use('/api/report/location', locationReport);
+const masterRouter = express.Router();
+masterRouter.use('/company', accountMaster);
+masterRouter.use('/asset', assetMaster);
+masterRouter.use('/location', locationMaster);
+masterRouter.use('/user', userMaster);
+masterRouter.use('/part', partMaster);
+masterRouter.use('/observation', observationMaster);
+masterRouter.use('/form-category', formCategoryMaster);
+router.use('/master', masterRouter);
+
+const reportRouter = express.Router();
+reportRouter.use('/location', locationReport);
+reportRouter.use('/asset', assetReportController);
+router.use('/report', reportRouter);
+
+const transactionRouter = express.Router();
+transactionRouter.use('/map-user-location', userLocationController);
+router.use('/transaction', transactionRouter);
+
+const workRouter = express.Router();
+workRouter.use('/request', workRequest);
+router.use('/work', workRouter);
+
+const userRouter = express.Router();
+userRouter.use('/logs', logsController);
+userRouter.use('/tokens', userTokenController);
+userRouter.use('/role-menu', userRoleMenuController);
+router.use('/user', userRouter);
+
+router.use('/floor-map', floorMapController);
+
+app.use('/api', router);
 
 app.use((req, res, next) => {
     res.status(404);
