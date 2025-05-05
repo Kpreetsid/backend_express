@@ -7,6 +7,7 @@ import userTokenController from './user/userToken.controller';
 import accountMaster from './masters/company/company.controller';
 import assetMaster from './masters/asset/asset.controller';
 import logsController from './user/logs/logs.controller';
+import assetController from './reports/asset/asset.controller';
 import { activityLogger } from './middlewares/activityLogger.middleware';
 
 app.use(activityLogger);
@@ -24,6 +25,7 @@ app.get('/', (req: Request, res: Response) => {
 app.use('/api/account', accountMaster);
 app.use('/api/asset', assetMaster);
 app.use('/api/logs', logsController);
+app.use('/api/reports/asset', assetController);
 app.use('/api/user-tokens', userTokenController);
 
 app.use((req, res, next) => {

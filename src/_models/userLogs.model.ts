@@ -38,7 +38,13 @@ const userLogSchema: Schema<IUserLog> = new Schema({
     additionalData: { type: Schema.Types.Mixed }, // optional flexible data
 }, {
     collection: 'user_logs',
-    timestamps: true
+    timestamps: { createdAt: true, updatedAt: false }
+});
+
+userLogSchema.pre('save', function (next) {
+    // Just a safeguard if updatedAt gets added manually somehow
+    this.set('updatedAt', undefined);
+    next();
 });
 
 export const UserLog = mongoose.model<IUserLog>('UserLogs', userLogSchema);
