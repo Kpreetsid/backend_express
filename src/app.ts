@@ -58,6 +58,7 @@ import userRoleMenuController from './masters/user/role/role.controller';
 import workOrder from './work/order/order.controller';
 import commentController from './work/comments/comment.controller';
 import userLocationController from './transaction/mapUserLocation/userLocation.controller';
+import workOrderController from './transaction/mapUserWorkOrder/userWorkOrder.controller';
 import { activityLogger } from './middlewares/logger';
 
 app.use(activityLogger);
@@ -87,6 +88,7 @@ router.use('/report', authenticateJwt, attachUserData, reportRouter);
 
 const transactionRouter = express.Router();
 transactionRouter.use('/map-user-location', userLocationController);
+transactionRouter.use('/map-user-work-order', workOrderController);
 router.use('/transaction', authenticateJwt, attachUserData, transactionRouter);
 
 const workRouter = express.Router();
