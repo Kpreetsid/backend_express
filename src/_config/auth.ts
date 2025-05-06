@@ -1,20 +1,17 @@
 // utils/auth.ts
-import { expressjwt, Request as JWTRequest } from 'express-jwt';
+import { expressjwt } from 'express-jwt';
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import { User } from '../_models/user.model';
-import mongoose from 'mongoose';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your_secret_key';
 
-// 1. Express-jwt middleware to decode and verify token
 export const authenticateJwt = expressjwt({
   secret: JWT_SECRET,
   algorithms: ['HS256'],
-  requestProperty: 'auth', // temporarily store decoded token
+  requestProperty: 'auth'
 });
 
-// 2. Middleware to fetch user from DB and assign to req.user
 export const attachUserData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, username, email, companyID } = (req as any).auth;
@@ -35,11 +32,10 @@ export const attachUserData = async (req: Request, res: Response, next: NextFunc
     req.user = user; 
     next();
   } catch (error) {
-    next(error); // important to call next(error)
+    next(error); 
   }
 };
 
-// 3. Generate token using user _id
 export const generateToken = (payload: object): string => {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '1d' });
 };
