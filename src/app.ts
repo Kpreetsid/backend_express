@@ -43,6 +43,7 @@ import assetMaster from './masters/asset/asset.controller';
 import locationMaster from './masters/location/location.controller';
 import userMaster from './masters/user/user.controller';
 import partMaster from './masters/part/part.controller';
+import blogController from './masters/post/post.controller';
 import observationMaster from './masters/observation/observation.controller';
 import formCategoryMaster from './masters/formCategory/formCategory.controller';
 import workRequest from './work/request/request.controller';
@@ -72,6 +73,7 @@ masterRouter.use('/user', userMaster);
 masterRouter.use('/part', partMaster);
 masterRouter.use('/observation', observationMaster);
 masterRouter.use('/form-category', formCategoryMaster);
+masterRouter.use('/blog', blogController);
 router.use('/master', authenticateJwt, masterRouter);
 
 const reportRouter = express.Router();
