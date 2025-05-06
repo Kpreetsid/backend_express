@@ -1,9 +1,10 @@
 import mongoose from 'mongoose';
+import { database } from '../configDB';
 
 export const connectDB = async () => {
   try {
-    const mongoURI = "mongodb://52.66.196.15:27017/test";
-    await mongoose.connect(mongoURI);
+    const ConnectionStringMongoDB = `mongodb://${database.host}:${database.port}/${database.databaseName}`;
+    await mongoose.connect(ConnectionStringMongoDB);
     console.log('MongoDB connected');
   } catch (err) {
     console.error('MongoDB connection error:', err);

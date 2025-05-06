@@ -5,16 +5,7 @@ import { getAllUserLogs } from './logs.service';
 router.get('/', getData);
 
 async function getData(req: Request, res: Response, next: NextFunction) {
-  try {
-    const data = await getAllUserLogs(req, res, next);
-    if(data.length === 0) {
-      res.status(404).json({ status: false, message: 'No user logs found' });
-    } else {
-      res.status(200).json({ status: true, message: "User Logs Data list retrieved.", data });
-    }
-  } catch (error) {
-    next(error);
-  }
+  await getAllUserLogs(req, res, next);
 };
 
 export default router;

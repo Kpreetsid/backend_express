@@ -16,6 +16,7 @@ export interface IUser extends Document {
   password: string;
   email: string;
   emailStatus: boolean;
+  token: string | null;
   user_status: 'active' | 'inactive' | string;
   user_role: 'admin' | 'user' | string;
   createdOn: Date;
@@ -43,6 +44,7 @@ const userSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   email: { type: String, required: true, unique: true },
+  token: { type: String, default: null },
   emailStatus: { type: Boolean, default: false },
   user_status: { type: String, required: true },
   user_role: { type: String, required: true },

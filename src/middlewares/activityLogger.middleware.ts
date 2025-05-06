@@ -1,8 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { UserLog, IUserLog } from '../_models/userLogs.model';
 import mongoose from 'mongoose';
 
-export const activityLogger = async (req: Request, res: Response, next: NextFunction) => {
+export const activityLogger = async (req: Request, res: Response, next: NextFunction)=> {
   const startTime = Date.now();
 
   // Listen for the response to finish

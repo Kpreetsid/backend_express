@@ -1,4 +1,4 @@
-import express, { Application } from 'express';
+import express, { Application, Request, Response, NextFunction  } from 'express';
 import { errorMiddleware } from './middlewares/error.middleware';
 const app: Application = express();
 
@@ -10,6 +10,7 @@ import compression from 'compression';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
+import { authenticateJwt } from './_config/auth';
 
 app.use(helmet());
 app.use(morgan('dev'));
@@ -27,14 +28,15 @@ app.use(cors());
 app.use(compression({
   level: 9,
   threshold: 0,
-  filter: (req, res) => {
+  filter: (req: Request, res: Response) => {
     if (req.headers['x-no-compression']) {
       return false;
     }
-    return compression.filter(req, res)
+    return compression.filter(req, res);
   }
 }));
 
+import authentication from './user/authentication/authentication.controller';
 import userTokenController from './user/token/userToken.controller';
 import accountMaster from './masters/company/company.controller';
 import assetMaster from './masters/asset/asset.controller';
@@ -54,6 +56,13 @@ import userLocationController from './transaction/mapUserLocation/userLocation.c
 import { activityLogger } from './middlewares/activityLogger.middleware';
 
 app.use(activityLogger);
+app.use((req: Request, res: Response, next: NextFunction) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    next();
+});
+router.use('/authenticate', authentication);
 
 const masterRouter = express.Router();
 masterRouter.use('/company', accountMaster);
@@ -63,35 +72,36 @@ masterRouter.use('/user', userMaster);
 masterRouter.use('/part', partMaster);
 masterRouter.use('/observation', observationMaster);
 masterRouter.use('/form-category', formCategoryMaster);
-router.use('/master', masterRouter);
+router.use('/master', authenticateJwt, masterRouter);
 
 const reportRouter = express.Router();
 reportRouter.use('/location', locationReport);
 reportRouter.use('/asset', assetReportController);
-router.use('/report', reportRouter);
+router.use('/report', authenticateJwt, reportRouter);
 
 const transactionRouter = express.Router();
 transactionRouter.use('/map-user-location', userLocationController);
-router.use('/transaction', transactionRouter);
+router.use('/transaction',authenticateJwt, transactionRouter);
 
 const workRouter = express.Router();
 workRouter.use('/request', workRequest);
 workRouter.use('/order', workOrder);
-router.use('/work', workRouter);
+router.use('/work', authenticateJwt, workRouter);
 
 const userRouter = express.Router();
 userRouter.use('/logs', logsController);
 userRouter.use('/tokens', userTokenController);
 userRouter.use('/role-menu', userRoleMenuController);
-router.use('/user', userRouter);
+router.use('/user', authenticateJwt, userRouter);
 
-router.use('/floor-map', floorMapController);
+router.use('/floor-map', authenticateJwt, floorMapController);
 
 app.use('/api', router);
 
-app.use((req, res, next) => {
-    res.status(404);
-    next(new Error(`Requested resource not found.`));
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const error = new Error('Requested resource not found.');
+  (error as any).status = 404;
+  next(error);
 });
 
 app.use(errorMiddleware);
