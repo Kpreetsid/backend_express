@@ -1,23 +1,25 @@
 import express, { Application, Request, Response, NextFunction  } from 'express';
-import { errorMiddleware } from './middlewares/error.middleware';
+import { errorMiddleware } from './middlewares/error';
 const app: Application = express();
 
 app.use(express.json());
-
+import path from 'path';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import compression from 'compression';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
-import { authenticateJwt } from './_config/auth';
+import { attachUserData, authenticateJwt } from './_config/auth';
 
 app.use(helmet());
-app.use(morgan('dev'));
+// app.use(morgan('dev'));
+app.use(morgan('combined'));
+
 const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: 'Too many requests, please try again later.'
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests, please try again later.'
 });
 app.use(limiter);
 const router = express.Router();
@@ -35,6 +37,7 @@ app.use(compression({
     return compression.filter(req, res);
   }
 }));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 import authentication from './user/authentication/authentication.controller';
 import userTokenController from './user/token/userToken.controller';
@@ -55,7 +58,7 @@ import userRoleMenuController from './masters/user/role/role.controller';
 import workOrder from './work/order/order.controller';
 import commentController from './work/comments/comment.controller';
 import userLocationController from './transaction/mapUserLocation/userLocation.controller';
-import { activityLogger } from './middlewares/activityLogger.middleware';
+import { activityLogger } from './middlewares/logger';
 
 app.use(activityLogger);
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -75,30 +78,30 @@ masterRouter.use('/part', partMaster);
 masterRouter.use('/observation', observationMaster);
 masterRouter.use('/form-category', formCategoryMaster);
 masterRouter.use('/blog', blogController);
-router.use('/master', authenticateJwt, masterRouter);
+router.use('/master', authenticateJwt, attachUserData, masterRouter);
 
 const reportRouter = express.Router();
 reportRouter.use('/location', locationReport);
 reportRouter.use('/asset', assetReportController);
-router.use('/report', authenticateJwt, reportRouter);
+router.use('/report', authenticateJwt, attachUserData, reportRouter);
 
 const transactionRouter = express.Router();
 transactionRouter.use('/map-user-location', userLocationController);
-router.use('/transaction',authenticateJwt, transactionRouter);
+router.use('/transaction', authenticateJwt, attachUserData, transactionRouter);
 
 const workRouter = express.Router();
 workRouter.use('/request', workRequest);
 workRouter.use('/order', workOrder);
 workRouter.use('/comments', commentController);
-router.use('/work', authenticateJwt, workRouter);
+router.use('/work', authenticateJwt, attachUserData, workRouter);
 
 const userRouter = express.Router();
 userRouter.use('/logs', logsController);
 userRouter.use('/tokens', userTokenController);
 userRouter.use('/role-menu', userRoleMenuController);
-router.use('/user', authenticateJwt, userRouter);
+router.use('/user', authenticateJwt, attachUserData, userRouter);
 
-router.use('/floor-map', authenticateJwt, floorMapController);
+router.use('/floor-map', authenticateJwt, attachUserData, floorMapController);
 
 app.use('/api', router);
 

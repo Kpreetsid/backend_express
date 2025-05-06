@@ -29,7 +29,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       id: user._id,
       username: user.username,
       email: user.email,
-      role: user.account_id
+      companyID: user.account_id
     }
     safeUser.token = generateToken(userToken);
     res.status(200).json({ status: true, message: 'Login successful', data: safeUser });
