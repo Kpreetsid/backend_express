@@ -53,6 +53,7 @@ import assetReportController from './reports/asset/asset.controller';
 import floorMapController from './floorMap/floorMap.controller';
 import userRoleMenuController from './masters/user/role/role.controller';
 import workOrder from './work/order/order.controller';
+import commentController from './work/comments/comment.controller';
 import userLocationController from './transaction/mapUserLocation/userLocation.controller';
 import { activityLogger } from './middlewares/activityLogger.middleware';
 
@@ -88,6 +89,7 @@ router.use('/transaction',authenticateJwt, transactionRouter);
 const workRouter = express.Router();
 workRouter.use('/request', workRequest);
 workRouter.use('/order', workOrder);
+workRouter.use('/comments', commentController);
 router.use('/work', authenticateJwt, workRouter);
 
 const userRouter = express.Router();
