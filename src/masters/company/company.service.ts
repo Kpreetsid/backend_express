@@ -34,8 +34,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_name, type, fileName } = req.body;
-    const newAccount = new Account({ account_name, type, fileName });
+    const newAccount = new Account(req.body);
     const data = await newAccount.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {

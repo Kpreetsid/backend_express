@@ -34,8 +34,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description, location } = req.body;
-    const endpointLocation = new EndpointLocation({ name, description, location });
+    const endpointLocation = new EndpointLocation(req.body);
     await endpointLocation.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: endpointLocation });
   } catch (error) {

@@ -34,8 +34,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { observation_name, type, fileName } = req.body;
-    const newObservation = new Observation({ observation_name, type, fileName });
+    const newObservation = new Observation(req.body);
     const data = await newObservation.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {

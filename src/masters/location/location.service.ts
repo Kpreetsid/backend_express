@@ -34,8 +34,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description, type } = req.body;
-    const newLocation = new LocationMaster({ name, description, type });
+    const newLocation = new LocationMaster(req.body);
     const data = await newLocation.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {

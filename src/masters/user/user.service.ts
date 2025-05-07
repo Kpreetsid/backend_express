@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await User.find({}).sort({ _id: -1 });
+    const data = await User.find({}).select('-password').sort({ _id: -1 });
     if (data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
@@ -19,7 +19,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id;
-    const data = await User.findById(id);
+    const data = await User.findById(id).select('-password');
     if (!data) {
       const error = new Error("No data found");
       (error as any).status = 404;
@@ -34,8 +34,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, email, password, role } = req.body;
-    const user = new User({ name, email, password, role });
+    const user = new User(req.body);
     await user.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: user });
   } catch (error) {

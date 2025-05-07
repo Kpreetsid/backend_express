@@ -32,8 +32,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description, location } = req.body;
-    const reportAsset = new ReportAsset({ name, description, location });
+    const reportAsset = new ReportAsset(req.body);
     await reportAsset.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: reportAsset });
   } catch (error) {

@@ -1,3 +1,4 @@
+import { error } from 'console';
 import { Request, Response, NextFunction } from 'express';
 
 export const errorMiddleware: any = (err: any, req: Request, res: Response, next: NextFunction) => {
@@ -7,7 +8,7 @@ export const errorMiddleware: any = (err: any, req: Request, res: Response, next
 
   switch (err.name) {
     case 'BadRequestError':
-      return res.status(400).json({ status: false, message: 'Bad Request' });
+      return res.status(400).json({ status: false, message: 'Bad Request', error: err.message });
 
     case 'JsonWebTokenError':
       return res.status(401).json({ status: false, message: 'Invalid token' });
@@ -54,7 +55,7 @@ export const errorMiddleware: any = (err: any, req: Request, res: Response, next
     case 'ValidationError':
     case 'MongoError':
     case 'CastError':
-      return res.status(422).json({ status: false, message: 'Validation or MongoDB error' });
+      return res.status(422).json({ status: false, message: 'Validation or MongoDB error', error: err.message });
 
     case 'TooManyRequestsError':
       return res.status(429).json({ status: false, message: 'Too Many Requests' });

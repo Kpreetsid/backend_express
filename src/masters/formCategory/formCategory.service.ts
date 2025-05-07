@@ -34,8 +34,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, description } = req.body;
-    const newCategory: ICategory = new Category({ name, description });
+    const newCategory: ICategory = new Category(req.body);
     await newCategory.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: newCategory });
   } catch (error) {

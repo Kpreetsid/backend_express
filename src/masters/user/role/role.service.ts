@@ -34,8 +34,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { role_id, menu_id } = req.body;
-    const newUserRoleMenu: IUserRoleMenu = new UserRoleMenu({ role_id, menu_id });
+    const newUserRoleMenu: IUserRoleMenu = new UserRoleMenu(req.body);
     await newUserRoleMenu.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: newUserRoleMenu });
   } catch (error) {
