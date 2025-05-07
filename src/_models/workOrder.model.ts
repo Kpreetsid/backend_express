@@ -24,7 +24,7 @@ interface IEstimatedPart {
 }
 
 export interface IWorkOrder extends Document {
-  Workorder_no: string;
+  order_no: string;
   title: string;
   description: string;
   estimated_time: string;
@@ -76,7 +76,7 @@ const estimatedPartSchema = new Schema<IEstimatedPart>({
 }, { _id: false });
 
 const WorkOrderSchema = new Schema<IWorkOrder>({
-  Workorder_no: { type: String, required: true },
+  order_no: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String, default: "" },
   estimated_time: { type: String },

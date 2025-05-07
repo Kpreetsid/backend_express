@@ -11,46 +11,46 @@ export const errorMiddleware: any = (err: any, req: Request, res: Response, next
       return res.status(400).json({ status: false, message: 'Bad Request', error: err.message });
 
     case 'JsonWebTokenError':
-      return res.status(401).json({ status: false, message: 'Invalid token' });
+      return res.status(401).json({ status: false, message: 'Invalid token', error: err.message });
 
     case 'TokenExpiredError':
-      return res.status(401).json({ status: false, message: 'Token expired' });
+      return res.status(401).json({ status: false, message: 'Token expired', error: err.message });
 
     case 'UnauthorizedError':
-      return res.status(401).json({ status: false, message: 'Authorization token is missing or invalid' });
+      return res.status(401).json({ status: false, message: 'Authorization token is missing or invalid', error: err.message });
 
     case 'ForbiddenError':
-      return res.status(403).json({ status: false, message: 'Forbidden' });
+      return res.status(403).json({ status: false, message: 'Forbidden', error: err.message });
 
     case 'NotFoundError':
-      return res.status(404).json({ status: false, message: 'Resource not found' });
+      return res.status(404).json({ status: false, message: 'Resource not found', error: err.message });
 
     case 'MethodNotAllowedError':
-      return res.status(405).json({ status: false, message: 'Method Not Allowed' });
+      return res.status(405).json({ status: false, message: 'Method Not Allowed', error: err.message });
 
     case 'NotAcceptableError':
-      return res.status(406).json({ status: false, message: 'Not Acceptable' });
+      return res.status(406).json({ status: false, message: 'Not Acceptable', error: err.message });
 
     case 'RequestTimeoutError':
-      return res.status(408).json({ status: false, message: 'Request Timeout' });
+      return res.status(408).json({ status: false, message: 'Request Timeout', error: err.message });
 
     case 'ConflictError':
-      return res.status(409).json({ status: false, message: 'Conflict' });
+      return res.status(409).json({ status: false, message: 'Conflict', error: err.message });
 
     case 'LengthRequiredError':
-      return res.status(411).json({ status: false, message: 'Length Required' });
+      return res.status(411).json({ status: false, message: 'Length Required', error: err.message });
 
     case 'PreconditionFailedError':
-      return res.status(412).json({ status: false, message: 'Precondition Failed' });
+      return res.status(412).json({ status: false, message: 'Precondition Failed', error: err.message });
 
     case 'UnsupportedMediaTypeError':
-      return res.status(415).json({ status: false, message: 'Unsupported Media Type' });
+      return res.status(415).json({ status: false, message: 'Unsupported Media Type', error: err.message });
 
     case 'RangeNotSatisfiableError':
-      return res.status(416).json({ status: false, message: 'Range Not Satisfiable' });
+      return res.status(416).json({ status: false, message: 'Range Not Satisfiable', error: err.message });
 
     case 'ExpectationFailedError':
-      return res.status(417).json({ status: false, message: 'Expectation Failed' });
+      return res.status(417).json({ status: false, message: 'Expectation Failed', error: err.message });
 
     case 'ValidationError':
     case 'MongoError':
@@ -58,41 +58,41 @@ export const errorMiddleware: any = (err: any, req: Request, res: Response, next
       return res.status(422).json({ status: false, message: 'Validation or MongoDB error', error: err.message });
 
     case 'TooManyRequestsError':
-      return res.status(429).json({ status: false, message: 'Too Many Requests' });
+      return res.status(429).json({ status: false, message: 'Too Many Requests', error: err.message });
 
     case 'UnavailableForLegalReasonsError':
-      return res.status(451).json({ status: false, message: 'Unavailable For Legal Reasons' });
+      return res.status(451).json({ status: false, message: 'Unavailable For Legal Reasons', error: err.message });
 
     case 'InternalServerError':
-      return res.status(500).json({ status: false, message: 'Internal Server Error' });
+      return res.status(500).json({ status: false, message: 'Internal Server Error', error: err.message });
 
     case 'NotImplementedError':
-      return res.status(501).json({ status: false, message: 'Not Implemented' });
+      return res.status(501).json({ status: false, message: 'Not Implemented', error: err.message });
 
     case 'BadGatewayError':
-      return res.status(502).json({ status: false, message: 'Bad Gateway' });
+      return res.status(502).json({ status: false, message: 'Bad Gateway', error: err.message });
 
     case 'ServiceUnavailableError':
-      return res.status(503).json({ status: false, message: 'Service Unavailable' });
+      return res.status(503).json({ status: false, message: 'Service Unavailable', error: err.message });
 
     case 'GatewayTimeoutError':
-      return res.status(504).json({ status: false, message: 'Gateway Timeout' });
+      return res.status(504).json({ status: false, message: 'Gateway Timeout', error: err.message });
 
     case 'InsufficientStorageError':
-      return res.status(507).json({ status: false, message: 'Insufficient Storage' });
+      return res.status(507).json({ status: false, message: 'Insufficient Storage', error: err.message });
 
     case 'LoopDetectedError':
-      return res.status(508).json({ status: false, message: 'Loop Detected' });
+      return res.status(508).json({ status: false, message: 'Loop Detected', error: err.message });
 
     case 'NotExtendedError':
-      return res.status(510).json({ status: false, message: 'Not Extended' });
+      return res.status(510).json({ status: false, message: 'Not Extended', error: err.message });
 
     case 'NetworkAuthenticationRequiredError':
-      return res.status(511).json({ status: false, message: 'Network Authentication Required' });
+      return res.status(511).json({ status: false, message: 'Network Authentication Required', error: err.message });
   }
 
   // Default fallback
   const statusCode = err.status || 500;
   const message = err.message || 'Internal Server Error';
-  return res.status(statusCode).json({ status: false, message });
+  return res.status(statusCode).json({ status: false, message, error: err.message });
 };
