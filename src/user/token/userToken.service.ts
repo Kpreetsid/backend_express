@@ -14,3 +14,14 @@ export const getAllUserTokens = async (req: Request, res: Response, next: NextFu
     next(error);     
   }
 };
+
+export const createUserToken = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { userId, token } = req.body;
+    const userToken = new UserToken({ userId, token });
+    await userToken.save();
+    return res.status(201).json({ status: true, message: "Data inserted successfully", data: userToken });
+  } catch (error) {
+    next(error);     
+  }
+}

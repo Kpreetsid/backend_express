@@ -7,7 +7,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
   res.on('finish', async () => {
     try {
       const userName = req.user?.username || 'Anonymous';
-      const userId: mongoose.Types.ObjectId = new mongoose.Types.ObjectId(req.user._id);
+      const userId: mongoose.Types.ObjectId = new mongoose.Types.ObjectId(req?.user?.id) || new mongoose.Types.ObjectId();
       const action = mapAction(req.method);
       const module = extractModule(req.originalUrl);
       const description = `${userName} performed ${action} on ${module}`;
