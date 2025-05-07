@@ -11,6 +11,73 @@ export const getAllAccount = async (req: Request, res: Response, next: NextFunct
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const data = await Account.findById(id);
+    if (!data) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const insert = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_name, type, fileName } = req.body;
+    const newAccount = new Account({ account_name, type, fileName });
+    const data = await newAccount.save();
+    return res.status(201).json({ status: true, message: "Data created successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const data = await Account.findByIdAndUpdate(id, req.body, { new: true });
+    if (!data) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data updated successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const data = await Account.findById(id);
+    if (!data) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    if (data?.account_status === "inactive") {
+      const error = new Error("Data already deleted");
+      (error as any).status = 400;
+      throw error;
+    }
+    await Account.findByIdAndUpdate(id, { account_status: "inactive" }, { new: true });
+    return res.status(200).json({ status: true, message: "Data deleted successfully" });
+  } catch (error) {
+    console.error(error);
     next(error);
   }
 };

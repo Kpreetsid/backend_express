@@ -11,6 +11,67 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const data = await Observation.findById(id);
+    if (!data) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const insert = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { observation_name, type, fileName } = req.body;
+    const newObservation = new Observation({ observation_name, type, fileName });
+    const data = await newObservation.save();
+    return res.status(201).json({ status: true, message: "Data created successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const data = await Observation.findByIdAndUpdate(id, req.body, { new: true });
+    if (!data) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data updated successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const data = await Observation.findByIdAndDelete(id);
+    if (!data) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data deleted successfully", data });
+  } catch (error) {
+    console.error(error);
     next(error);
   }
 };

@@ -11,6 +11,74 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const data = await Category.findById(id);
+    if (!data) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const insert = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { name, description } = req.body;
+    const newCategory: ICategory = new Category({ name, description });
+    await newCategory.save();
+    return res.status(201).json({ status: true, message: "Data inserted successfully", data: newCategory });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    const updatedCategory = await Category.findByIdAndUpdate(id, { name, description }, { new: true });
+    if (!updatedCategory) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data updated successfully", data: updatedCategory });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    const data = await Category.findById(id);
+    if (!data) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    if (!data?.visible) {
+      const error = new Error("Data already deleted");
+      (error as any).status = 400;
+      throw error;
+    }
+    await Category.findByIdAndUpdate(id, { visible: false }, { new: true });
+    return res.status(200).json({ status: true, message: "Data deleted successfully" });
+  } catch (error) {
+    console.error(error);
     next(error);
   }
 };

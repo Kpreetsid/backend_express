@@ -41,12 +41,4 @@ const userLogSchema: Schema<IUserLog> = new Schema({
     timestamps: { createdAt: true, updatedAt: false }
 });
 
-userLogSchema.pre('save', function (next) {
-    // Just a safeguard if updatedAt gets added manually somehow
-    this.set('updatedAt', undefined);
-    next();
-});
-
 export const UserLog = mongoose.model<IUserLog>('UserLogs', userLogSchema);
-
-// export const Asset = mongoose.model<IAsset>('Asset', assetSchema);

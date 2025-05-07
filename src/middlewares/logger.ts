@@ -2,20 +2,16 @@ import { NextFunction, Request, Response } from 'express';
 import { UserLog, IUserLog } from '../_models/userLogs.model';
 import mongoose from 'mongoose';
 
-export const activityLogger = async (req: Request, res: Response, next: NextFunction)=> {
+export const activityLogger = async (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
-
-  // Listen for the response to finish
   res.on('finish', async () => {
     try {
-    //   const userId = req.user._id || null; // assumes user info is in req.user
-    //   const userName = req.user?.name || 'Anonymous';
-    const userId: mongoose.Types.ObjectId = new mongoose.Types.ObjectId("1234567890abcdef12345678"); // Placeholder for user ID
-    const userName = "Pawan"; // Placeholder for user name
+      const userName = req.user?.username || 'Anonymous';
+      const userId: mongoose.Types.ObjectId = new mongoose.Types.ObjectId(req.user._id);
       const action = mapAction(req.method);
       const module = extractModule(req.originalUrl);
       const description = `${userName} performed ${action} on ${module}`;
-      
+
       const log: Partial<IUserLog> = {
         userId,
         userName,
@@ -39,7 +35,6 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
           durationMs: Date.now() - startTime
         }
       };
-
       await UserLog.create(log);
     } catch (err) {
       console.error('Failed to log activity:', err);

@@ -1,20 +1,20 @@
 import express, { Application, Request, Response, NextFunction  } from 'express';
 import { errorMiddleware } from './middlewares/error';
-const app: Application = express();
-
-app.use(express.json());
 import path from 'path';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import compression from 'compression';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import morgan from 'morgan';
+import { fileLogger } from './middlewares/fileLogger';
+import { activityLogger } from './middlewares/logger';
 import { attachUserData, authenticateJwt } from './_config/auth';
 
+const app: Application = express();
+app.use(express.json());
 app.use(helmet());
-// app.use(morgan('dev'));
-app.use(morgan('combined'));
+app.use(fileLogger);
+app.use(activityLogger); 
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -22,7 +22,6 @@ const limiter = rateLimit({
   message: 'Too many requests, please try again later.'
 });
 app.use(limiter);
-const router = express.Router();
 
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -37,6 +36,8 @@ app.use(compression({
     return compression.filter(req, res);
   }
 }));
+
+const router = express.Router();
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 import authentication from './user/authentication/authentication.controller';
@@ -59,9 +60,7 @@ import workOrder from './work/order/order.controller';
 import commentController from './work/comments/comment.controller';
 import userLocationController from './transaction/mapUserLocation/userLocation.controller';
 import workOrderController from './transaction/mapUserWorkOrder/userWorkOrder.controller';
-import { activityLogger } from './middlewares/logger';
 
-app.use(activityLogger);
 app.use((req: Request, res: Response, next: NextFunction) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');

@@ -11,6 +11,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };
