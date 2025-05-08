@@ -1,20 +1,20 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IAccount extends Document {
-  account_name: string;
-  account_status: 'active' | 'inactive';
+  name: string;
+  isActive: boolean;
   type: string;
-  fileName: string;
+  description: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 const accountSchema = new Schema<IAccount>(
   {
-    account_name: { type: String, required: true },
-    account_status: { type: String, required: true, enum: ['active', 'inactive'], default: 'active' },
+    name: { type: String, required: true },
+    isActive: { type: Boolean, required: true, default: true },
     type: { type: String, required: true },
-    fileName: { type: String, required: true }
+    description: { type: String}
   },
   {
     collection: 'account_master',

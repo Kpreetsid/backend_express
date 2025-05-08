@@ -16,17 +16,12 @@ export interface IUser extends Document {
   password: string;
   email: string;
   emailStatus: boolean;
-  token: string | null;
   user_status: 'active' | 'inactive' | string;
   user_role: 'admin' | 'user' | string;
   createdOn: Date;
   account_id: mongoose.Types.ObjectId;
   phone_no: IPhoneNumber;
   isFirstUser: boolean;
-  id?: mongoose.Types.ObjectId;
-  address?: string;
-  mobileNumber?: string;
-  pincode?: string | null;
 }
 
 const phoneNumberSchema = new Schema<IPhoneNumber>({
@@ -44,18 +39,13 @@ const userSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  token: { type: String, default: null },
   emailStatus: { type: Boolean, default: false },
-  user_status: { type: String, required: true },
+  user_status: { type: String, required: true, default: 'active' },
   user_role: { type: String, required: true },
   createdOn: { type: Date, default: Date.now },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
   phone_no: { type: phoneNumberSchema, required: true },
-  isFirstUser: { type: Boolean, default: false },
-  id: { type: mongoose.Schema.Types.ObjectId, default: null },
-  address: { type: String, default: null },
-  mobileNumber: { type: String, default: null },
-  pincode: { type: String, default: null }
+  isFirstUser: { type: Boolean, default: false }
 }, {
   collection: 'users',
   timestamps: true

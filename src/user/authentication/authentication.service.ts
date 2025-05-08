@@ -4,7 +4,6 @@ import { comparePassword } from '../../_config/bcrypt';
 import { generateToken } from '../../_config/auth';
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
-
   try {
     var { username, password } = req.body;
     const user = await User.findOne({ username });
@@ -31,8 +30,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       email: user.email,
       companyID: user.account_id
     }
-    safeUser.token = generateToken(userToken);
-    res.status(200).json({ status: true, message: 'Login successful', data: safeUser });
+    const token = generateToken(userToken);
+    res.status(200).json({ status: true, message: 'Login successful', data: safeUser, token });
   } catch (error) {
     console.error('Login error:', error);
     next(error);

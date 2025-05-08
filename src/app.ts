@@ -41,6 +41,7 @@ const router = express.Router();
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 import authentication from './user/authentication/authentication.controller';
+import registrationController from './user/registration/registration.controller';
 import userTokenController from './user/token/userToken.controller';
 import accountMaster from './masters/company/company.controller';
 import assetMaster from './masters/asset/asset.controller';
@@ -68,6 +69,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     next();
 });
 router.use('/authenticate', authentication);
+router.use('/registration', registrationController);
 
 const masterRouter = express.Router();
 masterRouter.use('/company', accountMaster);

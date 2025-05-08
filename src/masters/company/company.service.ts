@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 
 export const getAllAccount = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await Account.find({}).sort({ _id: -1 });
+    const data: IAccount[] = await Account.find({ isActive: true }).sort({ _id: -1 });
     if(data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
@@ -19,8 +19,8 @@ export const getAllAccount = async (req: Request, res: Response, next: NextFunct
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await Account.findById(id);
-    if (!data) {
+    const data: IAccount | null = await Account.findById(id);
+    if (!data || !data.isActive) {
       const error = new Error("Data not found");
       (error as any).status = 404;
       throw error;
@@ -32,22 +32,11 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const newAccount = new Account(req.body);
-    const data = await newAccount.save();
-    return res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await Account.findByIdAndUpdate(id, req.body, { new: true });
-    if (!data) {
+    const data: IAccount | null = await Account.findByIdAndUpdate(id, req.body, { new: true });
+    if (!data || !data.isActive) {
       const error = new Error("Data not found");
       (error as any).status = 404;
       throw error;
@@ -62,18 +51,18 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await Account.findById(id);
+    const data: IAccount | null = await Account.findById(id);
     if (!data) {
       const error = new Error("Data not found");
       (error as any).status = 404;
       throw error;
     }
-    if (data?.account_status === "inactive") {
+    if (data?.isActive === false) {
       const error = new Error("Data already deleted");
       (error as any).status = 400;
       throw error;
     }
-    await Account.findByIdAndUpdate(id, { account_status: "inactive" }, { new: true });
+    await Account.findByIdAndUpdate(id, { isActive: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     console.error(error);
