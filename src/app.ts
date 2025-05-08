@@ -11,7 +11,7 @@ import { activityLogger } from './middlewares/logger';
 import { attachUserData, authenticateJwt } from './_config/auth';
 
 const app: Application = express();
-app.use(express.json());// 
+app.use(express.json());
 app.use(helmet());
 app.use(fileLogger);
 app.use(activityLogger); 
