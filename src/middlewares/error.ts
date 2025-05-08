@@ -1,4 +1,3 @@
-import { error } from 'console';
 import { Request, Response, NextFunction } from 'express';
 
 export const errorMiddleware: any = (err: any, req: Request, res: Response, next: NextFunction) => {
@@ -17,7 +16,13 @@ export const errorMiddleware: any = (err: any, req: Request, res: Response, next
       return res.status(401).json({ status: false, message: 'Token expired', error: err.message });
 
     case 'UnauthorizedError':
-      return res.status(401).json({ status: false, message: 'Authorization token is missing or invalid', error: err.message });
+      if (err.message === 'jwt expired') {
+        return res.status(401).json({ status: false, message: 'Token has expired. Please log in again.' });
+      }
+      return res.status(401).json({ status: false, message: 'Invalid token.' });
+
+    case 'InvalidTokenError':
+      return res.status(401).json({ status: false, message: 'Invalid token', error: err.message });
 
     case 'ForbiddenError':
       return res.status(403).json({ status: false, message: 'Forbidden', error: err.message });
@@ -52,11 +57,6 @@ export const errorMiddleware: any = (err: any, req: Request, res: Response, next
     case 'ExpectationFailedError':
       return res.status(417).json({ status: false, message: 'Expectation Failed', error: err.message });
 
-    case 'ValidationError':
-    case 'MongoError':
-    case 'CastError':
-      return res.status(422).json({ status: false, message: 'Validation or MongoDB error', error: err.message });
-
     case 'TooManyRequestsError':
       return res.status(429).json({ status: false, message: 'Too Many Requests', error: err.message });
 
@@ -89,10 +89,22 @@ export const errorMiddleware: any = (err: any, req: Request, res: Response, next
 
     case 'NetworkAuthenticationRequiredError':
       return res.status(511).json({ status: false, message: 'Network Authentication Required', error: err.message });
+
+    // Handle Mongoose/MongoDB errors
+    case 'ValidationError':
+      return res.status(422).json({ status: false, message: 'Validation Error', error: err.message });
+
+    case 'MongoServerError':
+      if (err.code === 11000) {
+        return res.status(409).json({ status: false, message: 'Duplicate key error', error: err.message });
+      }
+      return res.status(500).json({ status: false, message: 'MongoDB Server Error', error: err.message });
+
+    case 'CastError':
+      return res.status(400).json({ status: false, message: 'Invalid ID format', error: err.message });
   }
 
-  // Default fallback
   const statusCode = err.status || 500;
   const message = err.message || 'Internal Server Error';
-  return res.status(statusCode).json({ status: false, message, error: err.message });
+  return res.status(statusCode).json({ status: false, message, error: err.stack || err.message });
 };
