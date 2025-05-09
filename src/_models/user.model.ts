@@ -1,5 +1,12 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface UserLoginPayload {
+  id: string;
+  companyID: string;
+  email: string;
+  username: string;
+}
+
 export interface IPhoneNumber {
   number: string;
   internationalNumber: string;

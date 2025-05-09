@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { UserRoleMenu, IUserRoleMenu } from "../../../_models/userRoleMenu.model";
 import { Request, Response, NextFunction } from 'express';
 
@@ -31,6 +32,16 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
+export const verifyUserRole = async (id: string, companyID: string) => {
+  try {
+    const userRole: IUserRoleMenu | null = await UserRoleMenu.findOne({ user_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
+    return userRole;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {

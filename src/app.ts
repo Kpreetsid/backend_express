@@ -1,45 +1,13 @@
-import express, { Application, Request, Response, NextFunction  } from 'express';
-import { errorMiddleware } from './middlewares/error';
+import express, { Application, Request, Response, NextFunction } from 'express';
 import path from 'path';
-import bodyParser from 'body-parser';
 import cors from 'cors';
 import compression from 'compression';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { errorMiddleware } from './middlewares/error';
 import { fileLogger } from './middlewares/fileLogger';
 import { activityLogger } from './middlewares/logger';
 import { attachUserData, authenticateJwt } from './_config/auth';
-
-const app: Application = express();
-app.use(express.json());
-app.use(helmet());
-app.use(fileLogger);
-app.use(activityLogger); 
-
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: 'Too many requests, please try again later.'
-});
-app.use(limiter);
-
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-app.use(cors());
-app.use(compression({
-  level: 9,
-  threshold: 0,
-  filter: (req: Request, res: Response) => {
-    if (req.headers['x-no-compression']) {
-      return false;
-    }
-    return compression.filter(req, res);
-  }
-}));
-
-const router = express.Router();
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-
 import authentication from './user/authentication/authentication.controller';
 import registrationController from './user/registration/registration.controller';
 import userTokenController from './user/token/userToken.controller';
@@ -62,13 +30,33 @@ import commentController from './work/comments/comment.controller';
 import userLocationController from './transaction/mapUserLocation/userLocation.controller';
 import workOrderController from './transaction/mapUserWorkOrder/userWorkOrder.controller';
 
-app.use((req: Request, res: Response, next: NextFunction) => {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    next();
-});
-router.use('/authenticate', authentication);
+const app: Application = express();
+
+app.use(helmet());
+app.use(cors());
+app.use(express.json());
+app.use(fileLogger);
+app.use(activityLogger);
+
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests, please try again later.'
+}));
+
+app.use(compression({
+  level: 9,
+  threshold: 0,
+  filter: (req: Request, res: Response) => {
+    return !req.headers['x-no-compression'];
+  }
+}));
+
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
+const router = express.Router();
+
+router.use('/', authentication);
 router.use('/registration', registrationController);
 
 const masterRouter = express.Router();
@@ -109,9 +97,9 @@ router.use('/floor-map', authenticateJwt, attachUserData, floorMapController);
 app.use('/api', router);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
-  const error = new Error('Requested resource not found.');
-  (error as any).status = 404;
-  next(error);
+  const err = new Error('Requested resource not found.');
+  (err as any).status = 404;
+  next(err);
 });
 
 app.use(errorMiddleware);

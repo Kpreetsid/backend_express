@@ -10,8 +10,8 @@ export interface IAsset extends mongoose.Document {
   asset_name: string;
   asset_id: string;
   top_level: boolean;
-  locationId?: mongoose.Types.ObjectId; // optional since some data use location_id as string
-  location_id?: string; // to handle inconsistent key naming in data
+  locationId?: mongoose.Types.ObjectId; 
+  location_id?: string; 
   account_id: mongoose.Types.ObjectId;
   top_level_asset_id: mongoose.Types.ObjectId;
   parent_id?: mongoose.Types.ObjectId;

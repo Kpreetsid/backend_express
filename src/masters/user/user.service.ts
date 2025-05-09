@@ -1,4 +1,4 @@
-import { User, IUser } from "../../_models/user.model";
+import { User, IUser, UserLoginPayload } from "../../_models/user.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -29,6 +29,16 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   } catch (error) {
     console.error(error);
     next(error);
+  }
+};
+
+export const verifyUserLogin = async ({ id, companyID, email, username }: UserLoginPayload) => {
+  try {
+    const user: IUser | null = await User.findOne({ _id: id, account_id: companyID, email, username }).select('-password');
+    return user;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
 };
 

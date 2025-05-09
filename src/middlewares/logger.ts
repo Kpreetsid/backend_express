@@ -44,7 +44,6 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
   next();
 };
 
-// Helper to map HTTP methods to actions
 function mapAction(method: string): string {
   switch (method) {
     case 'GET': return 'READ';
@@ -55,7 +54,6 @@ function mapAction(method: string): string {
   }
 }
 
-// Extract top-level module name from the route
 function extractModule(url: string): string {
   const segments = url.split('/');
   return segments[1] || 'general';

@@ -90,7 +90,6 @@ export const errorMiddleware: any = (err: any, req: Request, res: Response, next
     case 'NetworkAuthenticationRequiredError':
       return res.status(511).json({ status: false, message: 'Network Authentication Required', error: err.message });
 
-    // Handle Mongoose/MongoDB errors
     case 'ValidationError':
       return res.status(422).json({ status: false, message: 'Validation Error', error: err.message });
 

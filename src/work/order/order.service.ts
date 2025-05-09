@@ -16,7 +16,6 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-// getDataById, insert, updateById, removeById 
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
