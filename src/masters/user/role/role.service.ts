@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import { UserRoleMenu, IUserRoleMenu } from "../../../_models/userRoleMenu.model";
 import { Request, Response, NextFunction } from 'express';
+import { IUser } from "../../../_models/user.model";
+import { adminRoles, managerRoles, employeeRoles, customerRoles } from '../../../_config/userRoles';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -53,6 +55,40 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     next(error);
   }
 };
+
+export const createUserRole = async (userRole: any, userData: IUser) => {
+  try {
+    var platformControl = adminRoles;
+    switch (userRole) {
+      case "admin": {
+        platformControl = adminRoles;
+        break;
+      }
+      case "manager": {
+        platformControl = managerRoles;
+        break;
+      }
+      case "employee": {
+        platformControl = employeeRoles;
+        break;
+      }
+      case "customer": {
+        platformControl = customerRoles;
+        break;
+      }
+    }
+    const newUserRoleMenu: IUserRoleMenu = new UserRoleMenu({
+      user_id: userData._id,
+      account_id: userData.account_id,
+      data: platformControl
+    });
+    const roleData = await newUserRoleMenu.save();
+    return roleData;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+}
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {

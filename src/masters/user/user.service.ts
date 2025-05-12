@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import mongoose from "mongoose";
 import { hashPassword } from '../../_config/bcrypt';
 import { verifyCompany } from "../company/company.service";
+import { createUserRole } from './role/role.service';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -100,7 +101,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       }
     });
     const newUserDetails = await newUser.save();
-    return res.status(201).json({ status: true, message: "Data inserted successfully", data: newUserDetails });
+    const roleData = await createUserRole(body.user_role, newUserDetails)
+    return res.status(201).json({ status: true, message: "Data inserted successfully", data: newUserDetails, roleData });
   } catch (error) {
     console.error(error);
     next(error);
