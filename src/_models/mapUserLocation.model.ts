@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IMapUserLocation extends Document {
+  _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   locationId?: mongoose.Types.ObjectId;
   assetId?: mongoose.Types.ObjectId;

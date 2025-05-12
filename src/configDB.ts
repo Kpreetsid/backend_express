@@ -7,7 +7,7 @@ export const database = {
 };
 export const server = {
     host: 'localhost',
-    port: 3000,
+    port: 4000,
     protocol: 'http',
 }
 export const auth = {
@@ -21,4 +21,11 @@ export const auth = {
     refreshTokenIssuer: 'your_refresh_token_issuer',
     refreshTokenAudience: 'your_refresh_token_audience',
     refreshTokenSecret: 'your_refresh_token_secret'
+}
+export const mailCredential =  {
+    host: 'smtpout.secureserver.net',
+    port: 465,
+    secure: true,
+    user: 'pawan.kumar@presageinsights.ai',
+    pass: '%awa&GTM19O3'
 }

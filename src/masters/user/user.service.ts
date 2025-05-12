@@ -1,5 +1,7 @@
 import { User, IUser, UserLoginPayload } from "../../_models/user.model";
+import { MapUserLocation } from "../../_models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
+import mongoose from "mongoose";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -39,6 +41,29 @@ export const verifyUserLogin = async ({ id, companyID, email, username }: UserLo
   } catch (error) {
     console.error(error);
     return null;
+  }
+};
+
+export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { location_id } = req.body;
+    if(req.user.user_role !== "admin") {
+      const error = new Error("Unauthorize data access request");
+      (error as any).status = 401;
+      throw error;
+    }
+    const data = await MapUserLocation.find({ locationId: new mongoose.Types.ObjectId(location_id) }).select('userId -_id');
+    if (data.length === 0) {
+      const error = new Error("No data found");
+      (error as any).status = 404;
+      throw error;
+    }
+    const userIDList = data.map(doc => doc.userId);
+    const userData = await User.find({ _id: { $in: userIDList }}).select('-password');
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
+  } catch (error) {
+    console.error(error);
+    next(error);
   }
 };
 

@@ -1,9 +1,10 @@
 import express, { Request, Response, NextFunction } from 'express';
 const router = express.Router();
-import { getAll, getDataById, insert, updateById, removeById } from './user.service';
+import { getAll, getDataById, insert, updateById, removeById, getLocationWiseUser } from './user.service';
 
 router.get('/', getData);
 router.get('/:id', getById);
+router.post('/location', getLocationWise);
 router.post('/', create);
 router.put('/:id', update);
 router.delete('/:id', remove);
@@ -14,6 +15,10 @@ async function getData(req: Request, res: Response, next: NextFunction) {
 
 async function getById(req: Request, res: Response, next: NextFunction) {
   await getDataById(req, res, next);
+}
+
+async function getLocationWise(req: Request, res: Response, next: NextFunction) {
+  await getLocationWiseUser(req, res, next);
 }
 
 async function create(req: Request, res: Response, next: NextFunction) {

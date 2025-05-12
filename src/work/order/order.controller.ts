@@ -1,8 +1,9 @@
 import express, { Request, Response, NextFunction } from 'express';
 const router = express.Router();
-import { getAll, getDataById, insert, updateById, removeById } from './order.service';
+import { getAll, getDataById, accountWise, insert, updateById, removeById } from './order.service';
 
 router.get('/', getData);
+router.get('/accountWise', getAccountWise)
 router.get('/:id', getById);
 router.post('/', create);
 router.put('/:id', update);
@@ -14,6 +15,10 @@ async function getData(req: Request, res: Response, next: NextFunction) {
 
 async function getById(req: Request, res: Response, next: NextFunction) {
   await getDataById(req, res, next);
+}
+
+async function getAccountWise(req: Request, res: Response, next: NextFunction) {
+  await accountWise(req, res, next);
 }
 
 async function create(req: Request, res: Response, next: NextFunction) {

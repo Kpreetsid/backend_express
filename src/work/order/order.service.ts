@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { WorkOrder, IWorkOrder } from "../../_models/workOrder.model";
 import { Request, Response, NextFunction } from 'express';
 
@@ -21,6 +22,22 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const { id } = req.params;
     const data = await WorkOrder.findById(id);
     if (!data) {
+      const error = new Error("No data found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) { 
+    console.error(error);
+    next(error);
+  }
+};
+
+export const accountWise = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { companyID } = req;
+    const data: IWorkOrder[] | null = await WorkOrder.find({account_id: new mongoose.Types.ObjectId(companyID)});
+    if (data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
       throw error;

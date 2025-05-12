@@ -6,6 +6,7 @@ import { verifyUserLogin } from '../masters/user/user.service';
 import { IUserRoleMenu } from "../_models/userRoleMenu.model";
 import { IUser, UserLoginPayload } from '../_models/user.model';
 import { verifyUserRole } from '../masters/user/role/role.service';
+import { verifyCompany } from '../masters/company/company.service';
 
 export const authenticateJwt = expressjwt({
   secret: auth.secret,
@@ -18,8 +19,15 @@ export const authenticateJwt = expressjwt({
 export const attachUserData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id, username, email, companyID } = (req as any).auth;
-    if (!id || !username || !email || !companyID) {
+    const accountID = req.headers.accountid as string;
+    if (!id && !username && !email && !companyID) {
       const error = new Error("Invalid token");
+      (error as any).status = 401;
+      throw error;
+    }
+    const companyData = await verifyCompany(accountID);
+    if(!companyData) {
+      const error = new Error("Account ID is invalid");
       (error as any).status = 401;
       throw error;
     }

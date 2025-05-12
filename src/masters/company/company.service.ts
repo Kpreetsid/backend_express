@@ -1,5 +1,7 @@
+import mongoose from "mongoose";
 import { Account, IAccount } from "../../_models/account.model";
 import { NextFunction, Request, Response } from 'express';
+import { sendMail } from "../../_config/mailer";
 
 export const getAllAccount = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -29,6 +31,16 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   } catch (error) {
     console.error(error);
     next(error);
+  }
+};
+
+export const verifyCompany = async (id: string) => {
+  try {
+    const data: IAccount | null = await Account.findById(new mongoose.Types.ObjectId(id));
+    return data;
+  } catch (error) {
+    console.error(error);
+    return null;
   }
 };
 
