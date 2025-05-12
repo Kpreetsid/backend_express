@@ -2,11 +2,14 @@ import { User, IUser, UserLoginPayload } from "../../_models/user.model";
 import { MapUserLocation } from "../../_models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
 import mongoose from "mongoose";
+import { hashPassword } from '../../_config/bcrypt';
+import { verifyCompany } from "../company/company.service";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await User.find({}).select('-password').sort({ _id: -1 });
-    if (data.length === 0) {
+    const { companyID } = req;
+    const data: IUser[] | null = await User.find({account_id: new mongoose.Types.ObjectId(companyID)}).select('-password').sort({ _id: -1 });
+    if (!data || data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
       throw error;
@@ -21,8 +24,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id;
-    const data = await User.findById(id).select('-password');
-    if (!data) {
+    const { companyID } = req;
+    const data: IUser[] | null = await User.find({_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID)}).select('-password');
+    if (!data || data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
       throw error;
@@ -46,13 +50,13 @@ export const verifyUserLogin = async ({ id, companyID, email, username }: UserLo
 
 export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { location_id } = req.body;
+    const { locationID } = req.params;
     if(req.user.user_role !== "admin") {
       const error = new Error("Unauthorize data access request");
       (error as any).status = 401;
       throw error;
     }
-    const data = await MapUserLocation.find({ locationId: new mongoose.Types.ObjectId(location_id) }).select('userId -_id');
+    const data = await MapUserLocation.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
     if (data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
@@ -69,9 +73,34 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = new User(req.body);
-    await user.save();
-    return res.status(201).json({ status: true, message: "Data inserted successfully", data: user });
+    const body = req.body;
+    const { account_id } = req.user;
+    const password = await hashPassword(body.password);
+    const companyData = await verifyCompany(`${account_id}`);
+    if(!companyData || companyData.length === 0) {
+      const error = new Error("Invalid account");
+      (error as any).status = 403;
+      throw error;
+    }
+    const newUser = new User({
+      "firstName" : body.firstName,
+      "lastName" : body.lastName,
+      "username" : body.username,
+      "password" : password,
+      "email" : body.email,
+      "user_role" : body.user_role,
+      "account_id" : account_id,
+      "phone_no" : {
+          "number" : body.phone_no.number,
+          "internationalNumber" : body.phone_no.internationalNumber,
+          "nationalNumber" : body.phone_no.nationalNumber,
+          "e164Number" : body.phone_no.e164Number,
+          "countryCode" : body.phone_no.countryCode,
+          "dialCode" : body.phone_no.dialCode
+      }
+    });
+    const newUserDetails = await newUser.save();
+    return res.status(201).json({ status: true, message: "Data inserted successfully", data: newUserDetails });
   } catch (error) {
     console.error(error);
     next(error);

@@ -4,7 +4,7 @@ import { getAll, getDataById, insert, updateById, removeById, getLocationWiseUse
 
 router.get('/', getData);
 router.get('/:id', getById);
-router.post('/location', getLocationWise);
+router.get('/location/:locationID', getLocationWise);
 router.post('/', create);
 router.put('/:id', update);
 router.delete('/:id', remove);

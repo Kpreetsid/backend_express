@@ -36,7 +36,10 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const verifyCompany = async (id: string) => {
   try {
-    const data: IAccount | null = await Account.findById(new mongoose.Types.ObjectId(id));
+    const data: IAccount[] | null = await Account.findById(new mongoose.Types.ObjectId(id));
+    if(!data || data.length === 0) {
+      return null;
+    }
     return data;
   } catch (error) {
     console.error(error);
