@@ -1,18 +1,42 @@
 import mongoose from "mongoose";
 import { LocationMaster, ILocationMaster } from "../../_models/location.model";
 import { Request, Response, NextFunction } from 'express';
+import { IMapUserLocation, MapUserLocation } from "../../_models/mapUserLocation.model";
 const moduleName: string = "location";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = (req as any).user;
-    const data: ILocationMaster[] = await LocationMaster.find({ account_id: new mongoose.Types.ObjectId(user.account_id) }).sort({ _id: -1 });
-    if (data.length === 0) {
+    const match: any = { visible: true, account_id: new mongoose.Types.ObjectId(user.account_id) };
+    const mapLocationData: IMapUserLocation[] = await MapUserLocation.find({ userId: new mongoose.Types.ObjectId(user._id) });
+    if (mapLocationData?.length > 0) {
+      const locationIds = mapLocationData.map(doc => doc.locationId).filter(id => id);
+      match._id = { $in: locationIds };
+    }
+
+    const data: ILocationMaster[] = await LocationMaster.find(match).sort({ _id: -1 });
+    if (!data || data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
       throw error;
     }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+
+    const locations = data.map(doc => doc.toObject());
+    const idMap: { [key: string]: any } = {};
+    locations.forEach(loc => {
+      idMap[loc._id.toString()] = { ...loc, children: [] };
+    });
+
+    const rootNodes: any[] = [];
+    locations.forEach(loc => {
+      const parentId = loc.parent_id?.toString();
+      if (parentId && idMap[parentId]) {
+        idMap[parentId].children.push(idMap[loc._id.toString()]);
+      } else {
+        rootNodes.push(idMap[loc._id.toString()]);
+      }
+    });
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: rootNodes });
   } catch (error) {
     console.error(error);
     next(error);

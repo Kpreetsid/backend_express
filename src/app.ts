@@ -107,6 +107,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(errorMiddleware);
 
-const server = http.createServer(app);
+// const server = http.createServer(app);
 
-export default server;
+export default app;

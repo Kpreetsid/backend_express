@@ -4,8 +4,8 @@ import { NextFunction, Request, Response } from 'express';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id } = req.user;
-    const data = await Asset.find({account_id: account_id}).sort({ _id: -1 }); 
-    if (data.length === 0) {
+    const data: IAsset[] | null = await Asset.find({account_id: account_id}).sort({ _id: -1 }); 
+    if (!data || data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
       throw error;
@@ -32,6 +32,60 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
+export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { accountId, locations } = req.body;
+    console.log(req.body);
+    if (!accountId) {
+      const error = new Error("Missing accountId");
+      (error as any).status = 403;
+      throw error;
+    }
+    const query: any = {
+      account_id: accountId,
+      visible: true,
+      parent_id: { $in: [null, undefined] }
+    };
+
+    if (locations && Array.isArray(locations) && locations.length > 0) {
+      query.locationId = { $in: locations };
+    }
+    console.log(query);
+    const rootAssets = await Asset.find(query);
+    const data = await Promise.all(rootAssets.map(async (asset) => {
+      return {
+        ...asset.toObject(),
+        children: await getRecursiveAssets(asset)
+      };
+    }));
+    if (!data || data.length === 0) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+async function getRecursiveAssets(asset: any) {
+  const children = await Asset.find({
+    parent_id: asset._id,
+    visible: true
+  });
+
+  const withChildren: any = await Promise.all(children.map(async (child: any) => {
+    return {
+      ...child.toObject(),
+      children: await getRecursiveAssets(child)
+    };
+  }));
+
+  return withChildren;
+}
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {

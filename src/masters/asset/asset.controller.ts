@@ -1,8 +1,9 @@
 import express, { NextFunction, Request, Response } from 'express';
 const router = express.Router();
-import { getAll, getDataById, insert, updateById, removeById } from './asset.service';
+import { getAll, getDataById, insert, updateById, removeById, getAssetsTreeData } from './asset.service';
 
 router.get('/', getData);
+router.post('/getTree', getAssetsTree);
 router.get('/:id', getById);
 router.post('/', create);
 router.put('/:id', update);
@@ -11,6 +12,10 @@ router.delete('/:id', remove);
 async function getData(req: Request, res: Response, next: NextFunction) {
   await getAll(req, res, next);
 };
+
+async function getAssetsTree(req: Request, res: Response, next: NextFunction) {
+  await getAssetsTreeData(req, res, next);
+}
 
 async function getById(req: Request, res: Response, next: NextFunction) {
   await getDataById(req, res, next);
