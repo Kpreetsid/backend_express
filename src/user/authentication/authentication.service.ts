@@ -1,7 +1,7 @@
 import { IUser, User, UserLoginPayload } from "../../_models/user.model";
 import { Request, Response, NextFunction } from 'express';
 import { comparePassword } from '../../_config/bcrypt';
-import { generateAccessToken, generateRefreshToken, verifyAndRefreshToken } from '../../_config/auth';
+import { generateAccessToken } from '../../_config/auth';
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -26,30 +26,10 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     const { password: _, ...safeUser } = user.toObject();
     const userTokenPayload: UserLoginPayload = { id: `${user._id}`, username: user.username, email: user.email, companyID: `${user.account_id}` };
     const token = generateAccessToken(userTokenPayload);
-    const refreshToken = generateRefreshToken(userTokenPayload);
-
-    res.status(200).json({ status: true, message: 'Login successful', data: safeUser, token, refreshToken });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
-export const refreshUserAuthentication = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { refreshToken } = req.body;
-    if (!refreshToken) {
-      const error = new Error("Refresh token required");
-      (error as any).status = 401;
-      throw error;
-    }
-    const newToken = verifyAndRefreshToken(refreshToken, res);
-    if (!newToken) {
-      const error = new Error("Refresh token expired or invalid");
-      (error as any).status = 401;
-      throw error;
-    }
-    res.status(200).json({ status: true, message: "Token refreshed successfully", token: newToken });
+    res.cookie('token', token, { httpOnly: true, secure: true });
+    res.cookie('user', JSON.stringify(safeUser), { httpOnly: true, secure: true });
+    res.cookie('companyID', userTokenPayload.companyID, { httpOnly: true, secure: true });
+    res.status(200).json({ status: true, message: 'Login successful', data: safeUser, token });
   } catch (error) {
     console.error(error);
     next(error);

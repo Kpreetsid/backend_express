@@ -1,9 +1,11 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import path from 'path';
+import http from 'http';
 import cors from 'cors';
 import compression from 'compression';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { errorMiddleware } from './middlewares/error';
 import { fileLogger } from './middlewares/fileLogger';
 import { activityLogger } from './middlewares/logger';
@@ -33,8 +35,9 @@ import workOrderController from './transaction/mapUserWorkOrder/userWorkOrder.co
 const app: Application = express();
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({ credentials: true, origin: true }));
 app.use(express.json());
+app.use(cookieParser());
 app.use(fileLogger);
 app.use(activityLogger);
 
@@ -104,4 +107,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
 app.use(errorMiddleware);
 
-export default app;
+const server = http.createServer(app);
+
+export default server;

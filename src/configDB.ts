@@ -11,16 +11,11 @@ export const server = {
     protocol: 'http',
 }
 export const auth = {
-    secret: 'your_secret_key',
+    secret: 'Hello everyone, I’m Pawan. Kindly explore the application, but please refrain from attempting to breach its security. I’ve implemented protection measures based on my comprehensive knowledge and experience.',
     expiresIn: '1d',
     algorithm: 'HS256',
     issuer: 'your_issuer',
-    audience: 'your_audience',
-    refreshTokenExpiresIn: '30d',
-    refreshTokenAlgorithm: 'HS256',
-    refreshTokenIssuer: 'your_refresh_token_issuer',
-    refreshTokenAudience: 'your_refresh_token_audience',
-    refreshTokenSecret: 'your_refresh_token_secret'
+    audience: 'your_audience'
 }
 export const mailCredential =  {
     host: 'smtpout.secureserver.net',
