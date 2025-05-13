@@ -1,6 +1,5 @@
-import { expressjwt } from 'express-jwt';
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { JwtPayload } from 'jsonwebtoken';
 import { auth } from '../configDB';
 import { verifyUserLogin } from '../masters/user/user.service';
 import { IUserRoleMenu } from "../_models/userRoleMenu.model";
@@ -8,25 +7,30 @@ import { IUser, UserLoginPayload } from '../_models/user.model';
 import { verifyUserRole } from '../masters/user/role/role.service';
 import { verifyCompany } from '../masters/company/company.service';
 
-export const authenticateJwt = expressjwt({
-  secret: auth.secret,
-  algorithms: [auth.algorithm as jwt.Algorithm],
-  requestProperty: 'auth',
-  issuer: auth.issuer,
-  audience: auth.audience
-});
-
-export const attachUserData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const authenticateJwt = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id, username, email, companyID } = (req as any).auth;
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      const error = new Error("No token provided");
+      (error as any).status = 401;
+      throw error;
+    }
+    const token = authHeader.split(" ")[1];
+    const decoded = jwt.verify(token, auth.secret, {
+      algorithms: [auth.algorithm as jwt.Algorithm],
+      issuer: auth.issuer,
+      audience: auth.audience
+    }) as UserLoginPayload;
+    const { id, username, email, companyID } = decoded;
     const accountID = req.headers.accountid as string;
-    if (!id && !username && !email && !companyID) {
-      const error = new Error("Invalid token");
+
+    if (!id || !username || !email || !companyID) {
+      const error = new Error("Invalid token payload");
       (error as any).status = 401;
       throw error;
     }
     const companyData = await verifyCompany(accountID);
-    if(!companyData) {
+    if (!companyData) {
       const error = new Error("Account ID is invalid");
       (error as any).status = 401;
       throw error;
@@ -34,26 +38,26 @@ export const attachUserData = async (req: Request, res: Response, next: NextFunc
     const userData: IUser | null = await verifyUserLogin({ id, companyID, email, username });
     if (!userData) {
       const error = new Error("User not found");
-      (error as any).status = 404;
+      (error as any).status = 401;
       throw error;
     }
     const userRole: IUserRoleMenu | null = await verifyUserRole(id, companyID);
     if (!userRole) {
       const error = new Error("User role not found");
-      (error as any).status = 404;
+      (error as any).status = 401;
       throw error;
     }
     if (userRole.account_id.toString() !== companyID) {
-      const error = new Error("User role does not belong to the company");
+      const error = new Error("User does not belong to the company");
       (error as any).status = 403;
       throw error;
     }
     req.user = userData;
-    req.role = userRole.data;
     req.companyID = companyID;
     next();
-  } catch (error) {
-    next(error);
+  } catch (error: any) {
+    console.error('Auth error:', error.message);
+    next(error)
   }
 };
 

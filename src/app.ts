@@ -9,7 +9,7 @@ import cookieParser from 'cookie-parser';
 import { errorMiddleware } from './middlewares/error';
 import { fileLogger } from './middlewares/fileLogger';
 import { activityLogger } from './middlewares/logger';
-import { attachUserData, authenticateJwt } from './_config/auth';
+import { authenticateJwt } from './_config/auth';
 import authentication from './user/authentication/authentication.controller';
 import registrationController from './user/registration/registration.controller';
 import userTokenController from './user/token/userToken.controller';
@@ -71,31 +71,31 @@ masterRouter.use('/part', partMaster);
 masterRouter.use('/observation', observationMaster);
 masterRouter.use('/form-category', formCategoryMaster);
 masterRouter.use('/blog', blogController);
-router.use('/master', authenticateJwt, attachUserData, masterRouter);
+router.use('/master', authenticateJwt, masterRouter);
 
 const reportRouter = express.Router();
 reportRouter.use('/location', locationReport);
 reportRouter.use('/asset', assetReportController);
-router.use('/report', authenticateJwt, attachUserData, reportRouter);
+router.use('/report', authenticateJwt, reportRouter);
 
 const transactionRouter = express.Router();
 transactionRouter.use('/map-user-location', userLocationController);
 transactionRouter.use('/map-user-work-order', workOrderController);
-router.use('/transaction', authenticateJwt, attachUserData, transactionRouter);
+router.use('/transaction', authenticateJwt, transactionRouter);
 
 const workRouter = express.Router();
 workRouter.use('/request', workRequest);
 workRouter.use('/order', workOrder);
 workRouter.use('/comments', commentController);
-router.use('/work', authenticateJwt, attachUserData, workRouter);
+router.use('/work', authenticateJwt, workRouter);
 
 const userRouter = express.Router();
 userRouter.use('/logs', logsController);
 userRouter.use('/tokens', userTokenController);
 userRouter.use('/role-menu', userRoleMenuController);
-router.use('/user', authenticateJwt, attachUserData, userRouter);
+router.use('/user', authenticateJwt, userRouter);
 
-router.use('/floor-map', authenticateJwt, attachUserData, floorMapController);
+router.use('/floor-map', authenticateJwt, floorMapController);
 
 app.use('/api', router);
 
