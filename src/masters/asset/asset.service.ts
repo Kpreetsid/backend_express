@@ -98,6 +98,18 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+export const createAssetsWithImage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    console.log(req.files);
+    const newAsset = new Asset(req.body);
+    const data = await newAsset.save();
+    return res.status(201).json({ status: true, message: "Data created successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;

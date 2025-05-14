@@ -11,7 +11,6 @@ export const authenticateJwt = async (req: Request, res: Response, next: NextFun
   try {
     const cookieToken = req.cookies['token'];
     const cookieAccountID = req.cookies['companyID'];
-    console.log({cookieToken, cookieAccountID});
     if (!cookieToken) {
       const error = new Error("No token provided");
       (error as any).status = 401;
