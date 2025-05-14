@@ -1,6 +1,4 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
-import path from 'path';
-import http from 'http';
 import cors from 'cors';
 import compression from 'compression';
 import helmet from 'helmet';
@@ -55,8 +53,6 @@ app.use(compression({
   }
 }));
 
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
-
 const router = express.Router();
 
 router.use('/', authentication);
@@ -106,7 +102,5 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 
 app.use(errorMiddleware);
-
-// const server = http.createServer(app);
 
 export default app;
