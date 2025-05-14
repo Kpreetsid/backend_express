@@ -13,7 +13,8 @@ const MapUserLocationSchema = new Schema<IMapUserLocation>({
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetMaster', default: null }
 }, {
   collection: 'location_user_mapping',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const MapUserLocation = mongoose.model<IMapUserLocation>('MapUserLocation', MapUserLocationSchema);

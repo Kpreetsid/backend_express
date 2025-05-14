@@ -3,48 +3,114 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IUserLog extends Document {
     userId: mongoose.Types.ObjectId;
     userName: string;
-    module: string; // e.g., 'ASSET', 'AUTH', 'ACCOUNT'
-    description: string; // Summary of what happened
-    method: string; // HTTP method: GET, POST, PUT, DELETE
+    method: string;
+    module: string;
+    description: string;
     statusCode: number;
-    host: string;
-    protocol: string; // HTTP or HTTPS
-    port: number; // Port number
-    hostName: string; // Hostname from headers
     requestUrl: string;
+    host: string;
+    hostName: string;
+    protocol: string;
+    port: number;
     ipAddress: string;
     userAgent: string;
-    additionalData?: any;
-    systemInfo: object;
-    browserInfo: object;
-    deviceInfo: object;
-    networkInfo: object;
-    requestMeta: object;
+    systemInfo: {
+        platform: string;
+        os: string;
+        architecture: string;
+    };
+    browserInfo: {
+        name: string;
+        version: string;
+        engine: string;
+    };
+    deviceInfo: {
+        isMobile: boolean;
+        userAgent: string;
+    };
+    networkInfo: {
+        origin?: string;
+        referer?: string;
+        host?: string;
+        connection?: string;
+        contentLength: number;
+        encoding?: string[];
+        language?: string[];
+    };
+    requestMeta: {
+        contentType?: string;
+        accept?: string[];
+        fetchMode?: string;
+        fetchSite?: string;
+        fetchDest?: string;
+        dnt?: boolean;
+        secCHUA?: string[];
+    };
+    additionalData: {
+        params: Record<string, any>;
+        body: Record<string, any>;
+        query: Record<string, any>;
+        durationMs: number;
+    };
+    createdAt: Date;
 }
 
-const userLogSchema: Schema<IUserLog> = new Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+const userLogSchema = new Schema<IUserLog>({
+    userId: { type: Schema.Types.ObjectId, required: true },
     userName: { type: String, required: true },
+    method: { type: String, required: true },
     module: { type: String, required: true },
     description: { type: String, required: true },
-    method: { type: String },
-    statusCode: { type: Number },
-    host: { type: String },
-    protocol: { type: String },
-    port: { type: Number },
-    hostName: { type: String },
-    requestUrl: { type: String },
-    ipAddress: { type: String },
-    userAgent: { type: String },
-    systemInfo: { type: Schema.Types.Mixed }, 
-    browserInfo: { type: Schema.Types.Mixed }, // optional flexible data object,
-    deviceInfo: { type: Schema.Types.Mixed }, // optional flexible data object,
-    networkInfo: { type: Schema.Types.Mixed }, // optional flexible data object,
-    requestMeta: { type: Schema.Types.Mixed }, // optional flexible data object
-    additionalData: { type: Schema.Types.Mixed }, // optional flexible data
+    statusCode: { type: Number, required: true },
+    requestUrl: { type: String, required: true },
+    host: { type: String, required: true },
+    hostName: { type: String, required: true },
+    protocol: { type: String, required: true },
+    port: { type: Number, required: true },
+    ipAddress: { type: String, required: true },
+    userAgent: { type: String, required: true },
+    systemInfo: {
+        platform: { type: String },
+        os: { type: String },
+        architecture: { type: String }
+    },
+    browserInfo: {
+        name: { type: String },
+        version: { type: String },
+        engine: { type: String }
+    },
+    deviceInfo: {
+        isMobile: { type: Boolean },
+        userAgent: { type: String }
+    },
+    networkInfo: {
+        origin: { type: String },
+        referer: { type: String },
+        host: { type: String },
+        connection: { type: String },
+        contentLength: { type: Number },
+        encoding: [{ type: String }],
+        language: [{ type: String }]
+    },
+    requestMeta: {
+        contentType: { type: String },
+        accept: [{ type: String }],
+        fetchMode: { type: String },
+        fetchSite: { type: String },
+        fetchDest: { type: String },
+        dnt: { type: Boolean },
+        secCHUA: [{ type: String }]
+    },
+    additionalData: {
+        params: { type: Schema.Types.Mixed },
+        body: { type: Schema.Types.Mixed },
+        query: { type: Schema.Types.Mixed },
+        durationMs: { type: Number }
+    },
 }, {
     collection: 'user_logs',
-    timestamps: true
+    timestamps: true,
+    versionKey: false
 });
 
-export const UserLog = mongoose.model<IUserLog>('UserLogs', userLogSchema);
+export const UserLog = mongoose.model<IUserLog>('UserLog', userLogSchema);

@@ -14,7 +14,8 @@ const categorySchema = new Schema<ICategory>({
   id: { type: mongoose.Schema.Types.ObjectId, default: null }
 }, {
   collection: 'form_category',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const Category = mongoose.model<ICategory>('Category', categorySchema);

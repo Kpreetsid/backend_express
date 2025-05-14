@@ -38,7 +38,8 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   visible: { type: Boolean, required: true },
 }, {
   collection: 'location_master',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const LocationMaster = mongoose.model<ILocationMaster>('LocationMaster', locationMasterSchema);

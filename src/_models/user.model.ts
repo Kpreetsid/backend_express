@@ -54,7 +54,8 @@ const userSchema = new Schema<IUser>({
   isFirstUser: { type: Boolean, default: false }
 }, {
   collection: 'users',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const User = mongoose.model<IUser>('User', userSchema);

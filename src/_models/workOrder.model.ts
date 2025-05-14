@@ -104,7 +104,8 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   estimatedParts: { type: [estimatedPartSchema], default: [] }
 }, {
   collection: 'work_orders',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const WorkOrder = mongoose.model<IWorkOrder>('WorkOrder', WorkOrderSchema);

@@ -36,8 +36,8 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const verifyCompany = async (id: string) => {
   try {
-    const data: IAccount[] | null = await Account.findById(new mongoose.Types.ObjectId(id));
-    if(!data || data.length === 0) {
+    const data: IAccount | null = await Account.findById(new mongoose.Types.ObjectId(id));
+    if(!data || !data.isActive) {
       return null;
     }
     return data;

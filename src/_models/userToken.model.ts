@@ -26,7 +26,8 @@ const userTokenSchema = new Schema<IUserToken>({
     required: true
   }
 }, {
-  collection: 'CustomAccessToken'
+  collection: 'CustomAccessToken',
+  versionKey: false
 });
 
 export const UserToken = mongoose.model<IUserToken>('UserToken', userTokenSchema);

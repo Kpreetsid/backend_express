@@ -26,7 +26,8 @@ const partSchema = new Schema<IPart>({
   id: { type: mongoose.Schema.Types.ObjectId, default: null }
 }, {
   collection: 'parts',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const Part = mongoose.model<IPart>('Part', partSchema);

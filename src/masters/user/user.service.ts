@@ -78,7 +78,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     const { account_id } = req.user;
     const password = await hashPassword(body.password);
     const companyData = await verifyCompany(`${account_id}`);
-    if(!companyData || companyData.length === 0) {
+    if(!companyData) {
       const error = new Error("Invalid account");
       (error as any).status = 403;
       throw error;

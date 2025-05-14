@@ -98,7 +98,8 @@ const ObservationSchema = new Schema<IObservation>({
   id: { type: mongoose.Schema.Types.ObjectId, default: null }
 }, {
   collection: 'observation',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const Observation = mongoose.model<IObservation>('Observation', ObservationSchema);

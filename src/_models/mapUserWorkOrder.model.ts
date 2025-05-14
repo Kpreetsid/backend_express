@@ -12,7 +12,8 @@ const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(
   },
   {
     collection: 'wo_user_mapping',
-    timestamps: true 
+    timestamps: true ,
+    versionKey: false
   }
 );
 

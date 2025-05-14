@@ -104,7 +104,8 @@ const userRoleMenuSchema = new Schema<IUserRoleMenu>({
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true }
 }, {
   collection: 'platform-control',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const UserRoleMenu = mongoose.model<IUserRoleMenu>('UserRoleMenu', userRoleMenuSchema);

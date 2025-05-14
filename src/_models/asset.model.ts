@@ -66,7 +66,8 @@ const assetSchema = new Schema<IAsset>({
   visible: { type: Boolean, default: true },
 }, {
   collection: 'asset_master',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const Asset = mongoose.model<IAsset>('Asset', assetSchema);

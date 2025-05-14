@@ -120,6 +120,10 @@ const PostSchema = new Schema<IPost>({
   publishTo: { type: [String], default: [] },
   comments: { type: [String], default: [] },
   likes: { type: [String], default: [] },
-}, { timestamps: true });
+}, { 
+  collection: 'post',
+  timestamps: true ,
+  versionKey: false
+});
 
 export const Post = mongoose.model<IPost>('Post', PostSchema);

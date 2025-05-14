@@ -156,7 +156,8 @@ const LocationReportSchema = new Schema({
 },
     {
         collection: 'location-report',
-        timestamps: true
+        timestamps: true,
+        versionKey: false
     }
 );
 

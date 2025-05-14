@@ -78,7 +78,8 @@ const BlogSchema = new Schema<IBlog>({
   likes: { type: [Schema.Types.Mixed], default: [] }
 }, {
   collection: 'help',
-  timestamps: true
+  timestamps: true,
+  versionKey: false
 });
 
 export const Blog = mongoose.model<IBlog>('Blog', BlogSchema);

@@ -3,8 +3,8 @@ import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await Category.find({}).sort({ _id: -1 });
-    if (data.length === 0) {
+    const data: ICategory[] | null = await Category.find({}).sort({ _id: -1 });
+    if (!data || data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
       throw error;
@@ -19,7 +19,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await Category.findById(id);
+    const data: ICategory | null = await Category.findById(id);
     if (!data) {
       const error = new Error("Data not found");
       (error as any).status = 404;

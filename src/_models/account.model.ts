@@ -18,7 +18,8 @@ const accountSchema = new Schema<IAccount>(
   },
   {
     collection: 'account_master',
-    timestamps: true
+    timestamps: true,
+    versionKey: false
   }
 );
 

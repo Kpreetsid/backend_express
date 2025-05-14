@@ -64,7 +64,8 @@ const endpointLocationSchema = new Schema<IEndpointLocation>({
   end_point: { type: endPointSchema, required: true },
 }, {
   collection: 'floor_map',
-  timestamps: false 
+  timestamps: false ,
+  versionKey: false
 });
 
 export const EndpointLocation = mongoose.model<IEndpointLocation>('EndpointLocation', endpointLocationSchema);
