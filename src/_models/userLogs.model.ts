@@ -3,7 +3,6 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IUserLog extends Document {
     userId: mongoose.Types.ObjectId;
     userName: string;
-    action: string; // e.g., 'LOGIN', 'CREATE_ASSET', 'UPDATE_PROFILE'
     module: string; // e.g., 'ASSET', 'AUTH', 'ACCOUNT'
     description: string; // Summary of what happened
     method: string; // HTTP method: GET, POST, PUT, DELETE
@@ -15,14 +14,17 @@ export interface IUserLog extends Document {
     requestUrl: string;
     ipAddress: string;
     userAgent: string;
-    timestamp: Date;
-    additionalData?: any; // for storing raw request body, params, etc.
+    additionalData?: any;
+    systemInfo: object;
+    browserInfo: object;
+    deviceInfo: object;
+    networkInfo: object;
+    requestMeta: object;
 }
 
 const userLogSchema: Schema<IUserLog> = new Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     userName: { type: String, required: true },
-    action: { type: String, required: true },
     module: { type: String, required: true },
     description: { type: String, required: true },
     method: { type: String },
@@ -34,11 +36,15 @@ const userLogSchema: Schema<IUserLog> = new Schema({
     requestUrl: { type: String },
     ipAddress: { type: String },
     userAgent: { type: String },
-    timestamp: { type: Date, default: Date.now },
+    systemInfo: { type: Schema.Types.Mixed }, 
+    browserInfo: { type: Schema.Types.Mixed }, // optional flexible data object,
+    deviceInfo: { type: Schema.Types.Mixed }, // optional flexible data object,
+    networkInfo: { type: Schema.Types.Mixed }, // optional flexible data object,
+    requestMeta: { type: Schema.Types.Mixed }, // optional flexible data object
     additionalData: { type: Schema.Types.Mixed }, // optional flexible data
 }, {
     collection: 'user_logs',
-    timestamps: { createdAt: true, updatedAt: false }
+    timestamps: true
 });
 
 export const UserLog = mongoose.model<IUserLog>('UserLogs', userLogSchema);

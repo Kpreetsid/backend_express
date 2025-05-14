@@ -55,7 +55,7 @@ app.use(compression({
 
 const router = express.Router();
 
-router.use('/', authentication);
+router.use('/users', authentication);
 router.use('/registration', registrationController);
 
 const masterRouter = express.Router();
@@ -89,7 +89,7 @@ const userRouter = express.Router();
 userRouter.use('/logs', logsController);
 userRouter.use('/tokens', userTokenController);
 userRouter.use('/role-menu', userRoleMenuController);
-router.use('/user', authenticateJwt, userRouter);
+router.use('/users', authenticateJwt, userRouter);
 
 router.use('/floor-map', authenticateJwt, floorMapController);
 

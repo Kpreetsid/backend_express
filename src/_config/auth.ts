@@ -9,14 +9,15 @@ import { verifyCompany } from '../masters/company/company.service';
 
 export const authenticateJwt = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const cookieToken = req.cookies['token'];
+    const cookieAccountID = req.cookies['companyID'];
+    console.log({cookieToken, cookieAccountID});
+    if (!cookieToken) {
       const error = new Error("No token provided");
       (error as any).status = 401;
       throw error;
     }
-    const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, auth.secret, {
+    const decoded = jwt.verify(cookieToken, auth.secret, {
       algorithms: [auth.algorithm as jwt.Algorithm],
       issuer: auth.issuer,
       audience: auth.audience

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { UserRoleMenu, IUserRoleMenu } from "../../../_models/userRoleMenu.model";
 import { Request, Response, NextFunction } from 'express';
 import { IUser } from "../../../_models/user.model";
-import { adminRoles, managerRoles, employeeRoles, customerRoles } from '../../../_config/userRoles';
+import { platformControlData } from '../../../_config/userRoles';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -38,6 +38,9 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const verifyUserRole = async (id: string, companyID: string) => {
   try {
     const userRole: IUserRoleMenu | null = await UserRoleMenu.findOne({ user_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
+    if (!userRole) {
+      return null;
+    }
     return userRole;
   } catch (error) {
     console.error(error);
@@ -58,25 +61,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const createUserRole = async (userRole: any, userData: IUser) => {
   try {
-    var platformControl = adminRoles;
-    switch (userRole) {
-      case "admin": {
-        platformControl = adminRoles;
-        break;
-      }
-      case "manager": {
-        platformControl = managerRoles;
-        break;
-      }
-      case "employee": {
-        platformControl = employeeRoles;
-        break;
-      }
-      case "customer": {
-        platformControl = customerRoles;
-        break;
-      }
-    }
+    var platformControl =  await platformControlData(userRole);
     const newUserRoleMenu: IUserRoleMenu = new UserRoleMenu({
       user_id: userData._id,
       account_id: userData.account_id,

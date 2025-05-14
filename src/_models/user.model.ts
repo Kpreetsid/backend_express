@@ -44,7 +44,7 @@ const userSchema = new Schema<IUser>({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   username: { type: String, required: true, unique: true },
-  password: { type: String, required: true },
+  password: { type: String, required: true, select: false },
   email: { type: String, required: true, unique: true },
   emailStatus: { type: Boolean, default: false },
   user_status: { type: String, required: true, enum: ['active', 'inactive'], default: 'active' },

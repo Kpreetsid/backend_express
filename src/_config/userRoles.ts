@@ -1,3 +1,26 @@
+export const platformControlData = async (role: string) => {
+    var platformControl = adminRoles;
+    switch (role) {
+        case "admin": {
+            platformControl = adminRoles;
+            break;
+        }
+        case "manager": {
+            platformControl = managerRoles;
+            break;
+        }
+        case "employee": {
+            platformControl = employeeRoles;
+            break;
+        }
+        case "customer": {
+            platformControl = customerRoles;
+            break;
+        }
+    }
+    return platformControl;
+}
+
 export const adminRoles = {
     asset: {
         add_asset: true,

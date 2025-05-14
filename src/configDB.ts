@@ -7,7 +7,7 @@ export const database = {
 };
 export const server = {
     host: 'localhost',
-    port: 4000,
+    port: 3000,
     protocol: 'http',
 }
 export const auth = {
