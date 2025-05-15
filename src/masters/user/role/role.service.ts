@@ -6,7 +6,7 @@ import { platformControlData } from '../../../_config/userRoles';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id } = req.user;
+    const { account_id, _id: user_id } = req.user;
     const data = await UserRoleMenu.find({account_id: account_id}).sort({ _id: -1 });
     if (data.length === 0) {
       const error = new Error("No data found");
@@ -23,6 +23,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const { account_id, _id: user_id } = req.user;
     const data = await UserRoleMenu.findById(id);
     if (!data) {
       const error = new Error("Data not found");

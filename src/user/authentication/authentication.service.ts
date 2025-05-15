@@ -9,7 +9,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
   try {
     const { username, password } = req.body;
     const user: IUser | null = await User.findOne({ username }).select('+password');
-    if (!user) {
+    if (!user || user.user_status !== 'active') {
       const error = new Error("No data found");
       (error as any).status = 404;
       throw error;
@@ -19,12 +19,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       const error = new Error("Invalid credentials");
       (error as any).status = 401;
       throw error;
-    } 
-    if (user.user_status !== 'active') {
-      const error = new Error("Inactivated user");
-      (error as any).status = 403;
-      throw error;
-    } 
+    }
     const { password: _, ...safeUser } = user.toObject();
     const userTokenPayload: UserLoginPayload = { id: `${user._id}`, username: user.username, email: user.email, companyID: `${user.account_id}` };
     const token = generateAccessToken(userTokenPayload);

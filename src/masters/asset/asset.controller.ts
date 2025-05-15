@@ -1,11 +1,12 @@
 import express, { NextFunction, Request, Response } from 'express';
 const router = express.Router();
-import { getAll, getDataById, insert, updateById, removeById, getAssetsTreeData, createAssetsWithImage } from './asset.service';
+import { getAll, getDataById, insert, updateById, removeById, getAssetsTreeData, createAssetsWithImage, getAssetsFilteredData } from './asset.service';
 import { uploadSingle } from '../../_config/fileUpload';
 
 router.get('/', getData);
 router.post('/getTree', getAssetsTree);
 router.get('/:id', getById);
+router.post('/getFiltered', getFilteredData);
 router.post('/', create);
 router.post('/createWithImage', uploadSingle('image'), newAssetsWithImage);
 router.put('/:id', update);
@@ -17,6 +18,10 @@ async function getData(req: Request, res: Response, next: NextFunction) {
 
 async function getAssetsTree(req: Request, res: Response, next: NextFunction) {
   await getAssetsTreeData(req, res, next);
+}
+
+async function getFilteredData(req: Request, res: Response, next: NextFunction) {
+  await getAssetsFilteredData(req, res, next);
 }
 
 async function getById(req: Request, res: Response, next: NextFunction) {

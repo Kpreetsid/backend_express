@@ -8,8 +8,8 @@ import { createUserRole } from './role/role.service';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { companyID } = req;
-    const data: IUser[] | null = await User.find({account_id: new mongoose.Types.ObjectId(companyID)}).select('-password').sort({ _id: -1 });
+    const { account_id, _id: user_id } = req.user;
+    const data: IUser[] | null = await User.find({account_id: account_id, visible: true}).sort({ _id: -1 });
     if (!data || data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
@@ -24,9 +24,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id;
-    const { companyID } = req;
-    const data: IUser[] | null = await User.find({_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID)}).select('-password');
+    const { id } = req.params;
+    const { account_id, _id: user_id } = req.user;
+    const data: IUser[] | null = await User.find({_id: id, account_id: account_id, visible: true});
     if (!data || data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
@@ -75,7 +75,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
-    const { account_id } = req.user;
+    const { account_id, _id: user_id } = req.user;
     const password = await hashPassword(body.password);
     const companyData = await verifyCompany(`${account_id}`);
     if(!companyData) {

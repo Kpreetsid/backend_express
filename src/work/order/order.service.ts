@@ -4,8 +4,8 @@ import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id } = req.user;
-    const data = await WorkOrder.find({account_id: account_id}).sort({ _id: -1 });
+    const { account_id, _id: user_id } = req.user;
+    const data = await WorkOrder.find({account_id: account_id, visible: true}).sort({ _id: -1 });
     if (data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
@@ -36,8 +36,8 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const accountWise = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { companyID } = req;
-    const data: IWorkOrder[] | null = await WorkOrder.find({account_id: new mongoose.Types.ObjectId(companyID)});
+    const { account_id } = req.user;
+    const data: IWorkOrder[] | null = await WorkOrder.find({account_id: account_id, visible: true}).sort({ _id: -1 });
     if (data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;

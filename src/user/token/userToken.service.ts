@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 
 export const getAllUserTokens = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id } = req.user;
+    const { account_id, _id: user_id } = req.user;
     const data = await UserToken.find({account_id: account_id}).sort({ _id: -1 });
     if (data.length === 0) {
       const error = new Error("No data found");

@@ -4,8 +4,8 @@ import { SopsMasterModel, ISopsMaster } from '../../_models/sops.model';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { companyID } = req.user;
-        const data = await SopsMasterModel.find({account_id: new mongoose.Types.ObjectId(companyID)}).sort({ _id: -1 });
+        const { account_id, _id: user_id } = req.user;
+        const data = await SopsMasterModel.find({account_id: account_id}).sort({ _id: -1 });
         if (!data || data.length === 0) {
             const error = new Error("No data found");
             (error as any).status = 404;

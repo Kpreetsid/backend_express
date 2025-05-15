@@ -3,8 +3,8 @@ import { NextFunction, Request, Response } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id } = req.user;
-    const data: IAsset[] | null = await Asset.find({account_id: account_id}).sort({ _id: -1 }); 
+    const { account_id, _id: user_id } = req.user;
+    const data: IAsset[] | null = await Asset.find({account_id: account_id, visible: true}).sort({ _id: -1 }); 
     if (!data || data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;
@@ -21,7 +21,42 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
     const data = await Asset.findById(id);
-    if (!data) {
+    if (!data || !data.visible) {
+      const error = new Error("Data not found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { locations = [], assets = [], top_level } = req.body;
+    const { account_id, _id: user_id } = req.user;
+    if (!account_id) {
+      const error = new Error("Missing accountId");
+      (error as any).status = 403;
+      throw error;
+    }
+    const query: any = {
+      account_id: account_id,
+      visible: true
+    };
+    if(top_level) {
+      query.top_level = top_level;
+    }
+    if (locations && locations.length > 0) {
+      query.locationId = { $in: locations };
+    }
+    if(assets && assets.length > 0) {
+      query._id = { $in: assets };
+    }
+    const data = await Asset.find(query);
+    if (!data || data.length === 0) {
       const error = new Error("Data not found");
       (error as any).status = 404;
       throw error;
@@ -36,7 +71,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { locations } = req.body;
-    const { account_id } = req.user;
+    const { account_id, _id: user_id } = req.user;
     if (!account_id) {
       const error = new Error("Missing accountId");
       (error as any).status = 403;
@@ -88,7 +123,13 @@ async function getRecursiveAssets(asset: any) {
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const newAsset = new Asset(req.body);
+    const { account_id, _id: user_id } = req.user;
+    const body = req.body;
+    const newAsset = new Asset({
+      ...body,
+      account_id,
+      user_id
+    });
     const data = await newAsset.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {

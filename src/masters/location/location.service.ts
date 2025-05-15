@@ -6,9 +6,9 @@ const moduleName: string = "location";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const user = (req as any).user;
-    const match: any = { visible: true, account_id: new mongoose.Types.ObjectId(user.account_id) };
-    const mapLocationData: IMapUserLocation[] = await MapUserLocation.find({ userId: new mongoose.Types.ObjectId(user._id) });
+    const { account_id, _id: user_id } = (req as any).user;
+    const match: any = { visible: true, account_id: account_id };
+    const mapLocationData: IMapUserLocation[] = await MapUserLocation.find({ userId: user_id });
     if (mapLocationData?.length > 0) {
       const locationIds = mapLocationData.map(doc => doc.locationId).filter(id => id);
       match._id = { $in: locationIds };
