@@ -107,12 +107,18 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
       throw error;
     }
     const { id } = req.params;
-    const data: ILocationMaster | null = await LocationMaster.findByIdAndDelete(id);
+    const data = await LocationMaster.findById(id);
     if (!data) {
-      const error = new Error("Data not found");
-      (error as any).status = 404;
-      throw error;
+        const error = new Error("Data not found");
+        (error as any).status = 404;
+        throw error;
     }
+    if(!data.visible) {
+        const error = new Error("Data already deleted");
+        (error as any).status = 400;
+        throw error;
+    }
+    await LocationMaster.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     console.error(error);

@@ -121,7 +121,7 @@ const PostSchema = new Schema<IPost>({
   comments: { type: [String], default: [] },
   likes: { type: [String], default: [] },
 }, { 
-  collection: 'post',
+  collection: 'posts',
   timestamps: true ,
   versionKey: false
 });

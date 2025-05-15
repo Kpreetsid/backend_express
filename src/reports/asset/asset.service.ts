@@ -59,13 +59,14 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = req.params.id;
-    const data = await ReportAsset.findByIdAndDelete(id);
+    const data = await ReportAsset.findById(id);
     if (!data) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+        const error = new Error("Data not found");
+        (error as any).status = 404;
+        throw error;
     }
-    return res.status(200).json({ status: true, message: "Data deleted successfully", data });
+    await ReportAsset.findByIdAndUpdate(id, { visible: false }, { new: true });
+    return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);     
   }

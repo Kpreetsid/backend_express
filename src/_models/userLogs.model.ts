@@ -52,11 +52,11 @@ export interface IUserLog extends Document {
         query: Record<string, any>;
         durationMs: number;
     };
-    createdAt: Date;
+    isFromMobile(): boolean;
 }
 
 const userLogSchema = new Schema<IUserLog>({
-    userId: { type: Schema.Types.ObjectId, required: true },
+    userId: { type: Schema.Types.ObjectId, required: true, index: true },
     userName: { type: String, required: true },
     method: { type: String, required: true },
     module: { type: String, required: true },
@@ -69,48 +69,80 @@ const userLogSchema = new Schema<IUserLog>({
     port: { type: Number, required: true },
     ipAddress: { type: String, required: true },
     userAgent: { type: String, required: true },
+
     systemInfo: {
-        platform: { type: String },
-        os: { type: String },
-        architecture: { type: String }
+        platform: String,
+        os: String,
+        architecture: String
     },
     browserInfo: {
-        name: { type: String },
-        version: { type: String },
-        engine: { type: String }
+        name: String,
+        version: String,
+        engine: String
     },
     deviceInfo: {
-        isMobile: { type: Boolean },
-        userAgent: { type: String }
+        isMobile: Boolean,
+        userAgent: String
     },
     networkInfo: {
-        origin: { type: String },
-        referer: { type: String },
-        host: { type: String },
-        connection: { type: String },
-        contentLength: { type: Number },
-        encoding: [{ type: String }],
-        language: [{ type: String }]
+        origin: String,
+        referer: String,
+        host: String,
+        connection: String,
+        contentLength: Number,
+        encoding: [String],
+        language: [String]
     },
     requestMeta: {
-        contentType: { type: String },
-        accept: [{ type: String }],
-        fetchMode: { type: String },
-        fetchSite: { type: String },
-        fetchDest: { type: String },
-        dnt: { type: Boolean },
-        secCHUA: [{ type: String }]
+        contentType: String,
+        accept: [String],
+        fetchMode: String,
+        fetchSite: String,
+        fetchDest: String,
+        dnt: Boolean,
+        secCHUA: [String]
     },
     additionalData: {
-        params: { type: Schema.Types.Mixed },
-        body: { type: Schema.Types.Mixed },
-        query: { type: Schema.Types.Mixed },
-        durationMs: { type: Number }
-    },
+        params: Schema.Types.Mixed,
+        body: Schema.Types.Mixed,
+        query: Schema.Types.Mixed,
+        durationMs: Number
+    }
 }, {
     collection: 'user_logs',
-    timestamps: true,
-    versionKey: false
+    versionKey: false,         // No __v
+    timestamps: true,          // Adds createdAt and updatedAt
+    toJSON: {
+        virtuals: true,
+        transform: (_, ret) => {
+            ret.id = ret._id;
+            delete ret._id;
+            return ret;
+        }
+    },
+    toObject: {
+        virtuals: true,
+        transform: (_, ret) => {
+            ret.id = ret._id;
+            delete ret._id;
+            return ret;
+        }
+    }
 });
+
+// Virtual field: isSuccess
+userLogSchema.virtual('isSuccess').get(function () {
+    return this.statusCode >= 200 && this.statusCode < 300;
+});
+
+// Instance method
+userLogSchema.methods.isFromMobile = function () {
+    return this.deviceInfo?.isMobile || false;
+};
+
+// Static method
+userLogSchema.statics.findByUserId = function (userId: string) {
+    return this.find({ userId: new mongoose.Types.ObjectId(userId) });
+};
 
 export const UserLog = mongoose.model<IUserLog>('UserLog', userLogSchema);

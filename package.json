@@ -2,10 +2,9 @@
   "name": "project_api_javascript",
   "version": "1.0.0",
   "description": "",
-  "main": "dist/server.js",
+  "main": "ts-node src/server.js",
   "scripts": {
-    "start": "tsc && node dist/server.js",
-    "dev": "nodemon src/server.ts"
+    "start": "nodemon"
   },
   "keywords": [],
   "author": "Pawan Kumar Gautam",

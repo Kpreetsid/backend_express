@@ -79,7 +79,7 @@ const CommentsSchema = new Schema<IComments>({
   order_id: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
   comments: { type: [CommentSchema], default: [] },
 }, { 
-  collection: 'comments',
+  collection: 'work_order_comment',
   timestamps: true ,
   versionKey: false
 });

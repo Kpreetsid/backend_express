@@ -62,13 +62,14 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await Observation.findByIdAndDelete(id);
+    const data = await Observation.findById(id);
     if (!data) {
-      const error = new Error("Data not found");
-      (error as any).status = 404;
-      throw error;
+        const error = new Error("Data not found");
+        (error as any).status = 404;
+        throw error;
     }
-    return res.status(200).json({ status: true, message: "Data deleted successfully", data });
+    await Observation.findByIdAndUpdate(id, { visible: false }, { new: true });
+    return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     console.error(error);
     next(error);
