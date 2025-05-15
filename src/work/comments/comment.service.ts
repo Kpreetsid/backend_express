@@ -35,7 +35,8 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await Comments.create(req.body);
+    const newComment = new Comments(req.body);
+    const data = await newComment.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
     console.error(error);

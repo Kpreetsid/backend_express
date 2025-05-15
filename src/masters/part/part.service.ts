@@ -84,7 +84,7 @@ export const getDataByFilter = async (req: Request, res: Response, next: NextFun
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await Part.findById(id);
+    const data: IPart | null = await Part.findById(id);
     if (!data) {
         const error = new Error("Data not found");
         (error as any).status = 404;

@@ -22,7 +22,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
     const data = await WorkOrder.findById(id);
-    if (!data) {
+    if (!data || !data.visible) {
       const error = new Error("No data found");
       (error as any).status = 404;
       throw error;
@@ -52,7 +52,8 @@ export const accountWise = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await WorkOrder.create(req.body);
+    const newAsset = new WorkOrder(req.body);
+    const data = await newAsset.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
     console.error(error);
@@ -65,7 +66,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const { body } = req;
     const data = await WorkOrder.findByIdAndUpdate(id, body, { new: true });
-    if (!data) {
+    if (!data || !data.visible) {
       const error = new Error("No data found");
       (error as any).status = 404;
       throw error;
@@ -81,14 +82,9 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
     const data = await WorkOrder.findById(id);
-    if (!data) {
+    if (!data || !data.visible) {
         const error = new Error("Data not found");
         (error as any).status = 404;
-        throw error;
-    }
-    if(!data.visible) {
-        const error = new Error("Data already deleted");
-        (error as any).status = 400;
         throw error;
     }
     await WorkOrder.findByIdAndUpdate(id, { visible: false }, { new: true });

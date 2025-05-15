@@ -45,7 +45,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
       const module = extractModule(req.originalUrl);
       const description = `${userName} performed ${req.method} method on ${module} from ${headers['origin']} at ${new Date().toISOString()}`;
 
-      const log: Partial<IUserLog> = {
+      const newLog = new UserLog({
         userId,
         userName,
         systemInfo,
@@ -70,8 +70,8 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
           query: req.query,
           durationMs: Date.now() - startTime
         }
-      };
-      await UserLog.create(log);
+      });
+      await newLog.save();
     } catch (err) {
       console.error('Failed to log activity:', err);
     }

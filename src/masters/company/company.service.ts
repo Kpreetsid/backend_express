@@ -67,14 +67,9 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
     const data: IAccount | null = await Account.findById(id);
-    if (!data) {
+    if (!data || !data.isActive) {
       const error = new Error("Data not found");
       (error as any).status = 404;
-      throw error;
-    }
-    if (data?.isActive === false) {
-      const error = new Error("Data already deleted");
-      (error as any).status = 400;
       throw error;
     }
     await Account.findByIdAndUpdate(id, { isActive: false }, { new: true });

@@ -21,7 +21,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
     const data: ICategory | null = await Category.findById(id);
-    if (!data) {
+    if (!data || !data.visible) {
       const error = new Error("Data not found");
       (error as any).status = 404;
       throw error;
@@ -65,14 +65,9 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
     const data = await Category.findById(id);
-    if (!data) {
+    if (!data || !data.visible) {
       const error = new Error("Data not found");
       (error as any).status = 404;
-      throw error;
-    }
-    if (!data?.visible) {
-      const error = new Error("Data already deleted");
-      (error as any).status = 400;
       throw error;
     }
     await Category.findByIdAndUpdate(id, { visible: false }, { new: true });

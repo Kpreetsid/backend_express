@@ -47,7 +47,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
     const data: ILocationMaster | null = await LocationMaster.findById(id);
-    if (!data) {
+    if (!data || !data.visible) {
       const error = new Error("Data not found");
       (error as any).status = 404;
       throw error;
@@ -86,7 +86,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     }
     const { id } = req.params;
     const data: ILocationMaster | null = await LocationMaster.findByIdAndUpdate(id, req.body, { new: true });
-    if (!data) {
+    if (!data || !data.visible) {
       const error = new Error("Data not found");
       (error as any).status = 404;
       throw error;
@@ -108,14 +108,9 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     }
     const { id } = req.params;
     const data = await LocationMaster.findById(id);
-    if (!data) {
+    if (!data || !data.visible) {
         const error = new Error("Data not found");
         (error as any).status = 404;
-        throw error;
-    }
-    if(!data.visible) {
-        const error = new Error("Data already deleted");
-        (error as any).status = 400;
         throw error;
     }
     await LocationMaster.findByIdAndUpdate(id, { visible: false }, { new: true });

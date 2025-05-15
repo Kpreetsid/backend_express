@@ -23,7 +23,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     try {
         const { id } = req.params;
         const data = await SopsMasterModel.findById(id);
-        if (!data) {
+        if (!data || !data.visible) {
             const error = new Error("Data not found");
             (error as any).status = 404;
             throw error;
@@ -50,7 +50,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     try {
         const { id } = req.params;
         const data = await SopsMasterModel.findByIdAndUpdate(id, req.body, { new: true });
-        if (!data) {
+        if (!data || !data.visible) {
             const error = new Error("Data not found");
             (error as any).status = 404;
             throw error;
@@ -66,14 +66,9 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     try {
         const { id } = req.params;
         const data = await SopsMasterModel.findById(id);
-        if (!data) {
+        if (!data || !data.visible) {
             const error = new Error("Data not found");
             (error as any).status = 404;
-            throw error;
-        }
-        if(!data.visible) {
-            const error = new Error("Data already deleted");
-            (error as any).status = 400;
             throw error;
         }
         await SopsMasterModel.findByIdAndUpdate(id, { visible: false }, { new: true });
