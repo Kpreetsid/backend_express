@@ -17,6 +17,7 @@ import locationMaster from './masters/location/location.controller';
 import userMaster from './masters/user/user.controller';
 import partMaster from './masters/part/part.controller';
 import scheduleMasterController from './masters/schedule/schedule.controller';
+import sopsMasterController from './masters/sops/sops.controller';
 import blogMasterController from './masters/post/post.controller';
 import observationMaster from './masters/observation/observation.controller';
 import formCategoryMaster from './masters/formCategory/formCategory.controller';
@@ -68,6 +69,7 @@ masterRouter.use('/part', partMaster);
 masterRouter.use('/observation', observationMaster);
 masterRouter.use('/form-category', formCategoryMaster);
 masterRouter.use('/schedule', scheduleMasterController);
+masterRouter.use('/sops', sopsMasterController);
 masterRouter.use('/blog', blogMasterController);
 router.use('/master', authenticateJwt, masterRouter);
 
