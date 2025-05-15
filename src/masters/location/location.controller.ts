@@ -1,9 +1,11 @@
 import express, { Request, Response, NextFunction } from 'express';
 const router = express.Router();
-import { getAll, getDataById, insert, updateById, removeById  } from './location.service';
+import { getAll, getDataById, insert, updateById, removeById, getTree, getDataByFilter } from './location.service';
 
 router.get('/', getData);
+router.get('/tree', getTreeData);
 router.get('/:id', getById);
+router.post('/filter', getFilterData);
 router.post('/', create);
 router.put('/:id', update);
 router.delete('/:id', remove);
@@ -12,8 +14,16 @@ async function getData(req: Request, res: Response, next: NextFunction) {
   await getAll(req, res, next);
 };
 
+async function getTreeData(req: Request, res: Response, next: NextFunction) {
+  await getTree(req, res, next);
+}
+
 async function getById(req: Request, res: Response, next: NextFunction) {
   await getDataById(req, res, next);
+}
+
+async function getFilterData(req: Request, res: Response, next: NextFunction) {
+  await getDataByFilter(req, res, next);
 }
 
 async function create(req: Request, res: Response, next: NextFunction) {

@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 export interface IUserLog extends Document {
     userId: mongoose.Types.ObjectId;
     userName: string;
+    accountId: mongoose.Types.ObjectId;
     method: string;
     module: string;
     description: string;
@@ -58,6 +59,7 @@ export interface IUserLog extends Document {
 const userLogSchema = new Schema<IUserLog>({
     userId: { type: Schema.Types.ObjectId, required: true, index: true },
     userName: { type: String, required: true },
+    accountId: { type: Schema.Types.ObjectId, required: true, index: true },
     method: { type: String, required: true },
     module: { type: String, required: true },
     description: { type: String, required: true },

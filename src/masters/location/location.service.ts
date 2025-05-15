@@ -7,6 +7,22 @@ const moduleName: string = "location";
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = (req as any).user;
+    const data: ILocationMaster[] | null = await LocationMaster.find({account_id: account_id}).sort({ _id: -1 });
+    if (!data || data.length === 0) {
+      const error = new Error("No data found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const getTree = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id } = (req as any).user;
     const match: any = { visible: true, account_id: account_id };
     const mapLocationData: IMapUserLocation[] = await MapUserLocation.find({ userId: user_id });
     if (mapLocationData?.length > 0) {
@@ -58,6 +74,27 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
+export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id } = (req as any).user;
+    const body = req.body;
+    const match: any = { account_id, user_id };
+    if(body.locationId) {
+      match._id = body.locationId;
+    }
+    const data: ILocationMaster[] | null = await LocationMaster.find(match);
+    if (!data || data.length === 0) {
+      const error = new Error("No data found");
+      (error as any).status = 404;
+      throw error;
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
