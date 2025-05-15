@@ -3,7 +3,8 @@ import e, { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await EndpointLocation.find({}).sort({ _id: -1 });
+    const { account_id } = req.user;
+    const data = await EndpointLocation.find({account_id: account_id}).sort({ _id: -1 });
     if (data.length === 0) {
       const error = new Error("No data found");
       (error as any).status = 404;

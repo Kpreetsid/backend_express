@@ -11,7 +11,7 @@ export const authenticateJwt = async (req: Request, res: Response, next: NextFun
   try {
     const cookieToken = req.cookies['token'];
     const cookieAccountID = req.cookies['companyID'];
-    if (!cookieToken) {
+    if (!cookieToken || !cookieAccountID) {
       const error = new Error("No token provided");
       (error as any).status = 401;
       throw error;
@@ -24,7 +24,7 @@ export const authenticateJwt = async (req: Request, res: Response, next: NextFun
     const { id, username, email, companyID } = decoded;
     const accountID = req.headers.accountid as string;
 
-    if (!id || !username || !email || !companyID) {
+    if (!id || !username || !email || !companyID || cookieAccountID !== accountID) {
       const error = new Error("Invalid token payload");
       (error as any).status = 401;
       throw error;

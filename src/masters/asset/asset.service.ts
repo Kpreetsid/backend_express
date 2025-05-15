@@ -35,15 +35,15 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { accountId, locations } = req.body;
-    console.log(req.body);
-    if (!accountId) {
+    const { locations } = req.body;
+    const { account_id } = req.user;
+    if (!account_id) {
       const error = new Error("Missing accountId");
       (error as any).status = 403;
       throw error;
     }
     const query: any = {
-      account_id: accountId,
+      account_id: account_id,
       visible: true,
       parent_id: { $in: [null, undefined] }
     };
@@ -51,7 +51,6 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
     if (locations && Array.isArray(locations) && locations.length > 0) {
       query.locationId = { $in: locations };
     }
-    console.log(query);
     const rootAssets = await Asset.find(query);
     const data = await Promise.all(rootAssets.map(async (asset) => {
       return {
