@@ -24,7 +24,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const { account_id, _id: user_id } = req.user;
     const data = await UserRoleMenu.findById(id);
     if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -79,7 +79,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { role_id, menu_id } = req.body;
     const updatedUserRoleMenu = await UserRoleMenu.findByIdAndUpdate(id, { role_id, menu_id }, { new: true });
     if (!updatedUserRoleMenu) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data: updatedUserRoleMenu });
   } catch (error) {

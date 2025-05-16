@@ -1,6 +1,9 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { Request } from 'express';
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const allowedMimeTypes = ['image/jpg', 'image/jpeg', 'image/png', 'application/pdf'];
 
 const uploadDir = path.join(__dirname, '../../uploadFiles');
 
@@ -20,10 +23,22 @@ const storage = multer.diskStorage({
   }
 });
 
-export const uploadSingle = (fieldName: string) => {
-  return multer({ storage }).single(fieldName);
+
+const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  if (allowedMimeTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new multer.MulterError('LIMIT_UNEXPECTED_FILE', `Unsupported file type: ${file.mimetype}`));
+  }
 };
 
-export const uploadMultiple = (fieldName: string, maxCount: number = 5) => {
-  return multer({ storage }).array(fieldName, maxCount);
+export const uploadFiles = (fieldName: string, maxCount: number = 5) => {
+  return multer({
+    storage,
+    limits: {
+      fileSize: MAX_FILE_SIZE,
+      files: maxCount
+    },
+    fileFilter
+  }).array(fieldName, maxCount);
 };

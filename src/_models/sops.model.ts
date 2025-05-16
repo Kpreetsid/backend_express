@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, ObjectId, Schema } from "mongoose";
 
 interface SOPComponent {
     type: string;
@@ -81,9 +81,9 @@ export interface ISopsMaster extends Document {
     json_temp: {
         components: SOPComponent[];
     };
-    account_id: mongoose.Types.ObjectId;
-    locationId: mongoose.Types.ObjectId;
-    categoryId: mongoose.Types.ObjectId;
+    account_id: ObjectId;
+    locationId: ObjectId;
+    categoryId: ObjectId;
     description: string;
 }
 

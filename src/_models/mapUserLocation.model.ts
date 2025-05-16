@@ -1,10 +1,10 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 export interface IMapUserLocation extends Document {
-  _id: mongoose.Types.ObjectId;
-  userId: mongoose.Types.ObjectId;
-  locationId?: mongoose.Types.ObjectId;
-  assetId?: mongoose.Types.ObjectId;
+  _id: ObjectId;
+  userId: ObjectId;
+  locationId?: ObjectId;
+  assetId?: ObjectId;
 }
 
 const MapUserLocationSchema = new Schema<IMapUserLocation>({

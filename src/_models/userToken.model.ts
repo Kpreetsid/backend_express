@@ -1,10 +1,10 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 export interface IUserToken extends Document {
   _id: string;
   ttl: number;
   created: Date;
-  userId: mongoose.Types.ObjectId;
+  userId: ObjectId;
   principalType: string;
 }
 

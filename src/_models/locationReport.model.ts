@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 const RMSDataSchema = new Schema({
     is_linked: Boolean,
@@ -135,10 +135,10 @@ export interface ILocationReport {
     asset_fault_summary_data: any;
     asset_report_data: any;
     created_on: Date;
-    account_id: Schema.Types.ObjectId;
+    account_id: ObjectId;
     sub_location_data: any;
     user: any;
-    location_id: Schema.Types.ObjectId;
+    location_id: ObjectId;
     timestamp: Date;
 }
   

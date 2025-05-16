@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 interface ICoordinate {
   x: number;
@@ -13,8 +13,8 @@ interface IEndPoint {
   mount_type?: string | null;
   mount_material?: string | null;
   mount_direction: string;
-  asset_id: mongoose.Types.ObjectId | string;
-  org_id: mongoose.Types.ObjectId | string;
+  asset_id: ObjectId | string;
+  org_id: ObjectId | string;
   mac_id: string;
   image?: string | null;
   online: string;
@@ -24,8 +24,8 @@ interface IEndPoint {
 
 export interface IEndpointLocation extends Document {
   coordinate: ICoordinate;
-  locationId: mongoose.Types.ObjectId;
-  account_id: mongoose.Types.ObjectId;
+  locationId: ObjectId;
+  account_id: ObjectId;
   data_type: string;
   createdOn: Date;
   end_point_id: number;

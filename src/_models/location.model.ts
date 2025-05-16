@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 export interface ILocationMaster extends Document {
   location_name: string;
@@ -6,13 +6,13 @@ export interface ILocationMaster extends Document {
   location_type: string;
   top_level: boolean;
   assigned_to: string;
-  account_id: mongoose.Types.ObjectId;
-  top_level_location_id: mongoose.Types.ObjectId;
-  parent_id?: mongoose.Types.ObjectId;
+  account_id: ObjectId;
+  top_level_location_id: ObjectId;
+  parent_id?: ObjectId;
   parent_name?: string;
   equipment_id?: string;
   teamId?: string | null;
-  id?: mongoose.Types.ObjectId;
+  id?: ObjectId;
   image_path?: string;
   location?: string;
   qr_code?: string;
@@ -43,3 +43,15 @@ const locationMasterSchema = new Schema<ILocationMaster>({
 });
 
 export const LocationMaster = mongoose.model<ILocationMaster>('LocationMaster', locationMasterSchema);
+
+export const getAllLocations = async (accountId: string) => await LocationMaster.find({ account_id: accountId, visible: true }).sort({ _id: -1 });
+
+export const getLocationById = async (id: string) => await LocationMaster.findById(id);
+
+export const getLocationByFilter = async (accountId: string, filter: any) => await LocationMaster.find({ account_id: accountId, ...filter, visible: true }).sort({ _id: -1 });
+
+export const createLocation = async (location: ILocationMaster) => await new LocationMaster(location).save();
+
+export const updateLocation = async (id: string, location: ILocationMaster) => await LocationMaster.findByIdAndUpdate({ id }, { $set: location });
+
+export const deleteLocation = async (id: string) => await LocationMaster.findByIdAndUpdate({ _id: id }, { $set: { visible: false } });

@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 interface PhoneNumber {
   number: string;
@@ -42,14 +42,14 @@ export interface IObservation extends Document {
   faults: string[];
   files: Record<string, any>;
   createdOn: Date;
-  assetId: mongoose.Types.ObjectId;
-  accountId: mongoose.Types.ObjectId;
+  assetId: ObjectId;
+  accountId: ObjectId;
   status: string;
   user: UserInfo;
   alarmId: number;
-  locationId: mongoose.Types.ObjectId;
-  top_level_asset_id: mongoose.Types.ObjectId;
-  id?: mongoose.Types.ObjectId;
+  locationId: ObjectId;
+  top_level_asset_id: ObjectId;
+  id?: ObjectId;
 }
 
 const ObservationSchema = new Schema<IObservation>({

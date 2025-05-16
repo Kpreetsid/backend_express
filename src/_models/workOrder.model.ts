@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 interface ILocation {
   location_name: string;
@@ -34,10 +34,10 @@ export interface IWorkOrder extends Document {
   rescheduleEnabled: boolean;
   createdOn: Date;
   visible: boolean;
-  account_id: mongoose.Types.ObjectId;
-  created_by: mongoose.Types.ObjectId;
-  wo_asset_id: mongoose.Types.ObjectId;
-  wo_location_id: mongoose.Types.ObjectId;
+  account_id: ObjectId;
+  created_by: ObjectId;
+  wo_asset_id: ObjectId;
+  wo_location_id: ObjectId;
   assigned_to: number;
   start_date: string;
   end_date: string;

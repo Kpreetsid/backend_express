@@ -1,11 +1,10 @@
 import mongoose from "mongoose";
-import { Account, IAccount } from "../../_models/account.model";
+import { Account, IAccount, getAllAccount, getAccountByID } from "../../_models/account.model";
 import { NextFunction, Request, Response } from 'express';
-import { sendMail } from "../../_config/mailer";
 
-export const getAllAccount = async (req: Request, res: Response, next: NextFunction) => {
+export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data: IAccount[] = await Account.find({ isActive: true }).sort({ _id: -1 });
+    const data: IAccount[] = await getAllAccount();
     if(data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -19,9 +18,9 @@ export const getAllAccount = async (req: Request, res: Response, next: NextFunct
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data: IAccount | null = await Account.findById(id);
+    const data: IAccount | null = await getAccountByID(id);
     if (!data || !data.isActive) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -48,7 +47,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const data: IAccount | null = await Account.findByIdAndUpdate(id, req.body, { new: true });
     if (!data || !data.isActive) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
@@ -62,7 +61,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const data: IAccount | null = await Account.findById(id);
     if (!data || !data.isActive) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await Account.findByIdAndUpdate(id, { isActive: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });

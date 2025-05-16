@@ -1,8 +1,8 @@
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, ObjectId } from 'mongoose';
 
 export interface IWorkOrderAssignee extends Document {
-  woId: Schema.Types.ObjectId;
-  userId: Schema.Types.ObjectId;
+  woId: ObjectId;
+  userId: ObjectId;
 }
 
 const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(

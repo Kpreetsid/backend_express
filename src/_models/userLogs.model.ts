@@ -1,9 +1,9 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Document, ObjectId, Schema } from 'mongoose';
 
 export interface IUserLog extends Document {
-    userId: mongoose.Types.ObjectId;
+    userId: ObjectId;
     userName: string;
-    accountId: mongoose.Types.ObjectId;
+    accountId: ObjectId;
     method: string;
     module: string;
     description: string;
@@ -148,3 +148,15 @@ userLogSchema.statics.findByUserId = function (userId: string) {
 };
 
 export const UserLog = mongoose.model<IUserLog>('UserLog', userLogSchema);
+
+export const getAllUserLog = async (accountId: string) => await UserLog.find({ account_id: accountId }).sort({ _id: -1 });
+
+export const getUserLogById = async (id: string) => await UserLog.findById(id);
+
+export const getUserLogByFilter = async (accountId: string, filter: any) => await UserLog.find({ account_id: accountId, ...filter, visible: true }).sort({ _id: -1 });
+
+export const createUserLog = async (log: IUserLog) => await UserLog.create(log);
+
+export const updateUserLog = async (id: string, user: IUserLog) => await UserLog.findByIdAndUpdate({ id }, { $set: user });
+
+export const deleteUserLog = async (id: string) => await UserLog.findByIdAndUpdate({ _id: id }, { $set: { visible: false } });

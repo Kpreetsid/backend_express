@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 interface IPhoneNo {
   number: string;
@@ -40,8 +40,8 @@ export interface IWorkRequest extends Document {
   title?: string;
   description: string;
   createdOn: Date;
-  account_id: mongoose.Types.ObjectId;
-  userId?: mongoose.Types.ObjectId;
+  account_id: ObjectId;
+  userId?: ObjectId;
   user?: IUser;
   location?: ILocationItem[];
   asset?: IAssetItem[];

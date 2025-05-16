@@ -1,4 +1,4 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, ObjectId, Schema } from "mongoose";
 
 interface PhoneNumber {
     number: string;
@@ -111,7 +111,7 @@ export interface IScheduleMaster extends Document {
     rescheduleEnabled: boolean;
     no_of_time_call: number;
     visible: boolean;
-    account_id: mongoose.Types.ObjectId;
+    account_id: ObjectId;
     rescheduleWeekDays?: number;
     monday?: boolean;
     tuesday?: boolean;
@@ -122,8 +122,8 @@ export interface IScheduleMaster extends Document {
     sunday?: string;
     location?: Location[];
     asset?: Asset[];
-    prev_asset_id?: mongoose.Types.ObjectId;
-    prev_loc_id?: mongoose.Types.ObjectId;
+    prev_asset_id?: ObjectId;
+    prev_loc_id?: ObjectId;
     month?: number;
     dayOfMonth?: string;
     next_execute_date?: string;
@@ -131,8 +131,8 @@ export interface IScheduleMaster extends Document {
 
 const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     {
-        title: String,
-        description: String,
+        title: { type: String },
+        description: { type: String },
         start_date: String,
         days_to_complete: Number,
         schedule_mode: String,

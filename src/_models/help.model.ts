@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 interface IPhoneNo {
   number: string;
@@ -40,8 +40,8 @@ export interface IBlog extends Document {
   title?: string;
   description: string;
   createdOn: Date;
-  account_id: mongoose.Types.ObjectId;
-  userId?: mongoose.Types.ObjectId;
+  account_id: ObjectId;
+  userId?: ObjectId;
   user?: IUser;
   location?: ILocationItem[];
   asset?: IAssetItem[];
@@ -56,6 +56,7 @@ export interface IBlog extends Document {
   help?: boolean;
   comments?: any[];
   likes?: any[];
+  isActive?: boolean;
 }
 
 const BlogSchema = new Schema<IBlog>({
@@ -75,7 +76,8 @@ const BlogSchema = new Schema<IBlog>({
   tags: { type: Object, default: null },
   help: { type: Boolean, default: false },
   comments: { type: [Schema.Types.Mixed], default: [] },
-  likes: { type: [Schema.Types.Mixed], default: [] }
+  likes: { type: [Schema.Types.Mixed], default: [] },
+  isActive: { type: Boolean, default: true }
 }, {
   collection: 'help',
   timestamps: true,
@@ -83,3 +85,15 @@ const BlogSchema = new Schema<IBlog>({
 });
 
 export const Blog = mongoose.model<IBlog>('Blog', BlogSchema);
+
+export const getAllBlog = async () => await Blog.find().sort({ _id: -1 });
+
+export const getBlogById = async (id: string) => await Blog.findById(id);
+
+export const getFilteredBlog = async (filter: any) => await Blog.find({filter, isActive: true }).sort({ _id: -1 });
+
+export const createBlog = async (blog: IBlog) => await Blog.create(blog);
+
+export const updateBlog = async (id: string, blog: IBlog) => await Blog.findByIdAndUpdate(id, blog);
+
+export const deleteBlog = async (id: string) => await Blog.findByIdAndUpdate(id, { isActive: false });

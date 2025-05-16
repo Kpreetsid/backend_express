@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 export interface UserLoginPayload {
   id: string;
@@ -26,7 +26,7 @@ export interface IUser extends Document {
   user_status: 'active' | 'inactive' | string;
   user_role: 'admin' | 'user' | string;
   createdOn: Date;
-  account_id: mongoose.Types.ObjectId;
+  account_id: ObjectId;
   phone_no: IPhoneNumber;
   isFirstUser: boolean;
 }
@@ -59,3 +59,15 @@ const userSchema = new Schema<IUser>({
 });
 
 export const User = mongoose.model<IUser>('User', userSchema);
+
+export const getAllUser = async (accountId: string) => await User.find({ account_id: accountId }).sort({ _id: -1 });
+
+export const getUserById = async (id: string) => await User.findById(id);
+
+export const getUserByFilter = async (accountId: string, filter: any) => await User.find({ account_id: accountId, ...filter, visible: true }).sort({ _id: -1 });
+
+export const createUser = async (user: IUser) => await User.create(user);
+
+export const updateUser = async (id: string, user: IUser) => await User.findByIdAndUpdate({ id }, { $set: user });
+
+export const deleteUser = async (id: string) => await User.findByIdAndUpdate({ _id: id }, { $set: { visible: false } });

@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 interface FaultData {
   value: number;
@@ -63,7 +63,7 @@ interface UserInfo {
 }
 
 export interface IReportAsset extends Document {
-  top_level_asset_id: mongoose.Types.ObjectId;
+  top_level_asset_id: ObjectId;
   Observations: string;
   Recommendations: string;
   CreateWorkRequest: string;

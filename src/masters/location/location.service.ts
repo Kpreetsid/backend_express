@@ -60,7 +60,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const { id } = req.params;
     const data: ILocationMaster | null = await LocationMaster.findById(id);
     if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -112,7 +112,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const data: ILocationMaster | null = await LocationMaster.findByIdAndUpdate(id, req.body, { new: true });
     if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {

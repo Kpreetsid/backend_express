@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 interface IPhoneNumber {
   number: string;
@@ -34,7 +34,7 @@ interface IComment {
 
 export interface IComments extends Document {
   createdOn: Date;
-  order_id: mongoose.Types.ObjectId;
+  order_id: ObjectId;
   comments: IComment[];
 }
 

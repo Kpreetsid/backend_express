@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 interface IFile {
   container: string;
@@ -53,7 +53,7 @@ export interface IPost extends Document {
   description: string;
   files: { [key: string]: IFile[] };
   createdOn: Date;
-  account_id: mongoose.Types.ObjectId;
+  account_id: ObjectId;
   user: IUser;
   help: boolean;
   publishTo: string[];

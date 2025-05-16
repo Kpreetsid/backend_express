@@ -1,19 +1,19 @@
-import { Account, IAccount } from "../../_models/account.model";
+import { Account, IAccount, createAccount } from "../../_models/account.model";
 import { User, IUser } from "../../_models/user.model";
 import { UserRoleMenu, IUserRoleMenu} from "../../_models/userRoleMenu.model";
 import { NextFunction, Request, Response } from 'express';
 import { hashPassword } from '../../_config/bcrypt';
 import mongoose from "mongoose";
+import { platformControlData } from "../../_config/userRoles";
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
-    const newAccount = new Account({
+    const account: IAccount = await createAccount(new Account({
       name: body.name,
       type: body.type,
       description: body.description
-    });
-    const account: IAccount = await newAccount.save();
+    }));
     if (!account) {
       throw Object.assign(new Error('Account creation failed'), { status: 500 });
     }
@@ -68,51 +68,9 @@ const createNewUser = async (body: IUser) => {
 const createUserRoleMenu = async (userId: mongoose.Types.ObjectId, accountId: mongoose.Types.ObjectId) => {
   try {
     const newUserRoleMenu = new UserRoleMenu({
-      data: {
-        asset: {
-          add_asset: true,
-          delete_asset: true,
-          add_child_asset: true,
-          edit_asset: true,
-          create_report: true,
-          delete_report: true,
-          download_report: true,
-          edit_report: true,
-          config_alarm: true,
-          add_observation: true,
-          create_endpoint: true,
-          edit_endpoint: true,
-          delete_end_point: true,
-          attach_sensor: true,
-          update_config: true
-        },
-        location: {
-          add_location: true,
-          delete_location: true,
-          add_child_location: true,
-          edit_location: true,
-          create_report: true,
-          delete_report: true,
-          download_report: true
-        },
-        workOrder: {
-          create_work_order: true,
-          edit_work_order: true,
-          delete_work_order: true,
-          update_work_order_status: true,
-          add_comment_work_order: true,
-          add_task_work_order: true,
-          update_parts_work_order: true
-        },
-        floorMap: {
-          create_kpi: true,
-          view_floor_map: true,
-          delete_kpi: true, 
-          upload_floor_map: true
-        }
-      },
       user_id: userId,
-      account_id: accountId
+      account_id: accountId,
+      data: await platformControlData("admin")
     });
     const newUserRoleData = await newUserRoleMenu.save();
     return newUserRoleData.toObject();

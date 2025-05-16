@@ -1,5 +1,6 @@
-import express, { Application, Request, Response, NextFunction } from 'express';
+import express, { Application, Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import cors from 'cors';
+import path from 'path';
 import compression from 'compression';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -31,6 +32,7 @@ import workOrder from './work/order/order.controller';
 import commentController from './work/comments/comment.controller';
 import userLocationController from './transaction/mapUserLocation/userLocation.controller';
 import workOrderController from './transaction/mapUserWorkOrder/userWorkOrder.controller';
+import uploadController from './upload/upload.controller';
 
 const app: Application = express();
 
@@ -40,6 +42,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(fileLogger);
 app.use(activityLogger);
+app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
 
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -96,6 +99,7 @@ userRouter.use('/role-menu', userRoleMenuController);
 router.use('/users', authenticateJwt, userRouter);
 
 router.use('/floor-map', authenticateJwt, floorMapController);
+router.use('/upload', uploadController);
 
 app.use('/api', router);
 
@@ -105,6 +109,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   next(err);
 });
 
-app.use(errorMiddleware);
+app.use(errorMiddleware as ErrorRequestHandler);
 
 export default app;

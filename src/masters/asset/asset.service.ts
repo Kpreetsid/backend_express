@@ -1,12 +1,12 @@
-import { Asset, IAsset } from "../../_models/asset.model";
+import { Asset, getAllAssets, IAsset } from "../../_models/asset.model";
 import { NextFunction, Request, Response } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data: IAsset[] | null = await Asset.find({account_id: account_id, visible: true}).sort({ _id: -1 }); 
+    const data: IAsset[] | null = await getAllAssets(account_id); 
     if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -20,7 +20,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const { id } = req.params;
     const data = await Asset.findById(id);
     if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -51,7 +51,7 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
     }
     const data = await Asset.find(query);
     if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -84,7 +84,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
       };
     }));
     if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -143,7 +143,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const data = await Asset.findByIdAndUpdate(id, req.body, { new: true });
     if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
@@ -157,7 +157,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const data = await Asset.findById(id);
     if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await Asset.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });

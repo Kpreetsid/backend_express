@@ -20,7 +20,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const { id } = req.params;
     const data: ICategory | null = await Category.findById(id);
     if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -46,7 +46,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { name, description } = req.body;
     const updatedCategory = await Category.findByIdAndUpdate(id, { name, description }, { new: true });
     if (!updatedCategory) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data: updatedCategory });
   } catch (error) {
@@ -60,7 +60,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const data = await Category.findById(id);
     if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 401 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await Category.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });

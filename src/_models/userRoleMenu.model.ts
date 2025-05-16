@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 interface AssetPermissions {
   add_asset: boolean;
@@ -52,8 +52,8 @@ export interface IUserRoleMenu extends Document {
     workOrder: WorkOrderPermissions;
     floorMap: FloorMapPermissions;
   };
-  user_id: mongoose.Types.ObjectId;
-  account_id: mongoose.Types.ObjectId;
+  user_id: ObjectId;
+  account_id: ObjectId;
 }
 
 const userRoleMenuSchema = new Schema<IUserRoleMenu>({

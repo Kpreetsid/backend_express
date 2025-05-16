@@ -1,10 +1,10 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 export interface ICategory extends Document {
   name: string;
   visible: boolean;
-  account_id: mongoose.Types.ObjectId;
-  id?: mongoose.Types.ObjectId;
+  account_id: ObjectId;
+  id?: ObjectId;
 }
 
 const categorySchema = new Schema<ICategory>({
