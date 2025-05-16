@@ -11,9 +11,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     const { account_id, _id: user_id } = req.user;
     const data: IUser[] | null = await User.find({account_id: account_id, visible: true}).sort({ _id: -1 });
     if (!data || data.length === 0) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -28,9 +26,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const { account_id, _id: user_id } = req.user;
     const data: IUser[] | null = await User.find({_id: id, account_id: account_id, visible: true});
     if (!data || data.length === 0) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -53,15 +49,11 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
   try {
     const { locationID } = req.params;
     if(req.user.user_role !== "admin") {
-      const error = new Error("Unauthorize data access request");
-      (error as any).status = 401;
-      throw error;
+      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const data = await MapUserLocation.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
     if (data.length === 0) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const userIDList = data.map(doc => doc.userId);
     const userData = await User.find({ _id: { $in: userIDList }}).select('-password');
@@ -79,9 +71,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     const password = await hashPassword(body.password);
     const companyData = await verifyCompany(`${account_id}`);
     if(!companyData) {
-      const error = new Error("Invalid account");
-      (error as any).status = 403;
-      throw error;
+      throw Object.assign(new Error('Invalid account'), { status: 403 });
     }
     const newUser = new User({
       "firstName" : body.firstName,
@@ -115,9 +105,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { name, email, password, role } = req.body;
     const data = await User.findByIdAndUpdate(id, { name, email, password, role }, { new: true });
     if (!data) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
@@ -131,9 +119,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     const id = req.params.id;
     const data = await User.findById(id);
     if (!data) {
-        const error = new Error("Data not found");
-        (error as any).status = 404;
-        throw error;
+        throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await User.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });

@@ -9,9 +9,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     const { account_id, _id: user_id } = req.user;
     const data = await UserRoleMenu.find({account_id: account_id}).sort({ _id: -1 });
     if (data.length === 0) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -26,9 +24,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const { account_id, _id: user_id } = req.user;
     const data = await UserRoleMenu.findById(id);
     if (!data) {
-      const error = new Error("Data not found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 401 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -83,9 +79,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { role_id, menu_id } = req.body;
     const updatedUserRoleMenu = await UserRoleMenu.findByIdAndUpdate(id, { role_id, menu_id }, { new: true });
     if (!updatedUserRoleMenu) {
-      const error = new Error("Data not found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 401 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data: updatedUserRoleMenu });
   } catch (error) {
@@ -99,9 +93,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const data = await UserRoleMenu.findById(id);
     if (!data) {
-        const error = new Error("Data not found");
-        (error as any).status = 404;
-        throw error;
+        throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await UserRoleMenu.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });

@@ -7,9 +7,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
         const { account_id, _id: user_id } = req.user;
         const data = await SopsMasterModel.find({account_id: account_id}).sort({ _id: -1 });
         if (!data || data.length === 0) {
-            const error = new Error("No data found");
-            (error as any).status = 404;
-            throw error;
+            throw Object.assign(new Error('No data found'), { status: 404 });
         }
         console.log(data.length);
         return res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -24,9 +22,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
         const { id } = req.params;
         const data = await SopsMasterModel.findById(id);
         if (!data || !data.visible) {
-            const error = new Error("Data not found");
-            (error as any).status = 404;
-            throw error;
+            throw Object.assign(new Error('No data found'), { status: 404 });
         }
         return res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
@@ -51,9 +47,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
         const { id } = req.params;
         const data = await SopsMasterModel.findByIdAndUpdate(id, req.body, { new: true });
         if (!data || !data.visible) {
-            const error = new Error("Data not found");
-            (error as any).status = 404;
-            throw error;
+            throw Object.assign(new Error('No data found'), { status: 404 });
         }
         return res.status(200).json({ status: true, message: "Data updated successfully", data });
     } catch (error) {
@@ -67,9 +61,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
         const { id } = req.params;
         const data = await SopsMasterModel.findById(id);
         if (!data || !data.visible) {
-            const error = new Error("Data not found");
-            (error as any).status = 404;
-            throw error;
+            throw Object.assign(new Error('No data found'), { status: 404 });
         }
         await SopsMasterModel.findByIdAndUpdate(id, { visible: false }, { new: true });
         return res.status(200).json({ status: true, message: "Data deleted successfully" });

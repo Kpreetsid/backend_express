@@ -10,24 +10,18 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     const { username, password } = req.body;
     const user: IUser | null = await User.findOne({ username }).select('+password');
     if (!user || user.user_status !== 'active') {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
-      const error = new Error("Invalid credentials");
-      (error as any).status = 401;
-      throw error;
+      throw Object.assign(new Error('Invalid credentials'), { status: 401 });
     }
     const { password: _, ...safeUser } = user.toObject();
     const userTokenPayload: UserLoginPayload = { id: `${user._id}`, username: user.username, email: user.email, companyID: `${user.account_id}` };
     const token = generateAccessToken(userTokenPayload);
     const userRoleData = await verifyUserRole(`${user._id}`, `${user.account_id}`);
     if (!userRoleData) {
-      const error = new Error("User have no role");
-      (error as any).status = 403;
-      throw error;
+      throw Object.assign(new Error('User does not have any permission'), { status: 403 });
     }
     res.cookie('token', token, { httpOnly: true, secure: true });
     res.cookie('companyID', userTokenPayload.companyID, { httpOnly: true, secure: true });

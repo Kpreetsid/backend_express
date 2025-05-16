@@ -12,9 +12,7 @@ export const authenticateJwt = async (req: Request, res: Response, next: NextFun
     const cookieToken = req.cookies['token'];
     const cookieAccountID = req.cookies['companyID'];
     if (!cookieToken || !cookieAccountID) {
-      const error = new Error("No token provided");
-      (error as any).status = 401;
-      throw error;
+      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     const decoded = jwt.verify(cookieToken, auth.secret, {
       algorithms: [auth.algorithm as jwt.Algorithm],
@@ -25,32 +23,22 @@ export const authenticateJwt = async (req: Request, res: Response, next: NextFun
     const accountID = req.headers.accountid as string;
 
     if (!id || !username || !email || !companyID || cookieAccountID !== accountID) {
-      const error = new Error("Invalid token payload");
-      (error as any).status = 401;
-      throw error;
+      throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     const companyData = await verifyCompany(accountID);
     if (!companyData) {
-      const error = new Error("Account ID is invalid");
-      (error as any).status = 401;
-      throw error;
+      throw Object.assign(new Error('Account ID is invalid'), { status: 401 });
     }
     const userData: IUser | null = await verifyUserLogin({ id, companyID, email, username });
     if (!userData) {
-      const error = new Error("User not found");
-      (error as any).status = 401;
-      throw error;
+      throw Object.assign(new Error('User not found'), { status: 404 });
     }
     const userRole: IUserRoleMenu | null = await verifyUserRole(id, companyID);
     if (!userRole) {
-      const error = new Error("User role not found");
-      (error as any).status = 401;
-      throw error;
+      throw Object.assign(new Error('User role not found'), { status: 401 });
     }
     if (userRole.account_id.toString() !== companyID) {
-      const error = new Error("User does not belong to the company");
-      (error as any).status = 403;
-      throw error;
+      throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
     }
     req.user = userData;
     req.companyID = companyID;

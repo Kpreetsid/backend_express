@@ -15,24 +15,18 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     });
     const account: IAccount = await newAccount.save();
     if (!account) {
-      const error = new Error("Account creation failed");
-      (error as any).status = 500;
-      throw error;
+      throw Object.assign(new Error('Account creation failed'), { status: 500 });
     }
     body.account_id = account._id;
     body.isFirstUser = true;
     body.user_role = "admin";
     const safeUser = await createNewUser(body);
     if (!safeUser) {
-      const error = new Error("User creation failed");
-      (error as any).status = 500;
-      throw error;
+      throw Object.assign(new Error('User creation failed'), { status: 500 });
     }
     const userRoleMenu: IUserRoleMenu = await createUserRoleMenu(safeUser._id as mongoose.Types.ObjectId, account._id as mongoose.Types.ObjectId);
     if (!userRoleMenu) {
-      const error = new Error("User role menu creation failed");
-      (error as any).status = 500;
-      throw error;
+      throw Object.assign(new Error('User role menu creation failed'), { status: 500 });
     }
     return res.status(201).json({ status: true, message: "Data created successfully", account, user: safeUser, userRoleMenu });
   } catch (error) {

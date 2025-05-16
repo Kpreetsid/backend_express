@@ -9,9 +9,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     const { account_id, _id: user_id } = (req as any).user;
     const data: ILocationMaster[] | null = await LocationMaster.find({account_id: account_id}).sort({ _id: -1 });
     if (!data || data.length === 0) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -32,9 +30,7 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
 
     const data: ILocationMaster[] = await LocationMaster.find(match).sort({ _id: -1 });
     if (!data || data.length === 0) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
 
     const locations = data.map(doc => doc.toObject());
@@ -64,9 +60,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const { id } = req.params;
     const data: ILocationMaster | null = await LocationMaster.findById(id);
     if (!data || !data.visible) {
-      const error = new Error("Data not found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 401 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -85,9 +79,7 @@ export const getDataByFilter = async (req: Request, res: Response, next: NextFun
     }
     const data: ILocationMaster[] | null = await LocationMaster.find(match);
     if (!data || data.length === 0) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -100,9 +92,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const role = (req as any).role;
     if (!role[moduleName].add_location) {
-      const error = new Error("Unauthorized access");
-      (error as any).status = 403;
-      throw error;
+      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const newLocation = new LocationMaster(req.body);
     const data: ILocationMaster = await newLocation.save();
@@ -117,16 +107,12 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   try {
     const role = (req as any).role;
     if (!role[moduleName].edit_location) {
-      const error = new Error("Unauthorized access");
-      (error as any).status = 403;
-      throw error;
+      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const { id } = req.params;
     const data: ILocationMaster | null = await LocationMaster.findByIdAndUpdate(id, req.body, { new: true });
     if (!data || !data.visible) {
-      const error = new Error("Data not found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 401 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
@@ -139,16 +125,12 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
   try {
     const role = (req as any).role;
     if (!role[moduleName].delete_location) {
-      const error = new Error("Unauthorized access");
-      (error as any).status = 403;
-      throw error;
+      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const { id } = req.params;
     const data = await LocationMaster.findById(id);
     if (!data || !data.visible) {
-        const error = new Error("Data not found");
-        (error as any).status = 404;
-        throw error;
+        throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await LocationMaster.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });

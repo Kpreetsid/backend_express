@@ -5,9 +5,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const data = await LocationReport.find({}).sort({ _id: -1 }).select('-timestamp');
     if (data.length === 0) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -21,9 +19,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const id = req.params.id;
     const data = await LocationReport.findById(id).select('-timestamp');
     if (!data) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
@@ -49,9 +45,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { name, description, location } = req.body;
     const data = await LocationReport.findByIdAndUpdate(id, { name, description, location }, { new: true }).select('-timestamp');
     if (!data) {
-      const error = new Error("No data found");
-      (error as any).status = 404;
-      throw error;
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
@@ -65,9 +59,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     const id = req.params.id;
     const data = await LocationReport.findById(id);
     if (!data) {
-        const error = new Error("Data not found");
-        (error as any).status = 404;
-        throw error;
+        throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await LocationReport.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
