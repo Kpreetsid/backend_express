@@ -1,14 +1,12 @@
 import express, { NextFunction, Request, Response } from 'express';
 const router = express.Router();
 import { getAll, getDataById, insert, updateById, removeById, getAssetsTreeData, createAssetsWithImage, getAssetsFilteredData } from './asset.service';
-import { uploadFiles } from '../../_config/fileUpload';
 
 router.get('/', getData);
 router.post('/getTree', getAssetsTree);
 router.get('/:id', getById);
 router.post('/getFiltered', getFilteredData);
 router.post('/', create);
-router.post('/createWithImage', uploadFiles('files'), newAssetsWithImage);
 router.put('/:id', update);
 router.delete('/:id', remove);
 

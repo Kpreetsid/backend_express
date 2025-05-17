@@ -7,7 +7,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
   res.on('finish', async () => {
     try {
       const headers: any = req.headers;
-      const { account_id = null, _id: user_id = null, username = null } = req.user;
+      const user = req.user;
       const systemInfo = {
         platform: headers['sec-ch-ua-platform']?.replace(/"/g, '') || 'Unknown',
         os: extractOS(headers['user-agent']),
@@ -40,15 +40,15 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
         dnt: headers['dnt'] === '1',
         secCHUA: parseSecCHUA(headers['sec-ch-ua']),
       }
-      const userName = username || 'Anonymous';
-      const userId: mongoose.Types.ObjectId = user_id || new mongoose.Types.ObjectId();
+      const userName = user?.username || 'Anonymous';
+      const userId: mongoose.Types.ObjectId = user?.user_id || new mongoose.Types.ObjectId();
       const module = extractModule(req.originalUrl);
       const description = `${userName} performed ${req.method} method on ${module} from ${headers['origin']} at ${new Date().toISOString()}`;
 
       const newLog = new UserLog({
         userId,
         userName,
-        accountId: account_id,
+        accountId: user?.account_id || new mongoose.Types.ObjectId(),
         systemInfo,
         browserInfo,
         deviceInfo,
