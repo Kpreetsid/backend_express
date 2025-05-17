@@ -23,6 +23,7 @@ export const sendMail = async ({ to, subject, html }: MailOptions): Promise<void
         mailLogData.messageId = info.messageId;
         mailLogData.mailInfo = info;
         mailLogData.status = 'success';
+        console.log(`Message preview URL: ${nodemailer.getTestMessageUrl(info)}`);
     } catch (err: any) {
         console.error('Error sending email:', err);
         mailLogData.status = 'failed';
