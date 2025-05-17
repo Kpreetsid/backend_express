@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { Account, IAccount, getAllAccount, getAccountByID } from "../../_models/account.model";
+import { Account, IAccount, getAllAccount, getAccountByID } from "../../models/account.model";
 import { NextFunction, Request, Response } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

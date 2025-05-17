@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import { mailCredential } from '../configDB';
-import { IMailLog, MailLogModel, createMailLog } from '../_models/mailLog.model';
+import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
 
 const transporter = nodemailer.createTransport({
     host: mailCredential.host,

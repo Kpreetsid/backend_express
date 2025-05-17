@@ -1,4 +1,4 @@
-import { Post, IPost } from "../../_models/post.model";
+import { Post, IPost } from "../../models/post.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

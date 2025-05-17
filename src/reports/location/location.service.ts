@@ -1,4 +1,4 @@
-import { LocationReport, ILocationReport } from "../../_models/locationReport.model";
+import { LocationReport, ILocationReport } from "../../models/locationReport.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

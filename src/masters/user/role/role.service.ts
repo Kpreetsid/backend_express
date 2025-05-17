@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import { UserRoleMenu, IUserRoleMenu } from "../../../_models/userRoleMenu.model";
+import { UserRoleMenu, IUserRoleMenu } from "../../../models/userRoleMenu.model";
 import { Request, Response, NextFunction } from 'express';
-import { IUser } from "../../../_models/user.model";
+import { IUser } from "../../../models/user.model";
 import { platformControlData } from '../../../_config/userRoles';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

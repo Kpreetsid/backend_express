@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { WorkOrder, IWorkOrder } from "../../_models/workOrder.model";
+import { WorkOrder, IWorkOrder } from "../../models/workOrder.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

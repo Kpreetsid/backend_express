@@ -1,4 +1,4 @@
-import { WorkOrderAssignee, IWorkOrderAssignee } from "../../_models/mapUserWorkOrder.model";
+import { WorkOrderAssignee, IWorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

@@ -1,8 +1,8 @@
-import { IUser, User, UserLoginPayload } from "../../_models/user.model";
+import { IUser, User, UserLoginPayload } from "../../models/user.model";
 import { Request, Response, NextFunction } from 'express';
 import { comparePassword } from '../../_config/bcrypt';
 import { generateAccessToken } from '../../_config/auth';
-import { UserToken } from "../../_models/userToken.model";
+import { UserToken } from "../../models/userToken.model";
 import { verifyUserRole } from "../../masters/user/role/role.service";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {

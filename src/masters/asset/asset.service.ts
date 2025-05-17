@@ -1,4 +1,4 @@
-import { Asset, getAllAssets, IAsset } from "../../_models/asset.model";
+import { Asset, getAllAssets, IAsset } from "../../models/asset.model";
 import { NextFunction, Request, Response } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

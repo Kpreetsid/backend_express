@@ -1,4 +1,4 @@
-import { ScheduleMasterModel, IScheduleMaster } from "../../_models/scheduleMaster.model";
+import { ScheduleMasterModel, IScheduleMaster } from "../../models/scheduleMaster.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

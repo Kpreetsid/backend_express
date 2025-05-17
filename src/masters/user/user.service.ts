@@ -1,5 +1,5 @@
-import { User, IUser, UserLoginPayload } from "../../_models/user.model";
-import { MapUserLocation } from "../../_models/mapUserLocation.model";
+import { User, IUser, UserLoginPayload } from "../../models/user.model";
+import { MapUserLocation } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
 import mongoose from "mongoose";
 import { hashPassword } from '../../_config/bcrypt';

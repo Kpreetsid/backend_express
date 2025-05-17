@@ -1,4 +1,4 @@
-import { Observation, IObservation } from "../../_models/observation.model";
+import { Observation, IObservation } from "../../models/observation.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { auth } from '../configDB';
 import { verifyUserLogin } from '../masters/user/user.service';
-import { IUserRoleMenu } from "../_models/userRoleMenu.model";
-import { IUser, UserLoginPayload } from '../_models/user.model';
+import { IUserRoleMenu } from "../models/userRoleMenu.model";
+import { IUser, UserLoginPayload } from '../models/user.model';
 import { verifyUserRole } from '../masters/user/role/role.service';
 import { verifyCompany } from '../masters/company/company.service';
 

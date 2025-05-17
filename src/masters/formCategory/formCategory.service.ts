@@ -1,4 +1,4 @@
-import { Category, ICategory } from "../../_models/formCategory.model";
+import { Category, ICategory } from "../../models/formCategory.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

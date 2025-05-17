@@ -1,4 +1,4 @@
-import { Part, IPart } from "../../_models/part.model";
+import { Part, IPart } from "../../models/part.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

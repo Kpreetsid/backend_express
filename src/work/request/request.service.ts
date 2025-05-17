@@ -1,4 +1,4 @@
-import { WorkRequestModel, IWorkRequest } from "../../_models/workRequest.model";
+import { WorkRequestModel, IWorkRequest } from "../../models/workRequest.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

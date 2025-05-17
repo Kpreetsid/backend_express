@@ -1,4 +1,4 @@
-import { Comments, IComments } from "../../_models/comment.model";
+import { Comments, IComments } from "../../models/comment.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

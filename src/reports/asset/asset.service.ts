@@ -1,4 +1,4 @@
-import { ReportAsset, IReportAsset } from "../../_models/assetReport.model";
+import { ReportAsset, IReportAsset } from "../../models/assetReport.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

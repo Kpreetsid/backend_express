@@ -1,4 +1,4 @@
-import { MapUserLocation, IMapUserLocation } from "../../_models/mapUserLocation.model";
+import { MapUserLocation, IMapUserLocation } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

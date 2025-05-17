@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { UserLog, IUserLog } from '../_models/userLogs.model';
+import { UserLog, IUserLog } from '../models/userLogs.model';
 import mongoose from 'mongoose';
 
 export const activityLogger = async (req: Request, res: Response, next: NextFunction) => {

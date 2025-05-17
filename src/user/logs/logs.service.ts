@@ -1,4 +1,4 @@
-import { UserLog, IUserLog } from "../../_models/userLogs.model";
+import { UserLog, IUserLog } from "../../models/userLogs.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAllUserLogs = async (req: Request, res: Response, next: NextFunction) => {

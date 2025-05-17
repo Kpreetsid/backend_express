@@ -1,6 +1,6 @@
-import { Account, IAccount, createAccount } from "../../_models/account.model";
-import { User, IUser } from "../../_models/user.model";
-import { UserRoleMenu, IUserRoleMenu} from "../../_models/userRoleMenu.model";
+import { Account, IAccount, createAccount } from "../../models/account.model";
+import { User, IUser } from "../../models/user.model";
+import { UserRoleMenu, IUserRoleMenu} from "../../models/userRoleMenu.model";
 import { NextFunction, Request, Response } from 'express';
 import { hashPassword } from '../../_config/bcrypt';
 import mongoose from "mongoose";

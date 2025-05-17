@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
-import { LocationMaster, ILocationMaster } from "../../_models/location.model";
+import { LocationMaster, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
-import { IMapUserLocation, MapUserLocation } from "../../_models/mapUserLocation.model";
+import { IMapUserLocation, MapUserLocation } from "../../models/mapUserLocation.model";
 const moduleName: string = "location";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

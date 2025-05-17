@@ -1,4 +1,4 @@
-import { EndpointLocation } from "../_models/floorMap.model";
+import { EndpointLocation } from "../models/floorMap.model";
 import e, { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {

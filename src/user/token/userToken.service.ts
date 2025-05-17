@@ -1,4 +1,4 @@
-import { UserToken, IUserToken } from "../../_models/userToken.model";
+import { UserToken, IUserToken } from "../../models/userToken.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAllUserTokens = async (req: Request, res: Response, next: NextFunction) => {

@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import mongoose from 'mongoose';
-import { SopsMasterModel, ISopsMaster } from '../../_models/sops.model';
+import { SopsMasterModel, ISopsMaster } from '../../models/sops.model';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
