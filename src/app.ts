@@ -9,30 +9,13 @@ import { errorMiddleware } from './middlewares/error';
 import { fileLogger } from './middlewares/fileLogger';
 import { activityLogger } from './middlewares/logger';
 import { authenticateJwt } from './_config/auth';
-import authentication from './user/authentication/authentication.controller';
-import registrationController from './user/registration/registration.controller';
-import userTokenController from './user/token/userToken.controller';
-import accountMaster from './masters/company/company.controller';
-import assetMaster from './masters/asset/asset.controller';
-import locationMaster from './masters/location/location.controller';
-import userMaster from './masters/user/user.controller';
-import partMaster from './masters/part/part.controller';
-import scheduleMasterController from './masters/schedule/schedule.controller';
-import sopsMasterController from './masters/sops/sops.controller';
-import blogMasterController from './masters/post/post.controller';
-import observationMaster from './masters/observation/observation.controller';
-import formCategoryMaster from './masters/formCategory/formCategory.controller';
-import workRequest from './work/request/request.controller';
-import locationReport from './reports/location/location.controller';
-import logsController from './user/logs/logs.controller';
-import assetReportController from './reports/asset/asset.controller';
-import floorMapController from './floorMap/floorMap.controller';
-import userRoleMenuController from './masters/user/role/role.controller';
-import workOrder from './work/order/order.controller';
-import commentController from './work/comments/comment.controller';
-import userLocationController from './transaction/mapUserLocation/userLocation.controller';
-import workOrderController from './transaction/mapUserWorkOrder/userWorkOrder.controller';
-import uploadController from './upload/upload.controller';
+import authorizeRouterIndex from './authRoutes';
+import routerIndex from './nonAuthRoutes';
+import masterRoute from './masters/master.routes';
+import workRoutes from './work/work.routes';
+import uploadRoutes from './upload/upload.routes';
+import reportsRoutes from './reports/reports.routes';
+import transactionRoutes from './transaction/transaction.routes';
 
 const app: Application = express();
 
@@ -58,50 +41,13 @@ app.use(compression({
   }
 }));
 
-const router = express.Router();
-
-router.use('/users', authentication);
-router.use('/registration', registrationController);
-
-const masterRouter = express.Router();
-masterRouter.use('/company', accountMaster);
-masterRouter.use('/asset', assetMaster);
-masterRouter.use('/location', locationMaster);
-masterRouter.use('/user', userMaster);
-masterRouter.use('/part', partMaster);
-masterRouter.use('/observation', observationMaster);
-masterRouter.use('/form-category', formCategoryMaster);
-masterRouter.use('/schedule', scheduleMasterController);
-masterRouter.use('/sops', sopsMasterController);
-masterRouter.use('/blog', blogMasterController);
-router.use('/master', authenticateJwt, masterRouter);
-
-const reportRouter = express.Router();
-reportRouter.use('/location', locationReport);
-reportRouter.use('/asset', assetReportController);
-router.use('/report', authenticateJwt, reportRouter);
-
-const transactionRouter = express.Router();
-transactionRouter.use('/map-user-location', userLocationController);
-transactionRouter.use('/map-user-work-order', workOrderController);
-router.use('/transaction', authenticateJwt, transactionRouter);
-
-const workRouter = express.Router();
-workRouter.use('/request', workRequest);
-workRouter.use('/order', workOrder);
-workRouter.use('/comments', commentController);
-router.use('/work', authenticateJwt, workRouter);
-
-const userRouter = express.Router();
-userRouter.use('/logs', logsController);
-userRouter.use('/tokens', userTokenController);
-userRouter.use('/role-menu', userRoleMenuController);
-router.use('/users', authenticateJwt, userRouter);
-
-router.use('/floor-map', authenticateJwt, floorMapController);
-router.use('/upload', uploadController);
-
-app.use('/api', router);
+app.use('/api', routerIndex());
+app.use('/api', authenticateJwt, authorizeRouterIndex());
+app.use('/api/upload', authenticateJwt, uploadRoutes());
+app.use('/api/master', authenticateJwt, masterRoute());
+app.use('/api/work', authenticateJwt, workRoutes());
+app.use('/api/reports', authenticateJwt, reportsRoutes());
+app.use('/api/map', authenticateJwt, transactionRoutes());
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const err = new Error('Requested resource not found.');

@@ -1,36 +1,22 @@
 import express, { Request, Response, NextFunction } from 'express';
-const router = express.Router();
-import { getAll, getDataById, accountWise, insert, updateById, removeById } from './order.service';
+import { getAll, getDataById, insert, updateById, removeById } from './order.service';
 
-router.get('/', getData);
-router.get('/accountWise', getAccountWise)
-router.get('/:id', getById);
-router.post('/', create);
-router.put('/:id', update);
-router.delete('/:id', remove);
-
-async function getData(req: Request, res: Response, next: NextFunction) {
+export const getOrders = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
-};
+}
 
-async function getById(req: Request, res: Response, next: NextFunction) {
+export const getOrder = async (req: Request, res: Response, next: NextFunction) => {
   await getDataById(req, res, next);
 }
 
-async function getAccountWise(req: Request, res: Response, next: NextFunction) {
-  await accountWise(req, res, next);
-}
-
-async function create(req: Request, res: Response, next: NextFunction) {
+export const createOrder = async (req: Request, res: Response, next: NextFunction) => {
   await insert(req, res, next);
 }
 
-async function update(req: Request, res: Response, next: NextFunction) {
+export const updateOrder = async (req: Request, res: Response, next: NextFunction) => {
   await updateById(req, res, next);
 }
 
-async function remove(req: Request, res: Response, next: NextFunction) {
+export const removeOrder = async (req: Request, res: Response, next: NextFunction) => {
   await removeById(req, res, next);
 }
-
-export default router;

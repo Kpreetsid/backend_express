@@ -4,7 +4,7 @@ import { auth } from '../configDB';
 import { verifyUserLogin } from '../masters/user/user.service';
 import { IUserRoleMenu } from "../models/userRoleMenu.model";
 import { IUser, UserLoginPayload } from '../models/user.model';
-import { verifyUserRole } from '../masters/user/role/role.service';
+import { verifyUserRole } from '../masters/user/role/roles.service';
 import { verifyCompany } from '../masters/company/company.service';
 
 export const authenticateJwt = async (req: Request, res: Response, next: NextFunction) => {
@@ -47,6 +47,10 @@ export const authenticateJwt = async (req: Request, res: Response, next: NextFun
     console.error('Auth error:', error.message);
     next(error)
   }
+};
+
+export const decodedAccessToken = (token: string): JwtPayload => {
+  return jwt.decode(token) as JwtPayload;
 };
 
 export const generateAccessToken = (payload: UserLoginPayload): string => {

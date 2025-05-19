@@ -1,14 +1,35 @@
+import { decodedAccessToken } from "../../_config/auth";
+import { verifyUserRole } from "../../masters/user/role/roles.service";
+import { verifyUserLogin } from "../../masters/user/user.service";
 import { UserToken, IUserToken } from "../../models/userToken.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAllUserTokens = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
-    const data = await UserToken.find({account_id: account_id}).sort({ _id: -1 });
+    const { token } = req.params;
+    if(!token) {
+      throw Object.assign(new Error('Invalid link'), { status: 401 });
+    }
+    const data = await UserToken.find({_id: token}).sort({ _id: -1 });
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    const userData = decodedAccessToken(token);
+    if(!userData.id && !userData.username && !userData.email && !userData.companyID) {
+      throw Object.assign(new Error('Invalid link'), { status: 401 });
+    }
+    const getUserDetails = await verifyUserLogin({ id: userData.id, companyID: userData.companyID, email: userData.email, username: userData.username });
+    if (!getUserDetails) {
+      throw Object.assign(new Error('User not found'), { status: 404 });
+    }
+    const { password: _, ...safeUser } = getUserDetails.toObject();
+    const userRoleData = await verifyUserRole(`${getUserDetails._id}`, `${getUserDetails.account_id}`);
+    if (!userRoleData) {
+      throw Object.assign(new Error('User does not have any permission'), { status: 403 });
+    }
+    res.cookie('token', token, { httpOnly: true, secure: true });
+    res.cookie('companyID', safeUser.account_id, { httpOnly: true, secure: true });
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: {userDetails: safeUser, token, platformControl: userRoleData.data} });
   } catch (error) {
     next(error);     
   }

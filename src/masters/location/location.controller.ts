@@ -1,41 +1,30 @@
 import express, { Request, Response, NextFunction } from 'express';
-const router = express.Router();
 import { getAll, getDataById, insert, updateById, removeById, getTree, getDataByFilter } from './location.service';
 
-router.get('/', getData);
-router.get('/tree', getTreeData);
-router.get('/:id', getById);
-router.post('/filter', getFilterData);
-router.post('/', create);
-router.put('/:id', update);
-router.delete('/:id', remove);
-
-async function getData(req: Request, res: Response, next: NextFunction) {
+export const getLocations = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
-};
+}
 
-async function getTreeData(req: Request, res: Response, next: NextFunction) {
+export const getLocationTree = async (req: Request, res: Response, next: NextFunction) => {
   await getTree(req, res, next);
 }
 
-async function getById(req: Request, res: Response, next: NextFunction) {
+export const getLocation = async (req: Request, res: Response, next: NextFunction) => {
   await getDataById(req, res, next);
 }
 
-async function getFilterData(req: Request, res: Response, next: NextFunction) {
+export const getFilterLocations = async (req: Request, res: Response, next: NextFunction) => {
   await getDataByFilter(req, res, next);
 }
 
-async function create(req: Request, res: Response, next: NextFunction) {
+export const createLocation = async (req: Request, res: Response, next: NextFunction) => {
   await insert(req, res, next);
 }
 
-async function update(req: Request, res: Response, next: NextFunction) {
+export const updateLocation = async (req: Request, res: Response, next: NextFunction) => {
   await updateById(req, res, next);
 }
 
-async function remove(req: Request, res: Response, next: NextFunction) {
+export const removeLocation = async (req: Request, res: Response, next: NextFunction) => {
   await removeById(req, res, next);
 }
-
-export default router;

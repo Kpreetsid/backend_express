@@ -1,46 +1,31 @@
 import express, { NextFunction, Request, Response } from 'express';
 const router = express.Router();
-import { getAll, getDataById, insert, updateById, removeById, getAssetsTreeData, createAssetsWithImage, getAssetsFilteredData } from './asset.service';
+import { getAll, getDataById, insert, updateById, removeById, getAssetsTreeData, getAssetsFilteredData } from './asset.service';
 
-router.get('/', getData);
-router.post('/getTree', getAssetsTree);
-router.get('/:id', getById);
-router.post('/getFiltered', getFilteredData);
-router.post('/', create);
-router.put('/:id', update);
-router.delete('/:id', remove);
-
-async function getData(req: Request, res: Response, next: NextFunction) {
+export const getAssets = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
-};
+}
 
-async function getAssetsTree(req: Request, res: Response, next: NextFunction) {
+export const getAssetTree = async (req: Request, res: Response, next: NextFunction) => {
   await getAssetsTreeData(req, res, next);
 }
 
-async function getFilteredData(req: Request, res: Response, next: NextFunction) {
+export const getFilteredAssets = async (req: Request, res: Response, next: NextFunction) => {
   await getAssetsFilteredData(req, res, next);
 }
 
-async function getById(req: Request, res: Response, next: NextFunction) {
+export const getAsset = async (req: Request, res: Response, next: NextFunction) => {
   await getDataById(req, res, next);
 }
 
-async function create(req: Request, res: Response, next: NextFunction) {
+export const createAsset = async (req: Request, res: Response, next: NextFunction) => {
   await insert(req, res, next);
 }
 
-async function newAssetsWithImage(req: Request, res: Response, next: NextFunction) {
-  console.log(req.file);
-  await createAssetsWithImage(req, res, next);
-}
-
-async function update(req: Request, res: Response, next: NextFunction) {
+export const updateAsset = async (req: Request, res: Response, next: NextFunction) => {
   await updateById(req, res, next);
 }
 
-async function remove(req: Request, res: Response, next: NextFunction) {
+export const removeAsset = async (req: Request, res: Response, next: NextFunction) => {
   await removeById(req, res, next);
 }
-
-export default router;

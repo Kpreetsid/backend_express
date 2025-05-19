@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { comparePassword } from '../../_config/bcrypt';
 import { generateAccessToken } from '../../_config/auth';
 import { UserToken } from "../../models/userToken.model";
-import { verifyUserRole } from "../../masters/user/role/role.service";
+import { verifyUserRole } from "../../masters/user/role/roles.service";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
   try {

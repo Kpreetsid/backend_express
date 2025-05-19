@@ -76,8 +76,7 @@ export const createUserRole = async (userRole: any, userData: IUser) => {
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { role_id, menu_id } = req.body;
-    const updatedUserRoleMenu = await UserRoleMenu.findByIdAndUpdate(id, { role_id, menu_id }, { new: true });
+    const updatedUserRoleMenu = await UserRoleMenu.findByIdAndUpdate(id, req.body, { new: true });
     if (!updatedUserRoleMenu) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
