@@ -8,8 +8,8 @@ export const errorMiddleware = (err: any, req: Request, res: Response, next: Nex
 
   const response: { status: boolean; message: string; error?: string } = {
     status: false,
-    message: 'Internal Server Error',
-    error: err.message || 'Something went wrong',
+    message: err.message || 'Internal Server Error',
+    error: 'Something went wrong'
   };
 
   const statusCode = err.status || 500;

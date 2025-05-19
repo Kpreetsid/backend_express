@@ -46,6 +46,9 @@ export const accountWise = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const { account_id, _id: user_id } = req.user;
+    req.body.account_id = account_id;
+    req.body.user_id = user_id;
     const newAsset = new WorkOrder(req.body);
     const data = await newAsset.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
