@@ -24,7 +24,7 @@ export interface IUser extends Document {
   email: string;
   emailStatus: boolean;
   user_status: 'active' | 'inactive' | string;
-  user_role: 'admin' | 'user' | string;
+  user_role: 'super_admin' | 'admin' | 'user' | 'employee' | string;
   createdOn: Date;
   account_id: ObjectId;
   phone_no: IPhoneNumber;

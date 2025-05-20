@@ -5,12 +5,11 @@ import mongoose from "mongoose";
 import { hashPassword } from '../../_config/bcrypt';
 import { verifyCompany } from "../company/company.service";
 import { createUserRole } from './role/roles.service';
-import { isOwner } from "../../_config/permission";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data: IUser[] | null = await User.find({account_id: account_id}).sort({ _id: -1 });
+    const data: IUser[] | null = await User.find({account_id: account_id}).populate('account_id').sort({ _id: -1 });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -25,7 +24,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
     const { account_id, _id: user_id } = req.user;
-    const data: IUser[] | null = await User.find({_id: id, account_id: account_id});
+    const data: IUser[] | null = await User.find({_id: id, account_id: account_id}).populate('account_id');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
