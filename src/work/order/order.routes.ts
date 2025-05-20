@@ -1,5 +1,4 @@
 import express from 'express';
-import { authenticateJwt } from '../../_config/auth';
 import { getOrders, getOrder, createOrder, updateOrder, removeOrder } from './order.controller';
 
 export default (router: express.Router) => {

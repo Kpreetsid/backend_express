@@ -7,7 +7,7 @@ import { IUser, UserLoginPayload } from '../models/user.model';
 import { verifyUserRole } from '../masters/user/role/roles.service';
 import { verifyCompany } from '../masters/company/company.service';
 
-export const authenticateJwt = async (req: Request, res: Response, next: NextFunction) => {
+export const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const cookieToken = req.cookies['token'];
     const cookieAccountID = req.cookies['companyID'];

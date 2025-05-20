@@ -8,7 +8,7 @@ import cookieParser from 'cookie-parser';
 import { errorMiddleware } from './middlewares/error';
 import { fileLogger } from './middlewares/fileLogger';
 import { activityLogger } from './middlewares/logger';
-import { authenticateJwt } from './_config/auth';
+import { isAuthenticated } from './_config/auth';
 import authorizeRouterIndex from './authRoutes';
 import routerIndex from './nonAuthRoutes';
 import masterRoute from './masters/master.routes';
@@ -42,12 +42,12 @@ app.use(compression({
 }));
 
 app.use('/api', routerIndex());
-app.use('/api', authenticateJwt, authorizeRouterIndex());
-app.use('/api/upload', authenticateJwt, uploadRoutes());
-app.use('/api/master', authenticateJwt, masterRoute());
-app.use('/api/work', authenticateJwt, workRoutes());
-app.use('/api/reports', authenticateJwt, reportsRoutes());
-app.use('/api/map', authenticateJwt, transactionRoutes());
+app.use('/api', isAuthenticated, authorizeRouterIndex());
+app.use('/api/upload', isAuthenticated, uploadRoutes());
+app.use('/api/master', isAuthenticated, masterRoute());
+app.use('/api/work', isAuthenticated, workRoutes());
+app.use('/api/reports', isAuthenticated, reportsRoutes());
+app.use('/api/map', isAuthenticated, transactionRoutes());
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const err = new Error('Requested resource not found.');

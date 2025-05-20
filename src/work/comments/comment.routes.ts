@@ -1,5 +1,4 @@
 import express from 'express';
-import { authenticateJwt } from '../../_config/auth';
 import { getComments, getComment, createComment, updateComment, removeComment } from './comment.controller';
 
 export default (router: express.Router) => {

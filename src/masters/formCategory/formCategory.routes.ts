@@ -1,5 +1,4 @@
 import express from 'express';
-import { authenticateJwt } from '../../_config/auth';
 import { getFormCategories, getFormCategory, createFormCategory, updateFormCategory, removeFormCategory } from './formCategory.controller';
 
 export default (router: express.Router) => {

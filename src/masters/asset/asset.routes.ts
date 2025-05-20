@@ -1,5 +1,4 @@
 import express from 'express';
-import { authenticateJwt } from '../../_config/auth';
 import { getAssets, getAsset, createAsset, updateAsset, removeAsset } from './asset.controller';
 
 export default (router: express.Router) => {
