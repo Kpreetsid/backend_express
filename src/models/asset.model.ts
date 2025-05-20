@@ -31,6 +31,7 @@ export interface IAsset extends mongoose.Document {
   id?: ObjectId;
   image_path?: string;
   visible: boolean;
+  isActive: boolean;
 }
 
 const assetSchema = new Schema<IAsset>({
@@ -64,6 +65,7 @@ const assetSchema = new Schema<IAsset>({
   id: { type: Schema.Types.ObjectId },
   image_path: { type: String, default: '' },
   visible: { type: Boolean, default: true },
+  isActive: { type: Boolean, default: true }
 }, {
   collection: 'asset_master',
   timestamps: true,

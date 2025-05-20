@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import { hashPassword } from '../../_config/bcrypt';
 import { verifyCompany } from "../company/company.service";
 import { createUserRole } from './role/roles.service';
+import { isOwner } from "../../_config/permission";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -101,9 +102,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id;
-    const { name, email, password, role } = req.body;
-    const data = await User.findByIdAndUpdate(id, { name, email, password, role }, { new: true });
+    const { id } = req.params;
+    const data = await User.findByIdAndUpdate(id, req.body, { new: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

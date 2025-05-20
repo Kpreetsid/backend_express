@@ -13,7 +13,7 @@ const verificationCodeSchema = new Schema<IVerificationCode>({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   code: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 60 }
+  createdAt: { type: Date, default: Date.now, expires: '1h' }
 }, {
   collection: 'user_verification_code',
   timestamps: true,
