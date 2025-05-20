@@ -1,4 +1,4 @@
-import express, { Application, Request, Response, NextFunction, ErrorRequestHandler } from 'express';
+import express, { Application, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
 import path from 'path';
 import compression from 'compression';
@@ -11,11 +11,11 @@ import { activityLogger } from './middlewares/logger';
 import { isAuthenticated } from './_config/auth';
 import authorizeRouterIndex from './authRoutes';
 import routerIndex from './nonAuthRoutes';
-import masterRoute from './masters/master.routes';
 import workRoutes from './work/work.routes';
 import uploadRoutes from './upload/upload.routes';
 import reportsRoutes from './reports/reports.routes';
 import transactionRoutes from './transaction/transaction.routes';
+import masterRoutes from './masters/master.routes';
 
 const app: Application = express();
 
@@ -41,13 +41,17 @@ app.use(compression({
   }
 }));
 
-app.use('/api', routerIndex());
-app.use('/api', isAuthenticated, authorizeRouterIndex());
-app.use('/api/upload', isAuthenticated, uploadRoutes());
-app.use('/api/master', isAuthenticated, masterRoute());
-app.use('/api/work', isAuthenticated, workRoutes());
-app.use('/api/reports', isAuthenticated, reportsRoutes());
-app.use('/api/map', isAuthenticated, transactionRoutes());
+const apiRouter = Router();
+
+apiRouter.use('/', routerIndex());
+apiRouter.use('/', isAuthenticated, authorizeRouterIndex());
+apiRouter.use('/upload', isAuthenticated, uploadRoutes());
+apiRouter.use('/master', isAuthenticated, masterRoutes());
+apiRouter.use('/work', isAuthenticated, workRoutes());
+apiRouter.use('/reports', isAuthenticated, reportsRoutes());
+apiRouter.use('/map', isAuthenticated, transactionRoutes());
+
+app.use('/api', apiRouter);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const err = new Error('Requested resource not found.');
