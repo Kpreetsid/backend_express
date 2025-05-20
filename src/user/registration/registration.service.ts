@@ -5,6 +5,10 @@ import { NextFunction, Request, Response } from 'express';
 import { hashPassword } from '../../_config/bcrypt';
 import mongoose from "mongoose";
 import { platformControlData } from "../../_config/userRoles";
+import { sendMail } from '../../_config/mailer'
+import fs from 'fs';
+import path from 'path';
+import { VerificationCode } from "../../models/userVerification.model";
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -28,12 +32,67 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     if (!userRoleMenu) {
       throw Object.assign(new Error('User role menu creation failed'), { status: 500 });
     }
+    const emailVerification = await sendVerificationCode(body.email, body.firstName, body.lastName);
+    if (!emailVerification) {
+      throw Object.assign(new Error('Email verification failed'), { status: 500 });
+    }
     return res.status(201).json({ status: true, message: "Data created successfully", account, user: safeUser, userRoleMenu });
   } catch (error) {
     console.error(error);
     next(error);
   }
 };
+
+export const verifyOTPCode = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, verificationCode } = req.body;
+    const userVerification = await VerificationCode.findOne({ email, code: verificationCode });
+    if (!userVerification) {
+      throw Object.assign(new Error('OTP expired'), { status: 403 });
+    }
+    await userVerification.deleteOne({ email, code: verificationCode });
+    return res.status(200).json({ status: true, message: "OTP code verified successfully" });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const emailVerificationCode = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, firstName, lastName } = req.body;
+    const emailVerification = await sendVerificationCode(email, firstName, lastName);
+    if (!emailVerification) {
+      throw Object.assign(new Error('Email verification failed'), { status: 500 });
+    }
+    return res.status(200).json({ status: true, message: "Email verification code sent successfully" });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
+
+export const sendVerificationCode = async (email: string, firstName: string, lastName: string): Promise<boolean> => {
+  try {
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const templatePath = path.join(__dirname, '../../public/verificationCode.template.html');
+    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    htmlTemplate = htmlTemplate.replace('{{OTP}}', otp.toString());
+    htmlTemplate = htmlTemplate.replace('{{YEAR}}', new Date().getFullYear().toString());
+    htmlTemplate = htmlTemplate.replace('{{NAME}}', firstName + ' ' + lastName);
+    const mailResponse = await sendMail({
+      to: email,
+      subject: 'Verify Your Email Address',
+      html: htmlTemplate
+    });
+    await new VerificationCode({ email, firstName, lastName, code: otp.toString() }).save();
+    console.log(mailResponse);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
 
 const createNewUser = async (body: IUser) => {
   try {
