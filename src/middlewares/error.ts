@@ -9,7 +9,7 @@ export const errorMiddleware = (err: any, req: Request, res: Response, next: Nex
   const response: { status: boolean; message: string; error?: string } = {
     status: false,
     message: err.message || 'Internal Server Error',
-    error: 'Something went wrong'
+    error: err.message || 'Something went wrong'
   };
 
   const statusCode = err.status || 500;
