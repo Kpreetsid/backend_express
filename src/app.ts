@@ -16,6 +16,7 @@ import uploadRoutes from './upload/upload.routes';
 import reportsRoutes from './reports/reports.routes';
 import transactionRoutes from './transaction/transaction.routes';
 import masterRoutes from './masters/master.routes';
+import morgan from 'morgan';
 
 const app: Application = express();
 
@@ -25,6 +26,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(fileLogger);
 app.use(activityLogger);
+app.use(morgan('dev'));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
 
 app.use(rateLimit({

@@ -55,6 +55,61 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
+export const kpiFilterLocations = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id } = (req as any).user;
+    const match: any = { visible: true, account_id: account_id };
+    const mapLocationData: IMapUserLocation[] = await MapUserLocation.find({ userId: user_id });
+    if (mapLocationData?.length > 0) {
+      const locationIds = mapLocationData.map(doc => doc.locationId).filter(id => id);
+      match._id = { $in: locationIds };
+    }
+
+    const data: ILocationMaster[] = await LocationMaster.find(match).sort({ _id: -1 });
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const locations = data.map(doc => doc.toObject());
+    const idMap: { [key: string]: any } = {};
+    locations.forEach(loc => {
+      idMap[loc._id.toString()] = { ...loc, children: [] };
+    });
+
+    const rootNodes: any[] = [];
+    locations.forEach(loc => {
+      const parentId = loc.parent_id?.toString();
+      if (parentId && idMap[parentId]) {
+        idMap[parentId].children.push(idMap[loc._id.toString()]);
+      } else {
+        rootNodes.push(idMap[loc._id.toString()]);
+      }
+    });
+    const levelOneLocations: any[] = [];
+    const levelTwoLocations: any[] = [];
+    const levelThreeLocations: any[] = [];
+    const traverse = (nodes: any[], level: number) => {
+      for (const node of nodes) {
+        const formatted = {
+          location_name: node.location_name,
+          id: node._id.toString(),
+        };
+        if (level === 1) levelOneLocations.push(formatted);
+        else if (level === 2) levelTwoLocations.push(formatted);
+        else if (level === 3) levelThreeLocations.push(formatted);
+        if (node.children?.length > 0) {
+          traverse(node.children, level + 1);
+        }
+      }
+    };
+    traverse(rootNodes, 1);
+    return res.status(200).json({ status: true, message: "Data Found", data: { levelOneLocations, levelTwoLocations, levelThreeLocations }});
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
@@ -73,15 +128,37 @@ export const getDataByFilter = async (req: Request, res: Response, next: NextFun
   try {
     const { account_id, _id: user_id } = (req as any).user;
     const body = req.body;
-    const match: any = { account_id, user_id };
-    if(body.locationId) {
-      match._id = body.locationId;
+    const match: any = { visible: true, account_id: account_id };
+    if(body.locationList.length > 0) {
+      match._id = { $in: body.locationList };
     }
-    const data: ILocationMaster[] | null = await LocationMaster.find(match);
+    const data: ILocationMaster[] = await LocationMaster.find(match).sort({ _id: -1 });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
+
+export const childAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { location_id } = req.body;
+    const { account_id, _id: user_id } = (req as any).user;
+    console.log(location_id.levelOneLocations);
+    console.log(location_id.levelTwoLocations);
+    const dataOne = await LocationMaster.find({ account_id: account_id, _id: { $in: location_id.levelOneLocations } });
+    const childDataOne = await LocationMaster.find({ account_id: account_id, parent_id: { $in: location_id.levelOneLocations } });
+    const dataTwo = await LocationMaster.find({ account_id: account_id, _id: { $in: location_id.levelTwoLocations } });
+    const childDataTwo = await LocationMaster.find({ account_id: account_id, parent_id: { $in: location_id.levelTwoLocations } });
+    const data = [...dataOne, ...childDataOne, ...dataTwo, ...childDataTwo];
+    if(!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const locationList = data.map((doc: any) => doc._id.toString());
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: { locationList } });
   } catch (error) {
     console.error(error);
     next(error);
