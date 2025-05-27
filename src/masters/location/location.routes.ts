@@ -2,12 +2,13 @@ import express from 'express';
 import { getLocations, getLocation, updateLocation, removeLocation, getKpiFilterLocations, getFilterLocations, getChildAssetsAgainstLocation } from './location.controller';
 
 export default (router: express.Router) => {
-    router.get('/locations', getLocations);
-    router.get('/getKPIFilterLocations', getKpiFilterLocations);
-    router.get('/location/:id', getLocation);
-    router.post('/location', updateLocation);
-    router.post('/getChildAssetsAgainstLocation', getChildAssetsAgainstLocation)
-    router.post('/locationFilter', getFilterLocations);
-    router.put('/location/:id', updateLocation);
-    router.delete('/location/:id', removeLocation);
+    const locationRouter = express.Router();
+    locationRouter.get('/', getLocations);
+    locationRouter.get('/kpi-filter', getKpiFilterLocations);
+    locationRouter.get('/:id', getLocation);
+    locationRouter.post('/child-assets', getChildAssetsAgainstLocation);
+    locationRouter.post('/filter', getFilterLocations);
+    locationRouter.put('/:id', updateLocation);
+    locationRouter.delete('/:id', removeLocation);
+    router.use('/locations', locationRouter);
 }

@@ -1,10 +1,10 @@
-import { Asset, getAllAssets, IAsset } from "../../models/asset.model";
+import { Asset, IAsset } from "../../models/asset.model";
 import { NextFunction, Request, Response } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data: IAsset[] | null = await getAllAssets(account_id); 
+    const data: IAsset[] | null = await Asset.find({account_id: account_id, visible: true}).sort({ _id: -1 });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

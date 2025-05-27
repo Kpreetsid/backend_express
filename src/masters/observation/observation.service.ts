@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data = await Observation.find({account_id: account_id}).sort({ _id: -1 });
+    const data = await Observation.find({}).sort({ _id: -1 });
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -28,6 +28,20 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
+
+export const getDataByParam = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const query = { ...req.query, visible: true };
+    const data = await Observation.find(query).sort({ _id: -1 });
+    if (data.length === 0) {
+      throw Object.assign(new Error('No matching data found'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {

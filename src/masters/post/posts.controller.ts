@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, insert, updateById, removeById } from './posts.service';
+import { getAll, getDataById, getDataByFilter, insert, updateById, removeById } from './posts.service';
 
 export const getPosts = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
@@ -7,6 +7,10 @@ export const getPosts = async (req: Request, res: Response, next: NextFunction) 
 
 export const getPost = async (req: Request, res: Response, next: NextFunction) => {
   await getDataById(req, res, next);
+}
+
+export const getFilterPost = async (req: Request, res: Response, next: NextFunction) => {
+  await getDataByFilter(req, res, next);
 }
 
 export const createPost = async (req: Request, res: Response, next: NextFunction) => {

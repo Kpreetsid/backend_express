@@ -1,10 +1,13 @@
 import express from 'express';
-import { getSchedules, getSchedule, createSchedule, updateSchedule, removeSchedule } from './schedule.controller';
+import { getSchedules, getSchedule, getFilterSchedules, createSchedule, updateSchedule, removeSchedule } from './schedule.controller';
 
 export default (router: express.Router) => {
-    router.get('/schedules', getSchedules);
-    router.get('/schedule/:id', getSchedule);
-    router.post('/schedule', createSchedule);
-    router.put('/schedule/:id', updateSchedule);
-    router.delete('/schedule/:id', removeSchedule);
+    const scheduleRouter = express.Router();
+    scheduleRouter.get('/', getSchedules);
+    scheduleRouter.get('/filter', getFilterSchedules);
+    scheduleRouter.get('/:id', getSchedule);
+    scheduleRouter.post('/', createSchedule);
+    scheduleRouter.put('/:id', updateSchedule);
+    scheduleRouter.delete('/:id', removeSchedule);
+    router.use('/schedules', scheduleRouter);
 }

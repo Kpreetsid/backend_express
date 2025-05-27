@@ -1,10 +1,14 @@
 import express from 'express';
-import { getAssets, getAsset, createAsset, updateAsset, removeAsset } from './asset.controller';
+import { getAssets, getAsset, getFilteredAssets, getAssetTree, createAsset, updateAsset, removeAsset } from './asset.controller';
 
 export default (router: express.Router) => {
-    router.get('/assets', getAssets);
-    router.get('/assets/:id', getAsset);
-    router.post('/assets', createAsset);
-    router.put('/assets/:id', updateAsset);
-    router.delete('/assets/:id', removeAsset);
+    const assetRouter = express.Router();
+    assetRouter.get('/', getAssets);
+    assetRouter.post('/tree', getAssetTree);
+    assetRouter.post('/filter', getFilteredAssets);
+    assetRouter.get('/:id', getAsset);
+    assetRouter.post('/', createAsset);
+    assetRouter.put('/:id', updateAsset);
+    assetRouter.delete('/:id', removeAsset);
+    router.use('/assets', assetRouter);
 }

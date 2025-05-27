@@ -1,10 +1,13 @@
 import express from 'express';
-import { getParts, getPart, createPart, updatePart, removePart } from './parts.controller';
+import { getParts, getPart, createPart, updatePart, removePart, getFilterParts } from './parts.controller';
 
 export default (router: express.Router) => {
-    router.get('/parts', getParts);
-    router.get('/part/:id', getPart);
-    router.post('/part', createPart);
-    router.put('/part/:id', updatePart);
-    router.delete('/part/:id', removePart);
+    const partRouter = express.Router();
+    partRouter.get('/', getParts);
+    partRouter.get('/filter', getFilterParts);
+    partRouter.get('/:id', getPart);
+    partRouter.post('/', createPart);
+    partRouter.put('/:id', updatePart);
+    partRouter.delete('/:id', removePart);
+    router.use('/parts', partRouter);
 }

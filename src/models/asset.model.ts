@@ -10,8 +10,8 @@ export interface IAsset extends mongoose.Document {
   asset_name: string;
   asset_id: string;
   top_level: boolean;
-  locationId?: ObjectId; 
-  location_id?: string; 
+  locationId?: ObjectId;
+  location_id?: string;
   account_id: ObjectId;
   top_level_asset_id: ObjectId;
   parent_id?: ObjectId;
@@ -73,15 +73,3 @@ const assetSchema = new Schema<IAsset>({
 });
 
 export const Asset = mongoose.model<IAsset>('Asset', assetSchema);
-
-export const getAllAssets = async (accountId: ObjectId) => await Asset.find({ account_id: accountId, visible: true }).sort({ _id: -1 });
-
-export const getAssetById = async (id: string) => await Asset.findById(id);
-
-export const getFilteredAssets = async (filter: Record<string, any>) => await Asset.find({filter, visible: true }).sort({ _id: -1 });
-
-export const createAsset = async (asset: IAsset) => await Asset.create(asset);
-
-export const updateAsset = async (id: string, asset: IAsset) => await Asset.findByIdAndUpdate(id, asset);
-
-export const deleteAsset = async (id: string) => await Asset.findByIdAndUpdate(id, { visible: false });

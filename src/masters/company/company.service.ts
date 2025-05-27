@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
-import { Account, IAccount, getAllAccount, getAccountByID } from "../../models/account.model";
+import { Account, IAccount } from "../../models/account.model";
 import { NextFunction, Request, Response } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data: IAccount[] = await getAllAccount();
+    const data: IAccount[] = await Account.find({isActive: true}).sort({ _id: -1 });
     if(data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -18,9 +18,23 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data: IAccount | null = await getAccountByID(id);
+    const data: IAccount | null = await Account.findById(id);
     if (!data || !data.isActive) {
       throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const getDataByParam = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const query = { ...req.query, isActive: true };
+    const data: IAccount[] = await Account.find(query).sort({ _id: -1 });
+    if (data.length === 0) {
+      throw Object.assign(new Error('No matching data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {

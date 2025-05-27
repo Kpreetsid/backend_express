@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data = await Comments.find({account_id: account_id}).sort({ _id: -1 });
+    const data = await Comments.find({}).sort({ _id: -1 });
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

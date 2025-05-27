@@ -16,6 +16,9 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!user || user.user_status !== 'active') {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
+    if(!user.isVerified) {
+      throw Object.assign(new Error('User is not verified'), { status: 403 });
+    }
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });

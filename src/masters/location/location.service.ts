@@ -7,7 +7,7 @@ const moduleName: string = "location";
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = (req as any).user;
-    const data: ILocationMaster[] | null = await LocationMaster.find({account_id: account_id}).sort({ _id: -1 });
+    const data: ILocationMaster[] | null = await LocationMaster.find({}).sort({ _id: -1 });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

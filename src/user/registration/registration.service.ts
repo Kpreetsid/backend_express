@@ -1,4 +1,4 @@
-import { Account, IAccount, createAccount } from "../../models/account.model";
+import { Account, IAccount } from "../../models/account.model";
 import { User, IUser } from "../../models/user.model";
 import { UserRoleMenu, IUserRoleMenu} from "../../models/userRoleMenu.model";
 import { NextFunction, Request, Response } from 'express';
@@ -13,7 +13,7 @@ import { VerificationCode } from "../../models/userVerification.model";
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
-    const account: IAccount = await createAccount(new Account({
+    const account: IAccount = await Account.create(new Account({
       name: body.name,
       type: body.type,
       description: body.description
@@ -50,6 +50,7 @@ export const verifyOTPCode = async (req: Request, res: Response, next: NextFunct
     if (!userVerification) {
       throw Object.assign(new Error('OTP expired'), { status: 403 });
     }
+    await User.updateOne({ email }, { $set: { isVerified: true } });
     await userVerification.deleteOne({ email, code: verificationCode });
     return res.status(200).json({ status: true, message: "OTP code verified successfully" });
   } catch (error) {

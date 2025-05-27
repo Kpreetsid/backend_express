@@ -10,13 +10,9 @@ import partsRoutes from './part/parts.routes';
 import postsRoutes from './post/posts.routes';
 import scheduleRoutes from './schedule/schedule.routes';
 import sopsRoutes from './sops/sops.routes';
-import logsRoutes from './user/logs/logs.routes';
-import rolesRoutes from './user/role/roles.routes';
 
 export default (): express.Router => {
     usersRouter(router);
-    logsRoutes(router);
-    rolesRoutes(router);
     companyRoutes(router);
     assetsRouter(router);
     partsRoutes(router);

@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, insert, updateById, removeById } from './observation.service';
+import { getAll, getDataById, getDataByParam, insert, updateById, removeById } from './observation.service';
 
 export const getObservations = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
@@ -7,6 +7,10 @@ export const getObservations = async (req: Request, res: Response, next: NextFun
 
 export const getObservation = async (req: Request, res: Response, next: NextFunction) => {
   await getDataById(req, res, next);
+}
+
+export const getFilteredObservations = async (req: Request, res: Response, next: NextFunction) => {
+  await getDataByParam(req, res, next);
 }
 
 export const createObservation = async (req: Request, res: Response, next: NextFunction) => {
