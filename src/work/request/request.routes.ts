@@ -1,10 +1,13 @@
 import express from 'express';
-import { getRequests, getRequest, createRequest, updateRequest, removeRequest } from './request.controller';
+import { getRequests, getRequest, getFilterRequests, createRequest, updateRequest, removeRequest } from './request.controller';
 
 export default (router: express.Router) => {
-    router.get('/requests', getRequests);
-    router.get('/request/:id', getRequest);
-    router.post('/request', createRequest);
-    router.put('/request/:id', updateRequest);
-    router.delete('/request/:id', removeRequest);
+    const requestRouter = express.Router();
+    requestRouter.get('/', getRequests);
+    requestRouter.get('/filter', getFilterRequests);
+    requestRouter.get('/:id', getRequest);
+    requestRouter.post('/', createRequest);
+    requestRouter.put('/:id', updateRequest);
+    requestRouter.delete('/:id', removeRequest);
+    router.use('/requests', requestRouter);
 }

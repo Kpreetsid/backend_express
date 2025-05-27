@@ -1,10 +1,13 @@
 import express from 'express';
-import { getOrders, getOrder, createOrder, updateOrder, removeOrder } from './order.controller';
+import { getOrders, getOrder, getFilterOrders, createOrder, updateOrder, removeOrder } from './order.controller';
 
 export default (router: express.Router) => {
-    router.get('/orders', getOrders);
-    router.get('/order/:id', getOrder);
-    router.post('/order', createOrder);
-    router.put('/order/:id', updateOrder);
-    router.delete('/order/:id', removeOrder);
+    const orderRouter = express.Router();
+    orderRouter.get('/', getOrders);
+    orderRouter.get('/filter', getFilterOrders);
+    orderRouter.get('/:id', getOrder);
+    orderRouter.post('/', createOrder);
+    orderRouter.put('/:id', updateOrder);
+    orderRouter.delete('/:id', removeOrder);
+    router.use('/orders', orderRouter);
 }
