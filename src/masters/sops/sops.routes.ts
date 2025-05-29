@@ -1,10 +1,13 @@
 import express from 'express';
 import { getSops, getSop, createSop, updateSop, removeSop } from './sops.controller';
+import { hasPermission } from '../../_config/permission';
 
 export default (router: express.Router) => {
-    router.get('/sops', getSops);
-    router.get('/sop/:id', getSop);
-    router.post('/sop', createSop);
-    router.put('/sop/:id', updateSop);
-    router.delete('/sop/:id', removeSop);
+    const sopRouter = express.Router();
+    sopRouter.get('/', getSops);
+    sopRouter.get('/:id', getSop);
+    sopRouter.post('/', createSop);
+    sopRouter.put('/:id', updateSop);
+    sopRouter.delete('/:id', hasPermission('admin'),removeSop);
+    router.use('/sops', sopRouter);
 }

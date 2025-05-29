@@ -10,6 +10,7 @@ import partsRoutes from './part/parts.routes';
 import postsRoutes from './post/posts.routes';
 import scheduleRoutes from './schedule/schedule.routes';
 import sopsRoutes from './sops/sops.routes';
+import teamRoutes from './team/team.routes';
 
 export default (): express.Router => {
     usersRouter(router);
@@ -22,5 +23,6 @@ export default (): express.Router => {
     locationRoutes(router);
     formCategoryRoutes(router);
     observationRoutes(router);
+    teamRoutes(router);
     return router;
 }

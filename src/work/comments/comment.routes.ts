@@ -1,5 +1,6 @@
 import express from 'express';
 import { getComments, getComment, getFilterComments, createComment, updateComment, removeComment } from './comment.controller';
+import { hasPermission } from '../../_config/permission';
 
 export default (router: express.Router) => {
     const commentRouter = express.Router();
@@ -8,6 +9,6 @@ export default (router: express.Router) => {
     commentRouter.get('/:id', getComment);
     commentRouter.post('/', createComment);
     commentRouter.put('/:id', updateComment);
-    commentRouter.delete('/:id', removeComment);
+    commentRouter.delete('/:id', hasPermission('admin'),removeComment);
     router.use('/comments', commentRouter);
 }

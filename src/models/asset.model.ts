@@ -1,4 +1,10 @@
-import mongoose, { Schema, ObjectId } from 'mongoose';
+import mongoose, { Schema, ObjectId, Document } from 'mongoose';
+
+export interface IStage {
+  gear_ratio: number;
+  rpm: number;
+  torque: number;
+}
 
 export interface ILocationData {
   location_name: string;
@@ -6,66 +12,108 @@ export interface ILocationData {
   assigned_to?: string;
 }
 
-export interface IAsset extends mongoose.Document {
+export interface IAsset extends Document {
   asset_name: string;
   asset_id: string;
-  top_level: boolean;
-  locationId?: ObjectId;
-  location_id?: string;
-  account_id: ObjectId;
-  top_level_asset_id: ObjectId;
-  parent_id?: ObjectId;
-  parent_name?: string;
-  description: string;
-  asset_model?: string;
-  asset_model_name?: string;
-  manufacturer: string;
   asset_type: string;
+  asset_model: string;
+  asset_orient?: string;
+  asset_behavior?: string;
+  asset_frequency?: string;
+  mounting: string;
+  bladeCount: string;
+  powUnit: string;
+  brandModel: string;
+  pinionGearTeethCount: string;
+  timingGearTeethCount: string;
+  minRotation: string;
+  maxRotation: string;
+  specificFrequency: string[];
+  minInputRotation: string;
+  maxInputRotation: string;
+  minOutputRotation: string;
+  maxOutputRotation: string;
+  drivingPulleyDia: string;
+  drivenPulleyDia: string;
+  impellerBladeCount: string;
+  beltLength: string;
+  outputRPM: string;
+  noOfGrooves: string;
+  bearingType: string;
+  rotationUnit: string;
+  top_level: boolean;
+  locationId: ObjectId;
+  account_id: ObjectId;
+  parent_id: ObjectId;
+  powerRating: string;
+  top_level_asset_id: ObjectId;
+  description: string;
+  manufacturer: string;
   year: string;
-  qr_code: string;
-  teamId: string | null;
-  assigned_to: number;
-  locationData: ILocationData[];
-  locationName: string;
-  equipment_id?: string;
-  id?: ObjectId;
-  image_path?: string;
+  brandMake: string;
   visible: boolean;
   isActive: boolean;
+  assigned_to: number;
+  image_path: string;
+  noStages: number;
+  qr_code: string;
+  stageList: IStage[];
+  createdBy: ObjectId;
 }
+
+const StageSchema = new Schema<IStage>({
+  gear_ratio: { type: Number, required: true },
+  rpm: { type: Number, required: true },
+  torque: { type: Number, required: true },
+}, { _id: false });
 
 const assetSchema = new Schema<IAsset>({
   asset_name: { type: String, required: true },
   asset_id: { type: String, default: '' },
+  asset_type: { type: String },
+  asset_orient: { type: String },
+  asset_behavior: { type: String },
+  asset_frequency: { type: String },
+  mounting: { type: String },
+  bladeCount: { type: String },
+  powUnit: { type: String },
+  brandModel: { type: String },
+  pinionGearTeethCount: { type: String },
+  timingGearTeethCount: { type: String },
+  minRotation: { type: String },
+  maxRotation: { type: String },
+  specificFrequency: { type: [String], default: null },
+  minInputRotation: { type: String },
+  maxInputRotation: { type: String },
+  minOutputRotation: { type: String },
+  maxOutputRotation: { type: String },
+  drivingPulleyDia: { type: String },
+  drivenPulleyDia: { type: String },
+  impellerBladeCount: { type: String },
+  beltLength: { type: String },
+  outputRPM: { type: String },
+  noOfGrooves: { type: String },
+  bearingType: { type: String },
+  rotationUnit: { type: String },
   top_level: { type: Boolean, default: false },
   locationId: { type: Schema.Types.ObjectId },
-  location_id: { type: String },
-  account_id: { type: Schema.Types.ObjectId, required: true },
-  top_level_asset_id: { type: Schema.Types.ObjectId, required: true },
+  account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
+  top_level_asset_id: { type: Schema.Types.ObjectId},
   parent_id: { type: Schema.Types.ObjectId, default: null },
-  parent_name: { type: String, default: '' },
   description: { type: String, default: '' },
-  asset_model: { type: String, default: '' },
-  asset_model_name: { type: String, default: '' },
   manufacturer: { type: String, default: '' },
-  asset_type: { type: String, required: true },
   year: { type: String, default: '' },
+  asset_model: { type: String, default: '' },
   qr_code: { type: String, default: '' },
-  teamId: { type: String, default: null },
-  assigned_to: { type: Number, required: true },
-  locationData: [
-    {
-      location_name: { type: String, required: true },
-      id: { type: String, required: true },
-      assigned_to: { type: String, required: false },
-    },
-  ],
-  locationName: { type: String, required: true },
-  equipment_id: { type: String, default: '' },
-  id: { type: Schema.Types.ObjectId },
+  assigned_to: { type: Number, default: 1 },
   image_path: { type: String, default: '' },
   visible: { type: Boolean, default: true },
-  isActive: { type: Boolean, default: true }
+  isActive: { type: Boolean, default: true },
+  brandMake: { type: String, default: '' },
+  powerRating: { type: String, default: '' },
+  noStages: { type: Number, default: 0 },
+  stageList: [StageSchema],
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
   collection: 'asset_master',
   timestamps: true,

@@ -1,4 +1,3 @@
-import mongoose from "mongoose";
 import { LocationMaster, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
 import { IMapUserLocation, MapUserLocation } from "../../models/mapUserLocation.model";

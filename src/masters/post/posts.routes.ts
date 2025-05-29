@@ -1,5 +1,6 @@
 import express from 'express';
 import { getPosts, getPost, getFilterPost, createPost, updatePost, removePost } from './posts.controller';
+import { hasPermission } from '../../_config/permission';
 
 export default (router: express.Router) => {
     const postRouter = express.Router();
@@ -8,6 +9,6 @@ export default (router: express.Router) => {
     postRouter.get('/:id', getPost);
     postRouter.post('/', createPost);
     postRouter.put('/:id', updatePost);
-    postRouter.delete('/:id', removePost);
+    postRouter.delete('/:id', hasPermission('admin'),removePost);
     router.use('/posts', postRouter);
 }

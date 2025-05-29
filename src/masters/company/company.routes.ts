@@ -1,5 +1,6 @@
 import express from 'express';
 import { getCompanies, getCompany, getCompaniesByParam, updateCompany, removeCompany } from './company.controller';
+import { hasPermission } from '../../_config/permission';
 
 export default (router: express.Router) => {
     const companyRouter = express.Router();
@@ -7,6 +8,6 @@ export default (router: express.Router) => {
     companyRouter.get('/filter', getCompaniesByParam);
     companyRouter.get('/:id', getCompany);
     companyRouter.put('/:id', updateCompany);
-    companyRouter.delete('/:id', removeCompany);
+    companyRouter.delete('/:id', hasPermission('admin'),removeCompany);
     router.use('/companies', companyRouter);
 }

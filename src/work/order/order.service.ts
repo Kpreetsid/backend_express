@@ -4,8 +4,12 @@ import { Request, Response, NextFunction } from 'express';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
-    const data = await WorkOrder.find({account_id: account_id, visible: true}).sort({ _id: -1 });
+    const { account_id, _id: user_id, user_role: role } = req.user;
+    const match: any = { account_id: account_id, visible: true };
+    if(role !== 'admin') {
+      match.user_id = user_id;
+    }
+    const data = await WorkOrder.find(match).sort({ _id: -1 });
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

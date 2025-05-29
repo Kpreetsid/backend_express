@@ -18,6 +18,20 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+export const getMyRoles = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id } = req.user;
+    const data = await UserRoleMenu.findOne({ account_id: account_id, user_id: user_id, visible: true });
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
+
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;

@@ -1,8 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, insert, updateById, removeById } from './roles.service';
+import { getAll, getDataById, insert, updateById, removeById, getMyRoles } from './roles.service';
 
 export const getRoles = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
+}
+
+export const myRoleData = async (req: Request, res: Response, next: NextFunction) => {
+  await getMyRoles(req, res, next);
 }
 
 export const getRole = async (req: Request, res: Response, next: NextFunction) => {

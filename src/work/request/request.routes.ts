@@ -1,5 +1,6 @@
 import express from 'express';
 import { getRequests, getRequest, getFilterRequests, createRequest, updateRequest, removeRequest } from './request.controller';
+import { hasPermission } from '../../_config/permission';
 
 export default (router: express.Router) => {
     const requestRouter = express.Router();
@@ -8,6 +9,6 @@ export default (router: express.Router) => {
     requestRouter.get('/:id', getRequest);
     requestRouter.post('/', createRequest);
     requestRouter.put('/:id', updateRequest);
-    requestRouter.delete('/:id', removeRequest);
+    requestRouter.delete('/:id', hasPermission('admin'),removeRequest);
     router.use('/requests', requestRouter);
 }
