@@ -13,6 +13,24 @@ import { VerificationCode } from "../../models/userVerification.model";
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
+    const emailVerification = await sendVerificationCode(body.email, body.firstName, body.lastName);
+    if (!emailVerification) {
+      throw Object.assign(new Error('Email verification failed'), { status: 500 });
+    }
+    return res.status(201).json({ status: true, message: "Email verification code sent successfully" });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const verifyOTPCode = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const body = req.body;
+    const userVerification = await VerificationCode.findOne({ email: body.email, code: body.verificationCode });
+    if (!userVerification) {
+      throw Object.assign(new Error('OTP expired'), { status: 403 });
+    }
     const account: IAccount = await Account.create(new Account({
       name: body.name,
       type: body.type,
@@ -24,6 +42,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     body.account_id = account._id;
     body.isFirstUser = true;
     body.user_role = "admin";
+    body.isVerified = true;
     const safeUser = await createNewUser(body);
     if (!safeUser) {
       throw Object.assign(new Error('User creation failed'), { status: 500 });
@@ -32,26 +51,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     if (!userRoleMenu) {
       throw Object.assign(new Error('User role menu creation failed'), { status: 500 });
     }
-    const emailVerification = await sendVerificationCode(body.email, body.firstName, body.lastName);
-    if (!emailVerification) {
-      throw Object.assign(new Error('Email verification failed'), { status: 500 });
-    }
-    return res.status(201).json({ status: true, message: "Data created successfully", account, user: safeUser, userRoleMenu });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
-export const verifyOTPCode = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { email, verificationCode } = req.body;
-    const userVerification = await VerificationCode.findOne({ email, code: verificationCode });
-    if (!userVerification) {
-      throw Object.assign(new Error('OTP expired'), { status: 403 });
-    }
-    await User.updateOne({ email }, { $set: { isVerified: true } });
-    await userVerification.deleteOne({ email, code: verificationCode });
+    await userVerification.deleteOne({ email: body.email, code: body.verificationCode });
     return res.status(200).json({ status: true, message: "OTP code verified successfully" });
   } catch (error) {
     console.error(error);
