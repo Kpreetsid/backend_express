@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data = await WorkRequestModel.find({}).sort({ _id: -1 });
+    const data = await WorkRequestModel.find({}).lean();
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -32,7 +32,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const match = { ...req.query, visible: true };
-    const data = await WorkRequestModel.find(match).sort({ _id: -1 });
+    const data = await WorkRequestModel.find(match).lean();
     if (data.length === 0) {
       throw Object.assign(new Error('No matching data found'), { status: 404 });
     }

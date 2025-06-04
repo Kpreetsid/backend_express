@@ -9,7 +9,7 @@ import { createUserRole } from './role/roles.service';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data: IUser[] | null = await User.find({account_id: account_id}).populate('account_id').sort({ _id: -1 });
+    const data: IUser[] | null = await User.find({account_id: account_id}).populate('account_id').lean();
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

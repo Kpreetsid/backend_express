@@ -44,11 +44,11 @@ const locationMasterSchema = new Schema<ILocationMaster>({
 
 export const LocationMaster = mongoose.model<ILocationMaster>('LocationMaster', locationMasterSchema);
 
-export const getAllLocations = async (accountId: string) => await LocationMaster.find({ account_id: accountId, visible: true }).sort({ _id: -1 });
+export const getAllLocations = async (accountId: string) => await LocationMaster.find({ account_id: accountId, visible: true }).lean();
 
 export const getLocationById = async (id: string) => await LocationMaster.findById(id);
 
-export const getLocationByFilter = async (accountId: string, filter: any) => await LocationMaster.find({ account_id: accountId, ...filter, visible: true }).sort({ _id: -1 });
+export const getLocationByFilter = async (accountId: string, filter: any) => await LocationMaster.find({ account_id: accountId, ...filter, visible: true }).lean();
 
 export const createLocation = async (location: ILocationMaster) => await new LocationMaster(location).save();
 

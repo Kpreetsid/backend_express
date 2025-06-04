@@ -8,6 +8,7 @@ import path from "path";
 import fs from "fs";
 import { sendMail } from "../../_config/mailer";
 import { VerificationCode } from "../../models/userVerification.model";
+import { auth } from "../../configDB";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -36,7 +37,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       _id: token,
       userId: user._id,
       principalType: 'user',
-      ttl: 24 * 60 * 60
+      ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
     res.status(200).json({ status: true, message: 'Login successful', data: {userDetails: safeUser, token, platformControl: userRoleData.data} });

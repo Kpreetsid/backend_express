@@ -1,12 +1,14 @@
 import { LocationMaster, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
 import { IMapUserLocation, MapUserLocation } from "../../models/mapUserLocation.model";
+import { console } from "inspector";
 const moduleName: string = "location";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = (req as any).user;
-    const data: ILocationMaster[] | null = await LocationMaster.find({}).sort({ _id: -1 });
+    console.log(req.user);
+    const data: ILocationMaster[] | null = await LocationMaster.find({}).sort({ _id: 1 });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -27,7 +29,7 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
       match._id = { $in: locationIds };
     }
 
-    const data: ILocationMaster[] = await LocationMaster.find(match).sort({ _id: -1 });
+    const data: ILocationMaster[] = await LocationMaster.find(match).sort({ _id: 1 });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -35,14 +37,14 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
     const locations = data.map(doc => doc.toObject());
     const idMap: { [key: string]: any } = {};
     locations.forEach(loc => {
-      idMap[loc._id.toString()] = { ...loc, children: [] };
+      idMap[loc._id.toString()] = { ...loc, childs: [] };
     });
 
     const rootNodes: any[] = [];
     locations.forEach(loc => {
       const parentId = loc.parent_id?.toString();
       if (parentId && idMap[parentId]) {
-        idMap[parentId].children.push(idMap[loc._id.toString()]);
+        idMap[parentId].childs.push(idMap[loc._id.toString()]);
       } else {
         rootNodes.push(idMap[loc._id.toString()]);
       }
@@ -64,7 +66,7 @@ export const kpiFilterLocations = async (req: Request, res: Response, next: Next
       match._id = { $in: locationIds };
     }
 
-    const data: ILocationMaster[] = await LocationMaster.find(match).sort({ _id: -1 });
+    const data: ILocationMaster[] = await LocationMaster.find(match).sort({ _id: 1 });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -112,6 +114,12 @@ export const kpiFilterLocations = async (req: Request, res: Response, next: Next
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    const { account_id, _id: user_id } = (req as any).user;
+    const mapData = await MapUserLocation.find({userId: user_id , locationId: id}).populate('userId');
+    if(!mapData || mapData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    console.log(mapData);
     const data: ILocationMaster | null = await LocationMaster.findById(id);
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -125,13 +133,13 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = (req as any).user;
-    const body = req.body;
-    const match: any = { visible: true, account_id: account_id };
-    if(body.locationList.length > 0) {
-      match._id = { $in: body.locationList };
+    const { account_id, _id: user_id } = req.user;
+    const params: any = req.query;
+    const match: any = { };
+    if(params?._id && params?._id.toString().split(',').length > 0) {
+      match.locationId = { $in: params._id.toString().split(',') };
     }
-    const data: ILocationMaster[] = await LocationMaster.find(match).sort({ _id: -1 });
+    const data: IMapUserLocation[] = await MapUserLocation.find(match).populate('userId');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

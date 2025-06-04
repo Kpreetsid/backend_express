@@ -5,7 +5,7 @@ export const getAllUserLogs = async (req: Request, res: Response, next: NextFunc
   try {
     const { account_id, _id: user_id } = req.user;
     console.log(account_id);
-    const data: IUserLog[] | null = await UserLog.find({accountId: account_id}).sort({ _id: -1 });
+    const data: IUserLog[] | null = await UserLog.find({accountId: account_id}).lean();
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

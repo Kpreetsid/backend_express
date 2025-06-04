@@ -6,10 +6,10 @@ export default (router: express.Router) => {
     const locationRouter = express.Router();
     locationRouter.get('/', getLocations);
     locationRouter.get('/tree', getLocationTree);
+    locationRouter.get('/filter', getFilterLocations);
     locationRouter.get('/kpi-filter', getKpiFilterLocations);
     locationRouter.get('/:id', getLocation);
     locationRouter.post('/child-assets', getChildAssetsAgainstLocation);
-    locationRouter.post('/filter', getFilterLocations);
     locationRouter.put('/:id', updateLocation);
     locationRouter.delete('/:id', hasPermission('admin'),removeLocation);
     router.use('/locations', locationRouter);

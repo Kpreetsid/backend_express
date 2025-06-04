@@ -86,11 +86,11 @@ const BlogSchema = new Schema<IBlog>({
 
 export const Blog = mongoose.model<IBlog>('Blog', BlogSchema);
 
-export const getAllBlog = async () => await Blog.find().sort({ _id: -1 });
+export const getAllBlog = async () => await Blog.find().lean();
 
 export const getBlogById = async (id: string) => await Blog.findById(id);
 
-export const getFilteredBlog = async (filter: any) => await Blog.find({filter, isActive: true }).sort({ _id: -1 });
+export const getFilteredBlog = async (filter: any) => await Blog.find({filter, isActive: true }).lean();
 
 export const createBlog = async (blog: IBlog) => await Blog.create(blog);
 

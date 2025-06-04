@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { account_id, _id: user_id } = req.user;
-        const data: IScheduleMaster[] | null = await ScheduleMasterModel.find({}).sort({ _id: -1 });
+        const data: IScheduleMaster[] | null = await ScheduleMasterModel.find({}).lean();
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
@@ -33,7 +33,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const match = { ...req.query, visible: true };
-        const data = await ScheduleMasterModel.find(match).sort({ _id: -1 });
+        const data = await ScheduleMasterModel.find(match).lean();
         if (data.length === 0) {
             throw Object.assign(new Error('No matching data found'), { status: 404 });
         }

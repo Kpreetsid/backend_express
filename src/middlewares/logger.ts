@@ -20,8 +20,17 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
       };
       const deviceInfo = {
         isMobile: headers['sec-ch-ua-mobile'] === '?1',
+        isTablet: headers['sec-ch-ua-tablet'] === '?1',
+        isDesktop: headers['sec-ch-ua-desktop'] === '?1',
         userAgent: headers['user-agent'],
       };
+      if(deviceInfo.isMobile) {
+        req.user.device = "Mobile";
+      } else if(deviceInfo.isTablet) {
+        req.user.device = "Tablet";
+      } else {
+        req.user.device = "Desktop";
+      }
       const networkInfo = {
         origin: headers['origin'],
         referer: headers['referer'],
@@ -77,7 +86,6 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
       console.error('Failed to log activity:', err);
     }
   });
-
   next();
 };
 

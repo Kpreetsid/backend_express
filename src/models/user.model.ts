@@ -26,6 +26,7 @@ export interface IUser extends Document {
   user_status: 'active' | 'inactive' | string;
   user_role: 'super_admin' | 'admin' | 'user' | 'employee' | string;
   createdOn: Date;
+  device: string;
   account_id: ObjectId;
   phone_no: IPhoneNumber;
   isFirstUser: boolean;
@@ -53,6 +54,7 @@ const userSchema = new Schema<IUser>({
   user_role: { type: String, required: true, enum: ['super_admin', 'admin', 'user', 'employee'], default: 'user' },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
   phone_no: { type: phoneNumberSchema, required: true },
+  device: { type: String },
   isFirstUser: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true }

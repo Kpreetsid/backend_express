@@ -9,7 +9,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     if(role !== 'admin') {
       match.user_id = user_id;
     }
-    const data = await WorkOrder.find(match).sort({ _id: -1 });
+    const data = await WorkOrder.find(match).lean();
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -36,8 +36,10 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const match = { ...req.query, visible: true };
-    const data = await WorkOrder.find(match).sort({ _id: -1 });
+    const { account_id, _id: user_id, user_role: role } = req.user;
+    const match = { ...req.query, account_id: account_id, visible: true };
+    console.log(match);
+    const data = await WorkOrder.find(match).lean();
     if (data.length === 0) {
       throw Object.assign(new Error('No matching data found'), { status: 404 });
     }

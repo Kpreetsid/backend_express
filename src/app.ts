@@ -1,4 +1,4 @@
-import express, { Application, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
+import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
 import path from 'path';
 import compression from 'compression';
@@ -18,7 +18,7 @@ import transactionRoutes from './transaction/transaction.routes';
 import masterRoutes from './masters/master.routes';
 import morgan from 'morgan';
 
-const app: Application = express();
+const app: Express = express();
 
 app.use(helmet());
 app.use(cors({ credentials: true, origin: true }));
@@ -43,7 +43,7 @@ app.use(compression({
   }
 }));
 
-const apiRouter = Router();
+const apiRouter: Router = Router();
 
 apiRouter.use('/', routerIndex());
 apiRouter.use('/', isAuthenticated, authorizeRouterIndex());

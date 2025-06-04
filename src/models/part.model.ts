@@ -32,11 +32,11 @@ const partSchema = new Schema<IPart>({
 
 export const Part = mongoose.model<IPart>('Part', partSchema);
 
-export const getAllPart = async (accountId: string) => await Part.find({ account_id: accountId }).sort({ _id: -1 });
+export const getAllPart = async (accountId: string) => await Part.find({ account_id: accountId }).lean();
 
 export const getPartById = async (id: string) => await Part.findById(id);
 
-export const getPartByFilter = async (accountId: string, filter: any) => await Part.find({ account_id: accountId, ...filter, visible: true }).sort({ _id: -1 });
+export const getPartByFilter = async (accountId: string, filter: any) => await Part.find({ account_id: accountId, ...filter, visible: true }).lean();
 
 export const createPart = async (part: IPart) => await Part.create(part);
 

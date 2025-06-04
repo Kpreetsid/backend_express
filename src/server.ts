@@ -4,7 +4,7 @@ import { connectDB, disconnectDB } from "./_config/dbConnection";
 
 const server = app.listen(hostDetails.port, async () => {
   await connectDB();
-  console.log(`Server running on port http://localhost:${hostDetails.port}`);
+  console.log(`Server running on port http://${hostDetails.host}:${hostDetails.port}`);
 });
 
 const shutdown = async () => {

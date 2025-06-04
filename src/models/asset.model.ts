@@ -1,17 +1,5 @@
 import mongoose, { Schema, ObjectId, Document } from 'mongoose';
 
-export interface IStage {
-  gear_ratio: number;
-  rpm: number;
-  torque: number;
-}
-
-export interface ILocationData {
-  location_name: string;
-  id: string;
-  assigned_to?: string;
-}
-
 export interface IAsset extends Document {
   asset_name: string;
   asset_id: string;
@@ -57,19 +45,28 @@ export interface IAsset extends Document {
   image_path: string;
   noStages: number;
   qr_code: string;
-  stageList: IStage[];
+  stage_1st_driving_teeth?: number,
+  stage_1st_driven_teeth?: number,
+  stage_2nd_driving_teeth?: number,
+  stage_2nd_driven_teeth?: number,
+  stage_3rd_driving_teeth?: number,
+  stage_3rd_driven_teeth?: number,
+  stage_4th_driving_teeth?: number,
+  stage_4th_driven_teeth?: number,
+  stage_5th_driving_teeth?: number,
+  stage_5th_driven_teeth?: number,
+  stage_6th_driving_teeth?: number,
+  stage_6th_driven_teeth?: number,
+  stage_7th_driving_teeth?: number,
+  stage_7th_driven_teeth?: number,
+  stage_8th_driving_teeth?: number,
+  stage_8th_driven_teeth?: number,
   createdBy: ObjectId;
 }
 
-const StageSchema = new Schema<IStage>({
-  gear_ratio: { type: Number, required: true },
-  rpm: { type: Number, required: true },
-  torque: { type: Number, required: true },
-}, { _id: false });
-
 const assetSchema = new Schema<IAsset>({
   asset_name: { type: String, required: true },
-  asset_id: { type: String, default: '' },
+  asset_id: { type: String },
   asset_type: { type: String },
   asset_orient: { type: String },
   asset_behavior: { type: String },
@@ -82,7 +79,7 @@ const assetSchema = new Schema<IAsset>({
   timingGearTeethCount: { type: String },
   minRotation: { type: String },
   maxRotation: { type: String },
-  specificFrequency: { type: [String], default: null },
+  specificFrequency: { type: [String] },
   minInputRotation: { type: String },
   maxInputRotation: { type: String },
   minOutputRotation: { type: String },
@@ -99,20 +96,35 @@ const assetSchema = new Schema<IAsset>({
   locationId: { type: Schema.Types.ObjectId },
   account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
   top_level_asset_id: { type: Schema.Types.ObjectId},
-  parent_id: { type: Schema.Types.ObjectId, default: null },
-  description: { type: String, default: '' },
-  manufacturer: { type: String, default: '' },
-  year: { type: String, default: '' },
-  asset_model: { type: String, default: '' },
-  qr_code: { type: String, default: '' },
+  parent_id: { type: Schema.Types.ObjectId },
+  description: { type: String },
+  manufacturer: { type: String },
+  year: { type: String },
+  asset_model: { type: String },
+  qr_code: { type: String },
   assigned_to: { type: Number, default: 1 },
-  image_path: { type: String, default: '' },
+  image_path: { type: String },
   visible: { type: Boolean, default: true },
   isActive: { type: Boolean, default: true },
-  brandMake: { type: String, default: '' },
-  powerRating: { type: String, default: '' },
+  brandMake: { type: String },
+  powerRating: { type: String },
   noStages: { type: Number, default: 0 },
-  stageList: [StageSchema],
+  stage_1st_driving_teeth: { type: Number },
+  stage_1st_driven_teeth: { type: Number },
+  stage_2nd_driving_teeth: { type: Number },
+  stage_2nd_driven_teeth: { type: Number },
+  stage_3rd_driving_teeth: { type: Number },
+  stage_3rd_driven_teeth: { type: Number },
+  stage_4th_driving_teeth: { type: Number },
+  stage_4th_driven_teeth: { type: Number },
+  stage_5th_driving_teeth: { type: Number },
+  stage_5th_driven_teeth: { type: Number },
+  stage_6th_driving_teeth: { type: Number },
+  stage_6th_driven_teeth: { type: Number },
+  stage_7th_driving_teeth: { type: Number },
+  stage_7th_driven_teeth: { type: Number },
+  stage_8th_driving_teeth: { type: Number },
+  stage_8th_driven_teeth: { type: Number },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
   collection: 'asset_master',

@@ -1,8 +1,8 @@
+import { Request, Response, NextFunction } from "express";
 import { decodedAccessToken } from "../../_config/auth";
 import { verifyUserRole } from "../../masters/user/role/roles.service";
 import { verifyUserLogin } from "../../masters/user/user.service";
-import { UserToken, IUserToken } from "../../models/userToken.model";
-import { Request, Response, NextFunction } from 'express';
+import { UserToken } from "../../models/userToken.model";
 
 export const getAllUserTokens = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -10,7 +10,7 @@ export const getAllUserTokens = async (req: Request, res: Response, next: NextFu
     if(!token) {
       throw Object.assign(new Error('Invalid link'), { status: 401 });
     }
-    const data = await UserToken.find({_id: token}).sort({ _id: -1 });
+    const data = await UserToken.find({_id: token}).lean();
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
