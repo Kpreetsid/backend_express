@@ -9,8 +9,8 @@ import { verifyCompany } from '../masters/company/company.service';
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const cookieToken = req.cookies['token'];
-    const cookieAccountID = req.cookies['accountID'];
+    const cookieToken = req.cookies['token'] || req.headers.authorization?.split(' ')[1];
+    const cookieAccountID = req.cookies['accountID'] || req.headers.accountid;
     if (!cookieToken || !cookieAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }

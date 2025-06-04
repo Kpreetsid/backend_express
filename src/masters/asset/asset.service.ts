@@ -1,6 +1,6 @@
 import { Asset, IAsset } from "../../models/asset.model";
 import { NextFunction, Request, Response } from 'express';
-import { MapUserAsset } from "../../models/mapUserAsset.model";
+import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { hasPermission } from "../../_config/permission";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -8,7 +8,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     const { account_id, _id: user_id } = req.user;
     const match: any = { account_id: account_id, visible: true };
     if(!hasPermission('admin')) {
-      const mapData = await MapUserAsset.find({userId: user_id});
+      const mapData = await MapUserAssetLocation.find({userId: user_id});
       if(!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -45,7 +45,7 @@ export const assetFilterByParam = async (req: Request, res: Response, next: Next
     const { account_id, _id: user_id } = req.user;
     const match: any = { account_id: account_id, visible: true };
     if(!hasPermission('admin')) {
-      const mapData = await MapUserAsset.find({userId: user_id});
+      const mapData = await MapUserAssetLocation.find({userId: user_id});
       if(!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -109,7 +109,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
       parent_id: { $in: [null, undefined] }
     };
     if(!hasPermission('admin')) {
-      const mapData = await MapUserAsset.find({userId: user_id, accountId: account_id}).lean();
+      const mapData = await MapUserAssetLocation.find({userId: user_id}).lean();
       if(mapData && mapData.length > 0) {
         query._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
@@ -176,6 +176,14 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       createdBy: user_id
     })
     const parentAssetData = await newParentAsset.save();
+    await Asset.updateOne({ _id: parentAssetData._id }, { $set: { top_level_asset_id: parentAssetData._id } });
+
+    const parentMapData = Equipment.userList.map((user: any) => ({
+      userId: user,
+      assetId: parentAssetData._id,
+      accountId: account_id
+    }));
+    await MapUserAssetLocation.insertMany(parentMapData);
 
     if(Motor) {
       if(Object.keys(Motor).length > 0) {
@@ -416,22 +424,17 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       }
     }
     // console.log(childAssets);
-    const data = await Asset.insertMany(childAssets);
-    const userList = Equipment.userList;
-    if(userList && userList.length > 0 && data && data.length > 0 && userList && userList.length > 0) {
-      let newMapUserLocationList: any = [];
-      data.forEach((asset: any) => {
-        userList.forEach((user: any) => {
-          const newMapUserLocation = new MapUserAsset({
-            userId: user,
-            assetId: asset._id,
-            accountId: account_id
-          }); 
-          newMapUserLocationList.push(newMapUserLocation);
-        })
-      })
-      await MapUserAsset.insertMany(newMapUserLocationList);
-    }
+    const insertedChildAssets = await Asset.insertMany(childAssets);
+
+    const allMapUserAssetData = insertedChildAssets.flatMap((asset: any) =>
+      Equipment.userList.map((user: any) => ({
+        userId: user,
+        assetId: asset._id,
+        accountId: account_id
+      }))
+    );
+    await MapUserAssetLocation.insertMany(allMapUserAssetData);
+
     return res.status(201).json({ status: true, message: "Data created successfully" });
   } catch (error) {
     console.error(error);

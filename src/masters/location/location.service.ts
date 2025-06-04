@@ -1,6 +1,6 @@
 import { LocationMaster, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
-import { IMapUserLocation, MapUserLocation } from "../../models/mapUserLocation.model";
+import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { console } from "inspector";
 const moduleName: string = "location";
 
@@ -23,7 +23,7 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
   try {
     const { account_id, _id: user_id } = (req as any).user;
     const match: any = { visible: true, account_id: account_id };
-    const mapLocationData: IMapUserLocation[] = await MapUserLocation.find({ userId: user_id });
+    const mapLocationData: IMapUserLocation[] = await MapUserAssetLocation.find({ userId: user_id });
     if (mapLocationData?.length > 0) {
       const locationIds = mapLocationData.map(doc => doc.locationId).filter(id => id);
       match._id = { $in: locationIds };
@@ -60,7 +60,7 @@ export const kpiFilterLocations = async (req: Request, res: Response, next: Next
   try {
     const { account_id, _id: user_id } = (req as any).user;
     const match: any = { visible: true, account_id: account_id };
-    const mapLocationData: IMapUserLocation[] = await MapUserLocation.find({ userId: user_id });
+    const mapLocationData: IMapUserLocation[] = await MapUserAssetLocation.find({ userId: user_id });
     if (mapLocationData?.length > 0) {
       const locationIds = mapLocationData.map(doc => doc.locationId).filter(id => id);
       match._id = { $in: locationIds };
@@ -115,7 +115,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
     const { account_id, _id: user_id } = (req as any).user;
-    const mapData = await MapUserLocation.find({userId: user_id , locationId: id}).populate('userId');
+    const mapData = await MapUserAssetLocation.find({userId: user_id , locationId: id}).populate('userId');
     if(!mapData || mapData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -139,7 +139,7 @@ export const getDataByFilter = async (req: Request, res: Response, next: NextFun
     if(params?._id && params?._id.toString().split(',').length > 0) {
       match.locationId = { $in: params._id.toString().split(',') };
     }
-    const data: IMapUserLocation[] = await MapUserLocation.find(match).populate('userId');
+    const data: IMapUserLocation[] = await MapUserAssetLocation.find(match).populate('userId');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

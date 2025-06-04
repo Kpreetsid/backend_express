@@ -4,7 +4,12 @@ import { Request, Response, NextFunction } from 'express';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data = await ReportAsset.find({}).lean();
+    const params = req.params;
+    const match: any = { accountId: account_id };
+    if(params?.id) {
+      match.top_level_asset_id = params.id;
+    }
+    const data = await ReportAsset.find(match).lean();
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

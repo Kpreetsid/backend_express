@@ -108,7 +108,7 @@ const assetSchema = new Schema<IAsset>({
   isActive: { type: Boolean, default: true },
   brandMake: { type: String },
   powerRating: { type: String },
-  noStages: { type: Number, default: 0 },
+  noStages: { type: Number },
   stage_1st_driving_teeth: { type: Number },
   stage_1st_driven_teeth: { type: Number },
   stage_2nd_driving_teeth: { type: Number },

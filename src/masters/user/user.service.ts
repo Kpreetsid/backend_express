@@ -1,5 +1,5 @@
 import { User, IUser, UserLoginPayload } from "../../models/user.model";
-import { MapUserLocation } from "../../models/mapUserLocation.model";
+import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
 import mongoose from "mongoose";
 import { hashPassword } from '../../_config/bcrypt';
@@ -51,11 +51,11 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
     if(req.user.user_role !== "admin") {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
-    const data = await MapUserLocation.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
+    const data = await MapUserAssetLocation.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const userIDList = data.map(doc => doc.userId);
+    const userIDList = data.map((doc: any) => doc.userId);
     const userData = await User.find({ _id: { $in: userIDList }}).select('-password');
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
   } catch (error) {
