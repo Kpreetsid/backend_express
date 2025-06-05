@@ -2,6 +2,8 @@ import { Asset, IAsset } from "../../models/asset.model";
 import { NextFunction, Request, Response } from 'express';
 import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { hasPermission } from "../../_config/permission";
+import { uploadBase64Image } from "../../_config/upload";
+import { getExternalData } from "../../util/externalAPI";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -118,12 +120,16 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
       query.locationId = { $in: locations };
     }
     const rootAssets = await Asset.find(query).lean();
-    const data = await Promise.all(rootAssets.map(async (asset) => {
+    let data = await Promise.all(rootAssets.map(async (asset) => {
       return {
         ...asset,
         childs: await getRecursiveAssets(asset)
       };
     }));
+    data = data.map((asset: any) => {
+      asset.childs = asset.childs.filter((child: any) => child);
+      return asset;
+    });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -134,18 +140,28 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
   }
 };
 
-async function getRecursiveAssets(asset: any) {
+async function getRecursiveAssets(asset: any): Promise<any[]> {
+  const ignoreAssets = ['Flexible', 'Rigid', 'Belt_Pulley'];
   const children = await Asset.find({
     parent_id: asset._id,
     visible: true
-  });
+  }).select("+category").lean(); // or use `.select("+category").lean()` if needed
 
-  const withChildren: any = await Promise.all(children.map(async (child: any) => {
-    return {
-      ...child.toObject(),
-      childs: await getRecursiveAssets(child)
-    };
-  }));
+  const withChildren = await Promise.all(
+    children.map(async (child) => {
+      const { category, ...childData } = child;
+      console.log(category+":  "+ignoreAssets.includes(category));
+      if(category) {
+        if(!ignoreAssets.includes(category)) {
+          const childs = await getRecursiveAssets(child);
+          return { ...childData, category, childs };
+        }
+      } else {
+        const childs = await getRecursiveAssets(child);
+        return { ...childData, category, childs };
+      }
+    })
+  );
 
   return withChildren;
 }
@@ -158,12 +174,22 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     if(!Equipment.userList || Equipment.userList.length === 0) {
       throw Object.assign(new Error('Please select at least one user'), { status: 400 });
     }
+
+    if(Equipment.image_path) {
+      const image = await uploadBase64Image(Equipment.image_path, "asset");
+      Equipment.image_path = image;
+    }
+
     const newParentAsset = new Asset({
       asset_name: Equipment.asset_name,
       asset_id: Equipment.asset_id,
-      asset_type: Equipment.asset_type,
+      asset_type: Equipment.asset_type || "Equipment",
       asset_orient: Equipment.asset_orient,
+      asset_timezone: Equipment.asset_timezone,
+      isNewFLow: Equipment.isNewFLow,
+      loadType: Equipment.loadType,
       powUnit: Equipment.powUnit,
+      rotation_type: Equipment.rotation_type,
       top_level: true,
       locationId: Equipment.locationId,
       account_id: account_id,
@@ -173,7 +199,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       year: Equipment.year,
       assigned_to: Equipment.assigned_to,
       image_path: Equipment.image_path,
-      createdBy: user_id
+      createdBy: user_id,
+      category: "Equipment"
     })
     const parentAssetData = await newParentAsset.save();
     await Asset.updateOne({ _id: parentAssetData._id }, { $set: { top_level_asset_id: parentAssetData._id } });
@@ -190,8 +217,10 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         const newMotorAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Motor.asset_name,
-          asset_id: Motor.asset_id,
-          asset_type: Motor.asset_type,
+          asset_id: Motor.asset_id || Equipment.asset_id,
+          asset_type: Motor.asset_type || "Motor",
+          motorType: Motor.motorType,
+          lineFreq: Motor.lineFreq,
           asset_behavior: Motor.asset_behavior,
           specificFrequency: Motor.specificFrequency,
           mounting: Motor.mounting,
@@ -206,7 +235,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           asset_model: Motor.asset_model,
           manufacturer: Motor.manufacturer,
           year: Motor.year,
-          createdBy: user_id
+          createdBy: user_id,
+          category: "Motor"
         });
         childAssets.push(newMotorAsset);
       }
@@ -217,8 +247,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         const newFlexibleAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Flexible.asset_name,
-          asset_id: Flexible.asset_id,
-          asset_type: Flexible.asset_type,
+          asset_id: Flexible.asset_id || Equipment.asset_id,
+          asset_type: Flexible.asset_type || "Flexible",
           top_level: false,
           locationId: parentAssetData.locationId,
           top_level_asset_id: parentAssetData._id,
@@ -229,7 +259,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           year: Flexible.year,
           assigned_to: Flexible.assigned_to,
           image_path: Flexible.image_path,
-          createdBy: user_id
+          createdBy: user_id,
+          category: "Flexible"
         });
         childAssets.push(newFlexibleAsset);
       }
@@ -240,8 +271,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         const newRigidAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Rigid.asset_name,
-          asset_id: Rigid.asset_id,
-          asset_type: Rigid.asset_type,
+          asset_id: Rigid.asset_id || Equipment.asset_id,
+          asset_type: Rigid.asset_type || "Rigid",
           asset_orient: Rigid.asset_orient,
           powUnit: Rigid.powUnit,
           top_level: false,
@@ -254,7 +285,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           year: Rigid.year,
           assigned_to: Rigid.assigned_to,
           image_path: Rigid.image_path,
-          createdBy: user_id
+          createdBy: user_id,
+          category: "Rigid"
         });
         childAssets.push(newRigidAsset);
       }
@@ -267,19 +299,24 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
             const newBeltPulleyAsset = new Asset({
               parent_id: parentAssetData._id,
               asset_name: beltPulley.asset_name,
-              asset_id: beltPulley.asset_id,
-              asset_type: beltPulley.asset_type,
+              asset_id: beltPulley.asset_id || Equipment.asset_id,
+              asset_type: beltPulley.asset_type || "Belt_Pulley",
               top_level: false,
               locationId: parentAssetData.locationId,
               top_level_asset_id: parentAssetData._id,
               account_id: account_id,
+              drivenPulleyDia: beltPulley.drivenPulleyDia,
+              beltLength: beltPulley.beltLength,
+              outputRPM: beltPulley.outputRPM,
+              noOfGroove: beltPulley.noOfGroove,
               minInputRotation: beltPulley.minInputRotation,
               maxInputRotation: beltPulley.maxInputRotation,
               minOutputRotation: beltPulley.minOutputRotation,
               maxOutputRotation: beltPulley.maxOutputRotation,
               drivingPulleyDia: beltPulley.drivingPulleyDia,
               drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
-              createdBy: user_id
+              createdBy: user_id,
+              category: "Belt_Pulley"
             });
             childAssets.push(newBeltPulleyAsset);
           }
@@ -294,8 +331,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
             const newGearBoxAsset = new Asset({
               parent_id: parentAssetData._id,
               asset_name: gearbox.asset_name,
-              asset_id: gearbox.asset_id,
-              asset_type: gearbox.asset_type,
+              asset_id: gearbox.asset_id || Equipment.asset_id,
+              asset_type: gearbox.asset_type || "Gearbox",
               top_level: false,
               locationId: parentAssetData.locationId,
               top_level_asset_id: parentAssetData._id,
@@ -328,7 +365,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
               year: gearbox.year,
               assigned_to: gearbox.assigned_to,
               image_path: gearbox.image_path,
-              createdBy: user_id
+              createdBy: user_id,
+              category: "Gearbox"
             });
             childAssets.push(newGearBoxAsset);
           }
@@ -341,8 +379,10 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         const newFanBlowerAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Fans_Blowers.asset_name,
-          asset_id: Fans_Blowers.asset_id,
-          asset_type: Fans_Blowers.asset_type,
+          asset_id: Fans_Blowers.asset_id || Equipment.asset_id,
+          asset_type: Fans_Blowers.asset_type || "Fans_Blowers",
+          brandId: Fans_Blowers.brandId,
+          mountType: Fans_Blowers.mountType,
           bearingType: Fans_Blowers.bearingType,
           brandMake: Fans_Blowers.brandMake,
           mounting: Fans_Blowers.mounting,
@@ -360,7 +400,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           year: Fans_Blowers.year,
           assigned_to: Fans_Blowers.assigned_to,
           image_path: Fans_Blowers.image_path,
-          createdBy: user_id
+          createdBy: user_id,
+          category: "Fans_Blowers"
         });
         childAssets.push(newFanBlowerAsset);
       }
@@ -371,9 +412,9 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           parent_id: parentAssetData._id,
           asset_name: Pumps.asset_name,
           brand: Pumps.brand,
-          asset_id: Pumps.asset_id,
+          asset_id: Pumps.asset_id || Equipment.asset_id,
           casing: Pumps.casing,
-          asset_type: Pumps.asset_type,
+          asset_type: Pumps.asset_type || "Pumps",
           impellerBladeCount: Pumps.impellerBladeCount,
           minRotation: Pumps.minRotation,
           maxRotation: Pumps.maxRotation,
@@ -388,7 +429,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           year: Pumps.year,
           assigned_to: Pumps.assigned_to,
           image_path: Pumps.image_path,
-          createdBy: user_id
+          createdBy: user_id,
+          category: "Pumps"
         });
         childAssets.push(newPumpAsset);
       }
@@ -399,8 +441,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         const newCompressorAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Compressor.asset_name,
-          asset_id: Compressor.asset_id,
-          asset_type: Compressor.asset_type,
+          asset_id: Compressor.asset_id || Equipment.asset_id,
+          asset_type: Compressor.asset_type || "Compressor",
           brandModel: Compressor.brandModel,
           pinionGearTeethCount: Compressor.pinionGearTeethCount,
           timingGearTeethCount: Compressor.timingGearTeethCount,
@@ -418,13 +460,25 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           year: Compressor.year,
           assigned_to: Compressor.assigned_to,
           image_path: Compressor.image_path,
-          createdBy: user_id
+          createdBy: user_id,
+          category: "Compressor"
         });
         childAssets.push(newCompressorAsset);
       }
     }
     // console.log(childAssets);
     const insertedChildAssets = await Asset.insertMany(childAssets);
+    const assetIdList: string[] = insertedChildAssets.map((asset: any) => `${asset._id}`);
+    assetIdList.push(`${parentAssetData._id}`);
+    const match = {
+      "org_id": `${account_id}`,
+      "asset_status": "Not Defined",
+      "asset_id": assetIdList
+    };
+    console.log(match);
+    const token: string = req.headers.authorization as string;
+    console.log(token);
+    await getExternalData(`/asset_health_status/`, match, token, user_id);
 
     const allMapUserAssetData = insertedChildAssets.flatMap((asset: any) =>
       Equipment.userList.map((user: any) => ({
@@ -434,20 +488,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       }))
     );
     await MapUserAssetLocation.insertMany(allMapUserAssetData);
-
-    return res.status(201).json({ status: true, message: "Data created successfully" });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
-export const createAssetsWithImage = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    console.log(req.files);
-    const newAsset = new Asset(req.body);
-    const data = await newAsset.save();
-    return res.status(201).json({ status: true, message: "Data created successfully", data });
+    return res.status(201).json({ status: true, message: "Data created successfully", data: parentAssetData._id });
   } catch (error) {
     console.error(error);
     next(error);

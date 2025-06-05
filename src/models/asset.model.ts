@@ -8,6 +8,9 @@ export interface IAsset extends Document {
   asset_orient?: string;
   asset_behavior?: string;
   asset_frequency?: string;
+  asset_timezone: string;
+  isNewFlow: boolean;
+  loadType: string;
   mounting: string;
   bladeCount: string;
   powUnit: string;
@@ -15,7 +18,11 @@ export interface IAsset extends Document {
   pinionGearTeethCount: string;
   timingGearTeethCount: string;
   minRotation: string;
+  rotation_type: string;
+  motorType: string;
   maxRotation: string;
+  brandId: string;
+  mountType: string;
   specificFrequency: string[];
   minInputRotation: string;
   maxInputRotation: string;
@@ -31,6 +38,8 @@ export interface IAsset extends Document {
   rotationUnit: string;
   top_level: boolean;
   locationId: ObjectId;
+  lineFreq: string;
+  noOfGroove: string;
   account_id: ObjectId;
   parent_id: ObjectId;
   powerRating: string;
@@ -42,7 +51,7 @@ export interface IAsset extends Document {
   visible: boolean;
   isActive: boolean;
   assigned_to: number;
-  image_path: string;
+  image_path: object;
   noStages: number;
   qr_code: string;
   stage_1st_driving_teeth?: number,
@@ -61,16 +70,23 @@ export interface IAsset extends Document {
   stage_7th_driven_teeth?: number,
   stage_8th_driving_teeth?: number,
   stage_8th_driven_teeth?: number,
+  category: string;
   createdBy: ObjectId;
 }
 
 const assetSchema = new Schema<IAsset>({
   asset_name: { type: String, required: true },
   asset_id: { type: String },
-  asset_type: { type: String },
+  asset_type: { type: String, enum: ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fans_Blowers', 'Pumps', 'Compressor'], required: true },
+  asset_model: { type: String },
   asset_orient: { type: String },
   asset_behavior: { type: String },
   asset_frequency: { type: String },
+  asset_timezone: { type: String },
+  isNewFlow: { type: Boolean, default: true },
+  loadType: { type: String },
+  motorType: { type: String },
+  lineFreq: { type: String },
   mounting: { type: String },
   bladeCount: { type: String },
   powUnit: { type: String },
@@ -79,6 +95,9 @@ const assetSchema = new Schema<IAsset>({
   timingGearTeethCount: { type: String },
   minRotation: { type: String },
   maxRotation: { type: String },
+  rotation_type: { type: String },
+  brandId: { type: String },
+  mountType: { type: String },
   specificFrequency: { type: [String] },
   minInputRotation: { type: String },
   maxInputRotation: { type: String },
@@ -89,6 +108,7 @@ const assetSchema = new Schema<IAsset>({
   impellerBladeCount: { type: String },
   beltLength: { type: String },
   outputRPM: { type: String },
+  noOfGroove: { type: String },
   noOfGrooves: { type: String },
   bearingType: { type: String },
   rotationUnit: { type: String },
@@ -100,10 +120,9 @@ const assetSchema = new Schema<IAsset>({
   description: { type: String },
   manufacturer: { type: String },
   year: { type: String },
-  asset_model: { type: String },
   qr_code: { type: String },
   assigned_to: { type: Number, default: 1 },
-  image_path: { type: String },
+  image_path: { type: Object },
   visible: { type: Boolean, default: true },
   isActive: { type: Boolean, default: true },
   brandMake: { type: String },
@@ -125,6 +144,7 @@ const assetSchema = new Schema<IAsset>({
   stage_7th_driven_teeth: { type: Number },
   stage_8th_driving_teeth: { type: Number },
   stage_8th_driven_teeth: { type: Number },
+  category: { type: String, enum: ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fans_Blowers', 'Pumps', 'Compressor'], select: false },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
   collection: 'asset_master',
