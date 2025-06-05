@@ -73,6 +73,7 @@ export interface IAsset extends Document {
   stage_8th_driving_teeth?: number,
   stage_8th_driven_teeth?: number,
   createdBy: ObjectId;
+  updatedBy: ObjectId;
 }
 
 const assetSchema = new Schema<IAsset>({
@@ -147,7 +148,8 @@ const assetSchema = new Schema<IAsset>({
   stage_7th_driven_teeth: { type: Number },
   stage_8th_driving_teeth: { type: Number },
   stage_8th_driven_teeth: { type: Number },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'User' }
 }, {
   collection: 'asset_master',
   timestamps: true,

@@ -488,12 +488,30 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const { account_id, _id: user_id } = req.user;
     const { id } = req.params;
-    const data = await Asset.findByIdAndUpdate(id, req.body, { new: true });
-    if (!data || !data.visible) {
+    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
+    if(!id || !Equipment || !Motor || !Flexible || !Rigid || !Belt_Pulley || !Gearbox || !Fans_Blowers || !Pumps || !Compressor) {
+      throw Object.assign(new Error('All fields are required'), { status: 403 });
+    }
+    if(id !== Equipment._id) {
+      throw Object.assign(new Error('Data mismatch'), { status: 403 });
+    }
+    const mainAsset = await Asset.findById(id);
+    if (!mainAsset || !mainAsset.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
+    const assetComponents = [Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor];
+    const operations = assetComponents
+      .filter((item) => item && item._id && Object.keys(item).length > 0)
+      .map((item) => ({
+        updateOne: {
+          filter: { _id: item._id },
+          update: { $set: { ...item, updatedBy: user_id } }
+        }
+      }));
+    await Asset.bulkWrite(operations);
+    return res.status(200).json({ status: true, message: "Data updated successfully" });
   } catch (error) {
     console.error(error);
     next(error);
