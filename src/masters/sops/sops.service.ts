@@ -1,15 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
-import mongoose from 'mongoose';
 import { SopsMasterModel, ISopsMaster } from '../../models/sops.model';
+import { getData } from '../../util/queryBuilder';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { account_id, _id: user_id } = req.user;
-        const data = await SopsMasterModel.find({}).lean();
+        const match = { account_id: account_id, visible: true };
+        const data: ISopsMaster[] = await getData(SopsMasterModel, { filter: match });
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
-        console.log(data.length);
         return res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
         console.error(error);
@@ -20,8 +20,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const data = await SopsMasterModel.findById(id);
-        if (!data || !data.visible) {
+        if(!id) {
+            throw Object.assign(new Error('No data found'), { status: 404 });
+        }
+        const { account_id, _id: user_id } = req.user;
+        const match = { account_id: account_id, _id: id, visible: true };
+        const data: ISopsMaster[] | null = await getData(SopsMasterModel, { filter: match });
+        if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
         return res.status(200).json({ status: true, message: "Data fetched successfully", data });

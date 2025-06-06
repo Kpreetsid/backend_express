@@ -24,6 +24,7 @@ export interface IAsset extends Document {
   brandId: string;
   mountType: string;
   specificFrequency: string[];
+  imageNodeData: [object];
   minInputRotation: string;
   maxInputRotation: string;
   minOutputRotation: string;
@@ -46,6 +47,7 @@ export interface IAsset extends Document {
   parent_id: ObjectId;
   powerRating: string;
   top_level_asset_id: ObjectId;
+  drivingPulleyDiaUnit: string;
   description: string;
   manufacturer: string;
   year: string;
@@ -85,7 +87,8 @@ const assetSchema = new Schema<IAsset>({
   asset_behavior: { type: String },
   asset_frequency: { type: String },
   asset_timezone: { type: String },
-  isNewFlow: { type: Boolean, default: true },
+  imageNodeData: { type: [Object] },
+  isNewFlow: { type: Boolean },
   loadType: { type: String },
   motorType: { type: String },
   lineFreq: { type: String },
@@ -108,6 +111,7 @@ const assetSchema = new Schema<IAsset>({
   drivingPulleyDia: { type: String },
   drivenPulleyDia: { type: String },
   impellerBladeCount: { type: String },
+  drivingPulleyDiaUnit: { type: String },
   beltLength: { type: String },
   outputRPM: { type: String },
   noOfGroove: { type: String },

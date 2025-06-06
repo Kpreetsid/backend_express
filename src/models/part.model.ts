@@ -31,15 +31,3 @@ const partSchema = new Schema<IPart>({
 });
 
 export const Part = mongoose.model<IPart>('Part', partSchema);
-
-export const getAllPart = async (accountId: string) => await Part.find({ account_id: accountId }).lean();
-
-export const getPartById = async (id: string) => await Part.findById(id);
-
-export const getPartByFilter = async (accountId: string, filter: any) => await Part.find({ account_id: accountId, ...filter, visible: true }).lean();
-
-export const createPart = async (part: IPart) => await Part.create(part);
-
-export const updatePart = async (id: string, part: IPart) => await Part.findByIdAndUpdate({ id }, { $set: part });
-
-export const deletePart = async (id: string) => await Part.findByIdAndUpdate({ _id: id }, { $set: { visible: false } });

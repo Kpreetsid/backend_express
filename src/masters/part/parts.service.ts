@@ -1,10 +1,12 @@
 import { Part, IPart } from "../../models/part.model";
 import { Request, Response, NextFunction } from 'express';
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data = await Part.find({}).lean();
+    const match = { account_id: account_id };
+    const data = await getData(Part, { filter: { account_id: account_id } });
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -18,8 +20,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await Part.findById(id);
-    if (!data) {
+    const { account_id, _id: user_id } = req.user;
+    // const data = await Part.findById(id);
+    const match = { account_id: account_id, _id: id };
+    const data: IPart[] | null = await getData(Part, { filter: match });
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });

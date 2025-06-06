@@ -1,10 +1,12 @@
 import { Post, IPost } from "../../models/post.model";
 import { Request, Response, NextFunction } from 'express';
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data = await Post.find({}).lean();
+    const match = { account_id: account_id };
+    const data = await getData(Post, { filter: match });
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -18,8 +20,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await Post.findById(id);
-    if (!data) {
+    if(!id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const { account_id, _id: user_id } = req.user;
+    const match = { account_id: account_id, _id: id };
+    const data = await getData(Post, { filter: match });
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -31,8 +38,8 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const match = { ...req.query, visible: true };
-    const data = await Post.find(match).lean();
+    const match = { ...req.query };
+    const data = await getData(Post, { filter: match });
     if (data.length === 0) {
       throw Object.assign(new Error('No matching data found'), { status: 404 });
     }

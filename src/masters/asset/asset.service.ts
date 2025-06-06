@@ -4,6 +4,9 @@ import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { hasPermission } from "../../_config/permission";
 import { uploadBase64Image } from "../../_config/upload";
 import { getExternalData } from "../../util/externalAPI";
+import { getData } from "../../util/queryBuilder";
+import { User } from "../../models/user.model";
+import { LocationMaster } from "../../models/location.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -16,7 +19,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       }
       match._id = { $in: mapData.map(doc => doc.assetId) };
     }
-    const data: IAsset[] | null = await Asset.find(match).lean();
+    const data: IAsset[] | null = await Asset.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -100,7 +103,7 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
 
 export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { locations } = req.body;
+    const { locations, id } = req.body;
     const { account_id, _id: user_id } = req.user;
     if (!account_id) {
       throw Object.assign(new Error('Missing accountId'), { status: 403 });
@@ -111,19 +114,26 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
       parent_id: { $in: [null, undefined] }
     };
     if(!hasPermission('admin')) {
-      const mapData = await MapUserAssetLocation.find({userId: user_id}).lean();
+      const mapData = await MapUserAssetLocation.find({userId: user_id});
       if(mapData && mapData.length > 0) {
         query._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
     }
+    if(id) {
+      query._id = id;
+      query.top_level = true;
+    }
     if (locations && Array.isArray(locations) && locations.length > 0) {
       query.locationId = { $in: locations };
     }
-    const rootAssets = await Asset.find(query).lean();
+    // const rootAssets = await Asset.find(query);
+    const rootAssets = await getData(Asset, { filter: query });
     let data = await Promise.all(rootAssets.map(async (asset) => {
       return {
         ...asset,
-        childs: await getRecursiveAssets(asset)
+        childs: await getRecursiveAssets(asset),
+        userList: await getRecursiveUsers(asset),
+        locationData: await getRecursiveLocations(asset)
       };
     }));
     data = data.map((asset: any) => {
@@ -142,25 +152,41 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
 
 async function getRecursiveAssets(asset: any): Promise<any[]> {
   const ignoreAssets = ['Flexible', 'Rigid', 'Belt_Pulley'];
-  const children = await Asset.find({
-    parent_id: asset._id,
-    visible: true
-  }).lean();
+  const match = { parent_id: asset._id, visible: true };
+  const children = await getData(Asset, { filter: match });
+
   const withChildren = await Promise.all(
     children.map(async (child) => {
       if(child.asset_type) {
         if(!ignoreAssets.includes(child.asset_type)) {
           const childs = await getRecursiveAssets(child);
-          return { ...child, childs };
+          const locationData = await getRecursiveLocations(child);
+          return { ...child, childs, locationData };
         }
       } else {
         const childs = await getRecursiveAssets(child);
-        return { ...child, childs };
+        const locationData = await getRecursiveLocations(child);
+        return { ...child, childs, locationData };
       }
     })
   );
 
   return withChildren;
+}
+
+const getRecursiveUsers = async (asset: any) => {
+  const match = { assetId: asset._id };
+  const mapUsersAssets = await getData(MapUserAssetLocation, { filter: match });
+  const userIds = mapUsersAssets.map((user: any) => user.userId);
+  const fields = 'firstName lastName user_role';
+  return await getData(User, { filter: { _id: { $in: userIds } }, select: fields });
+}
+
+const getRecursiveLocations = async (asset: any) => {
+  const match = { _id: asset.locationId };
+  const fields = 'location_name';
+  const locationData = await getData(LocationMaster, { filter: match, select: fields });
+  return locationData[0];
 }
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
@@ -188,6 +214,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       powUnit: Equipment.powUnit,
       rotation_type: Equipment.rotation_type,
       top_level: true,
+      isNewFlow: true,
       locationId: Equipment.locationId,
       account_id: account_id,
       description: Equipment.description,
@@ -196,6 +223,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       year: Equipment.year,
       assigned_to: Equipment.assigned_to,
       image_path: Equipment.image_path,
+      imageNodeData: Equipment.imageNodeData,
       createdBy: user_id
     })
     const parentAssetData = await newParentAsset.save();
@@ -220,6 +248,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           asset_behavior: Motor.asset_behavior,
           specificFrequency: Motor.specificFrequency,
           mounting: Motor.mounting,
+          isNewFlow: true,
           minRotation: Motor.minRotation,
           maxRotation: Motor.maxRotation,
           rotationUnit: Motor.rotationUnit,
@@ -245,6 +274,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           asset_id: Flexible.asset_id || Equipment.asset_id,
           asset_type: Flexible.asset_type || "Flexible",
           top_level: false,
+          isNewFlow: true,
           locationId: parentAssetData.locationId,
           top_level_asset_id: parentAssetData._id,
           account_id: account_id,
@@ -270,6 +300,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           asset_orient: Rigid.asset_orient,
           powUnit: Rigid.powUnit,
           top_level: false,
+          isNewFlow: true,
           locationId: parentAssetData.locationId,
           top_level_asset_id: parentAssetData._id,
           account_id: account_id,
@@ -295,6 +326,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
               asset_id: beltPulley.asset_id || Equipment.asset_id,
               asset_type: beltPulley.asset_type || "Belt_Pulley",
               top_level: false,
+              isNewFlow: true,
               locationId: parentAssetData.locationId,
               top_level_asset_id: parentAssetData._id,
               account_id: account_id,
@@ -326,6 +358,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
               asset_id: gearbox.asset_id || Equipment.asset_id,
               asset_type: gearbox.asset_type || "Gearbox",
               top_level: false,
+              isNewFlow: true,
               locationId: parentAssetData.locationId,
               top_level_asset_id: parentAssetData._id,
               account_id: account_id,
@@ -382,6 +415,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           maxRotation: Fans_Blowers.maxRotation,
           specificFrequency: Fans_Blowers.specificFrequency,
           top_level: false,
+          isNewFlow: true,
           locationId: parentAssetData.locationId,
           top_level_asset_id: parentAssetData._id,
           account_id: account_id,
@@ -412,6 +446,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           maxRotation: Pumps.maxRotation,
           specificFrequency: Pumps.specificFrequency,
           top_level: false,
+          isNewFlow: true,
           locationId: parentAssetData.locationId,
           top_level_asset_id: parentAssetData._id,
           account_id: account_id,
@@ -443,6 +478,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           mountType: Compressor.mountType,
           specificFrequency: Compressor.specificFrequency,
           top_level: false,
+          isNewFlow: true,
           locationId: parentAssetData.locationId,
           top_level_asset_id: parentAssetData._id,
           account_id: account_id,
@@ -466,9 +502,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       "asset_status": "Not Defined",
       "asset_id": assetIdList
     };
-    console.log(match);
     const token: string = req.headers.authorization as string;
-    console.log(token);
     await getExternalData(`/asset_health_status/`, match, token, user_id);
 
     const allMapUserAssetData = insertedChildAssets.flatMap((asset: any) =>

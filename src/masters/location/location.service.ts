@@ -1,14 +1,18 @@
 import { LocationMaster, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
 import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLocation.model";
-import { console } from "inspector";
+import { getData } from "../../util/queryBuilder";
+import { hasPermission } from "../../_config/permission";
 const moduleName: string = "location";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = (req as any).user;
-    console.log(req.user);
-    const data: ILocationMaster[] | null = await LocationMaster.find({}).sort({ _id: 1 });
+    const match: any = { visible: true, account_id: account_id };
+    if(!hasPermission('admin')) {
+      match.userId = user_id;
+    }
+    const data: ILocationMaster[] | null = await getData(LocationMaster, { filter: match });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -119,7 +123,6 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if(!mapData || mapData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    console.log(mapData);
     const data: ILocationMaster | null = await LocationMaster.findById(id);
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -154,8 +157,6 @@ export const childAssetsAgainstLocation = async (req: Request, res: Response, ne
   try {
     const { location_id } = req.body;
     const { account_id, _id: user_id } = (req as any).user;
-    console.log(location_id.levelOneLocations);
-    console.log(location_id.levelTwoLocations);
     const dataOne = await LocationMaster.find({ account_id: account_id, _id: { $in: location_id.levelOneLocations } });
     const childDataOne = await LocationMaster.find({ account_id: account_id, parent_id: { $in: location_id.levelOneLocations } });
     const dataTwo = await LocationMaster.find({ account_id: account_id, _id: { $in: location_id.levelTwoLocations } });

@@ -1,15 +1,16 @@
 import mongoose from "mongoose";
 import { WorkOrder, IWorkOrder } from "../../models/workOrder.model";
 import { Request, Response, NextFunction } from 'express';
+import { hasPermission } from "../../_config/permission";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id, user_role: role } = req.user;
+    const { account_id, _id: user_id } = req.user;
     const match: any = { account_id: account_id, visible: true };
-    if(role !== 'admin') {
+    if(!hasPermission('admin')) {
       match.user_id = user_id;
     }
-    const data = await WorkOrder.find(match).lean();
+    const data = await WorkOrder.find(match);
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -38,8 +39,7 @@ export const getDataByFilter = async (req: Request, res: Response, next: NextFun
   try {
     const { account_id, _id: user_id, user_role: role } = req.user;
     const match = { ...req.query, account_id: account_id, visible: true };
-    console.log(match);
-    const data = await WorkOrder.find(match).lean();
+    const data = await WorkOrder.find(match);
     if (data.length === 0) {
       throw Object.assign(new Error('No matching data found'), { status: 404 });
     }

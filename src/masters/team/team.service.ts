@@ -4,7 +4,7 @@ import { NextFunction, Request, Response } from 'express';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { account_id, _id: user_id } = req.user;
-        const data = await Teams.find({account_id: account_id, isActive: true}).lean();
+        const data = await Teams.find({account_id: account_id, isActive: true});
         if (data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }

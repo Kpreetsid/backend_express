@@ -1,10 +1,12 @@
 import { Category, ICategory } from "../../models/formCategory.model";
 import { Request, Response, NextFunction } from 'express';
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data: ICategory[] | null = await Category.find({}).lean();
+    const match: any = { account_id: account_id, visible: true };
+    const data: ICategory[] | null = await getData(Category, { filter: match });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -18,8 +20,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data: ICategory | null = await Category.findById(id);
-    if (!data || !data.visible) {
+    const { account_id, _id: user_id } = req.user;
+    const match: any = { account_id: account_id, visible: true };
+    if(id) {
+      match._id = id;
+    }
+    const data: ICategory[] | null = await getData(Category, { filter: match });
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -31,8 +38,14 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const newCategory: ICategory = new Category(req.body);
-    await newCategory.save();
+    const body = req.body;
+    const { account_id, _id: user_id } = req.user;
+    const newCategoryBody = new Category({
+      ...body,
+      account_id,
+      createdBy: user_id
+    })
+    const newCategory: ICategory = await newCategoryBody.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: newCategory });
   } catch (error) {
     console.error(error);

@@ -7,9 +7,10 @@ interface QueryOptions {
   sort?: string | Record<string, 1 | -1>;
   limit?: number;
   skip?: number;
+  lean?: boolean;
 }
 
-export async function getData<T extends Document>(model: Model<T>, options: QueryOptions = {}): Promise<T[]> {
+export async function getData<T extends Document>( model: Model<T>, options: QueryOptions = {} ): Promise<any[]> {
   let query: any = model.find(options.filter || {});
 
   if (options.select) {
@@ -32,5 +33,14 @@ export async function getData<T extends Document>(model: Model<T>, options: Quer
     query = query.limit(options.limit);
   }
 
-  return await query.exec();
+  if (options.lean) {
+    query = query;
+  }
+
+  const data = await query.exec();
+  return data.map((doc: any) => {
+    doc = doc.toObject();
+    doc.id = doc._id;
+    return doc;
+  });
 }

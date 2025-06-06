@@ -5,11 +5,18 @@ import mongoose from "mongoose";
 import { hashPassword } from '../../_config/bcrypt';
 import { verifyCompany } from "../company/company.service";
 import { createUserRole } from './role/roles.service';
+import { getData } from "../../util/queryBuilder";
+import { hasPermission } from "../../_config/permission";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data: IUser[] | null = await User.find({account_id: account_id}).populate('account_id').lean();
+    const match: any = { account_id: account_id, isActive: true };
+    const linkWith = "account_id";
+    if(!hasPermission('admin')) {
+      match._id = user_id;
+    }
+    const data: IUser[] = await getData(User, { filter: match, populate: linkWith });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -23,8 +30,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    if(!id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
     const { account_id, _id: user_id } = req.user;
-    const data: IUser[] | null = await User.find({_id: id, account_id: account_id}).populate('account_id');
+    const match = { account_id: account_id, _id: id, isActive: true };
+    const linkWith = "account_id";
+    const data: IUser[] | null = await getData(User, { filter: match, populate: linkWith });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -48,7 +60,7 @@ export const verifyUserLogin = async ({ id, companyID, email, username }: UserLo
 export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { locationID } = req.params;
-    if(req.user.user_role !== "admin") {
+    if(!hasPermission('admin')) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const data = await MapUserAssetLocation.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');

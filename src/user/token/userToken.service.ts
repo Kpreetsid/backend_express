@@ -10,7 +10,7 @@ export const getAllUserTokens = async (req: Request, res: Response, next: NextFu
     if(!token) {
       throw Object.assign(new Error('Invalid link'), { status: 401 });
     }
-    const data = await UserToken.find({_id: token}).lean();
+    const data = await UserToken.find({_id: token});
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

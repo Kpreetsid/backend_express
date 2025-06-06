@@ -1,14 +1,15 @@
 import { ScheduleMasterModel, IScheduleMaster } from "../../models/scheduleMaster.model";
 import { Request, Response, NextFunction } from 'express';
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { account_id, _id: user_id } = req.user;
-        const data: IScheduleMaster[] | null = await ScheduleMasterModel.find({}).lean();
+        const match = { account_id: account_id, visible: true };
+        const data: IScheduleMaster[] = await getData(ScheduleMasterModel, { filter: match });
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
-        console.log(data.length);
         return res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
         console.error(error);
@@ -19,8 +20,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const data = await ScheduleMasterModel.findById(id);
-        if (!data || !data.visible) {
+        if(!id) {
+            throw Object.assign(new Error('No data found'), { status: 404 });
+        }
+        const { account_id, _id: user_id } = req.user;
+        const match = { account_id: account_id, _id: id, visible: true };
+        const data: IScheduleMaster[] = await getData(ScheduleMasterModel, { filter: match });
+        if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
         return res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -33,7 +39,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const match = { ...req.query, visible: true };
-        const data = await ScheduleMasterModel.find(match).lean();
+        const data = await getData(ScheduleMasterModel, { filter: match });
         if (data.length === 0) {
             throw Object.assign(new Error('No matching data found'), { status: 404 });
         }

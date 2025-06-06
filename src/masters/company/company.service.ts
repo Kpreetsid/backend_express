@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { Account, IAccount } from "../../models/account.model";
 import { NextFunction, Request, Response } from 'express';
-import { getData } from "../../_config/queryBuilder";
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {

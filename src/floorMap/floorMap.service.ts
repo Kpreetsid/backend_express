@@ -4,7 +4,7 @@ import e, { Request, Response, NextFunction } from 'express';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data = await EndpointLocation.find({}).lean();
+    const data = await EndpointLocation.find({});
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

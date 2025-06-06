@@ -2,16 +2,18 @@ import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 export interface ICategory extends Document {
   name: string;
+  description: string;
   visible: boolean;
   account_id: ObjectId;
-  id?: ObjectId;
+  createdBy: ObjectId;
 }
 
 const categorySchema = new Schema<ICategory>({
   name: { type: String, required: true },
-  visible: { type: Boolean, required: true },
+  description: { type: String },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  id: { type: mongoose.Schema.Types.ObjectId, default: null }
+  visible: { type: Boolean, default: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
   collection: 'form_category',
   timestamps: true,

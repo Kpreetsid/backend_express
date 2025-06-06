@@ -148,15 +148,3 @@ userLogSchema.statics.findByUserId = function (userId: string) {
 };
 
 export const UserLog = mongoose.model<IUserLog>('UserLog', userLogSchema);
-
-export const getAllUserLog = async (accountId: string) => await UserLog.find({ account_id: accountId }).lean();
-
-export const getUserLogById = async (id: string) => await UserLog.findById(id);
-
-export const getUserLogByFilter = async (accountId: string, filter: any) => await UserLog.find({ account_id: accountId, ...filter, visible: true }).lean();
-
-export const createUserLog = async (log: IUserLog) => await UserLog.create(log);
-
-export const updateUserLog = async (id: string, user: IUserLog) => await UserLog.findByIdAndUpdate({ id }, { $set: user });
-
-export const deleteUserLog = async (id: string) => await UserLog.findByIdAndUpdate({ _id: id }, { $set: { visible: false } });

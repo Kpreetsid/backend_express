@@ -9,7 +9,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     if(params?.id) {
       match.top_level_asset_id = params.id;
     }
-    const data = await ReportAsset.find(match).lean();
+    const data = await ReportAsset.find(match);
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

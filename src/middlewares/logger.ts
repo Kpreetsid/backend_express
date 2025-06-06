@@ -18,12 +18,20 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
         version: extractBrowserVersion(headers['user-agent']),
         engine: extractEngine(headers['user-agent']),
       };
+      const userAgent = headers['user-agent'] ?? '';
+      const secChUaMobile = headers['sec-ch-ua-mobile'] ?? '';
+      const secChUaTablet = headers['sec-ch-ua-tablet'] ?? '';
+
+      const isMobile = secChUaMobile === '?1' || /Mobi|Android/i.test(userAgent);
+      const isTablet = secChUaTablet === '?1' || /Tablet|iPad/i.test(userAgent);
+      const isDesktop = !isMobile && !isTablet;
+
       const deviceInfo = {
-        isMobile: headers['sec-ch-ua-mobile'] === '?1',
-        isTablet: headers['sec-ch-ua-tablet'] === '?1',
-        isDesktop: headers['sec-ch-ua-desktop'] === '?1',
-        userAgent: headers['user-agent'],
-      };
+        isMobile,
+        isTablet,
+        isDesktop,
+        userAgent
+      }
       if(deviceInfo.isMobile) {
         req.user.device = "Mobile";
       } else if(deviceInfo.isTablet) {
@@ -31,6 +39,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
       } else {
         req.user.device = "Desktop";
       }
+      console.log(req.user.device);
       const networkInfo = {
         origin: headers['origin'],
         referer: headers['referer'],

@@ -1,11 +1,13 @@
 import { Observation, IObservation } from "../../models/observation.model";
 import { Request, Response, NextFunction } from 'express';
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data = await Observation.find({}).lean();
-    if (data.length === 0) {
+    const match: any = { accountId: account_id };
+    const data: IObservation[] = await getData(Observation, { filter: match });
+    if (!data ||data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -18,8 +20,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await Observation.findById(id);
-    if (!data) {
+    const { account_id, _id: user_id } = req.user;
+    const match = { accountId: account_id, _id: id };
+    const data: IObservation[] | null = await getData(Observation, { filter: match });
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -32,8 +36,8 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const getDataByParam = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const query = { ...req.query, visible: true };
-    const data = await Observation.find(query).lean();
-    if (data.length === 0) {
+    const data = await Observation.find(query);
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No matching data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });

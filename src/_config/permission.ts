@@ -36,3 +36,13 @@ export const isOwnerOrAdmin = async (req: Request, res: Response, next: NextFunc
     next(error);
   }
 };
+
+export const usedDevice = (device: string) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const { device: userDevice } = req.user;
+    if(userDevice !== device) {
+      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
+    }
+    next();
+  }
+}
