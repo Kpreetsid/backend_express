@@ -11,7 +11,7 @@ export interface IUpload extends Document {
     size: number;
 }
 
-const uploadSchema = new Schema<IUpload>({
+export const uploadSchema = new Schema<IUpload>({
     originalName: { type: String, required: true },
     type: { type: String, required: true },
     destination:{ type: String, required: true, select: false },

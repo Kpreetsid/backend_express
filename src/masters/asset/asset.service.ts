@@ -2,7 +2,7 @@ import { Asset, IAsset } from "../../models/asset.model";
 import { NextFunction, Request, Response } from 'express';
 import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { hasPermission } from "../../_config/permission";
-import { uploadBase64Image } from "../../_config/upload";
+import { deleteBase64Image, uploadBase64Image } from "../../_config/upload";
 import { getExternalData } from "../../util/externalAPI";
 import { getData } from "../../util/queryBuilder";
 import { User } from "../../models/user.model";
@@ -131,7 +131,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
     let data = await Promise.all(rootAssets.map(async (asset) => {
       return {
         ...asset,
-        childs: await getRecursiveAssets(asset),
+        childs: await getRecursiveAssets(asset, id),
         userList: await getRecursiveUsers(asset),
         locationData: await getRecursiveLocations(asset)
       };
@@ -150,8 +150,11 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
   }
 };
 
-async function getRecursiveAssets(asset: any): Promise<any[]> {
-  const ignoreAssets = ['Flexible', 'Rigid', 'Belt_Pulley'];
+async function getRecursiveAssets(asset: any, id: string): Promise<any[]> {
+  let ignoreAssets: any = ['Flexible', 'Rigid', 'Belt_Pulley'];
+  if(id) {
+    ignoreAssets = [];
+  }
   const match = { parent_id: asset._id, visible: true };
   const children = await getData(Asset, { filter: match });
 
@@ -159,12 +162,12 @@ async function getRecursiveAssets(asset: any): Promise<any[]> {
     children.map(async (child) => {
       if(child.asset_type) {
         if(!ignoreAssets.includes(child.asset_type)) {
-          const childs = await getRecursiveAssets(child);
+          const childs = await getRecursiveAssets(child, id);
           const locationData = await getRecursiveLocations(child);
           return { ...child, childs, locationData };
         }
       } else {
-        const childs = await getRecursiveAssets(child);
+        const childs = await getRecursiveAssets(child, id);
         const locationData = await getRecursiveLocations(child);
         return { ...child, childs, locationData };
       }
@@ -271,6 +274,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         const newFlexibleAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Flexible.asset_name,
+          element: Flexible.element,
           asset_id: Flexible.asset_id || Equipment.asset_id,
           asset_type: Flexible.asset_type || "Flexible",
           top_level: false,
@@ -410,6 +414,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           mountType: Fans_Blowers.mountType,
           brandMake: Fans_Blowers.brandMake,
           mounting: Fans_Blowers.mounting,
+          bearingType: Fans_Blowers.bearingType,
           bladeCount: Fans_Blowers.bladeCount,
           minRotation: Fans_Blowers.minRotation,
           maxRotation: Fans_Blowers.maxRotation,
@@ -525,27 +530,101 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { account_id, _id: user_id } = req.user;
     const { id } = req.params;
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
-    if(!id || !Equipment || !Motor || !Flexible || !Rigid || !Belt_Pulley || !Gearbox || !Fans_Blowers || !Pumps || !Compressor) {
-      throw Object.assign(new Error('All fields are required'), { status: 403 });
+    if(!id) {
+      throw Object.assign(new Error('Id is required'), { status: 403 });
     }
-    if(id !== Equipment._id) {
+    if(id !== Equipment.id) {
       throw Object.assign(new Error('Data mismatch'), { status: 403 });
     }
-    const mainAsset = await Asset.findById(id);
-    if (!mainAsset || !mainAsset.visible) {
+    const data = await Asset.findById(id);
+    if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const assetComponents = [Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor];
-    const operations = assetComponents
-      .filter((item) => item && item._id && Object.keys(item).length > 0)
-      .map((item) => ({
-        updateOne: {
-          filter: { _id: item._id },
-          update: { $set: { ...item, updatedBy: user_id } }
+    const createPromises: Promise<any>[] = [];
+    const updatePromises: Promise<any>[] = [];
+    if(Equipment) {
+      if(Object.keys(Equipment).length > 0) {
+        if(Equipment.image_path) {
+          if(data.image_path) {
+            await deleteBase64Image(data.image_path.fileName, "asset");
+          }
+          const image = await uploadBase64Image(Equipment.image_path, "asset");
+          Equipment.image_path = image;
         }
-      }));
-    await Asset.bulkWrite(operations);
-    return res.status(200).json({ status: true, message: "Data updated successfully" });
+        updatePromises.push(Asset.updateOne({ _id: Equipment.id }, { $set: { ...Equipment, updatedBy: user_id } }));
+      }
+    }
+    if(Motor || Motor.id) {
+      if(Object.keys(Motor).length > 0) {
+        updatePromises.push(Asset.updateOne({ _id: Motor.id }, { $set: { ...Motor, updatedBy: user_id } }));
+      }
+    } else {
+      createPromises.push(new Asset({ ...Motor, createdBy: user_id }).save());
+    }
+    if(Flexible || Flexible.id) {
+      if(Object.keys(Flexible).length > 0) {
+        updatePromises.push(Asset.updateOne({ _id: Flexible.id }, { $set: { ...Flexible, updatedBy: user_id } }));
+      }
+    } else {
+      createPromises.push(new Asset({ ...Flexible, createdBy: user_id }).save());
+    }
+    if(Rigid || Rigid.id) {
+      if(Object.keys(Rigid).length > 0) {
+        updatePromises.push(Asset.updateOne({ _id: Rigid.id }, { $set: { ...Rigid, updatedBy: user_id } }));
+      }
+    } else {
+      createPromises.push(new Asset({ ...Rigid, createdBy: user_id }).save());
+    }
+    if(Belt_Pulley.length > 0) {
+      Belt_Pulley.forEach((beltPulley: any) => {
+        if(beltPulley.id) {
+          if(Object.keys(beltPulley).length > 0) {
+            updatePromises.push(Asset.updateOne({ _id: beltPulley.id }, { $set: { ...beltPulley, updatedBy: user_id } }));
+          }
+        } else {
+          createPromises.push(new Asset({ ...beltPulley, createdBy: user_id }).save());
+        }
+      });
+    }
+     if(Gearbox.length > 0) {
+      Gearbox.forEach((gearbox: any) => {
+        if(gearbox.id) {
+          if(Object.keys(gearbox).length > 0) {
+            updatePromises.push(Asset.updateOne({ _id: gearbox.id }, { $set: { ...gearbox, updatedBy: user_id } }));
+          }
+        } else {
+          createPromises.push(new Asset({ ...gearbox, createdBy: user_id }).save());
+        }
+      });
+    }
+    if(Fans_Blowers || Fans_Blowers.id) {
+      if(Object.keys(Fans_Blowers).length > 0) {
+        updatePromises.push(Asset.updateOne({ _id: Fans_Blowers.id }, { $set: { ...Fans_Blowers, updatedBy: user_id } }));
+      }
+    } else {
+      createPromises.push(new Asset({ ...Fans_Blowers, createdBy: user_id }).save());
+    }
+    if(Pumps || Pumps.id) {
+      if(Object.keys(Pumps).length > 0) {
+        updatePromises.push(Asset.updateOne({ _id: Pumps.id }, { $set: { ...Pumps, updatedBy: user_id } }));
+      }
+    } else {
+      createPromises.push(new Asset({ ...Pumps, createdBy: user_id }).save());
+    }
+    if(Compressor || Compressor.id) {
+      if(Object.keys(Compressor).length > 0) {
+        updatePromises.push(Asset.updateOne({ _id: Compressor.id }, { $set: { ...Compressor, updatedBy: user_id } }));
+      }
+    } else {
+      createPromises.push(new Asset({ ...Compressor, createdBy: user_id }).save());
+    }
+    if(updatePromises.length > 0) {
+      await Promise.all(updatePromises);
+    }
+    if(createPromises.length > 0) {
+      await Promise.all(createPromises);
+    }
+    return res.status(200).json({ status: true, message: "Data updated successfully", data: id });
   } catch (error) {
     console.error(error);
     next(error);

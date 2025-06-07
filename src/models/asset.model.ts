@@ -1,4 +1,5 @@
 import mongoose, { Schema, ObjectId, Document } from 'mongoose';
+import { IUpload, UploadModel, uploadSchema } from './upload.model';
 
 export interface IAsset extends Document {
   asset_name: string;
@@ -22,6 +23,7 @@ export interface IAsset extends Document {
   motorType: string;
   maxRotation: string;
   brandId: string;
+  brand: string;
   mountType: string;
   specificFrequency: string[];
   imageNodeData: [object];
@@ -42,6 +44,7 @@ export interface IAsset extends Document {
   pump_model: string;
   impellerType: string;
   lineFreq: string;
+  element: string;
   noOfGroove: string;
   account_id: ObjectId;
   parent_id: ObjectId;
@@ -50,12 +53,13 @@ export interface IAsset extends Document {
   drivingPulleyDiaUnit: string;
   description: string;
   manufacturer: string;
+  casing: string;
   year: string;
   brandMake: string;
   visible: boolean;
   isActive: boolean;
   assigned_to: number;
-  image_path: object;
+  image_path: IUpload;
   noStages: number;
   qr_code: string;
   stage_1st_driving_teeth?: number,
@@ -95,13 +99,16 @@ const assetSchema = new Schema<IAsset>({
   mounting: { type: String },
   bladeCount: { type: String },
   powUnit: { type: String },
+  casing: { type: String },
+  element: { type: String },
+  brand: { type: String },
+  brandId: { type: String },
   brandModel: { type: String },
   pinionGearTeethCount: { type: String },
   timingGearTeethCount: { type: String },
   minRotation: { type: String },
   maxRotation: { type: String },
   rotation_type: { type: String },
-  brandId: { type: String },
   mountType: { type: String },
   specificFrequency: { type: [String] },
   minInputRotation: { type: String },
@@ -130,7 +137,7 @@ const assetSchema = new Schema<IAsset>({
   year: { type: String },
   qr_code: { type: String },
   assigned_to: { type: Number, default: 1 },
-  image_path: { type: Object },
+  image_path: { type: uploadSchema },
   visible: { type: Boolean, default: true },
   isActive: { type: Boolean, default: true },
   brandMake: { type: String },

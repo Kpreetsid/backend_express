@@ -49,3 +49,17 @@ export const uploadBase64Image = async (base64Image: string, folderName?: string
     throw error;
   }
 };
+
+export const deleteBase64Image = async (fileName: string, folderName?:  string) => {
+  try {
+    let pathName = `../../uploadFiles`;
+    if (folderName) {
+      pathName = `../../uploadFiles/${folderName}`;
+    }
+    const filePath = path.join(__dirname, pathName, fileName);
+    fs.unlinkSync(filePath);
+  } catch (error) {
+    console.error("Image delete error:", error);
+    throw error;
+  }
+};
