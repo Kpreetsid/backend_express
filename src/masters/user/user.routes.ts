@@ -11,7 +11,7 @@ export default (router: express.Router) => {
     userRouter.get('/', getUsers);
     userRouter.get('/:id', getUser);
     userRouter.get('/location/:id', hasPermission('admin'), getLocationWiseUsers);
-    userRouter.post('/', isOwnerOrAdmin, createUser);
+    userRouter.post('/', hasPermission('admin'), createUser);
     userRouter.put('/:id', isOwnerOrAdmin, updateUser);
     userRouter.delete('/:id', isOwnerOrAdmin, removeUser);
     router.use('/users', userRouter);

@@ -15,7 +15,7 @@ export const uploadSchema = new Schema<IUpload>({
     originalName: { type: String, required: true },
     type: { type: String, required: true },
     destination:{ type: String, required: true, select: false },
-    folderName: { type: String, required: true },
+    folderName: { type: String },
     fileName: { type: String, required: true },
     filePath: { type: String, required: true, select: false },
     fileURL: { type: String },

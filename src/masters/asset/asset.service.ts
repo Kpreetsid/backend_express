@@ -182,7 +182,8 @@ const getRecursiveUsers = async (asset: any) => {
   const mapUsersAssets = await getData(MapUserAssetLocation, { filter: match });
   const userIds = mapUsersAssets.map((user: any) => user.userId);
   const fields = 'firstName lastName user_role';
-  return await getData(User, { filter: { _id: { $in: userIds } }, select: fields });
+  const data = await getData(User, { filter: { _id: { $in: userIds } }, select: fields });
+  return data.map((user: any) => user._id).filter((user: any) => user);
 }
 
 const getRecursiveLocations = async (asset: any) => {

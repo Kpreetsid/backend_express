@@ -114,7 +114,19 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await User.findByIdAndUpdate(id, req.body, { new: true });
+    const body = req.body;
+    const { account_id, _id: user_id } = req.user;
+    if(!id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const userData = await User.findById(id);
+    if(!userData) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    if(body.user_profile_img) {
+      userData.user_profile_img = body.user_profile_img;
+    }
+    const data = await User.findByIdAndUpdate(id, userData, { new: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
