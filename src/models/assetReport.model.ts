@@ -144,7 +144,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
     asset_id: String,
     org_id: String,
     mac_id: String,
-    image: { type: String, default: null },
+    image: { type: String },
     acceleration: {
       Axial: {
         timestamp: Number,

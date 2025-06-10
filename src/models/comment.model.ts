@@ -68,8 +68,8 @@ const UserSchema = new Schema<IUser>({
 const CommentSchema = new Schema<IComment>({
   commentId: Number,
   createdDate: Date,
-  newCommentText: { type: String, default: null },
-  replyComment: { type: [String], default: [] },
+  newCommentText: { type: String },
+  replyComment: { type: [String] },
   user: { type: UserSchema, required: true },
 }, { _id: false });
 
@@ -77,7 +77,7 @@ const CommentSchema = new Schema<IComment>({
 const CommentsSchema = new Schema<IComments>({
   createdOn: { type: Date, default: Date.now },
   order_id: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
-  comments: { type: [CommentSchema], default: [] },
+  comments: { type: [CommentSchema] },
 }, { 
   collection: 'work_order_comment',
   timestamps: true ,

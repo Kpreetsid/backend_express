@@ -24,6 +24,7 @@ interface IEstimatedPart {
 }
 
 export interface IWorkOrder extends Document {
+  account_id: ObjectId;
   order_no: string;
   title: string;
   description: string;
@@ -32,10 +33,6 @@ export interface IWorkOrder extends Document {
   status: string;
   nature_of_work: string;
   rescheduleEnabled: boolean;
-  createdOn: Date;
-  visible: boolean;
-  account_id: ObjectId;
-  created_by: ObjectId;
   wo_asset_id: ObjectId;
   wo_location_id: ObjectId;
   assigned_to: number;
@@ -50,6 +47,9 @@ export interface IWorkOrder extends Document {
   requestId: string;
   attachment: string[];
   estimatedParts: IEstimatedPart[];
+  visible: boolean;
+  created_by: ObjectId;
+  createdOn: Date;
 }
 
 const locationSchema = new Schema<ILocation>({
@@ -76,6 +76,7 @@ const estimatedPartSchema = new Schema<IEstimatedPart>({
 }, { _id: false });
 
 const WorkOrderSchema = new Schema<IWorkOrder>({
+  account_id: { type: Schema.Types.ObjectId, required: true },
   order_no: { type: String, required: true },
   title: { type: String, required: true },
   description: { type: String, default: "" },
@@ -84,24 +85,23 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   status: { type: String, enum: ["Open", "In-Progress", "On-Hold", "Completed"], default: "Open" },
   nature_of_work: { type: String },
   rescheduleEnabled: { type: Boolean, default: false },
-  createdOn: { type: Date, default: Date.now },
-  visible: { type: Boolean, default: true },
-  account_id: { type: Schema.Types.ObjectId, required: true },
-  created_by: { type: Schema.Types.ObjectId, required: true },
   wo_asset_id: { type: Schema.Types.ObjectId, required: true },
   wo_location_id: { type: Schema.Types.ObjectId, required: true },
   assigned_to: { type: Number },
   start_date: { type: String },
   end_date: { type: String },
-  sopForm: { type: String, default: null },
-  teamId: { type: String, default: null },
-  workInstruction: { type: String, default: null },
-  actualParts: { type: [String], default: [] },
+  sopForm: { type: String },
+  teamId: { type: String },
+  workInstruction: { type: String },
+  actualParts: { type: [String] },
   createdFrom: { type: String },
   createrEmail: { type: String },
   requestId: { type: String },
-  attachment: { type: [String], default: [] },
-  estimatedParts: { type: [estimatedPartSchema], default: [] }
+  attachment: { type: [String] },
+  estimatedParts: { type: [estimatedPartSchema] },
+  visible: { type: Boolean, default: true },
+  created_by: { type: Schema.Types.ObjectId, required: true },
+  createdOn: { type: Date, default: Date.now }
 }, {
   collection: 'work_orders',
   timestamps: true,

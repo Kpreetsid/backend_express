@@ -140,8 +140,8 @@ const SOPComponentSchema = new Schema<SOPComponent>({
         unique: Boolean
     },
     conditional: {
-        show: { type: Schema.Types.Mixed, default: null },
-        when: { type: Schema.Types.Mixed, default: null },
+        show: { type: Schema.Types.Mixed },
+        when: { type: Schema.Types.Mixed },
         eq: String
     },
     overlay: {
@@ -157,7 +157,7 @@ const SOPComponentSchema = new Schema<SOPComponent>({
     showWordCount: { type: Boolean },
     properties: { type: Schema.Types.Mixed, default: {} },
     allowMultipleMasks: { type: Boolean },
-    addons: { type: [String], default: [] },
+    addons: { type: [String] },
     leftIcon: { type: String },
     rightIcon: String
 }, { _id: false });

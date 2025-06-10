@@ -1,11 +1,21 @@
 import { WorkRequestModel, IWorkRequest } from "../../models/workRequest.model";
 import { Request, Response, NextFunction } from 'express';
+import { getData } from "../../util/queryBuilder";
+import { hasPermission } from "../../_config/permission";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = req.user;
-    const data = await WorkRequestModel.find({});
-    if (data.length === 0) {
+    const query = req.query;
+    let match: any = { account_id: account_id };
+    if(query) {
+      match = { ...match, ...query };
+    }
+    if(!hasPermission('admin')) {
+      match.created_by = user_id;
+    }
+    const data: IWorkRequest[] | null = await getData(WorkRequestModel, { filter: match });
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -18,8 +28,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const data = await WorkRequestModel.findById(id);
-    if (!data) {
+    if(!id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const { account_id, _id: user_id } = req.user;
+    const match = { account_id: account_id, _id: id, visible: true };
+    const data: IWorkRequest[] | null = await getData(WorkRequestModel, { filter: match });
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -29,23 +44,13 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const match = { ...req.query, visible: true };
-    const data = await WorkRequestModel.find(match);
-    if (data.length === 0) {
-      throw Object.assign(new Error('No matching data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-}
-
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const newWorkRequest = new WorkRequestModel(req.body);
+    const { account_id, _id: user_id } = req.user;
+    const body = req.body;
+    body.account_id = account_id;
+    body.createdBy = user_id;
+    const newWorkRequest = new WorkRequestModel(body);
     const data = await newWorkRequest.save();
     res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
@@ -56,9 +61,13 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    const { body } = req;
-    const data = await WorkRequestModel.findByIdAndUpdate(id, body, { new: true });
+    const { params, body } = req;
+    if(!params.id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const { account_id, _id: user_id } = req.user;
+    body.updatedBy = user_id;
+    const data = await WorkRequestModel.findByIdAndUpdate(params.id, body, { new: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -72,6 +81,9 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
+    if(!id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
     const data = await WorkRequestModel.findById(id);
     if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });

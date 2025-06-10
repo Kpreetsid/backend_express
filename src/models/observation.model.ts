@@ -55,7 +55,7 @@ export interface IObservation extends Document {
 const ObservationSchema = new Schema<IObservation>({
   observation: { type: String, required: true },
   recommendation: { type: String, required: true },
-  faults: { type: [String], default: [] },
+  faults: { type: [String] },
   files: { type: Schema.Types.Mixed, default: {} },
   createdOn: { type: Date, default: Date.now },
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
@@ -65,7 +65,7 @@ const ObservationSchema = new Schema<IObservation>({
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     username: { type: String, required: true },
-    pincode: { type: String, default: null },
+    pincode: { type: String },
     email: { type: String, required: true },
     emailStatus: { type: Boolean, default: false },
     user_status: { type: String, required: true },

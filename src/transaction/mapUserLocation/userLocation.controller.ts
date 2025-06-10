@@ -1,6 +1,10 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll } from './userLocation.service';
+import { userLocations, userAssets } from './userLocation.service';
 
 export const getUserLocations = async (req: Request, res: Response, next: NextFunction) => {
-  await getAll(req, res, next);
+  await userLocations(req, res, next);
+};
+
+export const getUserAssets = async (req: Request, res: Response, next: NextFunction) => {
+  await userAssets(req, res, next);
 };

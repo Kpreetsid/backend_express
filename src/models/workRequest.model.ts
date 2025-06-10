@@ -37,10 +37,9 @@ interface IAssetItem {
 }
 
 export interface IWorkRequest extends Document {
+  account_id: ObjectId;
   title?: string;
   description: string;
-  createdOn: Date;
-  account_id: ObjectId;
   userId?: ObjectId;
   user?: IUser;
   location?: ILocationItem[];
@@ -56,26 +55,34 @@ export interface IWorkRequest extends Document {
   help?: boolean;
   comments?: any[];
   likes?: any[];
+  isActive: boolean;
+  createdBy: ObjectId;
+  createdOn: Date;
+  updatedBy?: ObjectId;
+  updatedOn?: Date;
 }
 
 const WorkRequestSchema = new Schema<IWorkRequest>({
-  title: { type: String, default: null },
-  description: { type: String, required: true },
-  createdOn: { type: Date, default: Date.now },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-  user: { type: Object, default: null },
-  location: { type: [Object], default: [] },
-  asset: { type: [Object], default: [] },
+  title: { type: String },
+  description: { type: String, required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  user: { type: Object },
+  location: { type: [Object] },
+  asset: { type: [Object] },
   problemType: { type: String, required: true },
-  postPriority: { type: String, required: true },
-  files: { type: [String], default: [] },
-  status: { type: String, default: null },
-  emailId: { type: String, default: null },
-  tags: { type: Object, default: null },
+  postPriority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Low' },
+  files: { type: [String] },
+  status: { type: String },
+  emailId: { type: String },
+  tags: { type: Object },
   help: { type: Boolean, default: false },
-  comments: { type: [Schema.Types.Mixed], default: [] },
-  likes: { type: [Schema.Types.Mixed], default: [] }
+  comments: { type: [Schema.Types.Mixed] },
+  likes: { type: [Schema.Types.Mixed] },
+  isActive: { type: Boolean, default: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  createdOn: { type: Date, default: Date.now },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, {
   collection: 'help',
   timestamps: true,

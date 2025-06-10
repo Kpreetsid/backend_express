@@ -138,9 +138,13 @@ export const getDataByFilter = async (req: Request, res: Response, next: NextFun
   try {
     const { account_id, _id: user_id } = req.user;
     const params: any = req.query;
-    const match: any = { };
+    const match: any = { account_id: account_id, visible: true };
     if(params?._id && params?._id.toString().split(',').length > 0) {
       match.locationId = { $in: params._id.toString().split(',') };
+    }
+    console.log(params.assetId);
+    if(params?.assetID && params?.assetID.toString().split(',').length > 0) {
+      match.equipment_id = { $in: params.assetID.toString().split(',') };
     }
     const data: IMapUserLocation[] = await MapUserAssetLocation.find(match).populate('userId');
     if (!data || data.length === 0) {

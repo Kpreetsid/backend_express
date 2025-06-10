@@ -7,6 +7,7 @@ import { getExternalData } from "../../util/externalAPI";
 import { getData } from "../../util/queryBuilder";
 import { User } from "../../models/user.model";
 import { LocationMaster } from "../../models/location.model";
+import mongoose from "mongoose";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -59,7 +60,15 @@ export const assetFilterByParam = async (req: Request, res: Response, next: Next
     if(params?.top_level) {
       match.top_level = params.top_level;
     }
-    const data: IAsset[] | null = await Asset.find(match).sort({ _id: 1 });
+    if(params?.assetID) {
+      const assetsIDList = params.assetID.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      match._id = { $in: assetsIDList };
+    }
+    if(params?.locationID) {
+      const locationIDList = params.locationID.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      match.locationId = { $in: locationIDList };
+    }
+    const data: IAsset[] | null = await getData(Asset, { filter: match });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -150,14 +159,13 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
   }
 };
 
-async function getRecursiveAssets(asset: any, id: string): Promise<any[]> {
+const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
   let ignoreAssets: any = ['Flexible', 'Rigid', 'Belt_Pulley'];
   if(id) {
     ignoreAssets = [];
   }
   const match = { parent_id: asset._id, visible: true };
   const children = await getData(Asset, { filter: match });
-
   const withChildren = await Promise.all(
     children.map(async (child) => {
       if(child.asset_type) {
@@ -173,7 +181,6 @@ async function getRecursiveAssets(asset: any, id: string): Promise<any[]> {
       }
     })
   );
-
   return withChildren;
 }
 

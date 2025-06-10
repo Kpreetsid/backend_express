@@ -1,11 +1,13 @@
 import { Teams, ITeam } from "../../models/team.model";
 import { NextFunction, Request, Response } from 'express';
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { account_id, _id: user_id } = req.user;
-        const data = await Teams.find({account_id: account_id, isActive: true});
-        if (data.length === 0) {
+        const match = { account_id: account_id, isActive: true };
+        const data: ITeam[] = await getData(Teams, { filter: match });
+        if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
         res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -18,8 +20,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const data = await Teams.findById(id);
-        if (!data || !data.isActive) {
+        const { account_id, _id: user_id } = req.user;
+        const match = { account_id: account_id, _id: id, isActive: true };
+        const data = await getData(Teams, { filter: match });
+        if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
         res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -34,8 +38,9 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         const { account_id, _id: user_id } = req.user;
         const body = req.body;
         const newTeam = new Teams({
-            name: body.name,
-            account_id: account_id
+            team_name: body.team_name,
+            account_id: account_id,
+            createdBy: user_id
         });
         const data = await newTeam.save();
         res.status(201).json({ status: true, message: "Data created successfully", data });

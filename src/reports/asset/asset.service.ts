@@ -1,5 +1,6 @@
 import { ReportAsset, IReportAsset } from "../../models/assetReport.model";
 import { Request, Response, NextFunction } from 'express';
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -9,11 +10,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     if(params?.id) {
       match.top_level_asset_id = params.id;
     }
-    const data = await ReportAsset.find(match);
-    if (data.length === 0) {
+    const data = await getData(ReportAsset, { filter: match, sort: { _id: -1 }, limit: 1 });
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: data[0] });
   } catch (error) {
     next(error);     
   }
