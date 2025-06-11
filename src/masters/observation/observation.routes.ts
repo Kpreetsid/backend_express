@@ -1,6 +1,6 @@
 import express from 'express';
 import { getObservations, getObservation, getFilteredObservations, createObservation, updateObservation, removeObservation } from './observation.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const observationRouter = express.Router();

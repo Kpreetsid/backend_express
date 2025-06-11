@@ -1,6 +1,6 @@
 import express from 'express';
 import { getPosts, getPost, getFilterPost, createPost, updatePost, removePost } from './posts.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const postRouter = express.Router();

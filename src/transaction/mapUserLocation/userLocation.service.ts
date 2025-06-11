@@ -1,4 +1,3 @@
-import { hasPermission } from "../../_config/permission";
 import { MapUserAssetLocation, IMapUserLocation } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
@@ -9,10 +8,10 @@ import { IUser } from "../../models/user.model";
 
 export const userLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = { locationId: { $exists: true } };
-    if(hasPermission('admin')) {
+    if(userRole === 'admin') {
       const locationMatch = { account_id: account_id, visible: true };
       const locationData = await getData(LocationMaster, { filter: locationMatch });
       if (!locationData || locationData.length === 0) {
@@ -43,10 +42,10 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
 
 export const userAssets = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = { assetId: { $exists: true } };
-    if(hasPermission('admin')) {
+    if(userRole === 'admin') {
       const assetMatch = { account_id: account_id, visible: true };
       const assetData = await getData(Asset, { filter: assetMatch });
       if (!assetData || assetData.length === 0) {

@@ -1,19 +1,18 @@
 import { WorkRequestModel, IWorkRequest } from "../../models/workRequest.model";
 import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
-import { hasPermission } from "../../_config/permission";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
     let match: any = { account_id: account_id };
     if(query) {
       match = { ...match, ...query };
     }
-    if(!hasPermission('admin')) {
+    if(userRole !== 'admin') {
       match.created_by = user_id;
     }
     const data: IWorkRequest[] | null = await getData(WorkRequestModel, { filter: match });

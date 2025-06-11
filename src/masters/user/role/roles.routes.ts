@@ -1,6 +1,6 @@
 import express from 'express';
 import { getRoles, getRole, createRole, updateRole, removeRole, myRoleData } from './roles.controller';
-import { hasPermission } from '../../../_config/permission';
+import { hasPermission } from '../../../middlewares';
 
 export default (router: express.Router) => {
     const roleRouter = express.Router();

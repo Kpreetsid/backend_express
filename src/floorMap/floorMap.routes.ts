@@ -1,6 +1,6 @@
 import express from 'express';
 import { getFloorMaps, getFloorMap, createFloorMap, updateFloorMap, removeFloorMap } from './floorMap.controller';
-import { hasPermission } from '../_config/permission';
+import { hasPermission } from '../middlewares';
 
 export default (router: express.Router) => {
     const floorMapRouter = express.Router();

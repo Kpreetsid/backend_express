@@ -1,6 +1,6 @@
 import express from 'express';
 import { getOrders, getOrder, createOrder, updateOrder, removeOrder } from './order.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const orderRouter = express.Router();

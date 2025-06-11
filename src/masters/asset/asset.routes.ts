@@ -1,6 +1,6 @@
 import express from 'express';
 import { getAssets, getAsset, getFilteredAssets, getFilterByParam, getAssetTree, createAsset, updateAsset, removeAsset } from './asset.controller';
-import { hasPermission, isOwnerOrAdmin } from '../../_config/permission';
+import { hasPermission, isOwnerOrAdmin } from '../../middlewares';
 
 export default (router: express.Router) => {
     const assetRouter = express.Router();

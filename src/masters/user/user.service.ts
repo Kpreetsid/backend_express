@@ -6,16 +6,14 @@ import { hashPassword } from '../../_config/bcrypt';
 import { verifyCompany } from "../company/company.service";
 import { createUserRole } from './role/roles.service';
 import { getData } from "../../util/queryBuilder";
-import { hasPermission } from "../../_config/permission";
 import { get } from "lodash";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    //  const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, isActive: true };
     const linkWith = "account_id";
-    if(!hasPermission('admin')) {
+    if(userRole !== 'admin') {
       match._id = user_id;
     }
     const data: IUser[] = await getData(User, { filter: match, populate: linkWith });
@@ -62,7 +60,8 @@ export const verifyUserLogin = async ({ id, companyID, email, username }: UserLo
 export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { locationID } = req.params;
-    if(!hasPermission('admin')) {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    if(userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const data = await MapUserAssetLocation.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');

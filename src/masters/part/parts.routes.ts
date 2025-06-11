@@ -1,6 +1,6 @@
 import express from 'express';
 import { getParts, getPart, createPart, updatePart, removePart, getFilterParts } from './parts.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const partRouter = express.Router();

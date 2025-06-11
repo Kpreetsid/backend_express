@@ -1,7 +1,7 @@
 import { Asset, IAsset } from "../../models/asset.model";
 import { NextFunction, Request, Response } from 'express';
 import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
-import { hasPermission } from "../../_config/permission";
+import { hasPermission } from "../../middlewares/permission";
 import { deleteBase64Image, uploadBase64Image } from "../../_config/upload";
 import { getExternalData } from "../../util/externalAPI";
 import { getData } from "../../util/queryBuilder";
@@ -12,9 +12,10 @@ import { get } from "lodash";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
-    if(!hasPermission('admin')) {
+    if(userRole !== 'admin') {
+      console.log("Admin Pawan Admin");
       const mapData = await MapUserAssetLocation.find({userId: user_id});
       if(!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -49,9 +50,9 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const assetFilterByParam = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const params = req.query;
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
-    if(!hasPermission('admin')) {
+    if(userRole !== 'admin') {
       const mapData = await MapUserAssetLocation.find({userId: user_id});
       if(!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -114,7 +115,7 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
 export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { locations, id } = req.body;
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if (!account_id) {
       throw Object.assign(new Error('Missing accountId'), { status: 403 });
     }
@@ -123,7 +124,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
       visible: true,
       parent_id: { $in: [null, undefined] }
     };
-    if(!hasPermission('admin')) {
+    if(userRole !== 'admin') {
       const mapData = await MapUserAssetLocation.find({userId: user_id});
       if(mapData && mapData.length > 0) {
         query._id = { $in: mapData.map((doc: any) => doc.assetId) };

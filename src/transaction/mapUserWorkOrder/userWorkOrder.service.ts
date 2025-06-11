@@ -1,4 +1,3 @@
-import { hasPermission } from "../../_config/permission";
 import { WorkOrderAssignee, IWorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
 import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
@@ -8,10 +7,10 @@ import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = {};
-    if(hasPermission('admin')) {
+    if(userRole === 'admin') {
       const workOrderMatch = { account_id: account_id, visible: true };
       const workOrderData = await getData(WorkOrder, { filter: workOrderMatch });
       if (!workOrderData || workOrderData.length === 0) {

@@ -1,6 +1,6 @@
 import express from 'express';
 import { getSchedules, getSchedule, getFilterSchedules, createSchedule, updateSchedule, removeSchedule } from './schedule.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const scheduleRouter = express.Router();

@@ -1,6 +1,6 @@
 import express from 'express';
 import { getComments, getComment, getFilterComments, createComment, updateComment, removeComment } from './comment.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const commentRouter = express.Router();

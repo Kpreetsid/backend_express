@@ -1,6 +1,6 @@
 import express from 'express';
 import { getFormCategories, getFormCategory, createFormCategory, updateFormCategory, removeFormCategory } from './formCategory.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const formCategoryRouter = express.Router();

@@ -1,6 +1,6 @@
 import express from 'express';
 import { getLocations, getLocation, updateLocation, getLocationTree, removeLocation, getKpiFilterLocations, getFilterLocations, getChildAssetsAgainstLocation } from './location.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const locationRouter = express.Router();

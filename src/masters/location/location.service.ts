@@ -2,16 +2,16 @@ import { LocationMaster, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
 import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { getData } from "../../util/queryBuilder";
-import { hasPermission } from "../../_config/permission";
+import { hasPermission } from "../../middlewares/permission";
 const moduleName: string = "location";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id: account_id };
-    if(!hasPermission('admin')) {
+    if(userRole !== 'admin') {
       match.userId = user_id;
     }
     const data: ILocationMaster[] | null = await getData(LocationMaster, { filter: match });

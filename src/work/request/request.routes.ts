@@ -1,6 +1,6 @@
 import express from 'express';
 import { getRequests, getRequest, createRequest, updateRequest, removeRequest } from './request.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const requestRouter = express.Router();

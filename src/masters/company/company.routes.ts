@@ -1,6 +1,6 @@
 import express from 'express';
 import { getCompanies, getCompany, getCompaniesByParam, updateCompany, removeCompany } from './company.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const companyRouter = express.Router();

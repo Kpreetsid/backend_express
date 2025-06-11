@@ -1,6 +1,6 @@
 import express from 'express';
 import { getSops, getSop, createSop, updateSop, removeSop } from './sops.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const sopRouter = express.Router();

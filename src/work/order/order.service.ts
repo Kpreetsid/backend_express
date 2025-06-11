@@ -1,14 +1,14 @@
 import { WorkOrder, IWorkOrder } from "../../models/workOrder.model";
 import { Request, Response, NextFunction } from 'express';
-import { hasPermission } from "../../_config/permission";
+import { hasPermission } from "../../middlewares/permission";
 import { IUser } from "../../models/user.model";
 import { get } from "lodash";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
-    if(!hasPermission('admin')) {
+    if(userRole !== 'admin') {
       match.user_id = user_id;
     }
     const data = await WorkOrder.find(match);
