@@ -8,6 +8,6 @@ export default (router: express.Router) => {
     companyRouter.get('/filter', getCompaniesByParam);
     companyRouter.get('/:id', getCompany);
     companyRouter.put('/:id', updateCompany);
-    companyRouter.delete('/:id', hasPermission('admin'),removeCompany);
+    companyRouter.delete('/:id', hasPermission('admin'), removeCompany);
     router.use('/companies', companyRouter);
 }

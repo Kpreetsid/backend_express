@@ -3,14 +3,14 @@ import { get } from 'lodash';
 import { IUser } from "../models/user.model";
 
 export const hasPermission = (role: string) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    const { user_role: userRole } = get(req, 'user', {}) as IUser;
-    if(userRole !== role) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
+  return (req: Request, res: Response, next: NextFunction) => {
+    const userRole = get(req, 'user.user_role');
+    if (userRole !== role) {
+      return next(Object.assign(new Error('Unauthorized access'), { status: 403 }));
     }
     next();
-  }
-}
+  };
+};
 
 export const isOwner = (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -38,14 +38,4 @@ export const isOwnerOrAdmin = async (req: Request, res: Response, next: NextFunc
   } catch (error) {
     next(error);
   }
-};
-
-export const usedDevice = async (req: Request, device: 'mobile' | 'tablet' | 'desktop'): Promise<boolean> => {
-  const { isMobile, isTablet, isDesktop } = get(req, 'device', {}) as any;
-  const deviceMap = {
-    mobile: isMobile,
-    tablet: isTablet,
-    desktop: isDesktop,
-  };
-  return deviceMap[device] === true;
 };

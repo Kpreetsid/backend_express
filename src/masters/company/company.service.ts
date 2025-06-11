@@ -7,7 +7,7 @@ import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match = { _id: account_id, isActive: true };
     const data = await getData(Account, { filter: match });
     if(data.length === 0) {

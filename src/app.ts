@@ -19,14 +19,14 @@ import { fileLogger, activityLogger, errorMiddleware } from './middlewares';
 const app: Express = express();
 
 app.use(helmet());
-app.use(cors({ credentials: true, origin: true }));
-app.use(cookieParser());
-app.use(fileLogger);
-app.use(activityLogger);
 app.use(morgan('dev'));
+app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
+app.use(cors({ credentials: true, origin: true }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
+app.use(fileLogger);
+app.use(activityLogger);
 
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,

@@ -41,10 +41,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     if (userRole.account_id.toString() !== companyID) {
       throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
     }
-    // req.user = userData;
-    // req.companyID = companyID;
-    // req.role = userRole;
-    merge(req, { user: omit(userData, 'password'), companyID, role: userRole });
+    merge(req, { user: userData.toObject(), companyID, role: userRole.toObject(), userToken: cookieToken });
     next();
   } catch (error: any) {
     console.error('Auth error:', error.message);
