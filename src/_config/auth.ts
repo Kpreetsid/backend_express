@@ -42,6 +42,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     }
     req.user = userData;
     req.companyID = companyID;
+    req.role = userRole;
     next();
   } catch (error: any) {
     console.error('Auth error:', error.message);

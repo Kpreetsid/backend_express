@@ -13,7 +13,6 @@ import { auth } from "../../configDB";
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { username, password } = req.body;
-    console.log("User details",req.user);
     const user: IUser | null = await User.findOne({ username }).select('+password');
     if (!user || user.user_status !== 'active') {
       throw Object.assign(new Error('No data found'), { status: 404 });

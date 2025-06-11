@@ -1,13 +1,11 @@
 import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
 import path from 'path';
-import compression from 'compression';
+import morgan from 'morgan';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import { errorMiddleware } from './middlewares/error';
-import { fileLogger } from './middlewares/fileLogger';
-import { activityLogger } from './middlewares/logger';
+import rateLimit from 'express-rate-limit';
 import { isAuthenticated } from './_config/auth';
 import authorizeRouterIndex from './authRoutes';
 import routerIndex from './nonAuthRoutes';
@@ -16,7 +14,7 @@ import uploadRoutes from './upload/upload.routes';
 import reportsRoutes from './reports/reports.routes';
 import transactionRoutes from './transaction/transaction.routes';
 import masterRoutes from './masters/master.routes';
-import morgan from 'morgan';
+import { fileLogger, activityLogger, errorMiddleware } from './middlewares';
 
 const app: Express = express();
 
@@ -29,7 +27,7 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
-// rate limit for request
+
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
