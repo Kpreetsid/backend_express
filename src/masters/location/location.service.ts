@@ -4,10 +4,12 @@ import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLoca
 import { getData } from "../../util/queryBuilder";
 import { hasPermission } from "../../_config/permission";
 const moduleName: string = "location";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = (req as any).user;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id: account_id };
     if(!hasPermission('admin')) {
       match.userId = user_id;
@@ -25,7 +27,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
 export const getTree = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = (req as any).user;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id: account_id };
     const mapLocationData: IMapUserLocation[] = await MapUserAssetLocation.find({ userId: user_id });
     if (mapLocationData?.length > 0) {
@@ -62,7 +64,7 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
 
 export const kpiFilterLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = (req as any).user;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id: account_id };
     const mapLocationData: IMapUserLocation[] = await MapUserAssetLocation.find({ userId: user_id });
     if (mapLocationData?.length > 0) {
@@ -118,7 +120,7 @@ export const kpiFilterLocations = async (req: Request, res: Response, next: Next
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { account_id, _id: user_id } = (req as any).user;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const mapData = await MapUserAssetLocation.find({userId: user_id , locationId: id}).populate('userId');
     if(!mapData || mapData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -136,7 +138,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const params: any = req.query;
     const match: any = { account_id: account_id, visible: true };
     if(params?._id && params?._id.toString().split(',').length > 0) {
@@ -160,7 +162,7 @@ export const getDataByFilter = async (req: Request, res: Response, next: NextFun
 export const childAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { location_id } = req.body;
-    const { account_id, _id: user_id } = (req as any).user;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const dataOne = await LocationMaster.find({ account_id: account_id, _id: { $in: location_id.levelOneLocations } });
     const childDataOne = await LocationMaster.find({ account_id: account_id, parent_id: { $in: location_id.levelOneLocations } });
     const dataTwo = await LocationMaster.find({ account_id: account_id, _id: { $in: location_id.levelTwoLocations } });

@@ -9,6 +9,7 @@ import fs from "fs";
 import { sendMail } from "../../_config/mailer";
 import { VerificationCode } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
+import { usedDevice } from "../../_config/permission";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -39,6 +40,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       principalType: 'user',
       ttl: parseInt(auth.expiresIn as string)
     });
+    await usedDevice(req, "mobile");
     await userTokenData.save();
     res.status(200).json({ status: true, message: 'Login successful', data: {userDetails: safeUser, token, platformControl: userRoleData.data} });
   } catch (error) {

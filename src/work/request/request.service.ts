@@ -2,10 +2,12 @@ import { WorkRequestModel, IWorkRequest } from "../../models/workRequest.model";
 import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
 import { hasPermission } from "../../_config/permission";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const query = req.query;
     let match: any = { account_id: account_id };
     if(query) {
@@ -31,7 +33,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match = { account_id: account_id, _id: id, visible: true };
     const data: IWorkRequest[] | null = await getData(WorkRequestModel, { filter: match });
     if (!data || data.length === 0) {
@@ -46,7 +48,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const body = req.body;
     body.account_id = account_id;
     body.createdBy = user_id;
@@ -65,7 +67,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     if(!params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const { account_id, _id: user_id } = req.user;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     body.updatedBy = user_id;
     const data = await WorkRequestModel.findByIdAndUpdate(params.id, body, { new: true });
     if (!data) {

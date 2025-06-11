@@ -1,11 +1,12 @@
-import mongoose from "mongoose";
 import { WorkOrder, IWorkOrder } from "../../models/workOrder.model";
 import { Request, Response, NextFunction } from 'express';
 import { hasPermission } from "../../_config/permission";
+import { IUser } from "../../models/user.model";
+import { get } from "lodash";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     if(!hasPermission('admin')) {
       match.user_id = user_id;
@@ -37,7 +38,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     req.body.account_id = account_id;
     req.body.user_id = user_id;
     const newAsset = new WorkOrder(req.body);

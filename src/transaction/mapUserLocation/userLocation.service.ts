@@ -4,10 +4,12 @@ import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
 import { LocationMaster } from "../../models/location.model";
 import { Asset } from "../../models/asset.model";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const userLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = { locationId: { $exists: true } };
     if(hasPermission('admin')) {
@@ -41,7 +43,7 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
 
 export const userAssets = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = { assetId: { $exists: true } };
     if(hasPermission('admin')) {

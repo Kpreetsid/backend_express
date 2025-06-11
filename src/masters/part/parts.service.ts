@@ -1,10 +1,12 @@
 import { Part, IPart } from "../../models/part.model";
 import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match = { account_id: account_id };
     const data = await getData(Part, { filter: { account_id: account_id } });
     if (data.length === 0) {
@@ -20,7 +22,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     // const data = await Part.findById(id);
     const match = { account_id: account_id, _id: id };
     const data: IPart[] | null = await getData(Part, { filter: match });
@@ -61,7 +63,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 
 export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const body = req.body;
     const match: any = { account_id, user_id };
     if(body.locationId) {

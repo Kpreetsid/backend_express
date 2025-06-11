@@ -5,13 +5,14 @@ import { hasPermission } from "../../_config/permission";
 import { deleteBase64Image, uploadBase64Image } from "../../_config/upload";
 import { getExternalData } from "../../util/externalAPI";
 import { getData } from "../../util/queryBuilder";
-import { User } from "../../models/user.model";
+import { IUser, User } from "../../models/user.model";
 import { LocationMaster } from "../../models/location.model";
 import mongoose from "mongoose";
+import { get } from "lodash";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     if(!hasPermission('admin')) {
       const mapData = await MapUserAssetLocation.find({userId: user_id});
@@ -48,7 +49,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const assetFilterByParam = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const params = req.query;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     if(!hasPermission('admin')) {
       const mapData = await MapUserAssetLocation.find({userId: user_id});
@@ -82,7 +83,7 @@ export const assetFilterByParam = async (req: Request, res: Response, next: Next
 export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { locations = [], assets = [], top_level } = req.body;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     if (!account_id) {
       throw Object.assign(new Error('Missing accountId'), { status: 403 });
     }
@@ -113,7 +114,7 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
 export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { locations, id } = req.body;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     if (!account_id) {
       throw Object.assign(new Error('Missing accountId'), { status: 403 });
     }
@@ -202,7 +203,7 @@ const getRecursiveLocations = async (asset: any) => {
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
     const childAssets: any[] = [];
     if(!Equipment.userList || Equipment.userList.length === 0) {
@@ -516,7 +517,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       "asset_id": assetIdList
     };
     const token: string = req.headers.authorization as string;
-    await getExternalData(`/asset_health_status/`, match, token, user_id);
+    await getExternalData(`/asset_health_status/`, match, token, `${user_id}`);
 
     const allMapUserAssetData = insertedChildAssets.flatMap((asset: any) =>
       Equipment.userList.map((user: any) => ({
@@ -535,7 +536,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
     if(!id) {

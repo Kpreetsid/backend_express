@@ -1,9 +1,11 @@
 import { EndpointLocation } from "../models/floorMap.model";
-import e, { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import { get } from "lodash";
+import { IUser } from "../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const data = await EndpointLocation.find({});
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

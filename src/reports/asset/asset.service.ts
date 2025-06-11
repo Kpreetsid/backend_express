@@ -1,10 +1,12 @@
 import { ReportAsset, IReportAsset } from "../../models/assetReport.model";
 import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const params = req.params;
     const match: any = { accountId: account_id };
     if(params?.id) {

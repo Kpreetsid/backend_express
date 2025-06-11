@@ -3,10 +3,12 @@ import { WorkOrderAssignee, IWorkOrderAssignee } from "../../models/mapUserWorkO
 import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
 import { WorkOrder } from "../../models/workOrder.model";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = {};
     if(hasPermission('admin')) {

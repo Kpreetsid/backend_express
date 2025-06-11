@@ -7,10 +7,12 @@ import { verifyCompany } from "../company/company.service";
 import { createUserRole } from './role/roles.service';
 import { getData } from "../../util/queryBuilder";
 import { hasPermission } from "../../_config/permission";
+import { get } from "lodash";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+    //  const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, isActive: true };
     const linkWith = "account_id";
     if(!hasPermission('admin')) {
@@ -33,7 +35,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match = { account_id: account_id, _id: id, isActive: true };
     const linkWith = "account_id";
     const data: IUser[] | null = await getData(User, { filter: match, populate: linkWith });
@@ -79,7 +81,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const password = await hashPassword(body.password);
     const companyData = await verifyCompany(`${account_id}`);
     if(!companyData) {
@@ -115,7 +117,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
     const body = req.body;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

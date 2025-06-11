@@ -1,10 +1,12 @@
 import { Observation, IObservation } from "../../models/observation.model";
 import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { accountId: account_id };
     const data: IObservation[] = await getData(Observation, { filter: match });
     if (!data ||data.length === 0) {
@@ -20,7 +22,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match = { accountId: account_id, _id: id };
     const data: IObservation[] | null = await getData(Observation, { filter: match });
     if (!data || data.length === 0) {

@@ -2,10 +2,12 @@ import mongoose from "mongoose";
 import { Account, IAccount } from "../../models/account.model";
 import { NextFunction, Request, Response } from 'express';
 import { getData } from "../../util/queryBuilder";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match = { _id: account_id, isActive: true };
     const data = await getData(Account, { filter: match });
     if(data.length === 0) {

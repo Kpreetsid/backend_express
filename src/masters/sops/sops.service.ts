@@ -1,10 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { SopsMasterModel, ISopsMaster } from '../../models/sops.model';
 import { getData } from '../../util/queryBuilder';
+import { get } from 'lodash';
+import { IUser } from '../../models/user.model';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { account_id, _id: user_id } = req.user;
+         const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, visible: true };
         const data: ISopsMaster[] = await getData(SopsMasterModel, { filter: match });
         if (!data || data.length === 0) {
@@ -23,7 +25,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
         if(!id) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
-        const { account_id, _id: user_id } = req.user;
+         const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, _id: id, visible: true };
         const data: ISopsMaster[] | null = await getData(SopsMasterModel, { filter: match });
         if (!data || data.length === 0) {
