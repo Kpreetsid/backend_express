@@ -5,7 +5,7 @@
   "main": "ts-node src/server.js",
   "scripts": {
     "build": "npx tsc",
-    "start": "node dist/server.js --host 0.0.0.0 --port 3000",
+    "start": "node dist/server.js --host 0.0.0.0 --port 3010",
     "dev": "concurrently \"npx tsc --watch\" \"nodemon -q dist/server.js\""
   },
   "keywords": [],
