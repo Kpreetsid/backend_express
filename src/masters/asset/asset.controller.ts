@@ -1,5 +1,4 @@
 import express, { NextFunction, Request, Response } from 'express';
-const router = express.Router();
 import { getAll, getDataById, insert, updateById, removeById, assetFilterByParam, getAssetsTreeData, getAssetsFilteredData } from './asset.service';
 
 export const getAssets = async (req: Request, res: Response, next: NextFunction) => {

@@ -1,7 +1,6 @@
 import { Asset, IAsset } from "../../models/asset.model";
 import { NextFunction, Request, Response } from 'express';
 import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
-import { hasPermission } from "../../middlewares/permission";
 import { deleteBase64Image, uploadBase64Image } from "../../_config/upload";
 import { getExternalData } from "../../util/externalAPI";
 import { getData } from "../../util/queryBuilder";
@@ -83,25 +82,23 @@ export const assetFilterByParam = async (req: Request, res: Response, next: Next
 
 export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { locations = [], assets = [], top_level } = req.body;
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    if (!account_id) {
-      throw Object.assign(new Error('Missing accountId'), { status: 403 });
-    }
-    const query: any = {
-      account_id: account_id,
-      visible: true
-    };
+    const { locations = [], assets = [], top_level, location_id } = req.body;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    console.log(req.body);
+    const match: any = { account_id: account_id, visible: true };
     if(top_level) {
-      query.top_level = top_level;
+      match.top_level = top_level;
     }
     if (locations && locations.length > 0) {
-      query.locationId = { $in: locations };
+      match.locationId = { $in: locations };
     }
     if(assets && assets.length > 0) {
-      query._id = { $in: assets };
+      match._id = { $in: assets };
     }
-    const data = await Asset.find(query);
+    if(location_id) {
+      console.log("location_id", location_id);
+    }
+    const data = await Asset.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
