@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, insert, updateById, removeById, orderStatus, orderPriority } from './order.service';
+import { getAll, getDataById, insert, updateById, removeById, orderStatus, orderPriority, monthlyCount, plannedUnplanned, summaryData, pendingOrders } from './order.service';
 
 export const getOrders = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
@@ -27,4 +27,20 @@ export const getOrderStatus = async (req: Request, res: Response, next: NextFunc
 
 export const getOrderPriority = async (req: Request, res: Response, next: NextFunction) => {
   await orderPriority(req, res, next);
+}
+
+export const getMonthlyCount = async (req: Request, res: Response, next: NextFunction) => {
+  await monthlyCount(req, res, next);
+}
+
+export const getPlannedUnplanned = async (req: Request, res: Response, next: NextFunction) => {
+  await plannedUnplanned(req, res, next);
+}
+
+export const getSummaryData = async (req: Request, res: Response, next: NextFunction) => {
+  await summaryData(req, res, next);
+}
+
+export const getPendingOrders = async (req: Request, res: Response, next: NextFunction) => {
+  await pendingOrders(req, res, next);
 }

@@ -18,17 +18,15 @@ export interface IAsset extends Document {
   brandModel: string;
   pinionGearTeethCount: string;
   timingGearTeethCount: string;
-  minRotation: string;
+  minInputRotation: string;
   rotation_type: string;
   motorType: string;
-  maxRotation: string;
+  maxInputRotation: string;
   brandId: string;
   brand: string;
   mountType: string;
   specificFrequency: string[];
   imageNodeData: [object];
-  minInputRotation: string;
-  maxInputRotation: string;
   minOutputRotation: string;
   maxOutputRotation: string;
   drivingPulleyDia: string;
@@ -106,13 +104,11 @@ const assetSchema = new Schema<IAsset>({
   brandModel: { type: String },
   pinionGearTeethCount: { type: String },
   timingGearTeethCount: { type: String },
-  minRotation: { type: String },
-  maxRotation: { type: String },
+  minInputRotation: { type: String },
+  maxInputRotation: { type: String },
   rotation_type: { type: String },
   mountType: { type: String },
   specificFrequency: { type: [String] },
-  minInputRotation: { type: String },
-  maxInputRotation: { type: String },
   minOutputRotation: { type: String },
   maxOutputRotation: { type: String },
   drivingPulleyDia: { type: String },

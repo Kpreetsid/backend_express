@@ -12,11 +12,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, isActive: true };
-    const linkWith = "account_id";
     if(userRole !== 'admin') {
       match._id = user_id;
     }
-    const data: IUser[] = await getData(User, { filter: match, populate: linkWith });
+    const data: IUser[] = await getData(User, { filter: match, populate: 'account_id' });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -35,8 +34,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     }
      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const match = { account_id: account_id, _id: id, isActive: true };
-    const linkWith = "account_id";
-    const data: IUser[] | null = await getData(User, { filter: match, populate: linkWith });
+    const data: IUser[] | null = await getData(User, { filter: match, populate: 'account_id' });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
