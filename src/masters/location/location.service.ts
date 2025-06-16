@@ -173,7 +173,6 @@ export const childAssetsAgainstLocation = async (req: Request, res: Response, ne
 
     const childIds = await getAllChildLocationsRecursive(lTwo);
     finalList = [...childIds, ...lOne, ...lTwo]
-    console.log("finalList", finalList);
     const data: any = await getData(Asset, { filter: { locationId: { $in: finalList }, account_id: account_id, visible: true }, select: 'id top_level asset_name asset_type' });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

@@ -55,7 +55,6 @@ export const userAssets = async (req: Request, res: Response, next: NextFunction
     } else {
       match.userId = user_id;
     }
-    console.log(query);
     if(query.assetId) {
       match.assetId = query.assetId;
       const assetMatch = { _id: query.assetId, account_id : account_id };

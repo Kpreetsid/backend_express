@@ -14,7 +14,6 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     if(userRole !== 'admin') {
-      console.log("Admin Pawan Admin");
       const mapData = await MapUserAssetLocation.find({userId: user_id});
       if(!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -84,7 +83,6 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
   try {
     const { locations = [], assets = [], top_level, location_id } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log(req.body);
     const match: any = { account_id: account_id, visible: true };
     if(top_level) {
       match.top_level = top_level;
@@ -94,9 +92,6 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
     }
     if(assets && assets.length > 0) {
       match._id = { $in: assets };
-    }
-    if(location_id) {
-      console.log("location_id", location_id);
     }
     const data = await Asset.find(match);
     if (!data || data.length === 0) {
@@ -505,7 +500,6 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         childAssets.push(newCompressorAsset);
       }
     }
-    // console.log(childAssets);
     const insertedChildAssets = await Asset.insertMany(childAssets);
     const assetIdList: string[] = insertedChildAssets.map((asset: any) => `${asset._id}`);
     assetIdList.push(`${parentAssetData._id}`);
