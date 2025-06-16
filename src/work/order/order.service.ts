@@ -1,39 +1,119 @@
 import { WorkOrder, IWorkOrder } from "../../models/workOrder.model";
 import { Request, Response, NextFunction } from 'express';
-import { IUser } from "../../models/user.model";
+import { IUser, User } from "../../models/user.model";
 import { get } from "lodash";
 import { getData } from "../../util/queryBuilder";
 import { Blog } from "../../models/help.model";
+import { WorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
+import mongoose from "mongoose";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
-    const match: any = { account_id: account_id, visible: true };
-    if (query.id) {
-      match._id = { $in: query.id.toString().split(',') };
+    const { id, status, priority, order_no, wo_asset_id } = req.query;
+    const match: any = { account_id, visible: true };
+    if (userRole !== 'admin') {
+      const assigneeMappings = await WorkOrderAssignee.find({ user_id }, { woId: 1 });
+      const mappedWoIds = assigneeMappings.map(item => item.woId);
+      match._id = { $in: mappedWoIds };
     }
-    if (query.status) {
-      match.status = { $in: query.status.toString().split(',') };
-    }
-    if (query.priority) {
-      match.priority = { $in: query.priority.toString().split(',') };
-    }
-    if (query.order_no) {
-      match.order_no = { $in: query.order_no.toString().split(',') };
-    }
-    if (query.wo_asset_id) {
-      match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
-    }
-    if (userRole === 'admin') {
-    } else {
-      match.user_id = user_id;
-    }
-    const data = await getData(WorkOrder, { filter: match });
-    if (data.length === 0) {
+    if (id) match._id = { $in: id.toString().split(',').map(id => new mongoose.Types.ObjectId(id)) };
+    if (status !== "all") match.status = { $nin: ["Completed"] };
+    if (priority) match.priority = { $in: priority.toString().split(',') };
+    if (order_no) match.order_no = { $in: order_no.toString().split(',') };
+    if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',') };
+    let data = await WorkOrder.aggregate([
+      { $match: match },
+      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
+      { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
+      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
+    ]);
+    if (!data.length) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    const result = await Promise.all(data.map(async (item: any) => {
+      let createdBy = {
+        firstName: item.createdBy.firstName || "",
+        id: item.createdBy._id,
+        lastName: item.createdBy.lastName || "",
+        user_profile_img: item.createdBy.user_profile_img || ""
+      };
+      item.createdBy = createdBy;
+      item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
+        const user = await getData(User, { filter: { _id: mapItem.userId }, select: '_id firstName lastName user_profile_img' });
+        mapItem.user = user[0];
+        return mapItem;
+      }));
+      item.id = item._id;
+      return item;
+    }));
+    if (!result || result.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
+  } catch (error) {
+    console.error("getAll error:", error);
+    next(error);
+  }
+};
+
+export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { id } = req.params;
+    if(!id) {
+      throw Object.assign(new Error('No ID provided'), { status: 400 });
+    }
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+    if (userRole !== 'admin') {
+      match.user_id = user_id;
+    }
+    const data = await WorkOrder.aggregate([
+      { $match: match },
+      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
+      // wo_location_id
+      { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
+      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
+      { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
+      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
+      { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
+      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
+    ]);
+    console.log(data);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const result = await Promise.all(data.map(async (item: any) => {
+      let createdBy = {
+        firstName: item.createdBy.firstName || "",
+        id: item.createdBy._id,
+        lastName: item.createdBy.lastName || "",
+        user_profile_img: item.createdBy.user_profile_img || ""
+      };
+      item.createdBy = createdBy;
+      item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
+        const user = await getData(User, { filter: { _id: mapItem.userId }, select: '_id firstName lastName user_profile_img' });
+        mapItem.user = user[0];
+        return mapItem;
+      }));
+      const asset = {
+        id: item.asset._id,
+        asset_name: item.asset.asset_name || ""
+      };
+      item.asset = asset;
+      const location = {
+        id: item.location._id,
+        location_name: item.location.location_name || ""
+      };
+      item.location = location;
+      item.id = item._id;
+      return item;
+    }));
+    if (!result || result.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result[0] });
   } catch (error) {
     console.error(error);
     next(error);
@@ -330,20 +410,6 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
     next(error);
   }
 }
-
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data = await WorkOrder.findById(id);
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
