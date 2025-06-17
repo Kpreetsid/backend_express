@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, getDataByFilter, insert, updateById, removeById } from './schedule.service';
+import { getAll, getDataById, insert, updateById, removeById } from './schedule.service';
 
 export const getSchedules = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
@@ -7,10 +7,6 @@ export const getSchedules = async (req: Request, res: Response, next: NextFuncti
 
 export const getSchedule = async (req: Request, res: Response, next: NextFunction) => {
   await getDataById(req, res, next);
-}
-
-export const getFilterSchedules = async (req: Request, res: Response, next: NextFunction) => {
-  await getDataByFilter(req, res, next);
 }
 
 export const createSchedule = async (req: Request, res: Response, next: NextFunction) => {

@@ -61,25 +61,6 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const body = req.body;
-    const match: any = { account_id, user_id };
-    if(body.locationId) {
-      match.locationId = body.locationId;
-    }
-    const data = await Part.find(match);
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-}
-
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;

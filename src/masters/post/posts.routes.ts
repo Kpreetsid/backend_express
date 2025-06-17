@@ -1,11 +1,10 @@
 import express from 'express';
-import { getPosts, getPost, getFilterPost, createPost, updatePost, removePost } from './posts.controller';
+import { getPosts, getPost, createPost, updatePost, removePost } from './posts.controller';
 import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const postRouter = express.Router();
     postRouter.get('/', getPosts);
-    postRouter.get('/filter', getFilterPost);
     postRouter.get('/:id', getPost);
     postRouter.post('/', createPost);
     postRouter.put('/:id', updatePost);

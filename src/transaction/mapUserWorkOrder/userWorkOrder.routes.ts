@@ -1,6 +1,9 @@
 import express from 'express';
-import { getUserWorkOrders } from './userWorkOrder.controller';
+import { getUserWorkOrders, getMappedData } from './userWorkOrder.controller';
 
 export default (router: express.Router) => {
-    router.get('/userToWorkOrders', getUserWorkOrders);
+    const workOrderRouter = express.Router();
+    workOrderRouter.get('/workOrders', getUserWorkOrders);
+    workOrderRouter.get('/workOrders/:workOrderId', getMappedData);
+    router.use('/users', workOrderRouter);
 }

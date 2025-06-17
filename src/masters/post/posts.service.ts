@@ -38,20 +38,6 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const match = { ...req.query };
-    const data = await getData(Post, { filter: match });
-    if (data.length === 0) {
-      throw Object.assign(new Error('No matching data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-}
-
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const newPost = new Post(req.body);

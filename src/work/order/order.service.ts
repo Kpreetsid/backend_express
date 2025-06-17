@@ -25,6 +25,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     let data = await WorkOrder.aggregate([
       { $match: match },
       { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
+      { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
+      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
+      { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
+      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
       { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
       { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
     ]);
@@ -72,7 +76,6 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const data = await WorkOrder.aggregate([
       { $match: match },
       { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
-      // wo_location_id
       { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
       { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
       { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},

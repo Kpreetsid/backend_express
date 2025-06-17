@@ -45,40 +45,6 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const assetFilterByParam = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const params = req.query;
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
-    if(userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({userId: user_id});
-      if(!mapData || mapData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      match._id = { $in: mapData.map(doc => doc.assetId) };
-    }
-    if(params?.top_level) {
-      match.top_level = params.top_level;
-    }
-    if(params?.assetID) {
-      const assetsIDList = params.assetID.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
-      match._id = { $in: assetsIDList };
-    }
-    if(params?.locationID) {
-      const locationIDList = params.locationID.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
-      match.locationId = { $in: locationIDList };
-    }
-    const data: IAsset[] | null = await getData(Asset, { filter: match });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-}
-
 export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { locations = [], assets = [], top_level, location_id } = req.body;

@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, getDataByFilter, insert, updateById, removeById } from './comment.service';
+import { getAll, getDataById, insert, updateById, removeById } from './comment.service';
 
 export const getComments = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
@@ -7,10 +7,6 @@ export const getComments = async (req: Request, res: Response, next: NextFunctio
 
 export const getComment = async (req: Request, res: Response, next: NextFunction) => {
   await getDataById(req, res, next);
-}
-
-export const getFilterComments = async (req: Request, res: Response, next: NextFunction) => {
-  await getDataByFilter(req, res, next);
 }
 
 export const createComment = async (req: Request, res: Response, next: NextFunction) => {
