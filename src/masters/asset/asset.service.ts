@@ -173,7 +173,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     }
 
     if(Equipment.image_path) {
-      const image = await uploadBase64Image(Equipment.image_path, "asset");
+      const image = await uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image;
     }
 
@@ -518,7 +518,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
           if(data.image_path) {
             await deleteBase64Image(data.image_path.fileName, "asset");
           }
-          const image = await uploadBase64Image(Equipment.image_path, "asset");
+          const image = await uploadBase64Image(Equipment.image_path, "assets");
           Equipment.image_path = image;
         }
         updatePromises.push(Asset.updateOne({ _id: Equipment.id }, { $set: { ...Equipment, updatedBy: user_id } }));

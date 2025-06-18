@@ -25,6 +25,18 @@ app.use(express.json({ limit: '50mb' }));
 app.use(cors({ credentials: true, origin: true }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/assets')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/asset_report')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/endpointImages')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/floor_map')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/locations')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/logo')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/mailers')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/observations')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/posts')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/user_profile_img')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/WO_docs')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_request')));
 app.use(fileLogger);
 app.use(activityLogger);
 

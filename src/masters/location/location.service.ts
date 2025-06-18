@@ -2,7 +2,6 @@ import { LocationMaster, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
 import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { getData } from "../../util/queryBuilder";
-import { hasPermission } from "../../middlewares/permission";
 const moduleName: string = "location";
 import { get } from "lodash";
 import { IUser, User } from "../../models/user.model";
@@ -14,6 +13,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     const match: any = { visible: true, account_id: account_id };
     if(userRole !== 'admin') {
       match.userId = user_id;
+    }
+    const query: any = req.query;
+    if (query?.parent_id) {
+      match.parent_id = query.parent_id;
     }
     const data: ILocationMaster[] | null = await getData(LocationMaster, { filter: match });
     if (!data || data.length === 0) {
@@ -140,28 +143,6 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
-
-export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const params: any = req.query;
-    const match: any = { account_id: account_id, visible: true };
-    if(params?._id && params?._id.toString().split(',').length > 0) {
-      match.locationId = { $in: params._id.toString().split(',') };
-    }
-    if(params?.assetID && params?.assetID.toString().split(',').length > 0) {
-      match.equipment_id = { $in: params.assetID.toString().split(',') };
-    }
-    const data: IMapUserLocation[] = await getData(MapUserAssetLocation, { filter: match, populate: 'userId' });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-}
 
 export const childAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction) => {
   try {
