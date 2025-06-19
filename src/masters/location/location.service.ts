@@ -48,8 +48,8 @@ const buildTree = async (parentId: string | null, account_id: any): Promise<any[
     })
   );
   return tree;
-}; // upload
-
+};
+// new comment
 export const getTree = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
