@@ -8,10 +8,12 @@ import { IUser } from "../../models/user.model";
 
 export const userLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = { locationId: { $exists: true } };
-    if(userRole === 'admin') {
+    let populate: string | any;
+    const filter: any = {};
+    if (userRole === 'admin') {
       const locationMatch = { account_id: account_id, visible: true };
       const locationData = await getData(LocationMaster, { filter: locationMatch });
       if (!locationData || locationData.length === 0) {
@@ -21,17 +23,34 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
     } else {
       match.userId = user_id;
     }
-    if(query.locationId) {
+    if (query.locationId) {
       match.locationId = query.locationId;
-      const locationMatch = { _id: query.locationId, account_id : account_id };
+      const locationMatch = { _id: query.locationId, account_id: account_id };
       const locationData = await getData(LocationMaster, { filter: locationMatch });
       if (!locationData || locationData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
     }
-    const data = await getData(MapUserAssetLocation, { filter: match, populate: 'locationId' });
+    if (query?.populate) {
+      filter.populate = query.populate;
+    }
+    filter.filter = match;
+    let data = await getData(MapUserAssetLocation, filter);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    if (filter.populate === 'locationId') {
+      data = data.map((doc: any) => {
+        doc.location = doc.locationId;
+        doc.locationId = doc.location._id;
+        return doc;
+      })
+    } else if(filter.populate === 'userId') {
+      data = data.map((doc: any) => {
+        doc.user = doc.userId;
+        doc.userId = doc.user._id;
+        return doc;
+      })
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {

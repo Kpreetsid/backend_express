@@ -6,6 +6,7 @@ const moduleName: string = "location";
 import { get } from "lodash";
 import { IUser, User } from "../../models/user.model";
 import { Asset } from "../../models/asset.model";
+import mongoose from "mongoose";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -18,6 +19,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     if (query?.parent_id) {
       match.parent_id = query.parent_id;
     }
+    if (query?._id) {
+      match.parent_id = query._id;
+    }
     const data: ILocationMaster[] | null = await getData(LocationMaster, { filter: match });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -29,38 +33,76 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
+const buildTree = async (parentId: string | null, account_id: any): Promise<any[]> => {
+  const match: any = { account_id, visible: true };
+  if (parentId) {
+    match.parent_id = parentId;
+  } else {
+    match.parent_id = { $exists: false };
+  }
+  const nodes = await getData(LocationMaster, { filter: match });
+  const tree = await Promise.all(
+    nodes.map(async (node: any) => {
+      const children = await buildTree(node._id.toString(), account_id);
+      return { ...node, childs: children };
+    })
+  );
+  return tree;
+};
+
 export const getTree = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const match: any = { visible: true, account_id: account_id };
-    const mapLocationData: IMapUserLocation[] = await getData(MapUserAssetLocation, { filter: { userId: user_id } });
-    if (mapLocationData?.length > 0) {
-      const locationIds = mapLocationData.map(doc => doc.locationId).filter(id => id);
-      match._id = { $in: locationIds };
-    }
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { location_id, location_floor_map_tree } = req.query;
 
-    const locations: ILocationMaster[] = await getData(LocationMaster, { filter: match });
-    if (!locations || locations.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
+    const match: any = { visible: true, account_id };
+    let rootId: string | null = null;
 
-    const idMap: { [key: string]: any } = {};
-    locations.forEach((loc: any) => {
-      idMap[loc._id.toString()] = { ...loc, childs: [] };
-    });
-
-    const rootNodes: any[] = [];
-    locations.forEach((loc: any) => {
-      const parentId = loc.parent_id?.toString();
-      if (parentId && idMap[parentId]) {
-        idMap[parentId].childs.push(idMap[loc._id.toString()]);
-      } else {
-        rootNodes.push(idMap[loc._id.toString()]);
+    if (location_floor_map_tree) {
+      if (location_id) {
+        match._id = location_id;
+        rootId = location_id.toString();
       }
-    });
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: rootNodes });
+      match.top_level = true;
+    } else {
+      if (location_id) {
+        match.parent_id = location_id;
+        rootId = location_id.toString();
+      } else {
+        match.parent_id = { $exists: false };
+      }
+    }
+
+    if (userRole !== 'admin') {
+      const mapData = await MapUserAssetLocation.find({userId: user_id});
+      if(!mapData || mapData.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      match._id = { $in: mapData.map(doc => doc.locationId) };
+    }
+
+    const rootLocations = await getData(LocationMaster, { filter: match });
+
+    if (!rootLocations || rootLocations.length === 0) {
+      throw Object.assign(new Error("No data found"), { status: 404 });
+    }
+
+    let treeData: any[];
+
+    if (location_id) {
+      treeData = await buildTree(rootId, account_id);
+    } else {
+      treeData = await Promise.all(
+        rootLocations.map(async (node: any) => {
+          const children = await buildTree(node._id.toString(), account_id);
+          return { ...node, childs: children };
+        })
+      );
+    }
+
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: treeData });
   } catch (error) {
-    console.error(error);
+    console.error("getTree error:", error);
     next(error);
   }
 };

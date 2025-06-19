@@ -7,6 +7,7 @@ import { getData } from "../../util/queryBuilder";
 import { IUser, User } from "../../models/user.model";
 import { LocationMaster } from "../../models/location.model";
 import { get } from "lodash";
+import mongoose from "mongoose";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -22,6 +23,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     }
     if (params.top_level_asset_id && params.top_level_asset_id.split(',').length > 0) {
       match.top_level_asset_id = params.top_level_asset_id.split(',');
+    }
+    if (params.top_level) {
+      match.top_level = true;
+    }
+    if(params.locationId) {
+      match.locationId = new mongoose.Types.ObjectId(params.locationId);
     }
     const data: IAsset[] | null = await getData(Asset, { filter: match });
     if (!data || data.length === 0) {
