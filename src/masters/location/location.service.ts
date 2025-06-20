@@ -170,10 +170,12 @@ export const kpiFilterLocations = async (req: Request, res: Response, next: Next
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const mapData = await getData(MapUserAssetLocation, { filter: { userId: user_id, locationId: id }, populate: 'userId' });
-    if(!mapData || mapData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    if(userRole !== 'admin') {
+      const mapData = await getData(MapUserAssetLocation, { filter: { userId: user_id, locationId: id }, populate: 'userId' });
+      if(!mapData || mapData.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
     }
     const data: ILocationMaster[] = await getData(LocationMaster, { filter: { _id: id, account_id: account_id } });
     if (!data || data.length === 0) {
