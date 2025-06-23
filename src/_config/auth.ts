@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { auth } from '../configDB';
+import { merge, omit } from 'lodash';
 import { verifyUserLogin } from '../masters/user/user.service';
 import { IUserRoleMenu } from "../models/userRoleMenu.model";
 import { IUser, UserLoginPayload } from '../models/user.model';
@@ -40,8 +41,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     if (userRole.account_id.toString() !== companyID) {
       throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
     }
-    req.user = userData;
-    req.companyID = companyID;
+    merge(req, { user: userData.toObject(), companyID, role: userRole.toObject(), userToken: cookieToken });
     next();
   } catch (error: any) {
     console.error('Auth error:', error.message);

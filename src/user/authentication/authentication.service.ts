@@ -9,17 +9,22 @@ import fs from "fs";
 import { sendMail } from "../../_config/mailer";
 import { VerificationCode } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
+import { Account, IAccount } from "../../models/account.model";
+import { getData } from "../../util/queryBuilder";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { username, password } = req.body;
-    console.log("User details",req.user);
     const user: IUser | null = await User.findOne({ username }).select('+password');
     if (!user || user.user_status !== 'active') {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     if(!user.isVerified) {
       throw Object.assign(new Error('User is not verified'), { status: 403 });
+    }
+    const userAccount: any = await getData(Account, { filter: { _id: user.account_id }, select: '_id account_name type fileName' });
+    if (!userAccount || userAccount.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
@@ -32,8 +37,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!userRoleData) {
       throw Object.assign(new Error('User does not have any permission'), { status: 403 });
     }
-    res.cookie('token', token, { httpOnly: true, secure: true });
-    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: true });
+    res.cookie('token', token, { httpOnly: true, secure: false , sameSite: 'lax'});
+    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
     const userTokenData = new UserToken({
       _id: token,
       userId: user._id,
@@ -41,7 +46,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: {userDetails: safeUser, token, platformControl: userRoleData.data} });
+    res.status(200).json({ status: true, message: 'Login successful', data: {token, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data} });
   } catch (error) {
     console.error(error);
     next(error);

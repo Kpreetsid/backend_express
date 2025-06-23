@@ -1,5 +1,7 @@
 import { LocationReport, ILocationReport } from "../../models/locationReport.model";
 import { Request, Response, NextFunction } from 'express';
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {

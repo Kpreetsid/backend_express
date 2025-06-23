@@ -17,8 +17,13 @@ export async function getData<T extends Document>( model: Model<T>, options: Que
     query = query.select(options.select);
   }
 
-  if (options.populate) {
-    query = query.populate(options.populate);
+  const populate = options.populate;
+  if (populate) {
+    if (Array.isArray(populate)) {
+      populate.forEach(p => query.populate(p));
+    } else {
+      query.populate(populate);
+    }
   }
 
   if (options.sort) {

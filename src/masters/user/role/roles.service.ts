@@ -3,10 +3,11 @@ import { UserRoleMenu, IUserRoleMenu } from "../../../models/userRoleMenu.model"
 import { Request, Response, NextFunction } from 'express';
 import { IUser } from "../../../models/user.model";
 import { platformControlData } from '../../../_config/userRoles';
+import { get } from "lodash";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const data = await UserRoleMenu.find({});
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -20,7 +21,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
 export const getMyRoles = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const data = await UserRoleMenu.findOne({ account_id: account_id, user_id: user_id, visible: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -35,7 +36,7 @@ export const getMyRoles = async (req: Request, res: Response, next: NextFunction
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const data = await UserRoleMenu.findById(id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });

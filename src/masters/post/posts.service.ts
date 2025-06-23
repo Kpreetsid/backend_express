@@ -1,11 +1,23 @@
 import { Post, IPost } from "../../models/post.model";
 import { Request, Response, NextFunction } from 'express';
 import { getData } from "../../util/queryBuilder";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
-    const match = { account_id: account_id };
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const match: any = { account_id: account_id };
+    const { postType, relatedTo } = req.query;
+    if(postType) {
+      match.postType = postType.toString().split(',');
+    }
+    if(relatedTo) {
+      match.relatedTo = relatedTo.toString().split(',');
+    }
+    if(userRole !== 'admin') {
+      match.userId = user_id;
+    }
     const data = await getData(Post, { filter: match });
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -23,7 +35,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match = { account_id: account_id, _id: id };
     const data = await getData(Post, { filter: match });
     if (!data || data.length === 0) {
@@ -35,20 +47,6 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
-
-export const getDataByFilter = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const match = { ...req.query };
-    const data = await getData(Post, { filter: match });
-    if (data.length === 0) {
-      throw Object.assign(new Error('No matching data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-}
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {

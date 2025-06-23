@@ -1,13 +1,14 @@
 import { NextFunction, Request, Response } from 'express';
 import { UserLog, IUserLog } from '../models/userLogs.model';
-import mongoose from 'mongoose';
+import { get, merge, omit } from 'lodash';
+import { IUser } from '../models/user.model';
 
 export const activityLogger = async (req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   res.on('finish', async () => {
     try {
       const headers: any = req.headers;
-      const user = req.user;
+      const { account_id, _id, username } = get(req, 'user', {}) as IUser;
       const systemInfo = {
         platform: headers['sec-ch-ua-platform']?.replace(/"/g, '') || 'Unknown',
         os: extractOS(headers['user-agent']),
@@ -32,14 +33,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
         isDesktop,
         userAgent
       }
-      if(deviceInfo.isMobile) {
-        req.user.device = "Mobile";
-      } else if(deviceInfo.isTablet) {
-        req.user.device = "Tablet";
-      } else {
-        req.user.device = "Desktop";
-      }
-      console.log(req.user.device);
+      merge(req, {device: omit(deviceInfo, 'userAgent')});
       const networkInfo = {
         origin: headers['origin'],
         referer: headers['referer'],
@@ -58,15 +52,14 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
         dnt: headers['dnt'] === '1',
         secCHUA: parseSecCHUA(headers['sec-ch-ua']),
       }
-      const userName = user?.username || 'Anonymous';
-      const userId: mongoose.Types.ObjectId = user?.user_id || new mongoose.Types.ObjectId();
+      const userName = username || 'Anonymous';
       const module = extractModule(req.originalUrl);
       const description = `${userName} performed ${req.method} method on ${module} from ${headers['origin']} at ${new Date().toISOString()}`;
 
       const newLog = new UserLog({
-        userId,
+        userId: _id,
         userName,
-        accountId: user?.account_id || new mongoose.Types.ObjectId(),
+        accountId: account_id,
         systemInfo,
         browserInfo,
         deviceInfo,

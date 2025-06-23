@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, insert, updateById, removeById, getDataByFilter } from './parts.service';
+import { getAll, getDataById, insert, updateById, removeById } from './parts.service';
 
 export const getParts = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
@@ -7,10 +7,6 @@ export const getParts = async (req: Request, res: Response, next: NextFunction) 
 
 export const getPart = async (req: Request, res: Response, next: NextFunction) => {
   await getDataById(req, res, next);
-}
-
-export const getFilterParts = async (req: Request, res: Response, next: NextFunction) => {
-  await getDataByFilter(req, res, next);
 }
 
 export const createPart = async (req: Request, res: Response, next: NextFunction) => {

@@ -1,10 +1,12 @@
 import { Teams, ITeam } from "../../models/team.model";
 import { NextFunction, Request, Response } from 'express';
 import { getData } from "../../util/queryBuilder";
+import { get } from "lodash";
+import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { account_id, _id: user_id } = req.user;
+         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, isActive: true };
         const data: ITeam[] = await getData(Teams, { filter: match });
         if (!data || data.length === 0) {
@@ -20,7 +22,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
-        const { account_id, _id: user_id } = req.user;
+         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, _id: id, isActive: true };
         const data = await getData(Teams, { filter: match });
         if (!data || data.length === 0) {
@@ -35,7 +37,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { account_id, _id: user_id } = req.user;
+         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const body = req.body;
         const newTeam = new Teams({
             team_name: body.team_name,

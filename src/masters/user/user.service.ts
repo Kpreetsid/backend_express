@@ -6,17 +6,16 @@ import { hashPassword } from '../../_config/bcrypt';
 import { verifyCompany } from "../company/company.service";
 import { createUserRole } from './role/roles.service';
 import { getData } from "../../util/queryBuilder";
-import { hasPermission } from "../../_config/permission";
+import { get } from "lodash";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = req.user;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, isActive: true };
-    const linkWith = "account_id";
-    if(!hasPermission('admin')) {
+    if(userRole !== 'admin') {
       match._id = user_id;
     }
-    const data: IUser[] = await getData(User, { filter: match, populate: linkWith });
+    const data: IUser[] = await getData(User, { filter: match, populate: 'account_id' });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -33,10 +32,9 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match = { account_id: account_id, _id: id, isActive: true };
-    const linkWith = "account_id";
-    const data: IUser[] | null = await getData(User, { filter: match, populate: linkWith });
+    const data: IUser[] | null = await getData(User, { filter: match, populate: 'account_id' });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -60,7 +58,8 @@ export const verifyUserLogin = async ({ id, companyID, email, username }: UserLo
 export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { locationID } = req.params;
-    if(!hasPermission('admin')) {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    if(userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const data = await MapUserAssetLocation.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
@@ -79,7 +78,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const password = await hashPassword(body.password);
     const companyData = await verifyCompany(`${account_id}`);
     if(!companyData) {
@@ -115,7 +114,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
     const body = req.body;
-    const { account_id, _id: user_id } = req.user;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

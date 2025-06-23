@@ -1,6 +1,6 @@
 import express from 'express';
 import { getAllTeams, getTeamsByID, createTeams, updateTeams, removeTeams } from './team.controller';
-import { hasPermission } from '../../_config/permission';
+import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const teamsRouter = express.Router();

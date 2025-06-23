@@ -1,5 +1,4 @@
 import mongoose, { Schema, ObjectId, Document } from 'mongoose';
-import { IUpload, UploadModel, uploadSchema } from './upload.model';
 
 export interface IAsset extends Document {
   asset_name: string;
@@ -18,17 +17,15 @@ export interface IAsset extends Document {
   brandModel: string;
   pinionGearTeethCount: string;
   timingGearTeethCount: string;
-  minRotation: string;
+  minInputRotation: string;
   rotation_type: string;
   motorType: string;
-  maxRotation: string;
+  maxInputRotation: string;
   brandId: string;
   brand: string;
   mountType: string;
   specificFrequency: string[];
   imageNodeData: [object];
-  minInputRotation: string;
-  maxInputRotation: string;
   minOutputRotation: string;
   maxOutputRotation: string;
   drivingPulleyDia: string;
@@ -59,7 +56,7 @@ export interface IAsset extends Document {
   visible: boolean;
   isActive: boolean;
   assigned_to: number;
-  image_path: IUpload;
+  image_path: string;
   noStages: number;
   qr_code: string;
   stage_1st_driving_teeth?: number,
@@ -106,13 +103,11 @@ const assetSchema = new Schema<IAsset>({
   brandModel: { type: String },
   pinionGearTeethCount: { type: String },
   timingGearTeethCount: { type: String },
-  minRotation: { type: String },
-  maxRotation: { type: String },
+  minInputRotation: { type: String },
+  maxInputRotation: { type: String },
   rotation_type: { type: String },
   mountType: { type: String },
   specificFrequency: { type: [String] },
-  minInputRotation: { type: String },
-  maxInputRotation: { type: String },
   minOutputRotation: { type: String },
   maxOutputRotation: { type: String },
   drivingPulleyDia: { type: String },
@@ -137,7 +132,7 @@ const assetSchema = new Schema<IAsset>({
   year: { type: String },
   qr_code: { type: String },
   assigned_to: { type: Number, default: 1 },
-  image_path: { type: uploadSchema },
+  image_path: { type: String },
   visible: { type: Boolean, default: true },
   isActive: { type: Boolean, default: true },
   brandMake: { type: String },

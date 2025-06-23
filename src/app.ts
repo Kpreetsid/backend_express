@@ -1,13 +1,11 @@
 import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
 import path from 'path';
-import compression from 'compression';
+import morgan from 'morgan';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import { errorMiddleware } from './middlewares/error';
-import { fileLogger } from './middlewares/fileLogger';
-import { activityLogger } from './middlewares/logger';
+import rateLimit from 'express-rate-limit';
 import { isAuthenticated } from './_config/auth';
 import authorizeRouterIndex from './authRoutes';
 import routerIndex from './nonAuthRoutes';
@@ -16,19 +14,31 @@ import uploadRoutes from './upload/upload.routes';
 import reportsRoutes from './reports/reports.routes';
 import transactionRoutes from './transaction/transaction.routes';
 import masterRoutes from './masters/master.routes';
-import morgan from 'morgan';
+import { fileLogger, activityLogger, errorMiddleware } from './middlewares';
 
 const app: Express = express();
 
 app.use(helmet());
-app.use(cors({ credentials: true, origin: true }));
-app.use(cookieParser());
-app.use(fileLogger);
-app.use(activityLogger);
 app.use(morgan('dev'));
+app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
+app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], origin: true }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/assets')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/asset_report')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/endpointImages')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/floor_map')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/locations')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/logo')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/mailers')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/observations')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/posts')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/user_profile_img')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/WO_docs')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_request')));
+app.use(fileLogger);
+app.use(activityLogger);
 
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,

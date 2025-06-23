@@ -1,6 +1,6 @@
 import express from 'express';
 import { getUsers, getUser, createUser, updateUser, removeUser, getLocationWiseUsers } from './user.controller';
-import { hasPermission, isOwnerOrAdmin } from '../../_config/permission';
+import { hasPermission, isOwnerOrAdmin } from '../../middlewares';
 import rolesRoutes from './role/roles.routes';
 import userLogRouters from './logs/logs.routes';
 

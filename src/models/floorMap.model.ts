@@ -56,7 +56,7 @@ const endPointSchema = new Schema<IEndPoint>({
 
 const endpointLocationSchema = new Schema<IEndpointLocation>({
   coordinate: { type: coordinateSchema, required: true },
-  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location', required: true },
+  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
   data_type: { type: String, required: true },
   createdOn: { type: Date, default: Date.now },

@@ -27,6 +27,8 @@ export interface IUserLog extends Document {
     };
     deviceInfo: {
         isMobile: boolean;
+        isTablet: boolean;
+        isDesktop: boolean;
         userAgent: string;
     };
     networkInfo: {
@@ -57,9 +59,9 @@ export interface IUserLog extends Document {
 }
 
 const userLogSchema = new Schema<IUserLog>({
-    userId: { type: Schema.Types.ObjectId, required: true, index: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
     userName: { type: String, required: true },
-    accountId: { type: Schema.Types.ObjectId, required: true, index: true },
+    accountId: { type: Schema.Types.ObjectId, ref: 'Account' },
     method: { type: String, required: true },
     module: { type: String, required: true },
     description: { type: String, required: true },
@@ -84,6 +86,8 @@ const userLogSchema = new Schema<IUserLog>({
     },
     deviceInfo: {
         isMobile: Boolean,
+        isTablet: Boolean,
+        isDesktop: Boolean,
         userAgent: String
     },
     networkInfo: {

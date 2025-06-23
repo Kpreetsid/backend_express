@@ -89,4 +89,4 @@ const WorkRequestSchema = new Schema<IWorkRequest>({
   versionKey: false
 });
 
-export const WorkRequestModel = mongoose.model<IWorkRequest>('Blog', WorkRequestSchema);
+export const WorkRequestModel = mongoose.model<IWorkRequest>('WorkRequest', WorkRequestSchema);
