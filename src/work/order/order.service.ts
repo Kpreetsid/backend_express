@@ -416,7 +416,7 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     req.body.account_id = account_id;
     req.body.user_id = user_id;
     const newAsset = new WorkOrder(req.body);

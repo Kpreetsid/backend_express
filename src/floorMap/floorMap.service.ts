@@ -8,7 +8,7 @@ import { Asset } from "../models/asset.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
      const match = { account_id: account_id, isActive: true };
     const data = await getData(EndpointLocation, { filter: match });
     if (data.length === 0) {
@@ -23,7 +23,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
 export const getCoordinates = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { location_id } = req.query;
     let match: any = {};
     if (location_id) {
@@ -52,6 +52,26 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
       throw Object.assign(new Error('No assets found for the given location'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: 'Coordinates Found', data: enrichedFloorMaps });
+  } catch (err) {
+    console.error('Error in getCoordinateByAccId:', err);
+    next(err);
+  }
+};
+
+export const floorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { id: location_id } = req.params;
+    let match: any = { account_id: account_id };
+    if(location_id) {
+      match.data_type = 'asset';
+      match.locationId = location_id;
+    }
+    const floorMaps = await getData(EndpointLocation, { filter: match });
+    if (!floorMaps || floorMaps.length === 0) {
+      throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: 'Coordinates Found', data: floorMaps });
   } catch (err) {
     console.error('Error in getCoordinateByAccId:', err);
     next(err);

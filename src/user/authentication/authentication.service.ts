@@ -37,8 +37,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!userRoleData) {
       throw Object.assign(new Error('User does not have any permission'), { status: 403 });
     }
-    res.cookie('token', token, { httpOnly: true, secure: true });
-    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: true });
+    res.cookie('token', token, { httpOnly: true, secure: false , sameSite: 'lax'});
+    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
     const userTokenData = new UserToken({
       _id: token,
       userId: user._id,

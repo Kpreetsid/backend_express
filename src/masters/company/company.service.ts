@@ -1,56 +1,15 @@
-import mongoose from "mongoose";
+import mongoose, { ObjectId } from "mongoose";
 import { Account, IAccount } from "../../models/account.model";
 import { NextFunction, Request, Response } from 'express';
 import { getData } from "../../util/queryBuilder";
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const match = { _id: account_id, isActive: true };
-    const data = await getData(Account, { filter: match });
-    if(data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const getAllCompanies = async (filter: any) => {
+  return await getData(Account, { filter });
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const match = { _id: id, isActive: true };
-    const data = await getData(Account, { filter: match });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
-export const getDataByParam = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const query = req.query;
-    const match: any = { isActive: true };
-    if(query.account_id) {
-      match.account_id = query.account_id;
-    }
-    const data: IAccount[] = await getData(Account, { filter: match });
-    if (data.length === 0) {
-      throw Object.assign(new Error('No matching data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const createCompany = async (body: any) => {
+  const newCompany = new Account(body);
+  return await newCompany.save();
 };
 
 export const verifyCompany = async (id: string) => {
@@ -80,17 +39,11 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
+export const removeById = async (id: string, accountId: ObjectId, userId: any): Promise<boolean> => {
     const data: IAccount | null = await Account.findById(id);
     if (!data || !data.isActive) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await Account.findByIdAndUpdate(id, { isActive: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+    return true;
 };

@@ -1,5 +1,4 @@
 import mongoose, { Schema, ObjectId, Document } from 'mongoose';
-import { IUpload, UploadModel, uploadSchema } from './upload.model';
 
 export interface IAsset extends Document {
   asset_name: string;
@@ -57,7 +56,7 @@ export interface IAsset extends Document {
   visible: boolean;
   isActive: boolean;
   assigned_to: number;
-  image_path: IUpload;
+  image_path: string;
   noStages: number;
   qr_code: string;
   stage_1st_driving_teeth?: number,
@@ -133,7 +132,7 @@ const assetSchema = new Schema<IAsset>({
   year: { type: String },
   qr_code: { type: String },
   assigned_to: { type: Number, default: 1 },
-  image_path: { type: uploadSchema },
+  image_path: { type: String },
   visible: { type: Boolean, default: true },
   isActive: { type: Boolean, default: true },
   brandMake: { type: String },

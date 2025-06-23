@@ -6,8 +6,18 @@ import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const match = { account_id: account_id };
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const match: any = { account_id: account_id };
+    const { postType, relatedTo } = req.query;
+    if(postType) {
+      match.postType = postType.toString().split(',');
+    }
+    if(relatedTo) {
+      match.relatedTo = relatedTo.toString().split(',');
+    }
+    if(userRole !== 'admin') {
+      match.userId = user_id;
+    }
     const data = await getData(Post, { filter: match });
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -25,7 +35,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match = { account_id: account_id, _id: id };
     const data = await getData(Post, { filter: match });
     if (!data || data.length === 0) {

@@ -8,7 +8,7 @@ import { WorkOrder } from "../../models/workOrder.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const data = await Comments.find({});
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -26,7 +26,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { order_id: new mongoose.Types.ObjectId(id) };
     const isOrderExist = await getData(WorkOrder, { filter: { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true } });
     if (!isOrderExist || isOrderExist.length === 0) {

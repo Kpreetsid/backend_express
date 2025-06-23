@@ -36,7 +36,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match = { accountId: account_id, _id: id };
     const data: IObservation[] | null = await getData(Observation, { filter: match });
     if (!data || data.length === 0) {

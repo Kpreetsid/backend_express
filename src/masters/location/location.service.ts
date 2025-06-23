@@ -191,7 +191,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const childAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { location_id } = req.body;
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     var finalList = [];
     const lOne = location_id.levelOneLocations;
     const lTwo = location_id.levelTwoLocations;

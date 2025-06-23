@@ -22,7 +22,7 @@ app.use(helmet());
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
-app.use(cors({ credentials: true, origin: true }));
+app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], origin: true }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/assets')));

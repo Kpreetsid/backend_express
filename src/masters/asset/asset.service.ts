@@ -11,12 +11,12 @@ import mongoose from "mongoose";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     const params: any = req.query;
-    if(userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({userId: user_id});
-      if(!mapData || mapData.length === 0) {
+    if (userRole !== 'admin') {
+      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+      if (!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       match._id = { $in: mapData.map(doc => doc.assetId) };
@@ -27,7 +27,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     if (params.top_level) {
       match.top_level = true;
     }
-    if(params.locationId) {
+    if (params.locationId) {
       match.locationId = new mongoose.Types.ObjectId(params.locationId);
     }
     const data: IAsset[] | null = await getData(Asset, { filter: match });
@@ -60,16 +60,23 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
     const { locations = [], assets = [], top_level, location_id } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
-    if(top_level) {
+    if(userRole !== 'admin') {
+      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+      if (!mapData || mapData.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      match._id = { $in: mapData.map(doc => doc.assetId) };
+    }
+    if (top_level) {
       match.top_level = top_level;
     }
     if (locations && locations.length > 0) {
       match.locationId = { $in: locations };
     }
-    if(assets && assets.length > 0) {
+    if (assets && assets.length > 0) {
       match._id = { $in: assets };
     }
-    const data = await Asset.find(match);
+    const data = await getData(Asset, { filter: match });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -92,13 +99,13 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
       visible: true,
       parent_id: { $in: [null, undefined] }
     };
-    if(userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({userId: user_id});
-      if(mapData && mapData.length > 0) {
+    if (userRole !== 'admin') {
+      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+      if (mapData && mapData.length > 0) {
         query._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
     }
-    if(id) {
+    if (id) {
       query._id = id;
       query.top_level = true;
     }
@@ -131,15 +138,15 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
 
 const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
   let ignoreAssets: any = ['Flexible', 'Rigid', 'Belt_Pulley'];
-  if(id) {
+  if (id) {
     ignoreAssets = [];
   }
   const match = { parent_id: asset._id, visible: true };
   const children = await getData(Asset, { filter: match });
   const withChildren = await Promise.all(
     children.map(async (child) => {
-      if(child.asset_type) {
-        if(!ignoreAssets.includes(child.asset_type)) {
+      if (child.asset_type) {
+        if (!ignoreAssets.includes(child.asset_type)) {
           const childs = await getRecursiveAssets(child, id);
           const locationData = await getRecursiveLocations(child);
           return { ...child, childs, locationData };
@@ -172,14 +179,14 @@ const getRecursiveLocations = async (asset: any) => {
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
     const childAssets: any[] = [];
-    if(!Equipment.userList || Equipment.userList.length === 0) {
+    if (!Equipment.userList || Equipment.userList.length === 0) {
       throw Object.assign(new Error('Please select at least one user'), { status: 400 });
     }
 
-    if(Equipment.image_path) {
+    if (Equipment.image_path) {
       const image = await uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image;
     }
@@ -217,8 +224,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     }));
     await MapUserAssetLocation.insertMany(parentMapData);
 
-    if(Motor) {
-      if(Object.keys(Motor).length > 0) {
+    if (Motor) {
+      if (Object.keys(Motor).length > 0) {
         const newMotorAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Motor.asset_name,
@@ -247,8 +254,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       }
     }
 
-    if(Flexible) {
-      if(Object.keys(Flexible).length > 0) {
+    if (Flexible) {
+      if (Object.keys(Flexible).length > 0) {
         const newFlexibleAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Flexible.asset_name,
@@ -272,8 +279,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       }
     }
 
-    if(Rigid) {
-      if(Object.keys(Rigid).length > 0) {
+    if (Rigid) {
+      if (Object.keys(Rigid).length > 0) {
         const newRigidAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Rigid.asset_name,
@@ -298,10 +305,10 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       }
     }
 
-    if(Belt_Pulley.length > 0) {
+    if (Belt_Pulley.length > 0) {
       Belt_Pulley.forEach((beltPulley: any) => {
-        if(beltPulley) {
-          if(Object.keys(beltPulley).length > 0) {
+        if (beltPulley) {
+          if (Object.keys(beltPulley).length > 0) {
             const newBeltPulleyAsset = new Asset({
               parent_id: parentAssetData._id,
               asset_name: beltPulley.asset_name,
@@ -330,10 +337,10 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       })
     }
 
-    if(Gearbox.length > 0) {
+    if (Gearbox.length > 0) {
       Gearbox.forEach((gearbox: any) => {
-        if(gearbox) {
-          if(Object.keys(gearbox).length > 0) {
+        if (gearbox) {
+          if (Object.keys(gearbox).length > 0) {
             const newGearBoxAsset = new Asset({
               parent_id: parentAssetData._id,
               asset_name: gearbox.asset_name,
@@ -381,8 +388,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       })
     }
 
-    if(Fans_Blowers) {
-      if(Object.keys(Fans_Blowers).length > 0) {
+    if (Fans_Blowers) {
+      if (Object.keys(Fans_Blowers).length > 0) {
         const newFanBlowerAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Fans_Blowers.asset_name,
@@ -413,8 +420,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         childAssets.push(newFanBlowerAsset);
       }
     }
-    if(Pumps) { 
-      if(Object.keys(Pumps).length > 0) {
+    if (Pumps) {
+      if (Object.keys(Pumps).length > 0) {
         const newPumpAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Pumps.asset_name,
@@ -445,8 +452,8 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       }
     }
 
-    if(Compressor) {
-      if(Object.keys(Compressor).length > 0) {
+    if (Compressor) {
+      if (Object.keys(Compressor).length > 0) {
         const newCompressorAsset = new Asset({
           parent_id: parentAssetData._id,
           asset_name: Compressor.asset_name,
@@ -504,307 +511,307 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
-    if(!id) {
+    if (!id) {
       throw Object.assign(new Error('Id is required'), { status: 403 });
     }
-    if(id !== Equipment.id) {
+    if (id !== Equipment.id) {
       throw Object.assign(new Error('Data mismatch'), { status: 403 });
     }
-    const data = await Asset.findById(id);
+    const data: any = await Asset.findById(id);
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const createPromises: Promise<any>[] = [];
     const updatePromises: Promise<any>[] = [];
-    if(Equipment) {
-      if(Object.keys(Equipment).length > 0) {
-        if(Equipment.image_path) {
-          if(data.image_path) {
-            await deleteBase64Image(data.image_path.fileName, "asset");
+    if (Equipment) {
+      if (Object.keys(Equipment).length > 0) {
+        if (Equipment.image_path) {
+          if (data.image_path && data.image_path['fileName']) {
+            await deleteBase64Image(data.image_path['fileName'], "asset");
           }
           const image = await uploadBase64Image(Equipment.image_path, "assets");
-          Equipment.image_path = image;
+          Equipment.image_path = image.fileName;
         }
         updatePromises.push(Asset.updateOne({ _id: Equipment.id }, { $set: { ...Equipment, updatedBy: user_id } }));
       }
     }
-    if(Motor || Motor.id) {
-      if(Object.keys(Motor).length > 0) {
+    if (Motor || Motor.id) {
+      if (Object.keys(Motor).length > 0) {
         updatePromises.push(Asset.updateOne({ _id: Motor.id }, { $set: { ...Motor, updatedBy: user_id } }));
       }
     } else {
       const newMotorAsset = new Asset({
-          parent_id: id,
-          asset_name: Motor.asset_name,
-          asset_id: Motor.asset_id || Equipment.asset_id,
-          asset_type: Motor.asset_type || "Motor",
-          motorType: Motor.motorType,
-          lineFreq: Motor.lineFreq,
-          asset_behavior: Motor.asset_behavior,
-          specificFrequency: Motor.specificFrequency,
-          mounting: Motor.mounting,
-          isNewFlow: true,
-          minInputRotation: Motor.minInputRotation,
-          maxInputRotation: Motor.maxInputRotation,
-          rotationUnit: Motor.rotationUnit,
-          powerRating: Motor.powerRating,
-          top_level: false,
-          locationId: Equipment.locationId,
-          top_level_asset_id: Equipment.id,
-          account_id: account_id,
-          asset_model: Motor.asset_model,
-          manufacturer: Motor.manufacturer,
-          year: Motor.year,
-          createdBy: user_id
-        });
+        parent_id: id,
+        asset_name: Motor.asset_name,
+        asset_id: Motor.asset_id || Equipment.asset_id,
+        asset_type: Motor.asset_type || "Motor",
+        motorType: Motor.motorType,
+        lineFreq: Motor.lineFreq,
+        asset_behavior: Motor.asset_behavior,
+        specificFrequency: Motor.specificFrequency,
+        mounting: Motor.mounting,
+        isNewFlow: true,
+        minInputRotation: Motor.minInputRotation,
+        maxInputRotation: Motor.maxInputRotation,
+        rotationUnit: Motor.rotationUnit,
+        powerRating: Motor.powerRating,
+        top_level: false,
+        locationId: Equipment.locationId,
+        top_level_asset_id: Equipment.id,
+        account_id: account_id,
+        asset_model: Motor.asset_model,
+        manufacturer: Motor.manufacturer,
+        year: Motor.year,
+        createdBy: user_id
+      });
       createPromises.push(newMotorAsset.save());
     }
-    if(Flexible || Flexible.id) {
-      if(Object.keys(Flexible).length > 0) {
+    if (Flexible || Flexible.id) {
+      if (Object.keys(Flexible).length > 0) {
         updatePromises.push(Asset.updateOne({ _id: Flexible.id }, { $set: { ...Flexible, updatedBy: user_id } }));
       }
     } else {
       const newFlexibleAsset = new Asset({
-          parent_id: id,
-          asset_name: Flexible.asset_name,
-          element: Flexible.element,
-          asset_id: Flexible.asset_id || Equipment.asset_id,
-          asset_type: Flexible.asset_type || "Flexible",
-          top_level: false,
-          isNewFlow: true,
-          locationId: Equipment.locationId,
-          top_level_asset_id: Equipment.id,
-          account_id: account_id,
-          description: Flexible.description,
-          asset_model: Flexible.asset_model,
-          manufacturer: Flexible.manufacturer,
-          year: Flexible.year,
-          assigned_to: Flexible.assigned_to,
-          image_path: Flexible.image_path,
-          createdBy: user_id
-        });
+        parent_id: id,
+        asset_name: Flexible.asset_name,
+        element: Flexible.element,
+        asset_id: Flexible.asset_id || Equipment.asset_id,
+        asset_type: Flexible.asset_type || "Flexible",
+        top_level: false,
+        isNewFlow: true,
+        locationId: Equipment.locationId,
+        top_level_asset_id: Equipment.id,
+        account_id: account_id,
+        description: Flexible.description,
+        asset_model: Flexible.asset_model,
+        manufacturer: Flexible.manufacturer,
+        year: Flexible.year,
+        assigned_to: Flexible.assigned_to,
+        image_path: Flexible.image_path,
+        createdBy: user_id
+      });
       createPromises.push(newFlexibleAsset.save());
     }
-    if(Rigid || Rigid.id) {
-      if(Object.keys(Rigid).length > 0) {
+    if (Rigid || Rigid.id) {
+      if (Object.keys(Rigid).length > 0) {
         updatePromises.push(Asset.updateOne({ _id: Rigid.id }, { $set: { ...Rigid, updatedBy: user_id } }));
       }
     } else {
       const newRigidAsset = new Asset({
-          parent_id: id,
-          asset_name: Rigid.asset_name,
-          asset_id: Rigid.asset_id || Equipment.asset_id,
-          asset_type: Rigid.asset_type || "Rigid",
-          asset_orient: Rigid.asset_orient,
-          powUnit: Rigid.powUnit,
-          top_level: false,
-          isNewFlow: true,
-          locationId: Equipment.locationId,
-          top_level_asset_id: Equipment.id,
-          account_id: account_id,
-          description: Rigid.description,
-          asset_model: Rigid.model,
-          manufacturer: Rigid.manufacturer,
-          year: Rigid.year,
-          assigned_to: Rigid.assigned_to,
-          image_path: Rigid.image_path,
-          createdBy: user_id
-        });
+        parent_id: id,
+        asset_name: Rigid.asset_name,
+        asset_id: Rigid.asset_id || Equipment.asset_id,
+        asset_type: Rigid.asset_type || "Rigid",
+        asset_orient: Rigid.asset_orient,
+        powUnit: Rigid.powUnit,
+        top_level: false,
+        isNewFlow: true,
+        locationId: Equipment.locationId,
+        top_level_asset_id: Equipment.id,
+        account_id: account_id,
+        description: Rigid.description,
+        asset_model: Rigid.model,
+        manufacturer: Rigid.manufacturer,
+        year: Rigid.year,
+        assigned_to: Rigid.assigned_to,
+        image_path: Rigid.image_path,
+        createdBy: user_id
+      });
       createPromises.push(newRigidAsset.save());
     }
-    if(Belt_Pulley.length > 0) {
+    if (Belt_Pulley.length > 0) {
       Belt_Pulley.forEach((beltPulley: any) => {
-        if(beltPulley.id) {
-          if(Object.keys(beltPulley).length > 0) {
+        if (beltPulley.id) {
+          if (Object.keys(beltPulley).length > 0) {
             updatePromises.push(Asset.updateOne({ _id: beltPulley.id }, { $set: { ...beltPulley, updatedBy: user_id } }));
           }
         } else {
           const newBeltPulleyAsset = new Asset({
-              parent_id: id,
-              asset_name: beltPulley.asset_name,
-              asset_id: beltPulley.asset_id || Equipment.asset_id,
-              asset_type: beltPulley.asset_type || "Belt_Pulley",
-              top_level: false,
-              isNewFlow: true,
-              locationId: Equipment.locationId,
-              top_level_asset_id: Equipment.id,
-              account_id: account_id,
-              drivenPulleyDia: beltPulley.drivenPulleyDia,
-              beltLength: beltPulley.beltLength,
-              outputRPM: beltPulley.outputRPM,
-              noOfGroove: beltPulley.noOfGroove,
-              minInputRotation: beltPulley.minInputRotation,
-              maxInputRotation: beltPulley.maxInputRotation,
-              minOutputRotation: beltPulley.minOutputRotation,
-              maxOutputRotation: beltPulley.maxOutputRotation,
-              drivingPulleyDia: beltPulley.drivingPulleyDia,
-              drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
-              createdBy: user_id
-            });
+            parent_id: id,
+            asset_name: beltPulley.asset_name,
+            asset_id: beltPulley.asset_id || Equipment.asset_id,
+            asset_type: beltPulley.asset_type || "Belt_Pulley",
+            top_level: false,
+            isNewFlow: true,
+            locationId: Equipment.locationId,
+            top_level_asset_id: Equipment.id,
+            account_id: account_id,
+            drivenPulleyDia: beltPulley.drivenPulleyDia,
+            beltLength: beltPulley.beltLength,
+            outputRPM: beltPulley.outputRPM,
+            noOfGroove: beltPulley.noOfGroove,
+            minInputRotation: beltPulley.minInputRotation,
+            maxInputRotation: beltPulley.maxInputRotation,
+            minOutputRotation: beltPulley.minOutputRotation,
+            maxOutputRotation: beltPulley.maxOutputRotation,
+            drivingPulleyDia: beltPulley.drivingPulleyDia,
+            drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
+            createdBy: user_id
+          });
           createPromises.push(newBeltPulleyAsset.save());
         }
       });
     }
-     if(Gearbox.length > 0) {
+    if (Gearbox.length > 0) {
       Gearbox.forEach((gearbox: any) => {
-        if(gearbox.id) {
-          if(Object.keys(gearbox).length > 0) {
+        if (gearbox.id) {
+          if (Object.keys(gearbox).length > 0) {
             updatePromises.push(Asset.updateOne({ _id: gearbox.id }, { $set: { ...gearbox, updatedBy: user_id } }));
           }
         } else {
           const newGearBoxAsset = new Asset({
-              parent_id: id,
-              asset_name: gearbox.asset_name,
-              asset_id: gearbox.asset_id || Equipment.asset_id,
-              asset_type: gearbox.asset_type || "Gearbox",
-              top_level: false,
-              isNewFlow: true,
-              locationId: Equipment.locationId,
-              top_level_asset_id: Equipment.id,
-              account_id: account_id,
-              mounting: gearbox.mounting,
-              minInputRotation: gearbox.minInputRotation,
-              maxInputRotation: gearbox.maxInputRotation,
-              minOutputRotation: gearbox.minOutputRotation,
-              maxOutputRotation: gearbox.maxOutputRotation,
-              noStages: gearbox.noStages,
-              bearingType: gearbox.bearingType,
-              stage_1st_driving_teeth: gearbox.stage_1st_driving_teeth,
-              stage_1st_driven_teeth: gearbox.stage_1st_driven_teeth,
-              stage_2nd_driving_teeth: gearbox.stage_2nd_driving_teeth,
-              stage_2nd_driven_teeth: gearbox.stage_2nd_driven_teeth,
-              stage_3rd_driving_teeth: gearbox.stage_3rd_driving_teeth,
-              stage_3rd_driven_teeth: gearbox.stage_3rd_driven_teeth,
-              stage_4th_driving_teeth: gearbox.stage_4th_driving_teeth,
-              stage_4th_driven_teeth: gearbox.stage_4th_driven_teeth,
-              stage_5th_driving_teeth: gearbox.stage_5th_driving_teeth,
-              stage_5th_driven_teeth: gearbox.stage_5th_driven_teeth,
-              stage_6th_driving_teeth: gearbox.stage_6th_driving_teeth,
-              stage_6th_driven_teeth: gearbox.stage_6th_driven_teeth,
-              stage_7th_driving_teeth: gearbox.stage_7th_driving_teeth,
-              stage_7th_driven_teeth: gearbox.stage_7th_driven_teeth,
-              stage_8th_driving_teeth: gearbox.stage_8th_driving_teeth,
-              stage_8th_driven_teeth: gearbox.stage_8th_driven_teeth,
-              description: gearbox.description,
-              asset_model: gearbox.model,
-              manufacturer: gearbox.manufacturer,
-              year: gearbox.year,
-              assigned_to: gearbox.assigned_to,
-              image_path: gearbox.image_path,
-              createdBy: user_id
-            });
+            parent_id: id,
+            asset_name: gearbox.asset_name,
+            asset_id: gearbox.asset_id || Equipment.asset_id,
+            asset_type: gearbox.asset_type || "Gearbox",
+            top_level: false,
+            isNewFlow: true,
+            locationId: Equipment.locationId,
+            top_level_asset_id: Equipment.id,
+            account_id: account_id,
+            mounting: gearbox.mounting,
+            minInputRotation: gearbox.minInputRotation,
+            maxInputRotation: gearbox.maxInputRotation,
+            minOutputRotation: gearbox.minOutputRotation,
+            maxOutputRotation: gearbox.maxOutputRotation,
+            noStages: gearbox.noStages,
+            bearingType: gearbox.bearingType,
+            stage_1st_driving_teeth: gearbox.stage_1st_driving_teeth,
+            stage_1st_driven_teeth: gearbox.stage_1st_driven_teeth,
+            stage_2nd_driving_teeth: gearbox.stage_2nd_driving_teeth,
+            stage_2nd_driven_teeth: gearbox.stage_2nd_driven_teeth,
+            stage_3rd_driving_teeth: gearbox.stage_3rd_driving_teeth,
+            stage_3rd_driven_teeth: gearbox.stage_3rd_driven_teeth,
+            stage_4th_driving_teeth: gearbox.stage_4th_driving_teeth,
+            stage_4th_driven_teeth: gearbox.stage_4th_driven_teeth,
+            stage_5th_driving_teeth: gearbox.stage_5th_driving_teeth,
+            stage_5th_driven_teeth: gearbox.stage_5th_driven_teeth,
+            stage_6th_driving_teeth: gearbox.stage_6th_driving_teeth,
+            stage_6th_driven_teeth: gearbox.stage_6th_driven_teeth,
+            stage_7th_driving_teeth: gearbox.stage_7th_driving_teeth,
+            stage_7th_driven_teeth: gearbox.stage_7th_driven_teeth,
+            stage_8th_driving_teeth: gearbox.stage_8th_driving_teeth,
+            stage_8th_driven_teeth: gearbox.stage_8th_driven_teeth,
+            description: gearbox.description,
+            asset_model: gearbox.model,
+            manufacturer: gearbox.manufacturer,
+            year: gearbox.year,
+            assigned_to: gearbox.assigned_to,
+            image_path: gearbox.image_path,
+            createdBy: user_id
+          });
           createPromises.push(newGearBoxAsset.save());
         }
       });
     }
-    if(Fans_Blowers || Fans_Blowers.id) {
-      if(Object.keys(Fans_Blowers).length > 0) {
+    if (Fans_Blowers || Fans_Blowers.id) {
+      if (Object.keys(Fans_Blowers).length > 0) {
         updatePromises.push(Asset.updateOne({ _id: Fans_Blowers.id }, { $set: { ...Fans_Blowers, updatedBy: user_id } }));
       }
     } else {
       const newFanBlowerAsset = new Asset({
-          parent_id: id,
-          asset_name: Fans_Blowers.asset_name,
-          asset_id: Fans_Blowers.asset_id || Equipment.asset_id,
-          asset_type: Fans_Blowers.asset_type || "Fans_Blowers",
-          brandId: Fans_Blowers.brandId,
-          mountType: Fans_Blowers.mountType,
-          brandMake: Fans_Blowers.brandMake,
-          mounting: Fans_Blowers.mounting,
-          bearingType: Fans_Blowers.bearingType,
-          bladeCount: Fans_Blowers.bladeCount,
-          minInputRotation: Fans_Blowers.minInputRotation,
-          maxInputRotation: Fans_Blowers.maxInputRotation,
-          specificFrequency: Fans_Blowers.specificFrequency,
-          top_level: false,
-          isNewFlow: true,
-          locationId: Equipment.locationId,
-          top_level_asset_id: Equipment.id,
-          account_id: account_id,
-          description: Fans_Blowers.description,
-          asset_model: Fans_Blowers.asset_model,
-          manufacturer: Fans_Blowers.manufacturer,
-          year: Fans_Blowers.year,
-          assigned_to: Fans_Blowers.assigned_to,
-          image_path: Fans_Blowers.image_path,
-          createdBy: user_id
-        });
+        parent_id: id,
+        asset_name: Fans_Blowers.asset_name,
+        asset_id: Fans_Blowers.asset_id || Equipment.asset_id,
+        asset_type: Fans_Blowers.asset_type || "Fans_Blowers",
+        brandId: Fans_Blowers.brandId,
+        mountType: Fans_Blowers.mountType,
+        brandMake: Fans_Blowers.brandMake,
+        mounting: Fans_Blowers.mounting,
+        bearingType: Fans_Blowers.bearingType,
+        bladeCount: Fans_Blowers.bladeCount,
+        minInputRotation: Fans_Blowers.minInputRotation,
+        maxInputRotation: Fans_Blowers.maxInputRotation,
+        specificFrequency: Fans_Blowers.specificFrequency,
+        top_level: false,
+        isNewFlow: true,
+        locationId: Equipment.locationId,
+        top_level_asset_id: Equipment.id,
+        account_id: account_id,
+        description: Fans_Blowers.description,
+        asset_model: Fans_Blowers.asset_model,
+        manufacturer: Fans_Blowers.manufacturer,
+        year: Fans_Blowers.year,
+        assigned_to: Fans_Blowers.assigned_to,
+        image_path: Fans_Blowers.image_path,
+        createdBy: user_id
+      });
       createPromises.push(newFanBlowerAsset.save());
     }
-    if(Pumps || Pumps.id) {
-      if(Object.keys(Pumps).length > 0) {
+    if (Pumps || Pumps.id) {
+      if (Object.keys(Pumps).length > 0) {
         updatePromises.push(Asset.updateOne({ _id: Pumps.id }, { $set: { ...Pumps, updatedBy: user_id } }));
       }
     } else {
       const newPumpAsset = new Asset({
-          parent_id: id,
-          asset_name: Pumps.asset_name,
-          brand: Pumps.brand,
-          asset_id: Pumps.asset_id || Equipment.asset_id,
-          casing: Pumps.casing,
-          asset_type: Pumps.asset_type || "Pumps",
-          impellerBladeCount: Pumps.impellerBladeCount,
-          pump_model: Pumps.pump_model,
-          impellerType: Pumps.impellerType,
-          minInputRotation: Pumps.minInputRotation,
-          maxInputRotation: Pumps.maxInputRotation,
-          specificFrequency: Pumps.specificFrequency,
-          top_level: false,
-          isNewFlow: true,
-          locationId: Equipment.locationId,
-          top_level_asset_id: Equipment.id,
-          account_id: account_id,
-          description: Pumps.description,
-          asset_model: Pumps.model,
-          manufacturer: Pumps.manufacturer,
-          year: Pumps.year,
-          assigned_to: Pumps.assigned_to,
-          image_path: Pumps.image_path,
-          createdBy: user_id
-        });
+        parent_id: id,
+        asset_name: Pumps.asset_name,
+        brand: Pumps.brand,
+        asset_id: Pumps.asset_id || Equipment.asset_id,
+        casing: Pumps.casing,
+        asset_type: Pumps.asset_type || "Pumps",
+        impellerBladeCount: Pumps.impellerBladeCount,
+        pump_model: Pumps.pump_model,
+        impellerType: Pumps.impellerType,
+        minInputRotation: Pumps.minInputRotation,
+        maxInputRotation: Pumps.maxInputRotation,
+        specificFrequency: Pumps.specificFrequency,
+        top_level: false,
+        isNewFlow: true,
+        locationId: Equipment.locationId,
+        top_level_asset_id: Equipment.id,
+        account_id: account_id,
+        description: Pumps.description,
+        asset_model: Pumps.model,
+        manufacturer: Pumps.manufacturer,
+        year: Pumps.year,
+        assigned_to: Pumps.assigned_to,
+        image_path: Pumps.image_path,
+        createdBy: user_id
+      });
       createPromises.push(newPumpAsset.save());
     }
-    if(Compressor || Compressor.id) {
-      if(Object.keys(Compressor).length > 0) {
+    if (Compressor || Compressor.id) {
+      if (Object.keys(Compressor).length > 0) {
         updatePromises.push(Asset.updateOne({ _id: Compressor.id }, { $set: { ...Compressor, updatedBy: user_id } }));
       }
     } else {
       const newCompressorAsset = new Asset({
-          parent_id: id,
-          asset_name: Compressor.asset_name,
-          asset_id: Compressor.asset_id || Equipment.asset_id,
-          asset_type: Compressor.asset_type || "Compressor",
-          brandModel: Compressor.brandModel,
-          pinionGearTeethCount: Compressor.pinionGearTeethCount,
-          timingGearTeethCount: Compressor.timingGearTeethCount,
-          powerRating: Compressor.powerRating,
-          minInputRotation: Compressor.minInputRotation,
-          maxInputRotation: Compressor.maxInputRotation,
-          mountType: Compressor.mountType,
-          specificFrequency: Compressor.specificFrequency,
-          top_level: false,
-          isNewFlow: true,
-          locationId: Equipment.locationId,
-          top_level_asset_id: Equipment._id,
-          account_id: account_id,
-          description: Compressor.description,
-          asset_model: Compressor.asset_model,
-          manufacturer: Compressor.manufacturer,
-          year: Compressor.year,
-          assigned_to: Compressor.assigned_to,
-          image_path: Compressor.image_path,
-          createdBy: user_id
-        });
+        parent_id: id,
+        asset_name: Compressor.asset_name,
+        asset_id: Compressor.asset_id || Equipment.asset_id,
+        asset_type: Compressor.asset_type || "Compressor",
+        brandModel: Compressor.brandModel,
+        pinionGearTeethCount: Compressor.pinionGearTeethCount,
+        timingGearTeethCount: Compressor.timingGearTeethCount,
+        powerRating: Compressor.powerRating,
+        minInputRotation: Compressor.minInputRotation,
+        maxInputRotation: Compressor.maxInputRotation,
+        mountType: Compressor.mountType,
+        specificFrequency: Compressor.specificFrequency,
+        top_level: false,
+        isNewFlow: true,
+        locationId: Equipment.locationId,
+        top_level_asset_id: Equipment._id,
+        account_id: account_id,
+        description: Compressor.description,
+        asset_model: Compressor.asset_model,
+        manufacturer: Compressor.manufacturer,
+        year: Compressor.year,
+        assigned_to: Compressor.assigned_to,
+        image_path: Compressor.image_path,
+        createdBy: user_id
+      });
       createPromises.push(newCompressorAsset.save());
     }
-    if(updatePromises.length > 0) {
+    if (updatePromises.length > 0) {
       await Promise.all(updatePromises);
     }
     let childAssets: any[] = [];
-    if(createPromises.length > 0) {
+    if (createPromises.length > 0) {
       childAssets = await Promise.all(createPromises);
     }
     const assetIdList: string[] = childAssets.map((asset: any) => `${asset._id}`);

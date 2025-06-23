@@ -32,7 +32,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match = { account_id: account_id, _id: id, visible: true };
     const data: IWorkRequest[] | null = await getData(WorkRequestModel, { filter: match });
     if (!data || data.length === 0) {
@@ -47,7 +47,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const body = req.body;
     body.account_id = account_id;
     body.createdBy = user_id;
@@ -66,7 +66,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     if(!params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     body.updatedBy = user_id;
     const data = await WorkRequestModel.findByIdAndUpdate(params.id, body, { new: true });
     if (!data) {

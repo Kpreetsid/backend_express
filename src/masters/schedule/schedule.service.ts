@@ -28,7 +28,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
         if(!id) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
-         const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, _id: id, visible: true };
         const data: IScheduleMaster[] = await getData(ScheduleMasterModel, { filter: match });
         if (!data || data.length === 0) {

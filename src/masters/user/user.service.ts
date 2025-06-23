@@ -32,7 +32,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match = { account_id: account_id, _id: id, isActive: true };
     const data: IUser[] | null = await getData(User, { filter: match, populate: 'account_id' });
     if (!data || data.length === 0) {
@@ -78,7 +78,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const password = await hashPassword(body.password);
     const companyData = await verifyCompany(`${account_id}`);
     if(!companyData) {
@@ -114,7 +114,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
     const body = req.body;
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

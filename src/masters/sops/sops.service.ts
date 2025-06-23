@@ -7,14 +7,27 @@ import { IUser } from '../../models/user.model';
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        const { categoryId } = req.query;
         const match: any = { account_id: account_id, visible: true };
         if (userRole !== 'admin') {
             match.user_id = user_id;
         }
-        const data: ISopsMaster[] = await getData(SopsMasterModel, { filter: match });
+        if(categoryId) {
+            match.categoryId = categoryId;
+        }
+        let data: ISopsMaster[] = await getData(SopsMasterModel, { filter: match, populate: [{ path: 'account_id', select: '' }, { path: 'locationId', select: '' }, { path: 'categoryId', select: '' }] });
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
+        data = data.map((doc: any) => {
+            doc.account = doc.account_id;
+            doc.account_id = doc.account_id._id;
+            doc.location = doc.locationId;
+            doc.locationId = doc.locationId._id;
+            doc.category = doc.categoryId;
+            doc.categoryId = doc.categoryId._id;
+            return doc;
+        });
         return res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
         console.error(error);
@@ -28,7 +41,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
         if(!id) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
-         const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, _id: id, visible: true };
         const data: ISopsMaster[] | null = await getData(SopsMasterModel, { filter: match });
         if (!data || data.length === 0) {

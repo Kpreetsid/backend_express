@@ -6,7 +6,7 @@ import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     const data: ICategory[] | null = await getData(Category, { filter: match });
     if (!data || data.length === 0) {
@@ -22,7 +22,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     if(id) {
       match._id = id;
@@ -41,7 +41,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const body = req.body;
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const newCategoryBody = new Category({
       ...body,
       account_id,

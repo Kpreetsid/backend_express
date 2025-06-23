@@ -170,7 +170,7 @@ const SopsMasterSchema = new Schema<ISopsMaster>(
             components: [SOPComponentSchema]
         },
         account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
-        locationId: { type: Schema.Types.ObjectId, ref: 'Location', required: true },
+        locationId: { type: Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
         categoryId: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
         description: { type: String }
     },
