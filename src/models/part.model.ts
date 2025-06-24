@@ -15,7 +15,7 @@ export interface IPart extends Document {
 
 const partSchema = new Schema<IPart>({
   part_name: { type: String, required: true },
-  description: { type: String, default: '' },
+  description: { type: String },
   part_number: { type: String, required: true },
   quantity: { type: Number, required: true },
   min_quantity: { type: Number, required: true },

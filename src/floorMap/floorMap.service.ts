@@ -149,3 +149,27 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 };
+
+export const insertCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const body = req.body;
+    const newMappedCoordinates = new EndpointLocation({
+      "coordinate": body.coordinate,
+      "locationId": body.locationId,
+      "account_id": account_id,
+      "end_point_id": body.end_point_id,
+      "data_type": body.data_type,
+      "end_point": body.end_point,
+      "createdBy": user_id
+    });
+    const data = await newMappedCoordinates.save();
+    if (!data) {
+      throw Object.assign(new Error('Failed to set coordinates'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: "Coordinates added successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};

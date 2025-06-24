@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, insert, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation } from './location.service';
+import { getAll, getDataById, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation } from './location.service';
 
 export const getLocations = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
@@ -22,7 +22,7 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
 }
 
 export const createLocation = async (req: Request, res: Response, next: NextFunction) => {
-  await insert(req, res, next);
+  await insertLocation(req, res, next);
 }
 
 export const updateLocation = async (req: Request, res: Response, next: NextFunction) => {

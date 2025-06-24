@@ -59,6 +59,46 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+export const mapUserLocations = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const body = req.body;
+    const queryArray: any = [];
+    body.forEach((doc: any) => {
+      queryArray.push(new MapUserAssetLocation({
+        locationId: doc.locationId,
+        userId: doc.userId,
+        account_id
+      }));
+    })
+    await MapUserAssetLocation.insertMany(queryArray);
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+};
+
+export const updateMappedUserLocations = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const body = req.body;
+    const queryArray: any = [];
+    body.forEach((doc: any) => {
+      queryArray.push(new MapUserAssetLocation({
+        locationId: doc.locationId,
+        userId: doc.userId,
+        account_id
+      }));
+    })
+    await MapUserAssetLocation.insertMany(queryArray);
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
+
 export const userAssets = async (req: Request, res: Response, next: NextFunction) => {
   try {
      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;

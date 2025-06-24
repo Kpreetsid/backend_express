@@ -6,7 +6,7 @@ const moduleName: string = "location";
 import { get } from "lodash";
 import { IUser, User } from "../../models/user.model";
 import { Asset } from "../../models/asset.model";
-import mongoose from "mongoose";
+import { IUserRoleMenu } from "../../models/userRoleMenu.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -233,15 +233,19 @@ const getAllChildLocationsRecursive = async (parentIds: any) => {
   }
 }
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const insertLocation = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const role = (req as any).role;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const role = get(req, "role", {}) as any;
     if (!role[moduleName].add_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
-    const newLocation = new LocationMaster(req.body);
-    const data: ILocationMaster = await newLocation.save();
-    return res.status(201).json({ status: true, message: "Data created successfully", data });
+    const body = req.body;
+    body.account_id = account_id;
+    body.createdBy = user_id;
+    const newLocation = new LocationMaster(body);
+    // const data: ILocationMaster = await newLocation.save();
+    return res.status(201).json({ status: true, message: "Data created successfully", data: newLocation });
   } catch (error) {
     console.error(error);
     next(error);
@@ -250,7 +254,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const role = (req as any).role;
+    const role = get(req, "role", {}) as any;
     if (!role[moduleName].edit_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }

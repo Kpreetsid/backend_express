@@ -12,16 +12,16 @@ export interface ILocationMaster extends Document {
   parent_name?: string;
   equipment_id?: string;
   teamId?: string | null;
-  id?: ObjectId;
   image_path?: string;
   location?: string;
   qr_code?: string;
   visible: boolean;
+  createdBy: ObjectId;
 }
 
 const locationMasterSchema = new Schema<ILocationMaster>({
   location_name: { type: String, required: true },
-  description: { type: String, default: '' },
+  description: { type: String },
   location_type: { type: String, required: true },
   top_level: { type: Boolean, required: true },
   assigned_to: { type: String, required: true },
@@ -31,11 +31,11 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   parent_name: { type: String },
   equipment_id: { type: String },
   teamId: { type: String },
-  id: { type: mongoose.Schema.Types.ObjectId },
   image_path: { type: String },
-  location: { type: String, default: '' },
-  qr_code: { type: String, default: '' },
-  visible: { type: Boolean, required: true },
+  location: { type: String },
+  qr_code: { type: String },
+  visible: { type: Boolean, required: true, default: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
 }, {
   collection: 'location_master',
   timestamps: true,

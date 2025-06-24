@@ -1,5 +1,5 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { getAll, getDataById, insert, updateById, removeById, getCoordinates, floorMapAssetCoordinates } from './floorMap.service';
+import { getAll, getDataById, insert, updateById, removeById, getCoordinates, floorMapAssetCoordinates, insertCoordinates } from './floorMap.service';
 
 export const getFloorMaps = async (req: Request, res: Response, next: NextFunction) => {
   await getAll(req, res, next);
@@ -27,4 +27,8 @@ export const getFloorMapCoordinates = async (req: Request, res: Response, next: 
 
 export const getFloorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction) => {
   await floorMapAssetCoordinates(req, res, next);
+}
+
+export const setFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+  await insertCoordinates(req, res, next);
 }

@@ -2,6 +2,7 @@ import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 export interface IMapUserLocation extends Document {
   _id: ObjectId;
+  account_id?: ObjectId;
   userId: ObjectId;
   locationId?: ObjectId;
   assetId?: ObjectId;
@@ -9,6 +10,7 @@ export interface IMapUserLocation extends Document {
 }
 
 const MapUserLocationSchema = new Schema<IMapUserLocation>({
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster' },
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },

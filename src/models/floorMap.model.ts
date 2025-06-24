@@ -27,6 +27,7 @@ export interface IEndpointLocation extends Document {
   locationId: ObjectId;
   account_id: ObjectId;
   data_type: string;
+  createdBy: ObjectId;
   createdOn: Date;
   end_point_id: number;
   end_point: IEndPoint;
@@ -58,13 +59,14 @@ const endpointLocationSchema = new Schema<IEndpointLocation>({
   coordinate: { type: coordinateSchema, required: true },
   locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  data_type: { type: String, required: true },
+  data_type: { type: String, enum: ['location', 'asset', 'kpi'], required: true },
   createdOn: { type: Date, default: Date.now },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   end_point_id: { type: Number, required: true },
   end_point: { type: endPointSchema, required: true },
 }, {
   collection: 'floor_map',
-  timestamps: false ,
+  timestamps: true,
   versionKey: false
 });
 
