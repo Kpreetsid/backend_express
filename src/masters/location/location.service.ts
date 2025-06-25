@@ -244,7 +244,7 @@ export const insertLocation = async (req: Request, res: Response, next: NextFunc
     body.account_id = account_id;
     body.createdBy = user_id;
     const newLocation = new LocationMaster(body);
-    // const data: ILocationMaster = await newLocation.save();
+    const data: ILocationMaster = await newLocation.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data: newLocation });
   } catch (error) {
     console.error(error);
@@ -288,3 +288,17 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 };
+
+export const updateFloorMapImage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { selected_location_id, top_level_location_image } = req.body;
+    const data: ILocationMaster | null = await LocationMaster.findByIdAndUpdate(selected_location_id, { $set: { top_level_location_image } }, { new: true });
+    if (!data || !data.visible) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: "Data updated successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
