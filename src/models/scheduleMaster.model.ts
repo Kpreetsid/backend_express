@@ -160,7 +160,14 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     { 
         collection: 'schedule_master',
         timestamps: true ,
-        versionKey: false
+        versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
     }
 );
 

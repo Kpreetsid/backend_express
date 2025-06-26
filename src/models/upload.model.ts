@@ -23,7 +23,14 @@ export const uploadSchema = new Schema<IUpload>({
 }, {
     _id: false ,
     timestamps: true,
-    versionKey: false
+    versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const UploadModel = mongoose.model<IUpload>('Upload', uploadSchema);

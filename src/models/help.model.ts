@@ -81,7 +81,14 @@ const BlogSchema = new Schema<IBlog>({
 }, {
   collection: 'help',
   timestamps: true,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const Blog = mongoose.model<IBlog>('Blog', BlogSchema);

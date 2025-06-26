@@ -32,7 +32,7 @@ export const verifyOTPCode = async (req: Request, res: Response, next: NextFunct
       throw Object.assign(new Error('OTP expired'), { status: 403 });
     }
     const account: IAccount = await Account.create(new Account({
-      name: body.name,
+      account_name: body.account_name,
       type: body.type,
       description: body.description
     }));
@@ -114,7 +114,9 @@ const createNewUser = async (body: IUser) => {
         dialCode: body.phone_no.dialCode
       },
       password: await hashPassword(body.password),
-      account_id: body.account_id
+      account_id: body.account_id,
+      emailStatus: true,
+      isVerified: true
     });
     const newUserData = await newUser.save();
     const { password, ...safeUser } = newUserData.toObject();

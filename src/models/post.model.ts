@@ -123,7 +123,14 @@ const PostSchema = new Schema<IPost>({
 }, { 
   collection: 'posts',
   timestamps: true ,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const Post = mongoose.model<IPost>('Post', PostSchema);

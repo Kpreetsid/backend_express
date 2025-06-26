@@ -81,7 +81,14 @@ const CommentsSchema = new Schema<IComments>({
 }, { 
   collection: 'work_order_comment',
   timestamps: true ,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const Comments = mongoose.model<IComments>('Comments', CommentsSchema);

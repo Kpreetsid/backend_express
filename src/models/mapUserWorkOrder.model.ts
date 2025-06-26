@@ -13,7 +13,14 @@ const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(
   {
     collection: 'wo_user_mapping',
     timestamps: true ,
-    versionKey: false
+    versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
   }
 );
 

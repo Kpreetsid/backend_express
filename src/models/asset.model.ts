@@ -159,7 +159,14 @@ const assetSchema = new Schema<IAsset>({
 }, {
   collection: 'asset_master',
   timestamps: true,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const Asset = mongoose.model<IAsset>('Asset', assetSchema);

@@ -105,7 +105,14 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
 }, {
   collection: 'work_orders',
   timestamps: true,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const WorkOrder = mongoose.model<IWorkOrder>('WorkOrder', WorkOrderSchema);

@@ -12,11 +12,13 @@ export interface ILocationMaster extends Document {
   parent_name?: string;
   equipment_id?: string;
   teamId?: string | null;
+  top_level_location_image?: string;
   image_path?: string;
   location?: string;
   qr_code?: string;
   visible: boolean;
   createdBy: ObjectId;
+  updatedBy?: ObjectId;
 }
 
 const locationMasterSchema = new Schema<ILocationMaster>({
@@ -26,20 +28,29 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   top_level: { type: Boolean, required: true },
   assigned_to: { type: String, required: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  top_level_location_id: { type: mongoose.Schema.Types.ObjectId, required: true },
+  top_level_location_id: { type: mongoose.Schema.Types.ObjectId },
   parent_id: { type: mongoose.Schema.Types.ObjectId },
   parent_name: { type: String },
   equipment_id: { type: String },
   teamId: { type: String },
   image_path: { type: String },
+  top_level_location_image: { type: String },
   location: { type: String },
   qr_code: { type: String },
   visible: { type: Boolean, required: true, default: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, {
   collection: 'location_master',
   timestamps: true,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const LocationMaster = mongoose.model<ILocationMaster>('LocationMaster', locationMasterSchema);

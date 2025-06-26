@@ -116,24 +116,15 @@ const userLogSchema = new Schema<IUserLog>({
     }
 }, {
     collection: 'user_logs',
-    versionKey: false,         // No __v
-    timestamps: true,          // Adds createdAt and updatedAt
-    toJSON: {
-        virtuals: true,
-        transform: (_, ret) => {
-            ret.id = ret._id;
-            delete ret._id;
-            return ret;
-        }
-    },
-    toObject: {
-        virtuals: true,
-        transform: (_, ret) => {
-            ret.id = ret._id;
-            delete ret._id;
-            return ret;
-        }
+    versionKey: false,
+    timestamps: true,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
     }
+  }
 });
 
 // Virtual field: isSuccess

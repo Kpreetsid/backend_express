@@ -142,7 +142,14 @@ const EquipmentSetSchema = new mongoose.Schema({
 }, {
     collection: 'equipment_set', 
     timestamps: true,
-    versionKey: false
+    versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const EquipmentSetModel = mongoose.model('EquipmentSet', EquipmentSetSchema);

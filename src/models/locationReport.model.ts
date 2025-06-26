@@ -139,26 +139,31 @@ export interface ILocationReport {
     sub_location_data: any;
     user: any;
     location_id: ObjectId;
-    timestamp: Date;
 }
   
 
-const LocationReportSchema = new Schema({
-    asset_condition_summary_data: [SummaryDataSchema],
-    asset_fault_summary_data: [FaultSummarySchema],
-    asset_report_data: [AssetReportSchema],
-    created_on: Date,
-    account_id: Schema.Types.ObjectId,
-    sub_location_data: [SubLocationSchema],
-    user: UserSchema,
-    timestamp: { type: Date, default: Date.now },
-    location_id: Schema.Types.ObjectId
+const LocationReportSchema = new Schema<ILocationReport>({
+    asset_condition_summary_data: { type: [SummaryDataSchema]},
+    asset_fault_summary_data: { type: [FaultSummarySchema] },
+    asset_report_data: { type: [AssetReportSchema] },
+    created_on: { type: Date, default: Date.now },
+    account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
+    sub_location_data: { type: [SubLocationSchema] },
+    user: { type: UserSchema },
+    location_id: { type: Schema.Types.ObjectId, ref: 'Location', required: true }
 },
     {
         collection: 'location-report',
         timestamps: true,
-        versionKey: false
+        versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
     }
 );
 
-export const LocationReport = mongoose.model('LocationReport', LocationReportSchema);
+export const LocationReport = mongoose.model<ILocationReport>('LocationReport', LocationReportSchema);

@@ -178,7 +178,14 @@ const reportAssetSchema = new Schema<IReportAsset>({
 }, {
   collection: 'assets-report',
   timestamps: false ,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const ReportAsset = mongoose.model<IReportAsset>('ReportAsset', reportAssetSchema);

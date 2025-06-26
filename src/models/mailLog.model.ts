@@ -21,7 +21,14 @@ const mailLogSchema = new Schema<IMailLog>({
 }, {
     collection: 'mail_logs',
     timestamps: true,
-    versionKey: false
+    versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const MailLogModel = mongoose.model<IMailLog>('MailLog', mailLogSchema);

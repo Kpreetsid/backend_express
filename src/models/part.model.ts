@@ -27,7 +27,14 @@ const partSchema = new Schema<IPart>({
 }, {
   collection: 'parts',
   timestamps: true,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc, ret) {
+      ret.id = ret._id;
+      return ret;
+    }
+  }
 });
 
 export const Part = mongoose.model<IPart>('Part', partSchema);
