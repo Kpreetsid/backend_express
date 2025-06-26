@@ -29,7 +29,7 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   assigned_to: { type: String, required: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
   top_level_location_id: { type: mongoose.Schema.Types.ObjectId },
-  parent_id: { type: mongoose.Schema.Types.ObjectId },
+  parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster' },
   parent_name: { type: String },
   equipment_id: { type: String },
   teamId: { type: String },
@@ -48,6 +48,7 @@ const locationMasterSchema = new Schema<ILocationMaster>({
     virtuals: true,
     transform(doc, ret) {
       ret.id = ret._id;
+      delete ret._id;
       return ret;
     }
   }

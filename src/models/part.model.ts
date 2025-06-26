@@ -10,7 +10,9 @@ export interface IPart extends Document {
   part_type: string;
   account_id: ObjectId;
   locationId: ObjectId;
-  id?: ObjectId;
+  isActive: boolean;
+  createdBy: ObjectId;
+  updatedBy?: ObjectId
 }
 
 const partSchema = new Schema<IPart>({
@@ -23,7 +25,9 @@ const partSchema = new Schema<IPart>({
   part_type: { type: String, required: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
   locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
-  id: { type: mongoose.Schema.Types.ObjectId, default: null }
+  isActive: { type: Boolean, required: true, default: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, {
   collection: 'parts',
   timestamps: true,
@@ -32,6 +36,7 @@ const partSchema = new Schema<IPart>({
     virtuals: true,
     transform(doc, ret) {
       ret.id = ret._id;
+      delete ret._id;
       return ret;
     }
   }

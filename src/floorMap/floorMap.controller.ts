@@ -1,12 +1,46 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { getAll, getDataById, insert, updateById, removeById, getCoordinates, floorMapAssetCoordinates, insertCoordinates } from './floorMap.service';
+import { get } from "lodash";
+import { getFloorMaps, insert, updateById, removeById, getCoordinates, floorMapAssetCoordinates, insertCoordinates } from './floorMap.service';
+import { IUser } from '../models/user.model';
 
-export const getFloorMaps = async (req: Request, res: Response, next: NextFunction) => {
-  await getAll(req, res, next);
+export const getAllFloorMaps = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const match: any = { account_id: account_id, isActive: true };
+    if (userRole !== 'admin') {
+      match.user_id = user_id;
+    }
+    const data = await getFloorMaps(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
 }
 
-export const getFloorMap = async (req: Request, res: Response, next: NextFunction) => {
-  await getDataById(req, res, next);
+export const getFloorMapByID = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { id } = req.params;
+    if(!id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const match: any = { _id: id, account_id: account_id, isActive: true };
+    if (userRole !== 'admin') {
+      match.user_id = user_id;
+    }
+    const data = await getFloorMaps(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    console.log(error);
+    next(error);
+  }
 }
 
 export const createFloorMap = async (req: Request, res: Response, next: NextFunction) => {

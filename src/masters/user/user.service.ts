@@ -99,7 +99,12 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
           "e164Number" : body.phone_no.e164Number,
           "countryCode" : body.phone_no.countryCode,
           "dialCode" : body.phone_no.dialCode
-      }
+      },
+      "isFirstUser" : false,
+      "isVerified" : true,
+      "emailStatus" : true,
+      "isActive" : true,
+      "createdBy" : user_id
     });
     const newUserDetails = await newUser.save();
     const roleData = await createUserRole(body.user_role, newUserDetails)

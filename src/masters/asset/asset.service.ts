@@ -7,53 +7,10 @@ import { getData } from "../../util/queryBuilder";
 import { IUser, User } from "../../models/user.model";
 import { LocationMaster } from "../../models/location.model";
 import { get } from "lodash";
-import mongoose from "mongoose";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
-    const params: any = req.query;
-    if (userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({ userId: user_id });
-      if (!mapData || mapData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      match._id = { $in: mapData.map(doc => doc.assetId) };
-    }
-    if (params.top_level_asset_id && params.top_level_asset_id.split(',').length > 0) {
-      match.top_level_asset_id = params.top_level_asset_id.split(',');
-    }
-    if (params.top_level) {
-      match.top_level = true;
-    }
-    if (params.locationId) {
-      match.locationId = new mongoose.Types.ObjectId(params.locationId);
-    }
-    const data: IAsset[] | null = await getData(Asset, { filter: match });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data = await Asset.findById(id);
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
+export const getAll = async (match: any) => {
+  return await Asset.find(match).populate([{ path: 'locationId', select: 'location_name assigned_to' }, { path: 'parent_id', select: 'asset_name'}]);
+}
 
 export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -501,6 +458,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         accountId: account_id
       }))
     );
+    console.log(allMapUserAssetData);
     await MapUserAssetLocation.insertMany(allMapUserAssetData);
     return res.status(201).json({ status: true, message: "Data created successfully", data: parentAssetData._id });
   } catch (error) {
@@ -839,17 +797,6 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data = await Asset.findById(id);
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await Asset.findByIdAndUpdate(id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const removeById = async (match: any) => {
+  return await Asset.findOneAndUpdate(match, { visible: false }, { new: true });
 };

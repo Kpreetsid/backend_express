@@ -22,7 +22,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: data[0] });
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }

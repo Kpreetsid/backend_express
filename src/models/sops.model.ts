@@ -182,6 +182,7 @@ const SopsMasterSchema = new Schema<ISopsMaster>(
     virtuals: true,
     transform(doc, ret) {
       ret.id = ret._id;
+      delete ret._id;
       return ret;
     }
   }

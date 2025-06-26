@@ -26,6 +26,7 @@ const mailLogSchema = new Schema<IMailLog>({
     virtuals: true,
     transform(doc, ret) {
       ret.id = ret._id;
+      delete ret._id;
       return ret;
     }
   }
@@ -33,8 +34,4 @@ const mailLogSchema = new Schema<IMailLog>({
 
 export const MailLogModel = mongoose.model<IMailLog>('MailLog', mailLogSchema);
 
-export const getMailLogs = async () => await MailLogModel.find();
-
-export const getMailLogById = async (id: string) => await MailLogModel.findById(id);
-
-export const createMailLog = async (mailLog: Partial<IMailLog>) => await MailLogModel.create(mailLog);
+export const createMailLog = async (mailLog: Partial<IMailLog>) => await new MailLogModel(mailLog).save();

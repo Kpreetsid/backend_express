@@ -6,19 +6,8 @@ import { getData } from "../util/queryBuilder";
 import { LocationMaster } from "../models/location.model";
 import { Asset } from "../models/asset.model";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-     const match = { account_id: account_id, isActive: true };
-    const data = await getData(EndpointLocation, { filter: match });
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const getFloorMaps = async (match: any) => {
+  return await EndpointLocation.find(match);
 };
 
 export const getCoordinates = async (req: Request, res: Response, next: NextFunction) => {
@@ -48,7 +37,7 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
         return { item, assetList };
       })
     );
-    if(!enrichedFloorMaps.length) {
+    if (!enrichedFloorMaps.length) {
       throw Object.assign(new Error('No assets found for the given location'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: 'Coordinates Found', data: enrichedFloorMaps });
@@ -63,7 +52,7 @@ export const floorMapAssetCoordinates = async (req: Request, res: Response, next
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id: location_id } = req.params;
     let match: any = { account_id: account_id };
-    if(location_id) {
+    if (location_id) {
       match.data_type = 'asset';
       match.locationId = location_id;
     }
@@ -94,20 +83,6 @@ const getAllChildLocationsRecursive = async (parentIds: any): Promise<any> => {
   }
   return childIds;
 }
-
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const id = req.params.id;
-    const data = await EndpointLocation.findById(id);
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
 
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -140,7 +115,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     const id = req.params.id;
     const data = await EndpointLocation.findById(id);
     if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await EndpointLocation.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });

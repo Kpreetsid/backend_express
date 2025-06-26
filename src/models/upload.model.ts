@@ -28,6 +28,7 @@ export const uploadSchema = new Schema<IUpload>({
     virtuals: true,
     transform(doc, ret) {
       ret.id = ret._id;
+      delete ret._id;
       return ret;
     }
   }

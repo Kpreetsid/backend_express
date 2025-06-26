@@ -128,6 +128,7 @@ const PostSchema = new Schema<IPost>({
     virtuals: true,
     transform(doc, ret) {
       ret.id = ret._id;
+      delete ret._id;
       return ret;
     }
   }

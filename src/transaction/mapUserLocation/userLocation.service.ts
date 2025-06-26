@@ -6,6 +6,14 @@ import { Asset } from "../../models/asset.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 
+export const getAssetsMappedData = async (userId: string) => {
+  return await MapUserAssetLocation.find({ userId: userId, assetId: { $exists: true } });
+}
+
+export const getLocationsMappedData = async (userId: string) => {
+  return await MapUserAssetLocation.find({ userId: userId, locationId: { $exists: true } });
+}
+
 export const userLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
@@ -71,7 +79,8 @@ export const mapUserLocations = async (req: Request, res: Response, next: NextFu
         account_id
       }));
     })
-    await MapUserAssetLocation.insertMany(queryArray);
+    const data = await MapUserAssetLocation.insertMany(queryArray);
+    console.log({data});
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
   } catch (error) {
     console.error(error);
@@ -106,7 +115,7 @@ export const userAssets = async (req: Request, res: Response, next: NextFunction
     const match: any = { assetId: { $exists: true } };
     if(userRole === 'admin') {
       const assetMatch = { account_id: account_id, visible: true };
-      const assetData = await getData(Asset, { filter: assetMatch });
+      const assetData = await Asset.find(assetMatch);
       if (!assetData || assetData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -117,12 +126,13 @@ export const userAssets = async (req: Request, res: Response, next: NextFunction
     if(query.assetId) {
       match.assetId = query.assetId;
       const assetMatch = { _id: query.assetId, account_id : account_id };
-      const assetData = await getData(Asset, { filter: assetMatch });
+      const assetData = await Asset.find(assetMatch);
       if (!assetData || assetData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
     }
-    const data = await getData(MapUserAssetLocation, { filter: match, populate: 'assetId' });
+    console.log(match);
+    const data = await MapUserAssetLocation.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

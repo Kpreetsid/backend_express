@@ -8,7 +8,7 @@ import { Asset } from "../../models/asset.model";
 import mongoose from "mongoose";
 
 export const getAll = async (match: any) => {
-  return await LocationMaster.find(match);
+  return await LocationMaster.find(match).populate([{ path: 'parent_id', select: 'location_name' }]);
 };
 
 const buildTree = async (parentId: string | null, account_id: any): Promise<any[]> => {

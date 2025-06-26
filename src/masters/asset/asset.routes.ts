@@ -6,6 +6,8 @@ export default (router: express.Router) => {
     const assetRouter = express.Router();
     assetRouter.get('/', getAssets);
     assetRouter.get('/:id', getAsset);
+    assetRouter.get('/tree', getAssetTree);
+    assetRouter.get('/tree/:id', getAssetTree);
     assetRouter.post('/tree', getAssetTree);
     assetRouter.post('/filter', getFilteredAssets);
     assetRouter.post('/', createAsset);

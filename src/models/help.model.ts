@@ -86,6 +86,7 @@ const BlogSchema = new Schema<IBlog>({
     virtuals: true,
     transform(doc, ret) {
       ret.id = ret._id;
+      delete ret._id;
       return ret;
     }
   }

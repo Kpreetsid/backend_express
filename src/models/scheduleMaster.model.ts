@@ -165,6 +165,7 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     virtuals: true,
     transform(doc, ret) {
       ret.id = ret._id;
+      delete ret._id;
       return ret;
     }
   }

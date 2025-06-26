@@ -123,10 +123,10 @@ const assetSchema = new Schema<IAsset>({
   impellerType: { type: String },
   rotationUnit: { type: String },
   top_level: { type: Boolean, default: false },
-  locationId: { type: Schema.Types.ObjectId },
+  locationId: { type: Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
   account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
   top_level_asset_id: { type: Schema.Types.ObjectId},
-  parent_id: { type: Schema.Types.ObjectId },
+  parent_id: { type: Schema.Types.ObjectId, ref: 'Asset' },
   description: { type: String },
   manufacturer: { type: String },
   year: { type: String },
@@ -164,6 +164,7 @@ const assetSchema = new Schema<IAsset>({
     virtuals: true,
     transform(doc, ret) {
       ret.id = ret._id;
+      delete ret._id;
       return ret;
     }
   }

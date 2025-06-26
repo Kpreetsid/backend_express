@@ -7,7 +7,9 @@ const moduleName: string = "location";
 export const getLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const user = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id: account_id };
+    console.log(user);
     if(userRole !== 'admin') {
       match.userId = user_id;
     }
@@ -18,7 +20,7 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
     if (query?._id) {
       match.parent_id = query._id;
     }
-    const data = await getAll(match);
+    let data = await getAll(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
