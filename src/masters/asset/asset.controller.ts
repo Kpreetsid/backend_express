@@ -4,6 +4,7 @@ import { getAll, insert, updateById, removeById, getAssetsTreeData, getAssetsFil
 import { IUser } from '../../models/user.model';
 import { getAssetsMappedData } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
+import { uploadBase64Image } from '../../_config/upload';
 
 export const getAssets = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -82,11 +83,44 @@ export const getFilteredAssets = async (req: Request, res: Response, next: NextF
 }
 
 export const createAsset = async (req: Request, res: Response, next: NextFunction) => {
-  await insert(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
+    const childAssets: any[] = [];
+    if (!Equipment.userList || Equipment.userList.length === 0) {
+      throw Object.assign(new Error('Please select at least one user'), { status: 400 });
+    }
+    if (Equipment.image_path) {
+      const image = await uploadBase64Image(Equipment.image_path, "assets");
+      Equipment.image_path = image.fileName;
+    }
+    
+    await insert(req, res, next);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
 }
 
 export const updateAsset = async (req: Request, res: Response, next: NextFunction) => {
-  await updateById(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    if(!req.params.id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
+    if (req.params.id !== Equipment.id) {
+      throw Object.assign(new Error('Data mismatch'), { status: 403 });
+    }
+    const dataExists: any = await getAll({ _id: req.params.id, account_id: account_id, visible: true });
+    if (!dataExists || dataExists.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    await updateById(req, res, next);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
 }
 
 export const removeAsset = async (req: Request, res: Response, next: NextFunction) => {

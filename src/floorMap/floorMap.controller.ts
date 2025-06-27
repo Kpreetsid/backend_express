@@ -16,7 +16,7 @@ export const getAllFloorMaps = async (req: Request, res: Response, next: NextFun
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     next(error);
   }
 }
@@ -38,7 +38,7 @@ export const getFloorMapByID = async (req: Request, res: Response, next: NextFun
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
-    console.log(error);
+    console.error(error);
     next(error);
   }
 }

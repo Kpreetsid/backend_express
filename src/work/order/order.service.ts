@@ -83,7 +83,6 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
       { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
     ]);
-    console.log(data);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

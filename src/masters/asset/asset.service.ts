@@ -139,15 +139,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
     const childAssets: any[] = [];
-    if (!Equipment.userList || Equipment.userList.length === 0) {
-      throw Object.assign(new Error('Please select at least one user'), { status: 400 });
-    }
-
-    if (Equipment.image_path) {
-      const image = await uploadBase64Image(Equipment.image_path, "assets");
-      Equipment.image_path = image;
-    }
-
+ 
     const newParentAsset = new Asset({
       asset_name: Equipment.asset_name,
       asset_id: Equipment.asset_id,
@@ -458,7 +450,6 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
         accountId: account_id
       }))
     );
-    console.log(allMapUserAssetData);
     await MapUserAssetLocation.insertMany(allMapUserAssetData);
     return res.status(201).json({ status: true, message: "Data created successfully", data: parentAssetData._id });
   } catch (error) {
@@ -472,12 +463,6 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
-    if (!id) {
-      throw Object.assign(new Error('Id is required'), { status: 403 });
-    }
-    if (id !== Equipment.id) {
-      throw Object.assign(new Error('Data mismatch'), { status: 403 });
-    }
     const data: any = await Asset.findById(id);
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });

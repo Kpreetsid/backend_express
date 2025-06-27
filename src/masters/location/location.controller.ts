@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { getAll, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
+import { mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
 const moduleName: string = "location";
 
 export const getLocations = async (req: Request, res: Response, next: NextFunction) => {
@@ -9,7 +10,6 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const user = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id: account_id };
-    console.log(user);
     if(userRole !== 'admin') {
       match.userId = user_id;
     }
@@ -32,15 +32,33 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
 }
 
 export const getLocationTree = async (req: Request, res: Response, next: NextFunction) => {
-  await getTree(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    await getTree(req, res, next);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
 }
 
 export const getKpiFilterLocations = async (req: Request, res: Response, next: NextFunction) => {
-  await kpiFilterLocations(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    await kpiFilterLocations(req, res, next);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
 }
 
 export const getChildAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction) => {
-  await childAssetsAgainstLocation(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    await childAssetsAgainstLocation(req, res, next);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
 }
 
 export const getLocation = async (req: Request, res: Response, next: NextFunction) => {
@@ -72,9 +90,13 @@ export const createLocation = async (req: Request, res: Response, next: NextFunc
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const body = req.body;
+    if(body.userIdList.length === 0) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
     body.account_id = account_id;
     body.createdBy = user_id;
     const data: any = await insertLocation(body);
+    await mapUserLocationData(data._id, body.userIdList, account_id);
     res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
   } catch (error) {
     console.error(error);
@@ -137,5 +159,11 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
 }
 
 export const updateLocationFloorMapImage = async (req: Request, res: Response, next: NextFunction) => {
-  await updateFloorMapImage(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    await updateFloorMapImage(req, res, next);
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
 }

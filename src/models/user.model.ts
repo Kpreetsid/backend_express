@@ -53,7 +53,7 @@ const userSchema = new Schema<IUser>({
   emailStatus: { type: Boolean, default: false },
   user_profile_img: { type: String },
   user_status: { type: String, required: true, enum: ['active', 'inactive'], default: 'active' },
-  user_role: { type: String, required: true, enum: ['super_admin', 'admin', 'user', 'employee'], default: 'user' },
+  user_role: { type: String, required: true, enum: ['super_admin', 'admin', 'manager', 'employee', 'customer', 'user'], default: 'user' },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
   phone_no: { type: phoneNumberSchema, required: true },
   device: { type: String },

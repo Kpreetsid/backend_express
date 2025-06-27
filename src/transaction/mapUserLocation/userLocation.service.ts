@@ -67,6 +67,18 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+export const mapUserLocationData = async (id: any, userIdList: any, account_id: any) => {
+  const queryArray: any = [];
+  userIdList.forEach((doc: any) => {
+    queryArray.push(new MapUserAssetLocation({
+      locationId: id,
+      userId: doc,
+      account_id
+    }));
+  })
+  return await MapUserAssetLocation.insertMany(queryArray);
+}
+
 export const mapUserLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
@@ -80,7 +92,6 @@ export const mapUserLocations = async (req: Request, res: Response, next: NextFu
       }));
     })
     const data = await MapUserAssetLocation.insertMany(queryArray);
-    console.log({data});
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
   } catch (error) {
     console.error(error);
@@ -131,7 +142,6 @@ export const userAssets = async (req: Request, res: Response, next: NextFunction
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
     }
-    console.log(match);
     const data = await MapUserAssetLocation.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

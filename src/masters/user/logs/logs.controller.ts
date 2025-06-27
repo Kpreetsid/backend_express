@@ -1,6 +1,14 @@
 import express, { Request, Response, NextFunction } from 'express';
+import { get } from 'lodash';
 import { getAllUserLogs } from './logs.service';
+import { IUser } from '../../../models/user.model';
 
 export const userLogs = async (req: Request, res: Response, next: NextFunction) => {
-    await getAllUserLogs(req, res, next);
+    try {
+        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        await getAllUserLogs(req, res, next);
+    } catch (error) {
+        console.error(error);
+        next(error);
+    }
 }
