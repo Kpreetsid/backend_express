@@ -5,6 +5,7 @@ import { IUser } from "../models/user.model";
 import { getData } from "../util/queryBuilder";
 import { LocationMaster } from "../models/location.model";
 import { Asset } from "../models/asset.model";
+import { ObjectId } from "mongoose";
 
 export const getFloorMaps = async (match: any) => {
   return await EndpointLocation.find(match);
@@ -133,11 +134,13 @@ export const insertCoordinates = async (req: Request, res: Response, next: NextF
       "coordinate": body.coordinate,
       "locationId": body.locationId,
       "account_id": account_id,
-      "end_point_id": body.end_point_id,
       "data_type": body.data_type,
-      "end_point": body.end_point,
       "createdBy": user_id
     });
+    if(body.data_type === 'asset') {
+      newMappedCoordinates.end_point_id = body.end_point_id;
+      newMappedCoordinates.end_point = body.end_point;
+    }
     const data = await newMappedCoordinates.save();
     if (!data) {
       throw Object.assign(new Error('Failed to set coordinates'), { status: 404 });

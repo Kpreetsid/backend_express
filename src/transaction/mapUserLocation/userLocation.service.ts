@@ -68,6 +68,7 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
 };
 
 export const mapUserLocationData = async (id: any, userIdList: any, account_id: any) => {
+  await MapUserAssetLocation.deleteMany({ locationId: id });
   const queryArray: any = [];
   userIdList.forEach((doc: any) => {
     queryArray.push(new MapUserAssetLocation({

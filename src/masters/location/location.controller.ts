@@ -8,12 +8,14 @@ const moduleName: string = "location";
 export const getLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const user = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id: account_id };
     if(userRole !== 'admin') {
       match.userId = user_id;
     }
     const query: any = req.query;
+    if (query?.locationId) {
+      match._id = query.locationId;
+    }
     if (query?.parent_id) {
       match.parent_id = query.parent_id;
     }
@@ -126,6 +128,7 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
+    await mapUserLocationData(data._id, body.userIdList, account_id);
     data.id = data._id;
     res.status(200).json({ status: true, message: "Data updated successfully", data: [data] });
   } catch (error) {

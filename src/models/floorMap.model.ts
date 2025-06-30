@@ -52,8 +52,8 @@ const endPointSchema = new Schema<IEndPoint>({
   image: { type: String },
   online: { type: String, required: true },
   id: { type: Number, required: true },
-  selected: { type: Boolean, required: true },
-});
+  selected: { type: Boolean, required: true }
+}, { _id: false });
 
 const endpointLocationSchema = new Schema<IEndpointLocation>({
   coordinate: { type: coordinateSchema, required: true },
@@ -62,8 +62,8 @@ const endpointLocationSchema = new Schema<IEndpointLocation>({
   data_type: { type: String, enum: ['location', 'asset', 'kpi'], required: true },
   createdOn: { type: Date, default: Date.now },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  end_point_id: { type: Number, required: true },
-  end_point: { type: endPointSchema, required: true },
+  end_point_id: { type: Number },
+  end_point: { type: endPointSchema }
 }, {
   collection: 'floor_map',
   timestamps: true,

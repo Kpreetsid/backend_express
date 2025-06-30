@@ -7,23 +7,23 @@ import mongoose from "mongoose";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { accountId: account_id };
     if (userRole !== 'admin') {
       match['user.id'] = user_id;
     }
     const params: any = req.query;
-    if(params?.locationId) {
+    if (params?.locationId) {
       match['locationId'] = new mongoose.Types.ObjectId(params.locationId);
     }
-    if(params?.top_level_asset_id) {
+    if (params?.top_level_asset_id) {
       match['top_level_asset_id'] = new mongoose.Types.ObjectId(params.top_level_asset_id);
     }
-    if(params?.assetId) {
+    if (params?.assetId) {
       match['assetId'] = new mongoose.Types.ObjectId(params.assetId);
     }
     const data: IObservation[] = await getData(Observation, { filter: match });
-    if (!data ||data.length === 0) {
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -36,7 +36,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match = { accountId: account_id, _id: id };
     const data: IObservation[] | null = await getData(Observation, { filter: match });
     if (!data || data.length === 0) {
@@ -79,7 +79,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     const data = await Observation.findById(id);
     if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await Observation.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
