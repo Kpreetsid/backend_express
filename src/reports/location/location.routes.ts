@@ -1,6 +1,9 @@
 import express from 'express';
-import { getLocationsReport } from './location.controller';
+import { getLocationsReport, createReport } from './location.controller';
 
 export default (router: express.Router) => {
-    router.get('/locations', getLocationsReport);
+    const locationReportRouter = express.Router();
+    locationReportRouter.get('/', getLocationsReport);
+    locationReportRouter.post('/', createReport);
+    router.use('/locations', locationReportRouter);
 }

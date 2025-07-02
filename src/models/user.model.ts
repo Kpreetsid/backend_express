@@ -30,6 +30,7 @@ export interface IUser extends Document {
   account_id: ObjectId;
   phone_no: IPhoneNumber;
   isFirstUser: boolean;
+  visible: boolean;
   isVerified: boolean;
   isActive: boolean;
 }
@@ -56,6 +57,7 @@ const userSchema = new Schema<IUser>({
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
   phone_no: { type: phoneNumberSchema, required: true },
   isFirstUser: { type: Boolean, default: false },
+  visible: { type: Boolean, default: true },
   isVerified: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true }
 }, {

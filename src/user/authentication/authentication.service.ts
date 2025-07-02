@@ -15,16 +15,20 @@ import { getData } from "../../util/queryBuilder";
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { username, password } = req.body;
-    const user: IUser | null = await User.findOne({ username }).select('+password');
-    if (!user || user.user_status !== 'active') {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+    if (!username || !password) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    console.log({username});
+    const user: IUser | null = await User.findOne({ username: username, user_status: 'active' }).select('+password');
+    if (!user) {
+      throw Object.assign(new Error('User data not found'), { status: 404 });
     }
     if(!user.isVerified) {
       throw Object.assign(new Error('User is not verified'), { status: 403 });
     }
     const userAccount: any = await getData(Account, { filter: { _id: user.account_id }, select: '_id account_name type fileName' });
     if (!userAccount || userAccount.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error('User account not found'), { status: 404 });
     }
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {

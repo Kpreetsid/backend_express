@@ -1,6 +1,9 @@
 import nodemailer from 'nodemailer';
 import { mailCredential } from '../configDB';
+import fs from 'fs';
+import path from 'path';
 import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
+import { VerificationCode } from '../models/userVerification.model';
 
 const transporter = nodemailer.createTransport({
     host: mailCredential.host,
@@ -31,3 +34,25 @@ export const sendMail = async ({ to, subject, html }: MailOptions): Promise<void
     }
     await createMailLog(mailLogData);
 };
+
+export const sendVerificationCode = async (match: any): Promise<boolean> => {
+  try {
+    const otp = Math.floor(100000 + Math.random() * 900000);
+    const templatePath = path.join(__dirname, '../../public/verificationCode.template.html');
+    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    htmlTemplate = htmlTemplate.replace('{{OTP}}', otp.toString());
+    htmlTemplate = htmlTemplate.replace('{{YEAR}}', new Date().getFullYear().toString());
+    htmlTemplate = htmlTemplate.replace('{{NAME}}', match.firstName + ' ' + match.lastName);
+    const mailResponse = await sendMail({
+      to: match.email,
+      subject: 'Verify Your Email Address',
+      html: htmlTemplate
+    });
+    await new VerificationCode({ email: match.email, firstName: match.firstName, lastName: match.lastName, code: otp.toString() }).save();
+    console.log(mailResponse);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}

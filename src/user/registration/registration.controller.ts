@@ -1,8 +1,14 @@
 import express, { NextFunction, Request, Response } from 'express';
-import { insert, emailVerificationCode, verifyOTPCode } from './registration.service';
+import { emailVerificationCode, verifyOTPCode } from './registration.service';
 
 export const userRegister = async (req: Request, res: Response, next: NextFunction) => {
-    await insert(req, res, next);
+    try {
+        const body = req.body;
+        await emailVerificationCode(req, res, next);
+    } catch (error) {
+        console.error(error);
+        next(error);
+    }
 }
 
 export const sendVerificationEmail = async (req: Request, res: Response, next: NextFunction) => {

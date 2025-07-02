@@ -80,8 +80,7 @@ export const createUserRole = async (userRole: any, userData: IUser) => {
       account_id: userData.account_id,
       data: platformControl
     });
-    const roleData = await newUserRoleMenu.save();
-    return roleData;
+    return await newUserRoleMenu.save();
   } catch (error) {
     console.error(error);
     return null;
