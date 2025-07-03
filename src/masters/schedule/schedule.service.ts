@@ -24,12 +24,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id } = req.params;
-        if(!id) {
-            throw Object.assign(new Error('No data found'), { status: 404 });
+        if(!req.params.id) {
+            throw Object.assign(new Error('ID is required'), { status: 400 });
         }
-         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-        const match = { account_id: account_id, _id: id, visible: true };
+        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        const match = { account_id: account_id, _id: req.params.id, visible: true };
         const data: IScheduleMaster[] = await getData(ScheduleMasterModel, { filter: match });
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
@@ -54,8 +53,11 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id } = req.params;
-        const data = await ScheduleMasterModel.findByIdAndUpdate(id, req.body, { new: true });
+        const { params: { id }, body } = req;
+        if (!id) {
+            throw Object.assign(new Error('ID is required'), { status: 400 });
+        }
+        const data = await ScheduleMasterModel.findByIdAndUpdate(id, body, { new: true });
         if (!data || !data.visible) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
@@ -68,12 +70,14 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id } = req.params;
-        const data = await ScheduleMasterModel.findById(id);
+        if (!req.params.id) {
+            throw Object.assign(new Error('ID is required'), { status: 400 });
+        }
+        const data = await ScheduleMasterModel.findById(req.params.id);
         if (!data || !data.visible) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
-        await ScheduleMasterModel.findByIdAndUpdate(id, { visible: false }, { new: true });
+        await ScheduleMasterModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
         return res.status(200).json({ status: true, message: "Data deleted successfully" });
     } catch (error) {
         console.error(error);

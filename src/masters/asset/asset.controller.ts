@@ -42,11 +42,10 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction) 
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const params: any = req.query;
-    const { id } = req.params;
-    if(!id) {
+    if(!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: id, account_id: account_id, visible: true };
+    const match: any = { _id: req.params.id, account_id: account_id, visible: true };
     if (userRole !== 'admin') {
       const mappedData = await getAssetsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
@@ -126,11 +125,10 @@ export const updateAsset = async (req: Request, res: Response, next: NextFunctio
 export const removeAsset = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    if(!id) {
+    if(!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: id, account_id: account_id, visible: true };
+    const match: any = { _id: req.params.id, account_id: account_id, visible: true };
     if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }

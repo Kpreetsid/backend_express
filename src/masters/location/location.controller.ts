@@ -113,18 +113,17 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
     if (!role[moduleName].edit_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
-    const { id } = req.params;
-    if(!id) {
+    if(!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: id, account_id: account_id, visible: true };
+    const match = { _id: req.params.id, account_id: account_id, visible: true };
     const location = await getAll(match);
     if(!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const body = req.body;
     body.updatedBy = user_id;
-    const data: any = await updateById(id, body);
+    const data: any = await updateById(req.params.id, body);
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -144,16 +143,15 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
     if (!role[moduleName].delete_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
-    const { id } = req.params;
-    if(!id) {
+    if(!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: id, account_id: account_id, visible: true };
+    const match = { _id: req.params.id, account_id: account_id, visible: true };
     const location = await getAll(match);
     if(!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await removeById(id, location);
+    await removeById(req.params.id, location);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     console.error(error);

@@ -28,9 +28,11 @@ export const getCompanies = async (req: Request, res: Response, next: NextFuncti
 export const getCompany = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    const match: any = { _id: id };
-    if(account_id.toString() !== id) {
+    if(!req.params.id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
+    }
+    const match: any = { _id: req.params.id };
+    if(account_id.toString() !== req.params.id) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     if(userRole !== 'admin') {

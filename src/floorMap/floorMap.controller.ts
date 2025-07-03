@@ -24,11 +24,10 @@ export const getAllFloorMaps = async (req: Request, res: Response, next: NextFun
 export const getFloorMapByID = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    if(!id) {
+    if(!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: id, account_id: account_id, isActive: true };
+    const match: any = { _id: req.params.id, account_id: account_id, isActive: true };
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }

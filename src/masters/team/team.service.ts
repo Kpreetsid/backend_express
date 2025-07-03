@@ -21,9 +21,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id } = req.params;
-         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-        const match = { account_id: account_id, _id: id, isActive: true };
+        if (!req.params.id) {
+            throw Object.assign(new Error('ID is required'), { status: 400 });
+        }
+        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        const match = { account_id: account_id, _id: req.params.id, isActive: true };
         const data = await getData(Teams, { filter: match });
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
@@ -54,8 +56,11 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id } = req.params;
-        const data = await Teams.findByIdAndUpdate(id, req.body, { new: true });
+        const { params: { id }, body } = req;
+        if (!id) {
+            throw Object.assign(new Error('ID is required'), { status: 400 });
+        }
+        const data = await Teams.findByIdAndUpdate(id, body, { new: true });
         if (!data || !data.isActive) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
@@ -68,12 +73,14 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id } = req.params;
-        const data = await Teams.findById(id);
+        if (!req.params.id) {
+            throw Object.assign(new Error('ID is required'), { status: 400 });
+        }
+        const data = await Teams.findById(req.params.id);
         if (!data || !data.isActive) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
-        await Teams.findByIdAndUpdate(id, { isActive: false }, { new: true });
+        await Teams.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
         res.status(200).json({ status: true, message: "Data deleted successfully" });
     } catch (error) {
         console.error(error);

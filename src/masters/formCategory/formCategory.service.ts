@@ -26,8 +26,10 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    const { name, description } = req.body;
+    const { params: { id }, body: { name, description } } = req;
+    if (!id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
+    }
     const updatedCategory = await Category.findByIdAndUpdate(id, { name, description }, { new: true });
     if (!updatedCategory) {
       throw Object.assign(new Error('No data found'), { status: 404 });

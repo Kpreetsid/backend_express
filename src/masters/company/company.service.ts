@@ -32,8 +32,11 @@ export const verifyCompany = async (id: string) => {
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    const data: IAccount | null = await Account.findByIdAndUpdate(id, req.body, { new: true });
+    const { params: { id }, body } = req;
+    if (!id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
+    }
+    const data: IAccount | null = await Account.findByIdAndUpdate(id, body, { new: true });
     if (!data || !data.isActive) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

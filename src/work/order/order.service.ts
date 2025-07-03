@@ -65,11 +65,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    if(!id) {
-      throw Object.assign(new Error('No ID provided'), { status: 400 });
+    if (!req.params.id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+    const match: any = { _id: new mongoose.Types.ObjectId(req.params.id), account_id, visible: true };
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }
@@ -429,8 +428,10 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    const { body } = req;
+    const { body, params: { id } } = req;
+    if (!id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
+    }
     const data = await WorkOrder.findByIdAndUpdate(id, body, { new: true });
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -444,12 +445,14 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    const data = await WorkOrder.findById(id);
+    if (!req.params.id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
+    }
+    const data = await WorkOrder.findById(req.params.id);
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await WorkOrder.findByIdAndUpdate(id, { visible: false }, { new: true });
+    await WorkOrder.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     console.error(error);

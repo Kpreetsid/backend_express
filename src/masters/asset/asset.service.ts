@@ -461,8 +461,10 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
+    const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } } = req;
+    if (!id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
+    }
     const data: any = await Asset.findById(id);
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });

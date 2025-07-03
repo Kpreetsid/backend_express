@@ -98,8 +98,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id;
-    const { name, description, location } = req.body;
+    const { body: { name, description, location }, params: { id } } = req;
     const data = await EndpointLocation.findByIdAndUpdate(id, { name, description, location }, { new: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -113,12 +112,14 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const id = req.params.id;
-    const data = await EndpointLocation.findById(id);
+    if (!req.params.id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
+    }
+    const data = await EndpointLocation.findById(req.params.id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await EndpointLocation.findByIdAndUpdate(id, { visible: false }, { new: true });
+    await EndpointLocation.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     console.error(error);

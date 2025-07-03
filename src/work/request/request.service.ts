@@ -28,12 +28,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
 
 export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    if(!id) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+    if(!req.params.id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match = { account_id: account_id, _id: id, visible: true };
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const match = { account_id: account_id, _id: req.params.id, visible: true };
     const data: IWorkRequest[] | null = await getData(WorkRequestModel, { filter: match });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -81,15 +80,14 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 
 export const removeById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
-    if(!id) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+    if(!req.params.id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await WorkRequestModel.findById(id);
+    const data = await WorkRequestModel.findById(req.params.id);
     if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await WorkRequestModel.findByIdAndUpdate(id, { visible: false }, { new: true });
+    await WorkRequestModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     console.error(error);
