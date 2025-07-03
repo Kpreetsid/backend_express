@@ -8,6 +8,11 @@ export const getAllCompanies = async (filter: any) => {
 };
 
 export const createCompany = async (body: any) => {
+  const match: any = { account_name: body.account_name };
+  const existingCompany: IAccount[] = await Account.find(match);
+  if (existingCompany.length > 0) {
+    throw Object.assign(new Error('Company already exists'), { status: 403 });
+  }
   const newCompany = new Account(body);
   return await newCompany.save();
 };

@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import _, { get } from 'lodash';
 import { getAllUsers, createNewUser, updateUserDetails, removeById, getLocationWiseUser } from './user.service';
 import { IUser } from '../../models/user.model';
+import { deleteVerificationCode, verifyOTPExists } from '../../user/resetPassword/resetPassword.service';
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -91,6 +92,37 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     req.body.updatedBy = user_id;
     await updateUserDetails(req.params.id, req.body);
     res.status(200).json({ status: true, message: "User updated successfully" });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
+
+export const changeUserPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, newPassword, confirmNewPassword } = req.body;
+    if (!email || !newPassword || !confirmNewPassword) {
+      throw Object.assign(new Error('Email, new password and confirm password are required'), { status: 400 });
+    }
+    if (newPassword !== confirmNewPassword) {
+      throw Object.assign(new Error('Passwords do not match'), { status: 400 });
+    }
+    const userData = await getAllUsers({ email: email, isActive: true });
+    if (!userData || userData.length === 0) {
+      throw Object.assign(new Error('User not found'), { status: 404 });
+    }
+    const match = { email: userData[0].email, firstName: userData[0].firstName, lastName: userData[0].lastName };
+    const otpExists = await verifyOTPExists(match);
+    if (!otpExists) {
+      throw Object.assign(new Error('OTP has expired'), { status: 404 });
+    }
+    userData[0].password = newPassword;
+    const updatedData = await updateUserDetails(`${userData[0]._id}`, userData[0]);
+    if (!updatedData) {
+      throw Object.assign(new Error('Failed to update password'), { status: 500 });
+    }
+    await deleteVerificationCode({ email: match.email });
+    res.status(200).json({ status: true, message: "Password updated successfully" });
   } catch (error) {
     console.error(error);
     next(error);

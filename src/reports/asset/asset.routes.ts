@@ -7,6 +7,6 @@ export default (router: express.Router) => {
     assetReportRouter.get('/latest/:id', getLatestReport);
     assetReportRouter.get('/:id', getAssetsReportById);
     assetReportRouter.post('/', createAssetsReport);
-    assetReportRouter.put('/', updateAssetsReport);
+    assetReportRouter.put('/:id', updateAssetsReport);
     router.use('/assets', assetReportRouter);
 }

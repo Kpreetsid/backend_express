@@ -38,7 +38,7 @@ export const sendMail = async ({ to, subject, html }: MailOptions): Promise<void
 export const sendVerificationCode = async (match: any): Promise<boolean> => {
   try {
     const otp = Math.floor(100000 + Math.random() * 900000);
-    const templatePath = path.join(__dirname, '../../public/verificationCode.template.html');
+    const templatePath = path.join(__dirname, '../public/verificationCode.template.html');
     let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
     htmlTemplate = htmlTemplate.replace('{{OTP}}', otp.toString());
     htmlTemplate = htmlTemplate.replace('{{YEAR}}', new Date().getFullYear().toString());

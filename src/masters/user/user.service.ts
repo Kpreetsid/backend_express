@@ -43,6 +43,9 @@ export const createNewUser = async (body: IUser) => {
 };
 
 export const updateUserDetails = async (id: string, body: IUser) => {
+  if(body.password) {
+    body.password = await hashPassword(body.password);
+  }
   return await User.findByIdAndUpdate(id, body, { new: true });
 }
 export const removeById = async (id: string) => {
