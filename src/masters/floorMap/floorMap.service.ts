@@ -1,11 +1,9 @@
-import { EndpointLocation } from "../models/floorMap.model";
+import { EndpointLocation } from "../../models/floorMap.model";
 import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
-import { IUser } from "../models/user.model";
-import { getData } from "../util/queryBuilder";
-import { LocationMaster } from "../models/location.model";
-import { Asset } from "../models/asset.model";
-import { ObjectId } from "mongoose";
+import { IUser } from "../../models/user.model";
+import { LocationMaster } from "../../models/location.model";
+import { Asset } from "../../models/asset.model";
 
 export const getFloorMaps = async (match: any) => {
   return await EndpointLocation.find(match);
@@ -23,7 +21,7 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
       match = { account_id, data_type: 'kpi' };
     }
 
-    const floorMaps = await getData(EndpointLocation, { filter: match, populate: 'locationId' });
+    const floorMaps = await EndpointLocation.find(match).populate('locationId');
     if (!floorMaps || floorMaps.length === 0) {
       throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });
     }
@@ -34,7 +32,7 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
         const childLocations = await getAllChildLocationsRecursive([item.locationId]);
         const finalLocIds = [item.locationId, ...childLocations];
         const assetsMatch: any = { locationId: { $in: finalLocIds }, visible: true, account_id };
-        const assetList = await getData(Asset, { filter: assetsMatch, select: 'asset_name asset_type' });
+        const assetList = await Asset.find(assetsMatch).select('asset_name asset_type');
         return { item, assetList };
       })
     );
@@ -57,7 +55,7 @@ export const floorMapAssetCoordinates = async (req: Request, res: Response, next
       match.data_type = 'asset';
       match.locationId = location_id;
     }
-    const floorMaps = await getData(EndpointLocation, { filter: match });
+    const floorMaps = await EndpointLocation.find(match);
     if (!floorMaps || floorMaps.length === 0) {
       throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });
     }
@@ -74,7 +72,7 @@ const getAllChildLocationsRecursive = async (parentIds: any): Promise<any> => {
     const parent = await LocationMaster.findById(parentId);
     if (!parent) continue;
     const match = { parent_id: parent._id, visible: true };
-    const children = await getData(LocationMaster, { filter: match });
+    const children = await LocationMaster.find(match);
     if (children?.length > 0) {
       const childrenIds = children.map((child: any) => child._id.toString());
       childIds.push(...childrenIds);
@@ -151,4 +149,8 @@ export const insertCoordinates = async (req: Request, res: Response, next: NextF
     console.error(error);
     next(error);
   }
+};
+
+export const deleteCoordinates = async (match: any) => {
+  return await EndpointLocation.findOneAndDelete(match);
 };

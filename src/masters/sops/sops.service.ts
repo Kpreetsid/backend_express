@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { SopsMasterModel, ISopsMaster } from '../../models/sops.model';
-import { getData } from '../../util/queryBuilder';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 
@@ -15,7 +14,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
         if(categoryId) {
             match.categoryId = categoryId;
         }
-        let data: ISopsMaster[] = await getData(SopsMasterModel, { filter: match, populate: [{ path: 'account_id', select: '' }, { path: 'locationId', select: '' }, { path: 'categoryId', select: '' }] });
+        let data: ISopsMaster[] = await SopsMasterModel.find(match)
+            .populate({ path: 'account_id', select: '' })
+            .populate({ path: 'locationId', select: '' })
+            .populate({ path: 'categoryId', select: '' });
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
@@ -42,7 +44,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
         }
         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, _id: req.params.id, visible: true };
-        const data: ISopsMaster[] | null = await getData(SopsMasterModel, { filter: match });
+        const data: ISopsMaster[] | null = await SopsMasterModel.find(match);
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }

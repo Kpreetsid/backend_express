@@ -1,6 +1,5 @@
 import { Teams, ITeam } from "../../models/team.model";
 import { NextFunction, Request, Response } from 'express';
-import { getData } from "../../util/queryBuilder";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 
@@ -8,7 +7,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     try {
          const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, isActive: true };
-        const data: ITeam[] = await getData(Teams, { filter: match });
+        const data = await Teams.find(match);
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
@@ -26,7 +25,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
         }
         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, _id: req.params.id, isActive: true };
-        const data = await getData(Teams, { filter: match });
+        const data = await Teams.find(match);
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }

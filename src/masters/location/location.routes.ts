@@ -10,8 +10,8 @@ export default (router: express.Router) => {
     locationRouter.get('/:id', getLocation);
     locationRouter.post('/', createLocation);
     locationRouter.post('/child-assets', getChildAssetsAgainstLocation);
-    locationRouter.put('/floor-map-image', updateLocationFloorMapImage);
+    locationRouter.put('/floor-map-image/:id', updateLocationFloorMapImage);
     locationRouter.put('/:id', updateLocation);
-    locationRouter.delete('/:id', hasPermission('admin'),removeLocation);
+    locationRouter.delete('/:id', hasPermission('admin'), removeLocation);
     router.use('/locations', locationRouter);
 }

@@ -1,6 +1,5 @@
 import { WorkOrderAssignee, IWorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
 import { Request, Response, NextFunction } from 'express';
-import { getData } from "../../util/queryBuilder";
 import { WorkOrder } from "../../models/workOrder.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
@@ -8,7 +7,7 @@ import { IUser } from "../../models/user.model";
 export const mappedData = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { workOrderId } = req.params;
-    const data = await getData(WorkOrderAssignee, { filter: { woId: workOrderId } });
+    const data: IWorkOrderAssignee[] = await WorkOrderAssignee.find({ woId: workOrderId })
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -26,7 +25,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     const match: any = {};
     if(userRole === 'admin') {
       const workOrderMatch = { account_id: account_id, visible: true };
-      const workOrderData = await getData(WorkOrder, { filter: workOrderMatch });
+      const workOrderData: IWorkOrderAssignee[] = await WorkOrder.find(workOrderMatch);
       if (!workOrderData || workOrderData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -37,12 +36,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     if(query.workOrderId) {
       match.woId = query.workOrderId;
       const workOrderMatch = { _id: query.workOrderId, account_id : account_id };
-      const workOrderData = await getData(WorkOrder, { filter: workOrderMatch });
+      const workOrderData: IWorkOrderAssignee[] = await WorkOrder.find(workOrderMatch);
       if (!workOrderData || workOrderData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
     }
-    const data = await getData(WorkOrderAssignee, { filter: match, populate: 'woId' });
+    const data: IWorkOrderAssignee[] = await WorkOrderAssignee.find(match).populate('woId');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

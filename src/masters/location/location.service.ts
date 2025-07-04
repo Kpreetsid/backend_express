@@ -1,11 +1,12 @@
 import { LocationMaster, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
 import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLocation.model";
-import { getData } from "../../util/queryBuilder";
 import { get } from "lodash";
 import { IUser, User } from "../../models/user.model";
 import { Asset } from "../../models/asset.model";
 import mongoose from "mongoose";
+import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (match: any) => {
   return await LocationMaster.find(match).populate([{ path: 'parent_id', select: 'location_name' }]);
@@ -23,7 +24,7 @@ const buildTree = async (parentId: string | null, account_id: any): Promise<any[
   return Promise.all(
     nodes.map(async (node: any) => {
       const children = await buildTree(node._id.toString(), account_id);
-      return { ...node, childs: children }; // Return empty array if no children
+      return { ...node, childs: children };
     })
   );
 };
@@ -71,7 +72,7 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
       }
     }
 
-    const rootLocations = await getData(LocationMaster, { filter: match });
+    const rootLocations: ILocationMaster[] = await getData(LocationMaster, { filter: match });
     if (!rootLocations?.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
     }
@@ -79,25 +80,19 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
     let treeData: any[];
 
     if (location_id) {
-      // Get the parent node directly
       const parentNode = rootLocations[0];
-      const children = await buildTree(parentNode._id.toString(), account_id);
+      const children = await buildTree(parentNode.id, account_id);
       treeData = [{ ...parentNode, childs: children }];
     } else {
-      // Build the tree for all top-level or root locations
       treeData = await Promise.all(
         rootLocations.map(async (node: any) => {
-          const children = await buildTree(node._id.toString(), account_id);
+          const children = await buildTree(node.id, account_id);
           return { ...node, childs: children };
         })
       );
     }
 
-    res.status(200).json({
-      status: true,
-      message: "Data fetched successfully",
-      data: treeData,
-    });
+    res.status(200).json({ status: true, message: "Data fetched successfully", data: treeData });
   } catch (error) {
     console.error("getTree error:", error);
     next(error);
@@ -109,30 +104,30 @@ export const kpiFilterLocations = async (req: Request, res: Response, next: Next
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id };
     if (userRole !== 'admin') {
-      const mapLocationData: IMapUserLocation[] = await getData(MapUserAssetLocation, { filter: { userId: user_id } });
+      const mapLocationData: IMapUserLocation[] = await getLocationsMappedData(`${user_id}`);
       if (!mapLocationData.length) {
         throw Object.assign(new Error('No location mapping found for user'), { status: 404 });
       }
-      const locationIds = mapLocationData.map(doc => doc.locationId?.toString()).filter(Boolean);
+      const locationIds = mapLocationData.map(doc => `${doc.locationId}`).filter(Boolean);
       if (!locationIds.length) {
         throw Object.assign(new Error('No valid location IDs found'), { status: 404 });
       }
       match._id = { $in: locationIds };
     }
-    const locations: ILocationMaster[] = await getData(LocationMaster, { filter: match });
+    const locations: ILocationMaster[] = await LocationMaster.find(match).lean();;
     if (!locations?.length) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     // Build tree from flat location list
     const idMap: Record<string, any> = {};
     locations.forEach((loc: any) => {
-      idMap[loc._id.toString()] = { ...loc, children: [] };
+      idMap[`${loc._id}`] = { ...loc, children: [] };
     });
     const rootNodes: any[] = [];
     locations.forEach((loc: any) => {
-      const locId = loc._id.toString();
-      const parentId = loc.parent_id?.toString();
-      if (parentId && idMap[parentId]) {
+      const locId = `${loc._id}`;
+      const parentId = `${loc.parent_id}`;
+      if (parentId !== "undefined" && idMap[parentId]) {
         idMap[parentId].children.push(idMap[locId]);
       } else {
         rootNodes.push(idMap[locId]);
@@ -146,7 +141,7 @@ export const kpiFilterLocations = async (req: Request, res: Response, next: Next
       for (const node of nodes) {
         const formatted = {
           location_name: node.location_name,
-          id: node._id.toString(),
+          id: `${node._id}`,
         };
         if (level === 1) levelOneLocations.push(formatted);
         else if (level === 2) levelTwoLocations.push(formatted);
@@ -174,7 +169,7 @@ export const childAssetsAgainstLocation = async (req: Request, res: Response, ne
 
     const childIds = await getAllChildLocationsRecursive(lTwo);
     finalList = [...childIds, ...lOne, ...lTwo]
-    const data: any = await getData(Asset, { filter: { locationId: { $in: finalList }, account_id: account_id, visible: true }, select: 'id top_level asset_name asset_type' });
+    const data: any = await Asset.find({ locationId: { $in: finalList }, account_id, visible: true }).select('id top_level asset_name asset_type');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -238,12 +233,15 @@ export const removeById = async (id: string, data: any) => {
 
 export const updateFloorMapImage = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { selected_location_id, top_level_location_image } = req.body;
+    const { params: { id }, body: { top_level_location_image } } = req;
+    if (!id || !top_level_location_image) {
+      throw Object.assign(new Error('Invalid request data'), { status: 400 });
+    }
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
-    const updateResult = await LocationMaster.updateOne({ _id: selected_location_id, account_id }, { $set: { top_level_location_image, updatedBy: user_id }});
+    const updateResult = await LocationMaster.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id }});
     if (updateResult.matchedCount === 0) {
       return res.status(404).json({ status: false, message: "Location not found" });
     }

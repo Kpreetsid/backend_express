@@ -9,8 +9,9 @@ import fs from "fs";
 import { sendMail } from "../../_config/mailer";
 import { VerificationCode } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
-import { Account, IAccount } from "../../models/account.model";
-import { getData } from "../../util/queryBuilder";
+import { IAccount } from "../../models/account.model";
+import { getAllCompanies } from "../../masters/company/company.service";
+import { get } from "lodash";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -18,7 +19,6 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!username || !password) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    console.log({username});
     const user: IUser | null = await User.findOne({ username: username, user_status: 'active' }).select('+password');
     if (!user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
@@ -26,7 +26,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if(!user.isVerified) {
       throw Object.assign(new Error('User is not verified'), { status: 403 });
     }
-    const userAccount: any = await getData(Account, { filter: { _id: user.account_id }, select: '_id account_name type fileName' });
+    const accountMatch = { _id: user.account_id };
+    const userAccount: IAccount[] | null = await getAllCompanies(accountMatch);
     if (!userAccount || userAccount.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
@@ -56,40 +57,6 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     next(error);
   }
 };
-
-export const userRequestResetPassword = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { email } = req.body;
-    const user = await User.findOne({ email, user_status: 'active' });
-    if (!user) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const userTokenPayload: UserLoginPayload = { id: `${user._id}`, username: user.username, email: user.email, companyID: `${user.account_id}` };
-    const token = generateAccessToken(userTokenPayload);
-    const userTokenData = new UserToken({
-      _id: token,
-      userId: user._id,
-      principalType: 'user',
-      ttl: 24 * 60 * 60
-    });
-    await userTokenData.save();
-    const templatePath = path.join(__dirname, '../../public/resetPassword.template.html');
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
-    htmlTemplate = htmlTemplate.replace('{{userFullName}}', user.firstName + ' ' + user.lastName);
-    htmlTemplate = htmlTemplate.replace('{{userName}}', user.username);
-    htmlTemplate = htmlTemplate.replace('{{resetLink}}', `https://app.presageinsights.ai/testing/reset-password?token=${token}`);
-    await sendMail({
-      to: email,
-      subject: 'Verify E-Mail & Reset Password for CMMS',
-      html: htmlTemplate
-    });
-    await new VerificationCode({ email: user.email, firstName: user.firstName, lastName: user.lastName, code: token.toString() }).save();
-    res.status(200).json({ status: true, message: 'Reset password link sent successfully in registered email.' });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-}
 
 export const userResetPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -127,6 +94,9 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
 
 export const userLogOutService = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    // const { _id: user_id } = get(req, "user", {}) as IUser;
+    // console.log('User ID:', user_id);
+    // await UserToken.deleteMany({ userId: user_id });
     res.clearCookie('token');
     res.clearCookie('companyID');
     return res.status(200).json({ status: true, message: 'Logout successful' });

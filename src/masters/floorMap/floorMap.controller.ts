@@ -1,7 +1,7 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getFloorMaps, insert, updateById, removeById, getCoordinates, floorMapAssetCoordinates, insertCoordinates } from './floorMap.service';
-import { IUser } from '../models/user.model';
+import { getFloorMaps, insert, updateById, removeById, getCoordinates, floorMapAssetCoordinates, insertCoordinates, deleteCoordinates } from './floorMap.service';
+import { IUser } from '../../models/user.model';
 
 export const getAllFloorMaps = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -64,4 +64,26 @@ export const getFloorMapAssetCoordinates = async (req: Request, res: Response, n
 
 export const setFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction) => {
   await insertCoordinates(req, res, next);
+}
+
+export const removeFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { params: { id }} = req;
+    if (!id) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
+    }
+    const match: any = { _id: id, account_id: account_id };
+    if (userRole !== 'admin') {
+      match.user_id = user_id;
+    }
+    const result = await deleteCoordinates(match);
+    if (!result) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Coordinate removed successfully" });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
 }

@@ -1,6 +1,5 @@
 import { Observation, IObservation } from "../../models/observation.model";
 import { Request, Response, NextFunction } from 'express';
-import { getData } from "../../util/queryBuilder";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import mongoose from "mongoose";
@@ -22,7 +21,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     if (params?.assetId) {
       match['assetId'] = new mongoose.Types.ObjectId(params.assetId);
     }
-    const data: IObservation[] = await getData(Observation, { filter: match });
+    const data: IObservation[] | null = await Observation.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -40,7 +39,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     const match = { accountId: account_id, _id: req.params.id };
-    const data: IObservation[] | null = await getData(Observation, { filter: match });
+    const data: IObservation[] | null = await Observation.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

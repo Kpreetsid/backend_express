@@ -3,6 +3,7 @@ import { getAll, insertLocation, updateById, removeById, getTree, kpiFilterLocat
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
+import mongoose from 'mongoose';
 const moduleName: string = "location";
 
 export const getLocations = async (req: Request, res: Response, next: NextFunction) => {
@@ -17,10 +18,10 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
       match._id = query.locationId;
     }
     if (query?.parent_id) {
-      match.parent_id = query.parent_id;
+      match.parent_id = query.parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
     }
     if (query?._id) {
-      match.parent_id = query._id;
+      match.parent_id = query._id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
     }
     let data = await getAll(match);
     if (!data || data.length === 0) {

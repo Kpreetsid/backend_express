@@ -2,8 +2,7 @@ import { WorkOrder, IWorkOrder } from "../../models/workOrder.model";
 import { Request, Response, NextFunction } from 'express';
 import { IUser, User } from "../../models/user.model";
 import { get } from "lodash";
-import { getData } from "../../util/queryBuilder";
-import { Blog } from "../../models/help.model";
+import { Blog, IBlog } from "../../models/help.model";
 import { WorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
 import mongoose from "mongoose";
 
@@ -44,7 +43,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       };
       item.createdBy = createdBy;
       item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await getData(User, { filter: { _id: mapItem.userId }, select: '_id firstName lastName user_profile_img' });
+        const user = await User.find({ _id: mapItem.userId }, '_id firstName lastName user_profile_img');
         mapItem.user = user[0];
         return mapItem;
       }));
@@ -94,7 +93,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       };
       item.createdBy = createdBy;
       item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await getData(User, { filter: { _id: mapItem.userId }, select: '_id firstName lastName user_profile_img' });
+        const user = await User.find({ _id: mapItem.userId }, '_id firstName lastName user_profile_img');
         mapItem.user = user[0];
         return mapItem;
       }));
@@ -133,7 +132,7 @@ export const orderStatus = async (req: Request, res: Response, next: NextFunctio
     } else {
       match.user_id = user_id;
     }
-    const data: any = await getData(WorkOrder, { filter: match });
+    const data: IWorkOrder[] = await WorkOrder.find(match)
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -173,7 +172,7 @@ export const orderPriority = async (req: Request, res: Response, next: NextFunct
     } else {
       match.user_id = user_id;
     }
-    const data: any = await getData(WorkOrder, { filter: match });
+    const data: IWorkOrder[] = await WorkOrder.find(match);
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -213,7 +212,7 @@ export const monthlyCount = async (req: Request, res: Response, next: NextFuncti
     if (query.wo_asset_id) {
       match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
     }
-    const data: any = await getData(WorkOrder, { filter: match });
+    const data: IWorkOrder[] = await WorkOrder.find(match)
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -246,8 +245,8 @@ export const plannedUnplanned = async (req: Request, res: Response, next: NextFu
     if (query.wo_asset_id) {
       match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
     }
-    const data: any = await getData(WorkOrder, { filter: match, select: "_id createdOn createdFrom" });
-    if (data.length === 0) {
+    const data: IWorkOrder[] = await WorkOrder.find(match).select("_id createdOn createdFrom");
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const groupByCreatedFromAndMonth = data.reduce((acc: any, document: any) => {
@@ -334,11 +333,11 @@ export const summaryData = async (req: Request, res: Response, next: NextFunctio
       match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
     }
     const helpMatch: any = { account_id, isActive: true, status: 'Approved' };
-    const helpData = await getData(Blog, { filter: helpMatch });
+    const helpData: IBlog[] = await Blog.find(helpMatch);
     if (helpData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const WO_list: any = await getData(WorkOrder, { filter: match });
+    const WO_list: IWorkOrder[] = await WorkOrder.find(match);
     if (WO_list.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -394,7 +393,7 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
     match.createdOn = { $gte: priorDate };
     match.status = { $nin: ['Completed'] };
     const populate = [{ path: 'wo_asset_id', select: '_id asset_name' }, { path: 'wo_location_id', select: '_id location_name' }]
-    let data = await getData(WorkOrder, { filter: match, populate: populate });
+    let data: IWorkOrder[] = await WorkOrder.find(match).populate(populate);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

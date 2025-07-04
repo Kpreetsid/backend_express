@@ -3,7 +3,6 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import mongoose from "mongoose";
-import { getData } from "../../util/queryBuilder";
 import { WorkOrder } from "../../models/workOrder.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -27,11 +26,11 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     }
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { order_id: new mongoose.Types.ObjectId(req.params.id) };
-    const isOrderExist = await getData(WorkOrder, { filter: { _id: new mongoose.Types.ObjectId(req.params.id), account_id: account_id, visible: true } });
+    const isOrderExist = await WorkOrder.find({ _id: new mongoose.Types.ObjectId(req.params.id), account_id: account_id, visible: true });
     if (!isOrderExist || isOrderExist.length === 0) {
       throw Object.assign(new Error('Work Order not found'), { status: 404 });
     }
-    const data = await getData(Comments, { filter: match });
+    const data = await Comments.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

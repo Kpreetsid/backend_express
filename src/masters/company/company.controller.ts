@@ -69,20 +69,50 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateCompany = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if(!req.params.id) {
+    const { params: { id }, body } = req;
+    if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     const updatedCompany = {
-      account_name: req.body.account_name,
-      type: req.body.type,
-      description: req.body.description,
-      
+      account_name: body.account_name,
+      type: body.type,
+      description: body.description,
+      updatedBy: user_id
     }
-    await updateById(req, res, next);
+    const data = await updateById(id, updatedCompany);
+    if(!data) {
+      throw Object.assign(new Error('Data update failed'), { status: 500 });
+    }
+    res.status(200).json({ status: true, message: "Data updated successfully", data });
+  } catch (error) {
+    console.error(error);
+    next(error);
+  }
+}
+
+export const updateImageCompany = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { params: { id }, body: { fileName } } = req;
+    if(!id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    if(!fileName) {
+      throw Object.assign(new Error('File name is required'), { status: 400 });
+    }
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    if(userRole !== 'admin') {
+      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
+    }
+    const updatedCompany = { fileName, updatedBy: user_id };
+    const data = await updateById(id, updatedCompany);
+    if(!data) {
+      throw Object.assign(new Error('Data update failed'), { status: 500 });
+    }
+    res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
     console.error(error);
     next(error);

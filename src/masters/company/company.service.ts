@@ -1,10 +1,9 @@
 import mongoose, { ObjectId } from "mongoose";
 import { Account, IAccount } from "../../models/account.model";
 import { NextFunction, Request, Response } from 'express';
-import { getData } from "../../util/queryBuilder";
 
 export const getAllCompanies = async (filter: any) => {
-  return await getData(Account, { filter });
+  return await Account.find(filter);
 };
 
 export const createCompany = async (body: any) => {
@@ -30,21 +29,8 @@ export const verifyCompany = async (id: string) => {
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { params: { id }, body } = req;
-    if (!id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const data: IAccount | null = await Account.findByIdAndUpdate(id, body, { new: true });
-    if (!data || !data.isActive) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const updateById = async (id: string, body: any) => {
+  return await Account.findByIdAndUpdate(id, body, { new: true });
 };
 
 export const removeById = async (id: string, accountId: ObjectId, userId: any): Promise<boolean> => {

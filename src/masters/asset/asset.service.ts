@@ -1,12 +1,12 @@
 import { Asset, IAsset } from "../../models/asset.model";
 import { NextFunction, Request, Response } from 'express';
-import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
+import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { deleteBase64Image, uploadBase64Image } from "../../_config/upload";
 import { getExternalData } from "../../util/externalAPI";
-import { getData } from "../../util/queryBuilder";
 import { IUser, User } from "../../models/user.model";
 import { LocationMaster } from "../../models/location.model";
 import { get } from "lodash";
+import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (match: any) => {
   return await Asset.find(match).populate([{ path: 'locationId', select: 'location_name assigned_to' }, { path: 'parent_id', select: 'asset_name'}]);
@@ -33,7 +33,7 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
     if (assets && assets.length > 0) {
       match._id = { $in: assets };
     }
-    const data = await getData(Asset, { filter: match });
+    const data: IAsset[] = await getAll(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -69,8 +69,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
     if (locations && Array.isArray(locations) && locations.length > 0) {
       query.locationId = { $in: locations };
     }
-    // const rootAssets = await Asset.find(query);
-    const rootAssets = await getData(Asset, { filter: query });
+    const rootAssets: IAsset[] = await getData(Asset, { filter: query });
     let data = await Promise.all(rootAssets.map(async (asset) => {
       return {
         ...asset,
@@ -99,7 +98,7 @@ const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
     ignoreAssets = [];
   }
   const match = { parent_id: asset._id, visible: true };
-  const children = await getData(Asset, { filter: match });
+  const children: IAsset[] = await getData(Asset, { filter: match });
   const withChildren = await Promise.all(
     children.map(async (child) => {
       if (child.asset_type) {
@@ -120,17 +119,17 @@ const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
 
 const getRecursiveUsers = async (asset: any) => {
   const match = { assetId: asset._id };
-  const mapUsersAssets = await getData(MapUserAssetLocation, { filter: match });
+  const mapUsersAssets: IMapUserLocation[] = await MapUserAssetLocation.find(match);
   const userIds = mapUsersAssets.map((user: any) => user.userId);
   const fields = 'firstName lastName user_role';
-  const data = await getData(User, { filter: { _id: { $in: userIds } }, select: fields });
+  const data: IUser[] = await User.find({ _id: { $in: userIds } }).select(fields);
   return data.map((user: any) => user._id).filter((user: any) => user);
 }
 
 const getRecursiveLocations = async (asset: any) => {
   const match = { _id: asset.locationId };
   const fields = 'location_name';
-  const locationData = await getData(LocationMaster, { filter: match, select: fields });
+  const locationData = await LocationMaster.find(match).select(fields);
   return locationData[0];
 }
 

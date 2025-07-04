@@ -1,6 +1,5 @@
 import { ScheduleMasterModel, IScheduleMaster } from "../../models/scheduleMaster.model";
 import { Request, Response, NextFunction } from 'express';
-import { getData } from "../../util/queryBuilder";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 
@@ -11,7 +10,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
         if (userRole !== 'admin') {
             match.user_id = user_id;
         }
-        const data: IScheduleMaster[] = await getData(ScheduleMasterModel, { filter: match });
+        const data: IScheduleMaster[] = await ScheduleMasterModel.find(match);
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
@@ -29,7 +28,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
         }
         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, _id: req.params.id, visible: true };
-        const data: IScheduleMaster[] = await getData(ScheduleMasterModel, { filter: match });
+        const data: IScheduleMaster[] = await ScheduleMasterModel.find(match);
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
         }

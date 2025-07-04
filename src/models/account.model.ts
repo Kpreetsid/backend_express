@@ -4,6 +4,7 @@ export interface IAccount extends Document {
   account_name: string;
   type: string;
   description: string;
+  fileName?: string;
   account_status: string;
   isActive: boolean;
 }
@@ -13,6 +14,7 @@ const accountSchema = new Schema<IAccount>(
     account_name: { type: String, required: true },
     type: { type: String, required: true },
     description: { type: String},
+    fileName: { type: String },
     account_status: { type: String, enum: ['active', 'inactive'], default: 'active' },
     isActive: { type: Boolean, required: true, default: true },
   },
