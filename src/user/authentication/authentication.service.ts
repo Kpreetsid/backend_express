@@ -4,9 +4,7 @@ import { comparePassword, hashPassword } from '../../_config/bcrypt';
 import { generateAccessToken } from '../../_config/auth';
 import { UserToken } from "../../models/userToken.model";
 import { verifyUserRole } from "../../masters/user/role/roles.service";
-import path from "path";
-import fs from "fs";
-import { sendMail } from "../../_config/mailer";
+import { sendPasswordChangeConfirmation } from "../../_config/mailer";
 import { VerificationCode } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
 import { IAccount } from "../../models/account.model";
@@ -52,8 +50,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     });
     await userTokenData.save();
     res.status(200).json({ status: true, message: 'Login successful', data: {token, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data} });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -74,34 +71,23 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
     }
     const hashNewPassword = await hashPassword(password);
     await User.updateOne({ _id: user._id, account_id: user.account_id }, { $set: { password: hashNewPassword } });
+    await sendPasswordChangeConfirmation(user);
     await VerificationCode.deleteOne({ email: user.email, code: token.toString() });
-
-    const templatePath = path.join(__dirname, '../../public/confirmPasswordChange.template.html');
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
-    htmlTemplate = htmlTemplate.replace('{{userFullName}}', user.firstName + ' ' + user.lastName);
-    htmlTemplate = htmlTemplate.replace('{{userName}}', user.username);
-    await sendMail({
-      to: user.email,
-      subject: 'CMMS application password changed successfully.',
-      html: htmlTemplate
-    });
     return res.status(200).json({ status: true, message: 'Password reset successful' });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
 
 export const userLogOutService = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // const { _id: user_id } = get(req, "user", {}) as IUser;
-    // console.log('User ID:', user_id);
-    // await UserToken.deleteMany({ userId: user_id });
+    const { _id: user_id } = get(req, "user", {}) as IUser;
+    console.log('User ID:', user_id);
+    await UserToken.deleteMany({ userId: user_id });
     res.clearCookie('token');
     res.clearCookie('companyID');
     return res.status(200).json({ status: true, message: 'Logout successful' });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };

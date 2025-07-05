@@ -7,8 +7,7 @@ export const userLogs = async (req: Request, res: Response, next: NextFunction) 
     try {
         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         await getAllUserLogs(req, res, next);
-    } catch (error) {
-        console.error(error);
+    } catch (error: any) {
         next(error);
     }
 }

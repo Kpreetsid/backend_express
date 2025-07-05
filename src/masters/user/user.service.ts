@@ -28,8 +28,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
     const userIDList = data.map((doc: any) => doc.userId);
     const userData = await User.find({ _id: { $in: userIDList }}).select('-password');
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };

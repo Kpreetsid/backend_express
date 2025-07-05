@@ -15,8 +15,7 @@ export const getParts = async (req: Request, res: Response, next: NextFunction) 
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -36,8 +35,7 @@ export const getPart = async (req: Request, res: Response, next: NextFunction) =
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -47,8 +45,7 @@ export const createPart = async (req: Request, res: Response, next: NextFunction
     const user = get(req, "user", {}) as IUser;
     const data = await insert(req.body, user);
     res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -69,8 +66,7 @@ export const updatePart = async (req: Request, res: Response, next: NextFunction
     }
     const data = await updateById(req.params.id, req.body, user_id);
     res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -91,8 +87,7 @@ export const removePart = async (req: Request, res: Response, next: NextFunction
     }
     const data = await removeById(req.params.id, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }

@@ -44,7 +44,7 @@ export const uploadBase64Image = async (base64Image: string, folderName?: string
       filePath,
       size: imageBuffer.length
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Image upload error:", error);
     throw error;
   }
@@ -58,7 +58,7 @@ export const deleteBase64Image = async (fileName: string, folderName?:  string) 
     }
     const filePath = path.join(__dirname, pathName, fileName);
     fs.unlinkSync(filePath);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Image delete error:", error);
     throw error;
   }

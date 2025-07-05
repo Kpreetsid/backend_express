@@ -18,7 +18,7 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = { locationId: { $exists: true } };
-    const filter: any = {};
+    const filter: any = { populate: 'userId' };
     if (userRole === 'admin') {
       const locationMatch = { account_id: account_id, visible: true };
       const locationData = await LocationMaster.find(locationMatch);
@@ -40,27 +40,27 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
     if (query?.populate) {
       filter.populate = query.populate;
     }
-    filter.filter = match;
-    let data = await MapUserAssetLocation.find(filter);
+    let data: any = await MapUserAssetLocation.find(match).populate(filter.populate);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     if (filter.populate === 'locationId') {
       data = data.map((doc: any) => {
+        doc = doc.toObject();
         doc.location = doc.locationId;
         doc.locationId = doc.location._id;
         return doc;
       })
     } else if(filter.populate === 'userId') {
       data = data.map((doc: any) => {
+        doc = doc.toObject();
         doc.user = doc.userId;
         doc.userId = doc.user._id;
         return doc;
       })
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -90,10 +90,9 @@ export const mapUserLocations = async (req: Request, res: Response, next: NextFu
         account_id
       }));
     })
-    const data = await MapUserAssetLocation.insertMany(queryArray);
+    await MapUserAssetLocation.insertMany(queryArray);
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -112,8 +111,7 @@ export const updateMappedUserLocations = async (req: Request, res: Response, nex
     })
     await MapUserAssetLocation.insertMany(queryArray);
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -146,8 +144,7 @@ export const userAssets = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };

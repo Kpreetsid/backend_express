@@ -14,6 +14,7 @@ interface IEndPoint {
   mount_material?: string | null;
   mount_direction: string;
   asset_id: ObjectId | string;
+  asset_name: string;
   org_id: ObjectId | string;
   mac_id: string;
   image?: string | null;
@@ -36,23 +37,24 @@ export interface IEndpointLocation extends Document {
 const coordinateSchema = new Schema<ICoordinate>({
   x: { type: Number, required: true },
   y: { type: Number, required: true },
-});
+}, { _id: false });
 
 const endPointSchema = new Schema<IEndPoint>({
-  is_linked: { type: Boolean, required: true },
-  composite_id: { type: String, required: true },
+  is_linked: { type: Boolean },
+  composite_id: { type: String },
   point_name: { type: String, required: true },
-  mount_location: { type: String, required: true },
+  mount_location: { type: String },
   mount_type: { type: String },
   mount_material: { type: String },
-  mount_direction: { type: String, required: true },
-  asset_id: { type: mongoose.Schema.Types.Mixed, required: true },
+  mount_direction: { type: String },
+  asset_id: { type: mongoose.Schema.Types.Mixed },
+  asset_name: { type: String, required: true },
   org_id: { type: mongoose.Schema.Types.Mixed, required: true },
-  mac_id: { type: String, required: true },
+  mac_id: { type: String },
   image: { type: String },
-  online: { type: String, required: true },
+  online: { type: String },
   id: { type: Number, required: true },
-  selected: { type: Boolean, required: true }
+  selected: { type: Boolean }
 }, { _id: false });
 
 const endpointLocationSchema = new Schema<IEndpointLocation>({

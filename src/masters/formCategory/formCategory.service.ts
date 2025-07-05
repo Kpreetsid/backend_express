@@ -18,8 +18,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     })
     const newCategory: ICategory = await newCategoryBody.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: newCategory });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -35,8 +34,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data: updatedCategory });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };

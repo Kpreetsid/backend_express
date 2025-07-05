@@ -11,7 +11,7 @@ export const getAllUserLogs = async (req: Request, res: Response, next: NextFunc
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
+  } catch (error: any) {
     next(error);     
   }
 };

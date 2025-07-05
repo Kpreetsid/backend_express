@@ -32,8 +32,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -67,8 +66,7 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction) 
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -95,8 +93,7 @@ export const createAsset = async (req: Request, res: Response, next: NextFunctio
     }
     
     await insert(req, res, next);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -116,8 +113,7 @@ export const updateAsset = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await updateById(req, res, next);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -134,8 +130,7 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
     }
     await removeById(match);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }

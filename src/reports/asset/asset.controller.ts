@@ -13,8 +13,7 @@ export const getAssetsReport = async (req: Request, res: Response, next: NextFun
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -32,8 +31,7 @@ export const getAssetsReportById = async (req: Request, res: Response, next: Nex
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -54,8 +52,7 @@ export const getLatestReport = async (req: Request, res: Response, next: NextFun
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -68,8 +65,7 @@ export const createAssetsReport = async (req: Request, res: Response, next: Next
     body.createdBy = user_id;
     const data = await insertAssetReport(body);
     res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -87,8 +83,7 @@ export const updateAssetsReport = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };

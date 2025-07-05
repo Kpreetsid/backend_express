@@ -21,15 +21,13 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
       match = { account_id, data_type: 'kpi' };
     }
 
-    const floorMaps = await EndpointLocation.find(match).populate('locationId');
+    const floorMaps = await EndpointLocation.find(match).populate([{ path: 'locationId', select: 'location_name' }]);
     if (!floorMaps || floorMaps.length === 0) {
       throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });
     }
     const enrichedFloorMaps = await Promise.all(
       floorMaps.map(async (item: any) => {
-        item.location = { id: item.locationId._id, location_name: item.locationId.location_name };
-        item.locationId = item.locationId._id;
-        const childLocations = await getAllChildLocationsRecursive([item.locationId]);
+        const childLocations = await getAllChildLocationsRecursive([`${item.locationId._id}`]);
         const finalLocIds = [item.locationId, ...childLocations];
         const assetsMatch: any = { locationId: { $in: finalLocIds }, visible: true, account_id };
         const assetList = await Asset.find(assetsMatch).select('asset_name asset_type');
@@ -40,9 +38,8 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
       throw Object.assign(new Error('No assets found for the given location'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: 'Coordinates Found', data: enrichedFloorMaps });
-  } catch (err) {
-    console.error('Error in getCoordinateByAccId:', err);
-    next(err);
+  } catch (error: any) {
+    next(error);
   }
 };
 
@@ -60,9 +57,8 @@ export const floorMapAssetCoordinates = async (req: Request, res: Response, next
       throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: 'Coordinates Found', data: floorMaps });
-  } catch (err) {
-    console.error('Error in getCoordinateByAccId:', err);
-    next(err);
+  } catch (error: any) {
+    next(error);
   }
 };
 
@@ -88,8 +84,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     const endpointLocation = new EndpointLocation(req.body);
     await endpointLocation.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: endpointLocation });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -102,8 +97,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -119,8 +113,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     }
     await EndpointLocation.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -145,8 +138,7 @@ export const insertCoordinates = async (req: Request, res: Response, next: NextF
       throw Object.assign(new Error('Failed to set coordinates'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Coordinates added successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };

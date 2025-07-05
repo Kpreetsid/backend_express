@@ -6,6 +6,6 @@ export default (router: express.Router) => {
     const userRouter = express.Router();
     userRouter.post('/login', authentication);
     userRouter.post('/updatePassword', resetPassword);
-    userRouter.get('/logout', userLogOut);
+    userRouter.get('/logout', isAuthenticated, userLogOut);
     router.use('/users', userRouter);
 }

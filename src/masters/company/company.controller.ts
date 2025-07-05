@@ -19,8 +19,7 @@ export const getCompanies = async (req: Request, res: Response, next: NextFuncti
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -43,8 +42,7 @@ export const getCompany = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -61,8 +59,7 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
       throw Object.assign(new Error('Data creation failed'), { status: 500 });
     }
     res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -88,8 +85,7 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
       throw Object.assign(new Error('Data update failed'), { status: 500 });
     }
     res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -113,8 +109,7 @@ export const updateImageCompany = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('Data update failed'), { status: 500 });
     }
     res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -130,8 +125,7 @@ export const removeCompany = async (req: Request, res: Response, next: NextFunct
     }
     const result = await removeById(req.params.id, account_id, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }

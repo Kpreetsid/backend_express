@@ -84,8 +84,8 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
         }
       });
       await newLog.save();
-    } catch (err) {
-      console.error('Failed to log activity:', err);
+   } catch (error: any) {
+      console.error('Failed to log activity:', error);
     }
   });
   next();

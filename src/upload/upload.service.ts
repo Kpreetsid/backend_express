@@ -27,9 +27,8 @@ export const uploadService = async (req: Request, res: Response, next: NextFunct
       return data;
     });
     return res.status(200).send({ status: true, message: 'Files uploaded successfully', data });
-  } catch (err) {
-    console.error(err);
-    next(err);
+ } catch (error: any) {
+    next(error);
   }
 };
 
@@ -41,8 +40,7 @@ export const uploadBaseImageService = async (req: Request, res: Response, next: 
     }
     const fileInfo = await uploadBase64Image(baseImage, folderName);
     return res.status(200).send({ status: true, message: "File uploaded successfully", data: fileInfo });
-  } catch (err) {
-    console.error("Image upload error:", err);
-    next(err);
+ } catch (error: any) {
+    next(error);
   }
 };

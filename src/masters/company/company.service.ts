@@ -23,8 +23,7 @@ export const verifyCompany = async (id: string) => {
       return null;
     }
     return data;
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     return null;
   }
 };

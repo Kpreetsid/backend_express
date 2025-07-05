@@ -28,8 +28,7 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -38,8 +37,7 @@ export const getLocationTree = async (req: Request, res: Response, next: NextFun
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await getTree(req, res, next);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -48,8 +46,7 @@ export const getKpiFilterLocations = async (req: Request, res: Response, next: N
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await kpiFilterLocations(req, res, next);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -58,8 +55,7 @@ export const getChildAssetsAgainstLocation = async (req: Request, res: Response,
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await childAssetsAgainstLocation(req, res, next);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -79,8 +75,7 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -101,8 +96,7 @@ export const createLocation = async (req: Request, res: Response, next: NextFunc
     const data: any = await insertLocation(body);
     await mapUserLocationData(data._id, body.userIdList, account_id);
     res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -114,25 +108,27 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
     if (!role[moduleName].edit_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
-    if(!req.params.id) {
+    const { params: { id }, body } = req;
+    if(!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: req.params.id, account_id: account_id, visible: true };
+    if(!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    const match = { _id: id, account_id: account_id, visible: true };
     const location = await getAll(match);
     if(!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const body = req.body;
     body.updatedBy = user_id;
-    const data: any = await updateById(req.params.id, body);
+    const data: any = await updateById(id, body);
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await mapUserLocationData(data._id, body.userIdList, account_id);
     data.id = data._id;
     res.status(200).json({ status: true, message: "Data updated successfully", data: [data] });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -154,8 +150,7 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
     }
     await removeById(req.params.id, location);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -164,8 +159,7 @@ export const updateLocationFloorMapImage = async (req: Request, res: Response, n
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await updateFloorMapImage(req, res, next);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }

@@ -19,8 +19,7 @@ export const getLocationsReport = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -33,8 +32,7 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
     body.user_id = user_id;
     const data = await createLocationsReport(body);
     res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -54,8 +52,7 @@ export const deleteReport = async (req: Request, res: Response, next: NextFuncti
       throw Object.assign(new Error('Report not found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Report deleted successfully" });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }

@@ -55,8 +55,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     }
 
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
-  } catch (error) {
-    console.error("getAll error:", error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -114,8 +113,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: result[0] });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -154,8 +152,7 @@ export const orderStatus = async (req: Request, res: Response, next: NextFunctio
       }
     });
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -194,8 +191,7 @@ export const orderPriority = async (req: Request, res: Response, next: NextFunct
       }
     });
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -227,8 +223,7 @@ export const monthlyCount = async (req: Request, res: Response, next: NextFuncti
       monthlyCountArray = Object.entries(monthlyCounts).map(([yearMonth, count]) => ({ _id: yearMonth, count }));
     });
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: monthlyCountArray });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -314,8 +309,7 @@ export const plannedUnplanned = async (req: Request, res: Response, next: NextFu
       }
     });
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: final_result });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -369,8 +363,7 @@ export const summaryData = async (req: Request, res: Response, next: NextFunctio
       "planned_unplanned_ratio": planned_unplanned_ratio || 0
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: final_res });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -405,8 +398,7 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
       return item;
     })
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -419,8 +411,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     const newAsset = new WorkOrder(req.body);
     const data = await newAsset.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -436,8 +427,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -453,8 +443,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     }
     await WorkOrder.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };

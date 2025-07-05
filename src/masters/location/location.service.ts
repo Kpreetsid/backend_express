@@ -93,8 +93,7 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
     }
 
     res.status(200).json({ status: true, message: "Data fetched successfully", data: treeData });
-  } catch (error) {
-    console.error("getTree error:", error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -153,8 +152,7 @@ export const kpiFilterLocations = async (req: Request, res: Response, next: Next
     };
     traverse(rootNodes, 1);
     return res.status(200).json({ status: true, message: "Data Found", data: { levelOneLocations, levelTwoLocations, levelThreeLocations }});
-  } catch (error) {
-    console.error("kpiFilterLocations Error:", error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -174,8 +172,7 @@ export const childAssetsAgainstLocation = async (req: Request, res: Response, ne
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: { assetList: data, locationList: finalList } });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -199,7 +196,7 @@ const getAllChildLocationsRecursive = async (parentIds: any) => {
       }
     }
     return childIds;
-  } catch (error) {
+  } catch (error: any) {
     return [];
   }
 }
@@ -246,8 +243,7 @@ export const updateFloorMapImage = async (req: Request, res: Response, next: Nex
       return res.status(404).json({ status: false, message: "Location not found" });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully"});
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };

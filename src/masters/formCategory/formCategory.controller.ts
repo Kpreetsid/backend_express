@@ -15,8 +15,7 @@ export const getAllFormCategories = async (req: Request, res: Response, next: Ne
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -36,8 +35,7 @@ export const getFormCategoryByID = async (req: Request, res: Response, next: Nex
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -46,8 +44,7 @@ export const createFormCategory = async (req: Request, res: Response, next: Next
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await insert(req, res, next);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }
@@ -71,8 +68,7 @@ export const removeFormCategory = async (req: Request, res: Response, next: Next
     }
     await removeById(req.params.id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 }

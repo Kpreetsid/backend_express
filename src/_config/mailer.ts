@@ -51,8 +51,24 @@ export const sendVerificationCode = async (match: any): Promise<boolean> => {
     await new VerificationCode({ email: match.email, firstName: match.firstName, lastName: match.lastName, code: otp.toString() }).save();
     console.log(mailResponse);
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
     return false;
   }
 }
+
+export const sendPasswordChangeConfirmation = async (user: any): Promise<void> => {
+  try {
+    const templatePath = path.join(__dirname, '../public/confirmPasswordChange.template.html');
+    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    htmlTemplate = htmlTemplate.replace('{{userFullName}}', user.firstName + ' ' + user.lastName);
+    htmlTemplate = htmlTemplate.replace('{{userName}}', user.username);
+    await sendMail({
+      to: user.email,
+      subject: 'CMMS application password changed successfully.',
+      html: htmlTemplate
+    });
+  } catch (error: any) {
+    console.error('Error sending password change confirmation:', error);
+  }
+};

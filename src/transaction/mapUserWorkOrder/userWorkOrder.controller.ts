@@ -7,8 +7,7 @@ export const getUserWorkOrders = async (req: Request, res: Response, next: NextF
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await getAll(req, res, next);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
@@ -17,8 +16,7 @@ export const getMappedData = async (req: Request, res: Response, next: NextFunct
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await mappedData(req, res, next);
-  } catch (error) {
-    console.error(error);
+  } catch (error: any) {
     next(error);
   }
 };
