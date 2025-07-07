@@ -148,3 +148,7 @@ export const userAssets = async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 };
+
+export const removeLocationMapping = async (id: string) => {
+  return await MapUserAssetLocation.deleteMany({ locationId: id });
+}

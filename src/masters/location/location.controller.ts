@@ -45,7 +45,11 @@ export const getLocationTree = async (req: Request, res: Response, next: NextFun
 export const getKpiFilterLocations = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    await kpiFilterLocations(req, res, next);
+    const data = await kpiFilterLocations(account_id, user_id, userRole);
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error: any) {
     next(error);
   }
@@ -54,7 +58,12 @@ export const getKpiFilterLocations = async (req: Request, res: Response, next: N
 export const getChildAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    await childAssetsAgainstLocation(req, res, next);
+    const { location_id: { levelOneLocations, levelTwoLocations } } = req.body;
+    const data = await childAssetsAgainstLocation(levelOneLocations, levelTwoLocations, account_id);
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error: any) {
     next(error);
   }
@@ -157,8 +166,16 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
 
 export const updateLocationFloorMapImage = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const { params: { id }, body: { top_level_location_image } } = req;
+    if (!id || !top_level_location_image) {
+      throw Object.assign(new Error('Invalid request data'), { status: 400 });
+    }
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    await updateFloorMapImage(req, res, next);
+    if(userRole !== 'admin') {
+      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
+    }
+    await updateFloorMapImage(id, account_id, user_id, top_level_location_image);
+    res.status(200).json({ status: true, message: "Data updated successfully"});
   } catch (error: any) {
     next(error);
   }

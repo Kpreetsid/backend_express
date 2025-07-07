@@ -6,11 +6,11 @@ import { IUser } from '../../models/user.model';
 export const getLocationsReport = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id };
+    const match: any = { account_id };
+    const { locationId } = req.query;
     if(userRole !== 'admin') {
       match.user_id = user_id;
     }
-    const { locationId } = req.query;
     if(locationId) {
       match.location_id = locationId;
     }
@@ -27,11 +27,16 @@ export const getLocationsReport = async (req: Request, res: Response, next: Next
 export const createReport = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const body = req.body;
-    body.accountId = account_id;
-    body.user_id = user_id;
-    const data = await createLocationsReport(body);
-    res.status(201).json({ status: true, message: "Data created successfully", data });
+    const { location_id, top_level } = req.body;
+    if (!location_id || !top_level) {
+      throw Object.assign(new Error('Invalid request data'), { status: 400 });
+    }
+    const match = { account_id, location_id, top_level, user_id };
+    const data = await createLocationsReport(match);
+    if(!data) {
+      throw Object.assign(new Error('Something went wrong'), { status: 500 });
+    }
+    res.status(201).json({ status: true, message: "Data created successfully" });
   } catch (error: any) {
     next(error);
   }

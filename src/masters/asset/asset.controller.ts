@@ -2,7 +2,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getAll, insert, updateById, removeById, getAssetsTreeData, getAssetsFilteredData } from './asset.service';
 import { IUser } from '../../models/user.model';
-import { getAssetsMappedData } from '../../transaction/mapUserLocation/userLocation.service';
+import { getAssetsMappedData, removeLocationMapping } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 import { uploadBase64Image } from '../../_config/upload';
 
@@ -128,6 +128,11 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
     if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
+    const dataExists: any = await getAll(match);
+    if (!dataExists || dataExists.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    await removeLocationMapping(req.params.id);
     await removeById(match);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error: any) {

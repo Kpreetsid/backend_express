@@ -98,9 +98,8 @@ export const getTree = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
-export const kpiFilterLocations = async (req: Request, res: Response, next: NextFunction) => {
+export const kpiFilterLocations = async (account_id: any, user_id: any, userRole: any) => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id };
     if (userRole !== 'admin') {
       const mapLocationData: IMapUserLocation[] = await getLocationsMappedData(`${user_id}`);
@@ -151,29 +150,24 @@ export const kpiFilterLocations = async (req: Request, res: Response, next: Next
       }
     };
     traverse(rootNodes, 1);
-    return res.status(200).json({ status: true, message: "Data Found", data: { levelOneLocations, levelTwoLocations, levelThreeLocations }});
+    return { levelOneLocations, levelTwoLocations, levelThreeLocations };
   } catch (error: any) {
-    next(error);
+    return null;
   }
 };
 
-export const childAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction) => {
+export const childAssetsAgainstLocation = async (lOne: any, lTwo: any, account_id: any) => {
   try {
-    const { location_id } = req.body;
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     var finalList = [];
-    const lOne = location_id.levelOneLocations;
-    const lTwo = location_id.levelTwoLocations;
-
     const childIds = await getAllChildLocationsRecursive(lTwo);
     finalList = [...childIds, ...lOne, ...lTwo]
-    const data: any = await Asset.find({ locationId: { $in: finalList }, account_id, visible: true }).select('id top_level asset_name asset_type');
+    const data: any = await Asset.find({ locationId: { $in: finalList }, top_level: true, account_id, visible: true }).select('id top_level asset_name asset_type');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: { assetList: data, locationList: finalList } });
+    return { assetList: data, locationList: finalList };
   } catch (error: any) {
-    next(error);
+    return null;
   }
 }
 
@@ -182,12 +176,7 @@ const getAllChildLocationsRecursive = async (parentIds: any) => {
     let childIds: any = [];
     for (let i = 0; i < parentIds.length; i++) {
       const parent: any = await LocationMaster.findById(parentIds[i]);
-      const children = await LocationMaster.find({
-        where: {
-          parent_id: parent.id,
-          visible: true,
-        }
-      });
+      const children = await LocationMaster.find({ where: { parent_id: parent.id, visible: true }});
       if (children.length > 0) {
         const childrenIds = children.map(child => child.id);
         childIds = [...childIds, ...childrenIds];
@@ -228,22 +217,6 @@ export const removeById = async (id: string, data: any) => {
   return true;
 };
 
-export const updateFloorMapImage = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { params: { id }, body: { top_level_location_image } } = req;
-    if (!id || !top_level_location_image) {
-      throw Object.assign(new Error('Invalid request data'), { status: 400 });
-    }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if(userRole !== 'admin') {
-      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
-    }
-    const updateResult = await LocationMaster.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id }});
-    if (updateResult.matchedCount === 0) {
-      return res.status(404).json({ status: false, message: "Location not found" });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully"});
-  } catch (error: any) {
-    next(error);
-  }
+export const updateFloorMapImage = async (id: string, account_id: any, user_id: any, top_level_location_image: string) => {
+  return await LocationMaster.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id }});
 };
