@@ -31,7 +31,7 @@ const fetchAllChildLocationIds = async (locationId: string, account_id: string):
   return result;
 };
 
-export const createLocationReport = async (match: { account_id: string; location_id: string; user_id: string }) => {
+export const createLocationReport = async (match: any) => {
   try {
     const locationIds = await fetchAllChildLocationIds(match.location_id, match.account_id);
     const assets = await Asset.find({ locationId: { $in: locationIds }, account_id: match.account_id, top_level: true, visible: true });

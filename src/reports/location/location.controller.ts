@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, createLocationsReport, deleteLocationsReport } from './location.service';
+import { getAll, createLocationReport, deleteLocationsReport } from './location.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 
@@ -32,7 +32,7 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
     }
     const match = { account_id, location_id, top_level, user_id };
-    const data = await createLocationsReport(match);
+    const data = await createLocationReport(match);
     if(!data) {
       throw Object.assign(new Error('Something went wrong'), { status: 500 });
     }
