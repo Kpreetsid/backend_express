@@ -147,8 +147,8 @@ export const createLocationReport = async (match: any) => {
       sub_location_data: Object.values(subLocationMap),
       createdBy: match.user_id
     });
-    return newReport;
-    // return await newReport.save();
+    // return newReport;
+    return await newReport.save();
   } catch (error) {
     throw Object.assign(new Error('Something went wrong'), { status: 500 });
   }

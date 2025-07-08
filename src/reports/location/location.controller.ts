@@ -36,7 +36,7 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
     if(!data) {
       throw Object.assign(new Error('Something went wrong'), { status: 500 });
     }
-    res.status(201).json({ status: true, message: "Data created successfully", data });
+    res.status(201).json({ status: true, message: "Data created successfully" });
   } catch (error: any) {
     next(error);
   }
