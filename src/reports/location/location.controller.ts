@@ -36,7 +36,7 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
     if(!data) {
       throw Object.assign(new Error('Something went wrong'), { status: 500 });
     }
-    res.status(201).json({ status: true, message: "Data created successfully" });
+    res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error: any) {
     next(error);
   }
@@ -44,7 +44,7 @@ export const createReport = async (req: Request, res: Response, next: NextFuncti
 
 export const deleteReport = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const { params: { id }} = req;
     if (!id) {
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
     }

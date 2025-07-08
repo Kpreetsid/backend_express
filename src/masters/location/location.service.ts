@@ -9,18 +9,22 @@ import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLo
 import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (match: any) => {
-  return await LocationMaster.find(match).populate([{ path: 'parent_id', select: 'location_name' }]);
+  const locationData = await LocationMaster.find(match).populate([{ path: 'parent_id', select: 'location_name' }]);
+  const locationIds = locationData.map(doc => `${doc._id}`);
+  const mapData = await MapUserAssetLocation.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
+  const result: any = locationData.map((doc: any) => {
+    const { _id: id, ...obj} = doc.toObject(); 
+    obj.id = id;
+    const mappedUser = mapData.filter(map => `${map.locationId}` === `${id}`);
+    obj.userList = mappedUser.length > 0 ? mappedUser.map((a: any) => a.userId).filter((user: any) => user) : [];
+    return obj;
+  });
+  return result;
 };
 
 const buildTree = async (parentId: string | null, account_id: any): Promise<any[]> => {
-  const match: any = {
-    account_id,
-    visible: true,
-    parent_id: parentId ? parentId : { $exists: false },
-  };
-
+  const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false }};
   const nodes = await getData(LocationMaster, { filter: match });
-
   return Promise.all(
     nodes.map(async (node: any) => {
       const children = await buildTree(node._id.toString(), account_id);

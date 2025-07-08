@@ -1,5 +1,16 @@
 import mongoose, { Schema, ObjectId } from 'mongoose';
 
+const rmsSchema = new Schema({
+    timestamp: { type: Schema.Types.Mixed },
+    rms: { type: Schema.Types.Mixed }
+}, { _id: false });
+
+const accelerationVelocitySchema = new Schema({
+    Axial: { type: rmsSchema },
+    Horizontal: { type: rmsSchema },
+    Vertical: { type: rmsSchema }
+}, { _id: false });
+
 const RMSDataSchema = new Schema({
     is_linked: Boolean,
     composite_id: String,
@@ -12,34 +23,8 @@ const RMSDataSchema = new Schema({
     org_id: Schema.Types.ObjectId,
     mac_id: String,
     image: String,
-    acceleration: {
-        Axial: {
-            timestamp: { type: Schema.Types.Mixed },
-            rms: { type: Schema.Types.Mixed }
-        },
-        Horizontal: {
-            timestamp: { type: Schema.Types.Mixed },
-            rms: { type: Schema.Types.Mixed }
-        },
-        Vertical: {
-            timestamp: { type: Schema.Types.Mixed },
-            rms: { type: Schema.Types.Mixed }
-        }
-    },
-    velocity: {
-        Axial: {
-            timestamp: { type: Schema.Types.Mixed },
-            rms: { type: Schema.Types.Mixed }
-        },
-        Horizontal: {
-            timestamp: { type: Schema.Types.Mixed },
-            rms: { type: Schema.Types.Mixed }
-        },
-        Vertical: {
-            timestamp: { type: Schema.Types.Mixed },
-            rms: { type: Schema.Types.Mixed }
-        }
-    },
+    acceleration: accelerationVelocitySchema,
+    velocity: accelerationVelocitySchema,
     asset_name: String
 }, { _id: false });
 
@@ -84,28 +69,28 @@ const FaultSummarySchema = new Schema({
 }, { _id: false });
 
 const SubLocationAssetSchema = new Schema({
-    asset_id: Schema.Types.ObjectId,
-    observations: String,
-    recommendations: String,
-    created_on: Date,
-    asset_name: String,
-    location_name: String,
-    fault_data: [FaultDataSchema],
-    endpointRMSData: [RMSDataSchema],
-    healthFlag: String,
-    locationId: String,
-    asset_health_history: [AssetHealthHistorySchema],
-    dummyList: [AssetHealthHistorySchema]
+    asset_id: { type: Schema.Types.ObjectId },
+    observations: { type: String },
+    recommendations: { type: String },
+    created_on: { type: Date },
+    asset_name: { type: String },
+    location_name: { type: String },
+    fault_data: { type: [FaultDataSchema] },
+    endpointRMSData: { type: [RMSDataSchema] },
+    healthFlag: { type: String },
+    locationId: { type: String },
+    asset_health_history: { type: [AssetHealthHistorySchema] },
+    dummyList: { type: [AssetHealthHistorySchema] }
 }, { _id: false });
 
 const SubLocationSchema = new Schema({
     sub_location: {
-        id: String,
-        name: String
+        id: { type: String },
+        name: { type: String }
     },
-    asset_data: [SubLocationAssetSchema],
-    sub_location_asset_condition_summary_data: [SummaryDataSchema],
-    sub_location_asset_fault_summary_data: [FaultSummarySchema]
+    asset_data: { type: [SubLocationAssetSchema] },
+    sub_location_asset_condition_summary_data: { type: [SummaryDataSchema] },
+    sub_location_asset_fault_summary_data: { type: [FaultSummarySchema] }
 }, { _id: false });
 
 export interface ILocationReport {
@@ -122,7 +107,6 @@ export interface ILocationReport {
     createdBy: ObjectId;
     updatedBy?: ObjectId
 }
-
 
 const LocationReportSchema = new Schema<ILocationReport>({
     asset_condition_summary_data: { type: [SummaryDataSchema] },

@@ -9,7 +9,17 @@ import { get } from "lodash";
 import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (match: any) => {
-  return await Asset.find(match).populate([{ path: 'locationId', select: 'location_name assigned_to' }, { path: 'parent_id', select: 'asset_name'}]);
+  const assetsData = await Asset.find(match).populate([{ path: 'locationId', select: 'location_name assigned_to' }, { path: 'parent_id', select: 'asset_name'}]);
+  const assetsIds = assetsData.map((asset: any) => asset._id);
+  const mapData = await MapUserAssetLocation.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
+  const result: any = assetsData.map((doc: any) => {
+    const { _id: id, ...obj} = doc.toObject(); 
+    obj.id = id;
+    const mappedUser = mapData.filter(map => `${map.assetId}` === `${id}`);
+    obj.userList = mappedUser.length > 0 ? mappedUser.map((a: any) => a.userId).filter((user: any) => user) : [];
+    return obj;
+  });
+  return result;
 }
 
 export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction) => {
@@ -782,7 +792,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 export const removeById = async (match: any) => {
   const childAssets = await Asset.find({ parent_id: match._id });
   if (childAssets && childAssets.length > 0) {
-    await Asset.updateMany({ parent_id: match._id }, { visible: false });
+    await Asset.updateMany({ parent_id: match._id }, { visible: false, isActive: false });
   }
-  return await Asset.findOneAndUpdate(match, { visible: false }, { new: true });
+  return await Asset.findOneAndUpdate(match, { visible: false, isActive: false }, { new: true });
 };
