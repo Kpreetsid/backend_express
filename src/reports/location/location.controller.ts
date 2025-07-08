@@ -52,8 +52,8 @@ export const deleteReport = async (req: Request, res: Response, next: NextFuncti
     if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
-    const result = await deleteLocationsReport(id, `${account_id}`);
-    if (result.deletedCount === 0) {
+    const result = await deleteLocationsReport(id, `${account_id}`, `${user_id}`);
+    if (!result) {
       throw Object.assign(new Error('Report not found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Report deleted successfully" });

@@ -4,6 +4,7 @@ import { LocationMaster } from '../../models/location.model';
 import { ILocationReport, LocationReport } from '../../models/locationReport.model';
 
 export const getAll = async (match: any): Promise<ILocationReport[]> => {
+  match.isActive = true;
   const populateFilter = [{ path: 'userId', select: 'firstName lastName' }, { path: 'location_id', select: '' }];
   return await LocationReport.find(match).populate(populateFilter).sort({ _id: -1 });
 };
@@ -122,11 +123,12 @@ export const createLocationsReport = async (body: any) => {
     asset_report_data: reportList.filter(r => r),
     asset_condition_summary_data: assetConditionSummaryData,
     asset_fault_summary_data: assetFaultSummaryData,
-    sub_location_data
+    sub_location_data,
+    createdBy: user_id
   });
   return await newReport.save();
 };
 
-export const deleteLocationsReport = async (id: string, accountId: string) => {
-  return await LocationReport.deleteOne({ _id: id, accountId: accountId });
+export const deleteLocationsReport = async (id: string, accountId: string, user_id: string) => {
+  return await LocationReport.findOneAndUpdate({ _id: id, account_id: accountId, isActive: true }, { isActive: false, updatedBy: user_id }, { new: true });
 }

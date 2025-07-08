@@ -14,30 +14,30 @@ const RMSDataSchema = new Schema({
     image: String,
     acceleration: {
         Axial: {
-            timestamp: Number,
-            rms: Number
+            timestamp: { type: Schema.Types.Mixed },
+            rms: { type: Schema.Types.Mixed }
         },
         Horizontal: {
-            timestamp: Number,
-            rms: Number
+            timestamp: { type: Schema.Types.Mixed },
+            rms: { type: Schema.Types.Mixed }
         },
         Vertical: {
-            timestamp: Number,
-            rms: Number
+            timestamp: { type: Schema.Types.Mixed },
+            rms: { type: Schema.Types.Mixed }
         }
     },
     velocity: {
         Axial: {
-            timestamp: Number,
-            rms: Number
+            timestamp: { type: Schema.Types.Mixed },
+            rms: { type: Schema.Types.Mixed }
         },
         Horizontal: {
-            timestamp: Number,
-            rms: Number
+            timestamp: { type: Schema.Types.Mixed },
+            rms: { type: Schema.Types.Mixed }
         },
         Vertical: {
-            timestamp: Number,
-            rms: Number
+            timestamp: { type: Schema.Types.Mixed },
+            rms: { type: Schema.Types.Mixed }
         }
     },
     asset_name: String
@@ -118,6 +118,9 @@ export interface ILocationReport {
     user: any;
     userId: ObjectId;
     location_id: ObjectId;
+    isActive: boolean;
+    createdBy: ObjectId;
+    updatedBy?: ObjectId
 }
 
 
@@ -130,7 +133,10 @@ const LocationReportSchema = new Schema<ILocationReport>({
     sub_location_data: { type: [SubLocationSchema] },
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     user: { type: Schema.Types.Mixed },
-    location_id: { type: Schema.Types.ObjectId, ref: 'LocationMaster', required: true }
+    location_id: { type: Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
+    isActive: { type: Boolean, default: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' }
 }, {
     collection: 'location-report',
     timestamps: true,

@@ -780,5 +780,9 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 };
 
 export const removeById = async (match: any) => {
+  const childAssets = await Asset.find({ parent_id: match._id });
+  if (childAssets && childAssets.length > 0) {
+    await Asset.updateMany({ parent_id: match._id }, { visible: false });
+  }
   return await Asset.findOneAndUpdate(match, { visible: false }, { new: true });
 };
