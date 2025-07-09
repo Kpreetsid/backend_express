@@ -29,7 +29,7 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
       floorMaps.map(async (item: any) => {
         const childLocations = await getAllChildLocationsRecursive([`${item.locationId._id}`]);
         const finalLocIds = [item.locationId, ...childLocations];
-        const assetsMatch: any = { locationId: { $in: finalLocIds }, visible: true, account_id };
+        const assetsMatch: any = { locationId: { $in: finalLocIds }, visible: true, account_id, asset_type: { $nin: ['Flexible', 'Rigid', 'Belt_Pulley'] } };
         const assetList = await Asset.find(assetsMatch).select('asset_name asset_type');
         return { item, assetList };
       })
