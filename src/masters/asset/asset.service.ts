@@ -10,10 +10,11 @@ import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (match: any) => {
   const assetsData = await Asset.find(match).populate([{ path: 'locationId', select: 'location_name assigned_to' }, { path: 'parent_id', select: 'asset_name'}]);
-  const assetsIds = assetsData.map((asset: any) => asset._id);
+  const assetsIds = assetsData.map((asset: any) => asset.id);
   const mapData = await MapUserAssetLocation.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
   const result: any = assetsData.map((doc: any) => {
     const { _id: id, ...obj} = doc.toObject(); 
+    obj.locationId.id = obj.locationId._id;
     obj.id = id;
     const mappedUser = mapData.filter(map => `${map.assetId}` === `${id}`);
     obj.userList = mappedUser.length > 0 ? mappedUser.map((a: any) => a.userId).filter((user: any) => user) : [];

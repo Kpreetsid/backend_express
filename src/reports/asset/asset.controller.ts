@@ -72,13 +72,13 @@ export const createAssetsReport = async (req: Request, res: Response, next: Next
 
 export const updateAssetsReport = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { params, body } = req;
-    if(!params.id) {
+    const { params: { id }, body } = req;
+    if(!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     body.updatedBy = user_id;
-    const data = await updateAssetReport(params.id, body);
+    const data = await updateAssetReport(id, body);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

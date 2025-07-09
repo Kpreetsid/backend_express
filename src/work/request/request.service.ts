@@ -57,13 +57,13 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { params, body } = req;
-    if(!params.id) {
+     const { params: { id }, body } = req;
+    if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     body.updatedBy = user_id;
-    const data = await WorkRequestModel.findByIdAndUpdate(params.id, body, { new: true });
+    const data = await WorkRequestModel.findByIdAndUpdate(id, body, { new: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
