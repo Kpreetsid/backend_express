@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage } from './location.service';
+import { getAll, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
@@ -176,6 +176,19 @@ export const updateLocationFloorMapImage = async (req: Request, res: Response, n
     }
     await updateFloorMapImage(id, account_id, user_id, top_level_location_image);
     res.status(200).json({ status: true, message: "Data updated successfully"});
+  } catch (error: any) {
+    next(error);
+  }
+}
+
+export const getLocationSensorList = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const data = await getLocationSensor(account_id, user_id, userRole);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error: any) {
     next(error);
   }

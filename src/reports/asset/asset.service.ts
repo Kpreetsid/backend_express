@@ -1,6 +1,6 @@
 import { ReportAsset, IReportAsset } from "../../models/assetReport.model";
 
-export const getAll = async (match: any, populateFilter: any) => {
+export const getAll = async (match: any, populateFilter?: any) => {
   return await ReportAsset.find(match).sort({ _id: -1 }).populate(populateFilter);
 };
 
@@ -15,4 +15,8 @@ export const insertAssetReport = async (body: IReportAsset) => {
 
 export const updateAssetReport = async (id: string, body: IReportAsset) => {
   return await ReportAsset.findByIdAndUpdate(id, body, { new: true });
+};
+
+export const deleteAssetReport = async (id: string) => {
+  return await ReportAsset.findByIdAndDelete(id);
 };

@@ -1,6 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
-import { userLocations, userAssets, mapUserLocations, updateMappedUserLocations } from './userLocation.service';
+import { userLocations, userAssets, mapUserLocations, updateMappedUserLocations, updateMappedUserFlags } from './userLocation.service';
 import { IUser } from '../../models/user.model';
 
 export const getUserLocations = async (req: Request, res: Response, next: NextFunction) => {
@@ -40,6 +40,15 @@ export const updateUserLocations = async (req: Request, res: Response, next: Nex
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await updateMappedUserLocations(req, res, next);
+  } catch (error: any) {
+    next(error);
+  }
+};
+
+export const updateSendMailFlag = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    await updateMappedUserFlags(req, res, next);
   } catch (error: any) {
     next(error);
   }

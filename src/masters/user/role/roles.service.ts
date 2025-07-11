@@ -8,8 +8,16 @@ import { get } from "lodash";
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const data = await UserRoleMenu.find({});
-    if (data.length === 0) {
+     const query = req.query;
+     const match: any = { account_id: account_id };
+     if(userRole !== 'admin') {
+       match.user_id = user_id;
+     }
+     if(query?.user_id) {
+       match.user_id = query.user_id;
+     }
+    const data = await UserRoleMenu.find(match);
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });

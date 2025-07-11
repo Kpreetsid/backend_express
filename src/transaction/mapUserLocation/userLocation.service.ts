@@ -4,6 +4,7 @@ import { LocationMaster } from "../../models/location.model";
 import { Asset } from "../../models/asset.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
+import mongoose from "mongoose";
 
 export const getAssetsMappedData = async (userId: string) => {
   return await MapUserAssetLocation.find({ userId: userId, assetId: { $exists: true } });
@@ -51,7 +52,7 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
         doc.locationId = doc.location._id;
         return doc;
       })
-    } else if(filter.populate === 'userId') {
+    } else if (filter.populate === 'userId') {
       data = data.map((doc: any) => {
         doc = doc.toObject();
         doc.user = doc.userId;
@@ -118,33 +119,63 @@ export const updateMappedUserLocations = async (req: Request, res: Response, nex
 
 export const userAssets = async (req: Request, res: Response, next: NextFunction) => {
   try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = { assetId: { $exists: true } };
-    if(userRole === 'admin') {
-      const assetMatch = { account_id: account_id, visible: true };
-      const assetData = await Asset.find(assetMatch);
+    if(query?.userId) {
+      match.userId = new mongoose.Types.ObjectId(query.userId as string);
+    }
+    if (userRole === 'admin') {
+      const assetMatch: any = { account_id, visible: true };
+      if (query.assetId) {
+        assetMatch._id = new mongoose.Types.ObjectId(query.assetId as string);
+      }
+      const assetData = await Asset.find(assetMatch).select('_id');
       if (!assetData || assetData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('No asset(s) found for admin'), { status: 404 });
       }
       match.assetId = { $in: assetData.map(doc => doc._id) };
     } else {
       match.userId = user_id;
-    }
-    if(query.assetId) {
-      match.assetId = query.assetId;
-      const assetMatch = { _id: query.assetId, account_id : account_id };
-      const assetData = await Asset.find(assetMatch);
-      if (!assetData || assetData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+      if (query.assetId) {
+        match.assetId = new mongoose.Types.ObjectId(query.assetId as string);
       }
     }
-    const data = await MapUserAssetLocation.find(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+    const pipeline: any[] = [{ $match: match }];
+    if (query.populate === 'assetId') {
+      pipeline.push({ $lookup: { from: 'asset_master', localField: 'assetId', foreignField: '_id', as: 'asset' }}, { $unwind: '$asset' });
     }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    const data = await MapUserAssetLocation.aggregate(pipeline);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No mapping data found'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: 'User asset mapping fetched successfully', data });
   } catch (error: any) {
+    next(error);
+  }
+};
+
+export const updateMappedUserFlags = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, 'user', {}) as IUser;
+    const body: { _id: string; sendMail: boolean }[] = req.body;
+    if (!Array.isArray(body) || body.length === 0) {
+      throw Object.assign(new Error('Invalid input: body must be a non-empty array'), { status: 400 });
+    }
+    const bulkOps = body.map(doc => {
+      if (!doc._id || typeof doc.sendMail !== 'boolean') {
+        throw Object.assign(new Error('Each item must have _id and sendMail (boolean)'), { status: 400 });
+      }
+      return {
+        updateOne: {
+          filter: { _id: new mongoose.Types.ObjectId(doc._id) },
+          update: { $set: { sendMail: doc.sendMail } }
+        }
+      };
+    });
+    await MapUserAssetLocation.bulkWrite(bulkOps);
+    return res.status(200).json({ status: true, message: 'Asset mail notification settings updated successfully' });
+  } catch (error) {
     next(error);
   }
 };

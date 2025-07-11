@@ -790,6 +790,10 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
+export const updateAssetImageById = async (id: string, image_path: string, user_id: string) => {
+  return await Asset.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
+}
+
 export const removeById = async (match: any) => {
   const childAssets = await Asset.find({ parent_id: match._id });
   if (childAssets && childAssets.length > 0) {
@@ -797,3 +801,35 @@ export const removeById = async (match: any) => {
   }
   return await Asset.findOneAndUpdate(match, { visible: false, isActive: false }, { new: true });
 };
+
+export const getAssetDataSensorList = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const match: any = { account_id: account_id, visible: true };
+    if(userRole !== 'admin') {
+      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+      if (mapData && mapData.length > 0) {
+        match._id = { $in: mapData.map((doc: any) => doc.assetId) };
+      }
+    }
+    const data = await Asset.find(match).populate([{ path: 'locationId', select: 'location_name' }, { path: 'top_level_asset_id', select: 'asset_name'}, { path: 'account_id', select: 'account_name' }]);
+    if (data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const result = data.map((doc: any) => {
+      doc = doc.toObject();
+      return {
+        "asset_id": doc._id,
+        "asset_name": doc.asset_name,
+        "top_level_asset_id": doc.top_level_asset_id ? doc.top_level_asset_id._id : "",
+        "top_level_asset_name": doc.top_level_asset_id ? doc.top_level_asset_id?.asset_name : "NA",
+        "location_id": doc.locationId ? doc.locationId._id : "",
+        "location_name": doc.locationId ? doc.locationId.location_name : "NA",
+        "company_name": doc.account_id ? doc.account_id.account_name : "NA"
+      };
+    })
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
+  } catch (error) {
+    next(error);
+  }
+}

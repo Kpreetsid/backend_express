@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getLatest, insertAssetReport, updateAssetReport } from './asset.service';
+import { getAll, getLatest, insertAssetReport, updateAssetReport, deleteAssetReport } from './asset.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 
@@ -83,6 +83,28 @@ export const updateAssetsReport = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data updated successfully", data });
+  } catch (error: any) {
+    next(error);
+  }
+};
+
+export const deleteAssetsReport = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { params: { id } } = req;
+    if(!id) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    const match = { _id: id, accountId: account_id };
+    const isDataExists = await getAll(match);
+    if (!isDataExists || isDataExists.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const data = await deleteAssetReport(id);
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error: any) {
     next(error);
   }

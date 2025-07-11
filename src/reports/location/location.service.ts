@@ -1,7 +1,10 @@
+import { Request, Response, NextFunction } from 'express';
 import { Asset } from '../../models/asset.model';
 import { ReportAsset } from '../../models/assetReport.model';
 import { LocationMaster } from '../../models/location.model';
 import { ILocationReport, LocationReport } from '../../models/locationReport.model';
+import { get } from 'lodash';
+import { IUser } from '../../models/user.model';
 
 export const getAll = async (match: any): Promise<ILocationReport[]> => {
   match.isActive = true;
@@ -9,14 +12,14 @@ export const getAll = async (match: any): Promise<ILocationReport[]> => {
   return await LocationReport.find(match).populate(populateFilter).sort({ _id: -1 });
 };
 
-const getMonthList = (): any[] => {
+const getDummyMonthList = (): any[] => {
   const now = new Date();
   const result: any[] = [];
-  for (let i = 0; i < 6; i++) {
+  for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    result.push({ month: d.toLocaleString('default', { month: 'short' }), status: null });
+    result.push({ date: d.toLocaleString('default', { month: 'short' }) + '-' + d.getFullYear() });
   }
-  return result.reverse();
+  return result;
 };
 
 const fetchAllChildLocationIds = async (locationId: string, account_id: string): Promise<string[]> => {
@@ -31,16 +34,37 @@ const fetchAllChildLocationIds = async (locationId: string, account_id: string):
   return result;
 };
 
-export const createLocationReport = async (match: any) => {
-  try {
-    const locationIds = await fetchAllChildLocationIds(match.location_id, match.account_id);
-    const assets = await Asset.find({ locationId: { $in: locationIds }, account_id: match.account_id, top_level: true, visible: true });
+const getAssetHealthHistory = (): any[] => {
+  const now = new Date();
+  const result: any[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    result.push({ date: d.toLocaleString('default', { month: 'short' }) + '-' + String(d.getFullYear()).slice(-2), status: "5" });
+  }
+  return result;
+};
 
+export const createLocationReport = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { location_id, top_level = true } = req.body;
+    if (!location_id) {
+      throw Object.assign(new Error('Invalid request data'), { status: 400 });
+    }
+    const locationIds = await fetchAllChildLocationIds(location_id, `${account_id}`);
+    locationIds.push(location_id);
+    const assets = await Asset.find({ locationId: { $in: locationIds }, account_id, top_level: true, visible: true });
+    if (!assets || assets.length === 0) {
+      throw Object.assign(new Error('No asset found under this location.'), { status: 404 });
+    }
     const reportList = await Promise.all(assets.map(async (asset: any) => {
-      const [latestReport] = await ReportAsset.find({ top_level_asset_id: asset._id, accountId: match.account_id }).sort({ _id: -1 }).limit(1);
+      const [latestReport] = await ReportAsset.find({ top_level_asset_id: asset._id, accountId: account_id }).sort({ createdOn: -1 }).populate([{ path: 'userId', select: 'firstName lastName' }, { path: 'locationId', select: '' }, { path: 'assetId', select: '' }]).limit(1);
       return latestReport || null;
     }));
-
+    const validReports = reportList.filter(Boolean);
+    if (validReports.length === 0) {
+      throw Object.assign(new Error('No asset report found under this location.'), { status: 404 });
+    }
     const assetConditionSummaryData = [
       { key: 'Critical', value: { value: 0, itemStyle: { color: '#FB565A' } } },
       { key: 'Danger', value: { value: 0, itemStyle: { color: '#FA8349' } } },
@@ -48,7 +72,6 @@ export const createLocationReport = async (match: any) => {
       { key: 'Healthy', value: { value: 0, itemStyle: { color: '#51FC4C' } } },
       { key: 'Not Defined', value: { value: 0, itemStyle: { color: '#B0B0B0' } } }
     ];
-
     const assetFaultSummaryData = [
       { key: 'Unbalance', value: 0 },
       { key: 'Misalignment', value: 0 },
@@ -60,41 +83,34 @@ export const createLocationReport = async (match: any) => {
     ];
 
     const subLocationMap: Record<string, any> = {};
+    validReports.forEach((report: any) => {
+      const locationId = report?.locationId?._id;
+      const health = report.EquipmentHealth || '1';
+      const faults = report.faultData || [];
 
-    for (const report of reportList.filter(r => r)) {
-      const assetHealth = report.EquipmentHealth || '1';
-      const faultData = report.faultData || [];
-      const locationId = report.locationId.toString();
-
-      // Condition Summary
-      switch (assetHealth) {
+      switch (health) {
         case '2': assetConditionSummaryData[1].value.value++; break;
         case '3': assetConditionSummaryData[2].value.value++; break;
         case '4': assetConditionSummaryData[3].value.value++; break;
         case '5': assetConditionSummaryData[4].value.value++; break;
         default:  assetConditionSummaryData[0].value.value++;
       }
-
-      // Fault Summary
-      faultData.forEach((f: any) => {
+      faults.forEach((f: any) => {
         if (f.value !== 1) {
-          const index = assetFaultSummaryData.findIndex(item => item.key === f.name);
-          if (index !== -1) {
-            assetFaultSummaryData[index].value += 1;
+          const idx = assetFaultSummaryData.findIndex(item => item.key === f.name);
+          if (idx !== -1) {
+            assetFaultSummaryData[idx].value++;
           } else {
-            assetFaultSummaryData[6].value += 1; // Other
+            assetFaultSummaryData[6].value++;
           }
         }
       });
-
-      // Grouping by sub-location
       if (!subLocationMap[locationId]) {
         subLocationMap[locationId] = {
-          sub_location: { id: locationId, name: report.locationName },
+          sub_location: { id: locationId, name: report?.locationId?.location_name },
           asset_data: []
         };
       }
-
       subLocationMap[locationId].asset_data.push({
         asset_id: report.top_level_asset_id,
         observations: report.Observations,
@@ -106,17 +122,18 @@ export const createLocationReport = async (match: any) => {
         endpointRMSData: report.endpointRMSData,
         healthFlag: report.EquipmentHealth,
         locationId,
-        asset_health_history: report.asset_health_history || getMonthList(),
-        dummyList: getMonthList()
+        asset_health_history: report.asset_health_history || getAssetHealthHistory(),
+        dummyList: getDummyMonthList().map((month: any) => {
+          month.status = '1';
+          return month;
+        })
       });
-    }
+    });
 
-    // Add per sub-location summaries
-    for (const subLoc of Object.values(subLocationMap)) {
-      const conditionSummary = JSON.parse(JSON.stringify(assetConditionSummaryData.map(item => ({ ...item, value: { ...item.value, value: 0 } }))));
+    for (const loc of Object.values(subLocationMap)) {
+      const conditionSummary = assetConditionSummaryData.map(item => ({ ...item, value: { ...item.value, value: 0 } }));
       const faultSummary = assetFaultSummaryData.map(item => ({ ...item, value: 0 }));
-
-      subLoc.asset_data.forEach((asset: any) => {
+      loc.asset_data.forEach((asset: any) => {
         switch (asset.healthFlag) {
           case '2': conditionSummary[1].value.value++; break;
           case '3': conditionSummary[2].value.value++; break;
@@ -126,31 +143,31 @@ export const createLocationReport = async (match: any) => {
         }
         asset.fault_data.forEach((f: any) => {
           if (f.value !== 1) {
-            const index = faultSummary.findIndex(item => item.key === f.name);
-            if (index !== -1) faultSummary[index].value++;
+            const idx = faultSummary.findIndex(item => item.key === f.name);
+            if (idx !== -1) faultSummary[idx].value++;
             else faultSummary[6].value++;
           }
         });
       });
 
-      subLoc.sub_location_asset_condition_summary_data = conditionSummary;
-      subLoc.sub_location_asset_fault_summary_data = faultSummary;
+      loc.sub_location_asset_condition_summary_data = conditionSummary;
+      loc.sub_location_asset_fault_summary_data = faultSummary;
     }
-
-    const newReport = new LocationReport({
-      location_id: match.location_id,
-      account_id: match.account_id,
-      userId: match.user_id,
-      asset_report_data: reportList.filter(r => r),
+    const assetReportData = Object.values(subLocationMap).flatMap((loc: any) => loc.asset_data);
+    const insertData = new LocationReport({
       asset_condition_summary_data: assetConditionSummaryData,
       asset_fault_summary_data: assetFaultSummaryData,
+      asset_report_data: assetReportData,
       sub_location_data: Object.values(subLocationMap),
-      createdBy: match.user_id
+      location_id,
+      account_id,
+      createdBy: user_id,
+      userId: user_id
     });
-    // return newReport;
-    return await newReport.save();
-  } catch (error) {
-    throw Object.assign(new Error('Something went wrong'), { status: 500 });
+    await insertData.save();
+    return res.status(200).json({ status: true, message: 'Location Report Created Successfully' });
+  } catch (error: any) {
+    next(error);
   }
 };
 

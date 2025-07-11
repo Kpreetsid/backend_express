@@ -125,7 +125,7 @@ const assetSchema = new Schema<IAsset>({
   top_level: { type: Boolean, default: false },
   locationId: { type: Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
   account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
-  top_level_asset_id: { type: Schema.Types.ObjectId},
+  top_level_asset_id: { type: Schema.Types.ObjectId, ref: 'Asset' },
   parent_id: { type: Schema.Types.ObjectId, ref: 'Asset' },
   description: { type: String },
   manufacturer: { type: String },

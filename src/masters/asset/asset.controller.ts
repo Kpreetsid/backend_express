@@ -1,6 +1,6 @@
 import express, { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAll, insert, updateById, removeById, getAssetsTreeData, getAssetsFilteredData } from './asset.service';
+import { getAll, insert, updateById, removeById, getAssetsTreeData, getAssetsFilteredData, updateAssetImageById, getAssetDataSensorList } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { getAssetsMappedData, removeLocationMapping } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
@@ -118,6 +118,27 @@ export const updateAsset = async (req: Request, res: Response, next: NextFunctio
   }
 }
 
+export const updateAssetImage = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    if(!req.params.id) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    const { image_path } = req.body;
+    if (!image_path) {
+      throw Object.assign(new Error('Image path is required'), { status: 400 });
+    }
+    const dataExists: any = await getAll({ _id: req.params.id, account_id: account_id, visible: true });
+    if (!dataExists || dataExists.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    await updateAssetImageById(req.params.id, image_path, `${user_id}`);
+    res.status(200).json({ status: true, message: "Data updated successfully" });
+  } catch (error: any) {
+    next(error);
+  }
+}
+
 export const removeAsset = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
@@ -138,4 +159,8 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
   } catch (error: any) {
     next(error);
   }
+}
+
+export const getAssetSensorList = async (req: Request, res: Response, next: NextFunction) => {
+  await getAssetDataSensorList(req, res, next);
 }

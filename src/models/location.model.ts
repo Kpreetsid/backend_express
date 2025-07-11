@@ -28,7 +28,7 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   top_level: { type: Boolean, required: true },
   assigned_to: { type: String, required: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  top_level_location_id: { type: mongoose.Schema.Types.ObjectId },
+  top_level_location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster' },
   parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster' },
   parent_name: { type: String },
   equipment_id: { type: String },

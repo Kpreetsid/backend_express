@@ -1,11 +1,12 @@
 import express from 'express';
-import { getLocations, getLocation, updateLocation, getLocationTree, removeLocation, getKpiFilterLocations, getChildAssetsAgainstLocation, createLocation, updateLocationFloorMapImage } from './location.controller';
+import { getLocations, getLocation, updateLocation, getLocationTree, removeLocation, getKpiFilterLocations, getChildAssetsAgainstLocation, createLocation, updateLocationFloorMapImage, getLocationSensorList } from './location.controller';
 import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const locationRouter = express.Router();
     locationRouter.get('/', getLocations);
     locationRouter.get('/tree', getLocationTree);
+    locationRouter.get('/sensor-list', getLocationSensorList);
     locationRouter.get('/kpi-filter', getKpiFilterLocations);
     locationRouter.get('/:id', getLocation);
     locationRouter.post('/', createLocation);

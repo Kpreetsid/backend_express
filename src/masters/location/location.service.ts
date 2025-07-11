@@ -224,3 +224,32 @@ export const removeById = async (id: string, data: any) => {
 export const updateFloorMapImage = async (id: string, account_id: any, user_id: any, top_level_location_image: string) => {
   return await LocationMaster.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id }});
 };
+
+export const getLocationSensor = async (account_id: any, user_id: any, userRole: string) => {
+  try {
+    const match: any = { account_id, visible: true };
+    if(userRole !== 'admin') {
+      const mappedData = await getLocationsMappedData(`${user_id}`);
+      if (!mappedData || mappedData.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      match._id = { $in: mappedData.map(doc => doc.locationId) };
+    }
+    const data = await LocationMaster.find(match).populate([{ path: 'account_id', select: 'account_name' }, { path: 'top_level_location_id', select: 'location_name' }]);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const result = data.map((doc: any) => {
+      return {
+        company_name: doc.account_id ? doc.account_id.account_name : "NA",
+        location_id: doc._id,
+        location_name: doc.location_name,
+        top_level_location_id: doc.top_level_location_id ? doc.top_level_location_id._id : "",
+        top_level_location_name: doc.top_level_location_id ? doc.top_level_location_id.location_name : "NA"
+      }
+    });
+    return result;
+  } catch (error: any) {
+    return null;
+  }
+}

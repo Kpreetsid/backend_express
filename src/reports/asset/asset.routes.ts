@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAssetsReport, getAssetsReportById, getLatestReport, createAssetsReport, updateAssetsReport } from './asset.controller';
+import { getAssetsReport, getAssetsReportById, getLatestReport, createAssetsReport, updateAssetsReport, deleteAssetsReport } from './asset.controller';
 
 export default (router: express.Router) => {
     const assetReportRouter = express.Router();
@@ -8,5 +8,6 @@ export default (router: express.Router) => {
     assetReportRouter.get('/:id', getAssetsReportById);
     assetReportRouter.post('/', createAssetsReport);
     assetReportRouter.put('/:id', updateAssetsReport);
+    assetReportRouter.delete('/:id', deleteAssetsReport);
     router.use('/assets', assetReportRouter);
 }

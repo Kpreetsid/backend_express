@@ -13,48 +13,48 @@ const accelerationVelocitySchema = new Schema({
 
 const RMSDataSchema = new Schema({
     is_linked: Boolean,
-    composite_id: String,
-    point_name: String,
-    mount_location: String,
-    mount_type: String,
-    mount_material: String,
-    mount_direction: String,
+    composite_id: { type: String },
+    point_name: { type: String },
+    mount_location: { type: String },
+    mount_type: { type: String },
+    mount_material: { type: String },
+    mount_direction: { type: String },
     asset_id: Schema.Types.ObjectId,
     org_id: Schema.Types.ObjectId,
-    mac_id: String,
-    image: String,
+    mac_id: { type: String },
+    image: { type: String },
     acceleration: accelerationVelocitySchema,
     velocity: accelerationVelocitySchema,
     asset_name: String
 }, { _id: false });
 
 const AssetHealthHistorySchema = new Schema({
-    date: String,
+    date: { type: String },
     status: String
 }, { _id: false });
 
 const FaultDataSchema = new Schema({
-    name: String,
+    name: { type: String },
     value: Number
 }, { _id: false });
 
 const AssetReportSchema = new Schema({
     asset_id: Schema.Types.ObjectId,
-    observations: String,
-    recommendations: String,
-    created_on: Date,
-    asset_name: String,
-    location_name: String,
+    observations: { type: String },
+    recommendations: { type: String },
+    created_on: { type: Date },
+    asset_name: { type: String },
+    location_name: { type: String },
     fault_data: [FaultDataSchema],
     endpointRMSData: [RMSDataSchema],
-    healthFlag: String,
-    locationId: String,
+    healthFlag: { type: String },
+    locationId: { type: String },
     asset_health_history: [AssetHealthHistorySchema],
-    dummyList: [AssetHealthHistorySchema]
+    dummyList: { type: Schema.Types.Mixed }
 }, { _id: false });
 
 const SummaryDataSchema = new Schema({
-    key: String,
+    key: { type: String },
     value: {
         value: Number,
         itemStyle: {
@@ -64,7 +64,7 @@ const SummaryDataSchema = new Schema({
 }, { _id: false });
 
 const FaultSummarySchema = new Schema({
-    key: String,
+    key: { type: String },
     value: Number
 }, { _id: false });
 
@@ -80,7 +80,7 @@ const SubLocationAssetSchema = new Schema({
     healthFlag: { type: String },
     locationId: { type: String },
     asset_health_history: { type: [AssetHealthHistorySchema] },
-    dummyList: { type: [AssetHealthHistorySchema] }
+    dummyList: { type: Schema.Types.Mixed }
 }, { _id: false });
 
 const SubLocationSchema = new Schema({
