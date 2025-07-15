@@ -28,23 +28,24 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
       { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
       { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
-      { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
-      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
+      // { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
+      // { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
     ]);
     if (!data.length) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const result = await Promise.all(data.map(async (item: any) => {
-      let createdBy = {
-        firstName: item.createdBy.firstName || "",
-        id: item.createdBy._id,
-        lastName: item.createdBy.lastName || "",
-        user_profile_img: item.createdBy.user_profile_img || ""
-      };
-      item.createdBy = createdBy;
+      // let createdBy = {
+      //   firstName: item.createdBy.firstName || "",
+      //   id: item.createdBy._id,
+      //   lastName: item.createdBy.lastName || "",
+      //   user_profile_img: item.createdBy.user_profile_img || ""
+      // };
+      // item.createdBy = createdBy;
+      console.log("item.assignedUsers");
       item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await User.find({ _id: mapItem.userId }, '_id firstName lastName user_profile_img');
-        mapItem.user = user[0];
+        const user = await User.find({ _id: mapItem.userId });
+        mapItem.user = user.length > 0 ? user[0] : {};
         return mapItem;
       }));
       item.id = item._id;

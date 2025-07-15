@@ -10,6 +10,7 @@ export interface IAsset extends Document {
   asset_frequency?: string;
   asset_timezone: string;
   isNewFlow: boolean;
+  equipment_id: ObjectId;
   loadType: string;
   mounting: string;
   bladeCount: string;
@@ -90,6 +91,7 @@ const assetSchema = new Schema<IAsset>({
   asset_timezone: { type: String },
   imageNodeData: { type: [Object] },
   isNewFlow: { type: Boolean },
+  equipment_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
   loadType: { type: String },
   motorType: { type: String },
   lineFreq: { type: String },
