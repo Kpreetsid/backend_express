@@ -26,7 +26,7 @@ export interface IAsset extends Document {
   brand: string;
   mountType: string;
   specificFrequency: string[];
-  imageNodeData: [object];
+  imageNodeData: object;
   minOutputRotation: string;
   maxOutputRotation: string;
   drivingPulleyDia: string;
@@ -83,13 +83,13 @@ export interface IAsset extends Document {
 const assetSchema = new Schema<IAsset>({
   asset_name: { type: String, required: true },
   asset_id: { type: String },
-  asset_type: { type: String, enum: ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fans_Blowers', 'Pumps', 'Compressor'], required: true },
+  asset_type: { type: String, enum: ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pump', 'Compressor', 'Chillers'], required: true },
   asset_model: { type: String },
   asset_orient: { type: String },
   asset_behavior: { type: String },
   asset_frequency: { type: String },
   asset_timezone: { type: String },
-  imageNodeData: { type: [Object] },
+  imageNodeData: { type: Object },
   isNewFlow: { type: Boolean },
   equipment_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
   loadType: { type: String },

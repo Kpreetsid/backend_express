@@ -145,7 +145,7 @@ const getRecursiveLocations = async (asset: any) => {
 export const insert = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
+    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } = req.body;
     const childAssets: any[] = [];
  
     const newParentAsset = new Asset({
@@ -345,33 +345,33 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
       })
     }
 
-    if (Fans_Blowers) {
-      if (Object.keys(Fans_Blowers).length > 0) {
+    if (Fan_Blower) {
+      if (Object.keys(Fan_Blower).length > 0) {
         const newFanBlowerAsset = new Asset({
           parent_id: parentAssetData._id,
-          asset_name: Fans_Blowers.asset_name,
-          asset_id: Fans_Blowers.asset_id || Equipment.asset_id,
-          asset_type: Fans_Blowers.asset_type || "Fans_Blowers",
-          brandId: Fans_Blowers.brandId,
-          mountType: Fans_Blowers.mountType,
-          brandMake: Fans_Blowers.brandMake,
-          mounting: Fans_Blowers.mounting,
-          bearingType: Fans_Blowers.bearingType,
-          bladeCount: Fans_Blowers.bladeCount,
-          minInputRotation: Fans_Blowers.minInputRotation,
-          maxInputRotation: Fans_Blowers.maxInputRotation,
-          specificFrequency: Fans_Blowers.specificFrequency,
+          asset_name: Fan_Blower.asset_name,
+          asset_id: Fan_Blower.asset_id || Equipment.asset_id,
+          asset_type: Fan_Blower.asset_type || "Fan_Blower",
+          brandId: Fan_Blower.brandId,
+          mountType: Fan_Blower.mountType,
+          brandMake: Fan_Blower.brandMake,
+          mounting: Fan_Blower.mounting,
+          bearingType: Fan_Blower.bearingType,
+          bladeCount: Fan_Blower.bladeCount,
+          minInputRotation: Fan_Blower.minInputRotation,
+          maxInputRotation: Fan_Blower.maxInputRotation,
+          specificFrequency: Fan_Blower.specificFrequency,
           top_level: false,
           isNewFlow: true,
           locationId: parentAssetData.locationId,
           top_level_asset_id: parentAssetData._id,
           account_id: account_id,
-          description: Fans_Blowers.description,
-          asset_model: Fans_Blowers.asset_model,
-          manufacturer: Fans_Blowers.manufacturer,
-          year: Fans_Blowers.year,
-          assigned_to: Fans_Blowers.assigned_to,
-          image_path: Fans_Blowers.image_path,
+          description: Fan_Blower.description,
+          asset_model: Fan_Blower.asset_model,
+          manufacturer: Fan_Blower.manufacturer,
+          year: Fan_Blower.year,
+          assigned_to: Fan_Blower.assigned_to,
+          image_path: Fan_Blower.image_path,
           createdBy: user_id
         });
         childAssets.push(newFanBlowerAsset);
@@ -468,7 +468,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
 export const updateById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } } = req;
+    const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } } = req;
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
@@ -659,36 +659,36 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
         }
       });
     }
-    if (Fans_Blowers || Fans_Blowers.id) {
-      if (Object.keys(Fans_Blowers).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Fans_Blowers.id }, { $set: { ...Fans_Blowers, updatedBy: user_id } }));
+    if (Fan_Blower || Fan_Blower.id) {
+      if (Object.keys(Fan_Blower).length > 0) {
+        updatePromises.push(Asset.updateOne({ _id: Fan_Blower.id }, { $set: { ...Fan_Blower, updatedBy: user_id } }));
       }
     } else {
       const newFanBlowerAsset = new Asset({
         parent_id: id,
-        asset_name: Fans_Blowers.asset_name,
-        asset_id: Fans_Blowers.asset_id || Equipment.asset_id,
-        asset_type: Fans_Blowers.asset_type || "Fans_Blowers",
-        brandId: Fans_Blowers.brandId,
-        mountType: Fans_Blowers.mountType,
-        brandMake: Fans_Blowers.brandMake,
-        mounting: Fans_Blowers.mounting,
-        bearingType: Fans_Blowers.bearingType,
-        bladeCount: Fans_Blowers.bladeCount,
-        minInputRotation: Fans_Blowers.minInputRotation,
-        maxInputRotation: Fans_Blowers.maxInputRotation,
-        specificFrequency: Fans_Blowers.specificFrequency,
+        asset_name: Fan_Blower.asset_name,
+        asset_id: Fan_Blower.asset_id || Equipment.asset_id,
+        asset_type: Fan_Blower.asset_type || "Fan_Blower",
+        brandId: Fan_Blower.brandId,
+        mountType: Fan_Blower.mountType,
+        brandMake: Fan_Blower.brandMake,
+        mounting: Fan_Blower.mounting,
+        bearingType: Fan_Blower.bearingType,
+        bladeCount: Fan_Blower.bladeCount,
+        minInputRotation: Fan_Blower.minInputRotation,
+        maxInputRotation: Fan_Blower.maxInputRotation,
+        specificFrequency: Fan_Blower.specificFrequency,
         top_level: false,
         isNewFlow: true,
         locationId: Equipment.locationId,
         top_level_asset_id: Equipment.id,
         account_id: account_id,
-        description: Fans_Blowers.description,
-        asset_model: Fans_Blowers.asset_model,
-        manufacturer: Fans_Blowers.manufacturer,
-        year: Fans_Blowers.year,
-        assigned_to: Fans_Blowers.assigned_to,
-        image_path: Fans_Blowers.image_path,
+        description: Fan_Blower.description,
+        asset_model: Fan_Blower.asset_model,
+        manufacturer: Fan_Blower.manufacturer,
+        year: Fan_Blower.year,
+        assigned_to: Fan_Blower.assigned_to,
+        image_path: Fan_Blower.image_path,
         createdBy: user_id
       });
       createPromises.push(newFanBlowerAsset.save());
