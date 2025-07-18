@@ -15,7 +15,7 @@ export const getAllFloorMaps = async (req: Request, res: Response, next: NextFun
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -35,7 +35,7 @@ export const getFloorMapByID = async (req: Request, res: Response, next: NextFun
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -80,7 +80,7 @@ export const removeFloorMapCoordinates = async (req: Request, res: Response, nex
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Coordinate removed successfully" });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }

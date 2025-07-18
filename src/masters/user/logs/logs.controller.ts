@@ -4,7 +4,7 @@ import { getAllUserLogs } from './logs.service';
 export const userLogs = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         await getAllUserLogs(req, res, next);
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 }

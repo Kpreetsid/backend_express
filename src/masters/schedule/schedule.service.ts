@@ -15,7 +15,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
         return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 };
@@ -32,7 +32,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
         return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 };
@@ -42,7 +42,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
         const newSchedule = new ScheduleMasterModel(req.body);
         const data = await newSchedule.save();
         return res.status(201).json({ status: true, message: "Data created successfully", data });
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 };
@@ -58,7 +58,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
             throw Object.assign(new Error('No data found'), { status: 404 });
         }
         return res.status(200).json({ status: true, message: "Data updated successfully", data });
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 };
@@ -74,7 +74,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
         }
         await ScheduleMasterModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
         return res.status(200).json({ status: true, message: "Data deleted successfully" });
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 };

@@ -4,7 +4,7 @@ import { getAll, getDataById, insert, updateById, removeById } from './observati
 export const getObservations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await getAll(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -12,7 +12,7 @@ export const getObservations = async (req: Request, res: Response, next: NextFun
 export const getObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await getDataById(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -20,7 +20,7 @@ export const getObservation = async (req: Request, res: Response, next: NextFunc
 export const createObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await insert(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -28,7 +28,7 @@ export const createObservation = async (req: Request, res: Response, next: NextF
 export const updateObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await updateById(req, res, next);    
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -36,7 +36,7 @@ export const updateObservation = async (req: Request, res: Response, next: NextF
 export const removeObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await removeById(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }

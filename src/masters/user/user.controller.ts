@@ -16,7 +16,7 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction):
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -36,7 +36,7 @@ export const getUser = async (req: Request, res: Response, next: NextFunction): 
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -44,7 +44,7 @@ export const getUser = async (req: Request, res: Response, next: NextFunction): 
 export const getLocationWiseUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await getLocationWiseUser(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -68,7 +68,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     body.createdBy = user_id;
     const data: any = await createNewUser(body);
     res.status(201).json({ status: true, message: "Data created successfully", data: data.userDetails, roleData: data.roleDetails });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -87,7 +87,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     req.body.updatedBy = user_id;
     await updateUserDetails(req.params.id, req.body);
     res.status(200).json({ status: true, message: "User updated successfully" });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -117,7 +117,7 @@ export const changeUserPassword = async (req: Request, res: Response, next: Next
     }
     await deleteVerificationCode({ email: match.email });
     res.status(200).json({ status: true, message: "Password updated successfully" });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -135,7 +135,7 @@ export const removeUser = async (req: Request, res: Response, next: NextFunction
     }
     await removeById(req.params.id);
     res.status(200).json({ status: true, message: "User deleted successfully" });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }

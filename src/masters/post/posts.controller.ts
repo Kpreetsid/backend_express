@@ -22,7 +22,7 @@ export const getPosts = async (req: Request, res: Response, next: NextFunction):
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -30,7 +30,7 @@ export const getPosts = async (req: Request, res: Response, next: NextFunction):
 export const getPost = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await getDataById(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -38,7 +38,7 @@ export const getPost = async (req: Request, res: Response, next: NextFunction): 
 export const createPost = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await insert(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -46,7 +46,7 @@ export const createPost = async (req: Request, res: Response, next: NextFunction
 export const updatePost = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await updateById(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -54,7 +54,7 @@ export const updatePost = async (req: Request, res: Response, next: NextFunction
 export const removePost = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await removeById(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }

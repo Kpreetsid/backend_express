@@ -22,7 +22,7 @@ export const userRegister = async (req: Request, res: Response, next: NextFuncti
             throw Object.assign(new Error('Failed to send verification email'), { status: 500 });
         }
         res.status(200).json({ status: true, message: "Verification email sent successfully" });
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 }
@@ -35,7 +35,7 @@ export const userOTPVerification = async (req: Request, res: Response, next: Nex
             throw Object.assign(new Error('OTP verification failed'), { status: 403 });
         }
         res.status(201).json({ status: true, message: "OTP code verified successfully" });
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 }

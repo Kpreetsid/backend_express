@@ -21,7 +21,7 @@ export const isOwner = (req: Request, res: Response, next: NextFunction) => {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     next();
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -34,7 +34,7 @@ export const isOwnerOrAdmin = async (req: Request, res: Response, next: NextFunc
       return next();
     }
     throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };

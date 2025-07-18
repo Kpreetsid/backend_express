@@ -51,7 +51,7 @@ export const sendVerificationCode = async (match: any): Promise<boolean> => {
     await new VerificationCode({ email: match.email, firstName: match.firstName, lastName: match.lastName, code: otp.toString() }).save();
     console.log(mailResponse);
     return true;
-  } catch (error: any) {
+  } catch (error) {
     console.error(error);
     return false;
   }
@@ -68,7 +68,7 @@ export const sendPasswordChangeConfirmation = async (user: any): Promise<void> =
       subject: 'CMMS application password changed successfully.',
       html: htmlTemplate
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error sending password change confirmation:', error);
   }
 };

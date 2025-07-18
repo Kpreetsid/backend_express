@@ -30,7 +30,7 @@ export const getAllUserTokens = async (req: Request, res: Response, next: NextFu
     res.cookie('token', token, { httpOnly: true, secure: true });
     res.cookie('companyID', safeUser.account_id, { httpOnly: true, secure: true });
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: {userDetails: safeUser, token, platformControl: userRoleData.data} });
-  } catch (error: any) {
+  } catch (error) {
     next(error);     
   }
 };
@@ -41,7 +41,7 @@ export const createUserToken = async (req: Request, res: Response, next: NextFun
     const userToken = new UserToken({ userId, token });
     await userToken.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: userToken });
-  } catch (error: any) {
+  } catch (error) {
     next(error);     
   }
 }

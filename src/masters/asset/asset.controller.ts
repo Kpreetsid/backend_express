@@ -32,7 +32,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -66,7 +66,7 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -90,7 +90,7 @@ export const createAsset = async (req: Request, res: Response, next: NextFunctio
       Equipment.image_path = image.fileName;
     }
     await insert(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -110,7 +110,7 @@ export const updateAsset = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await updateById(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -131,7 +131,7 @@ export const updateAssetImage = async (req: Request, res: Response, next: NextFu
     }
     await updateAssetImageById(req.params.id, image_path, `${user_id}`);
     res.status(200).json({ status: true, message: "Data updated successfully" });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -153,7 +153,7 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
     await removeLocationMapping(req.params.id);
     await removeById(match, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }

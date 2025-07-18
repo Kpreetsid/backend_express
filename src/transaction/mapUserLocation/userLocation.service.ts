@@ -61,7 +61,7 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
       })
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -93,7 +93,7 @@ export const mapUserLocations = async (req: Request, res: Response, next: NextFu
     })
     await MapUserAssetLocation.insertMany(queryArray);
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -112,7 +112,7 @@ export const updateMappedUserLocations = async (req: Request, res: Response, nex
     })
     await MapUserAssetLocation.insertMany(queryArray);
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -150,7 +150,7 @@ export const userAssets = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No mapping data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: 'User asset mapping fetched successfully', data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };

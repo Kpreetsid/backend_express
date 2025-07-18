@@ -28,7 +28,7 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -36,7 +36,7 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
 export const getLocationTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await getTree(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -49,7 +49,7 @@ export const getKpiFilterLocations = async (req: Request, res: Response, next: N
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -63,7 +63,7 @@ export const getChildAssetsAgainstLocation = async (req: Request, res: Response,
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -83,7 +83,7 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -104,7 +104,7 @@ export const createLocation = async (req: Request, res: Response, next: NextFunc
     const data: any = await insertLocation(body);
     await mapUserLocationData(data._id, body.userIdList, account_id);
     res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -136,7 +136,7 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
     await mapUserLocationData(data._id, body.userIdList, account_id);
     data.id = data._id;
     res.status(200).json({ status: true, message: "Data updated successfully", data: [data] });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -158,7 +158,7 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
     }
     await removeById(req.params.id, location);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -175,7 +175,7 @@ export const updateLocationFloorMapImage = async (req: Request, res: Response, n
     }
     await updateFloorMapImage(id, account_id, user_id, top_level_location_image);
     res.status(200).json({ status: true, message: "Data updated successfully"});
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -188,7 +188,7 @@ export const getLocationSensorList = async (req: Request, res: Response, next: N
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }

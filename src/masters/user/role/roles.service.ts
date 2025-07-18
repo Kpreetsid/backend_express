@@ -21,7 +21,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -34,7 +34,7 @@ export const getMyRoles = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -49,7 +49,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -61,7 +61,7 @@ export const verifyUserRole = async (id: string, companyID: string) => {
       return null;
     }
     return userRole;
-  } catch (error: any) {
+  } catch (error) {
     return null;
   }
 }
@@ -71,7 +71,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
     const newUserRoleMenu: IUserRoleMenu = new UserRoleMenu(req.body);
     await newUserRoleMenu.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: newUserRoleMenu });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -85,7 +85,7 @@ export const createUserRole = async (userRole: any, userData: IUser) => {
       data: platformControl
     });
     return await newUserRoleMenu.save();
-  } catch (error: any) {
+  } catch (error) {
     return null;
   }
 }
@@ -101,7 +101,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data: updatedUserRoleMenu });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -117,7 +117,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     }
     await UserRoleMenu.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };

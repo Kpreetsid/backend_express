@@ -92,7 +92,7 @@ export const getTree = async (req: Request, res: Response, next: NextFunction): 
     }
 
     res.status(200).json({ status: true, message: "Data fetched successfully", data: treeData });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -150,7 +150,7 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
     };
     traverse(rootNodes, 1);
     return { levelOneLocations, levelTwoLocations, levelThreeLocations };
-  } catch (error: any) {
+  } catch (error) {
     return null;
   }
 };
@@ -164,7 +164,7 @@ export const childAssetsAgainstLocation = async (lOne: any, lTwo: any, account_i
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return { assetList: data, locationList: finalList };
-  } catch (error: any) {
+  } catch (error) {
     return null;
   }
 }
@@ -183,7 +183,7 @@ const getAllChildLocationsRecursive = async (parentIds: any) => {
       }
     }
     return childIds;
-  } catch (error: any) {
+  } catch (error) {
     return [];
   }
 }
@@ -243,7 +243,7 @@ export const getLocationSensor = async (account_id: any, user_id: any, userRole:
       }
     });
     return result;
-  } catch (error: any) {
+  } catch (error) {
     return null;
   }
 }

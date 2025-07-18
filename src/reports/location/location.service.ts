@@ -166,7 +166,7 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
     });
     await insertData.save();
     return res.status(200).json({ status: true, message: 'Location Report Created Successfully' });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };

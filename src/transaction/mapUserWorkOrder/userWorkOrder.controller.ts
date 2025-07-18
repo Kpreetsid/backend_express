@@ -4,7 +4,7 @@ import { getAll, mappedData } from './userWorkOrder.service';
 export const getUserWorkOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await getAll(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -12,7 +12,7 @@ export const getUserWorkOrders = async (req: Request, res: Response, next: NextF
 export const getMappedData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await mappedData(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };

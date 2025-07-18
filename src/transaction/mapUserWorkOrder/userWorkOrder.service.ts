@@ -12,7 +12,7 @@ export const mappedData = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -45,7 +45,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };

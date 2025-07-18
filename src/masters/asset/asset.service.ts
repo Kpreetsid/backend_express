@@ -49,7 +49,7 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -96,7 +96,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -460,7 +460,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
     );
     await MapUserAssetLocation.insertMany(allMapUserAssetData);
     return res.status(201).json({ status: true, message: "Data created successfully", data: parentAssetData._id });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -785,7 +785,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     );
     await MapUserAssetLocation.insertMany(allMapUserAssetData);
     return res.status(200).json({ status: true, message: "Data updated successfully", data: id });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };

@@ -43,7 +43,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     }
     merge(req, { user: userData.toObject(), companyID, role: userRole.toObject().data, userToken: cookieToken });
     next();
-  } catch (error: any) {
+  } catch (error) {
     next(error)
   }
 };

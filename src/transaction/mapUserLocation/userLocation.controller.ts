@@ -4,7 +4,7 @@ import { userLocations, userAssets, mapUserLocations, updateMappedUserLocations,
 export const getUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await userLocations(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -12,7 +12,7 @@ export const getUserLocations = async (req: Request, res: Response, next: NextFu
 export const getUserAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await userAssets(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -26,7 +26,7 @@ export const setUserLocations = async (req: Request, res: Response, next: NextFu
       throw Object.assign(new Error('Invalid data'), { status: 400 });
     }
     await mapUserLocations(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -34,7 +34,7 @@ export const setUserLocations = async (req: Request, res: Response, next: NextFu
 export const updateUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await updateMappedUserLocations(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -42,7 +42,7 @@ export const updateUserLocations = async (req: Request, res: Response, next: Nex
 export const updateSendMailFlag = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await updateMappedUserFlags(req, res, next);
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };

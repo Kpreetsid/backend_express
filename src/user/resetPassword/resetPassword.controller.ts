@@ -17,7 +17,7 @@ export const sendVerificationEmail = async (req: Request, res: Response, next: N
             throw Object.assign(new Error('Failed to send verification email'), { status: 500 });
         }
         res.status(200).json({ status: true, message: "Verification email sent successfully" });
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 };
@@ -43,7 +43,7 @@ export const userOTPVerification = async (req: Request, res: Response, next: Nex
             throw Object.assign(new Error('Invalid OTP'), { status: 400 });
         }
         res.status(200).json({ status: true, message: "User OTP verified successfully" });
-    } catch (error: any) {
+    } catch (error) {
         next(error);
     }
 };

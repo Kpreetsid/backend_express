@@ -51,7 +51,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     });
     await userTokenData.save();
     res.status(200).json({ status: true, message: 'Login successful', data: {token, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data} });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -75,7 +75,7 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
     await sendPasswordChangeConfirmation(user);
     await VerificationCode.deleteOne({ email: user.email, code: token.toString() });
     return res.status(200).json({ status: true, message: 'Password reset successful' });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -88,7 +88,7 @@ export const userLogOutService = async (req: Request, res: Response, next: NextF
     res.clearCookie('token');
     res.clearCookie('companyID');
     return res.status(200).json({ status: true, message: 'Logout successful' });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };

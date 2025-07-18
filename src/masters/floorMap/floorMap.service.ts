@@ -38,7 +38,7 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
       throw Object.assign(new Error('No assets found for the given location'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: 'Coordinates Found', data: enrichedFloorMaps });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -57,7 +57,7 @@ export const floorMapAssetCoordinates = async (req: Request, res: Response, next
       throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: 'Coordinates Found', data: floorMaps });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -84,7 +84,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
     const endpointLocation = new EndpointLocation(req.body);
     await endpointLocation.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: endpointLocation });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -97,7 +97,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 }
@@ -113,7 +113,7 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     }
     await EndpointLocation.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
@@ -138,7 +138,7 @@ export const insertCoordinates = async (req: Request, res: Response, next: NextF
       throw Object.assign(new Error('Failed to set coordinates'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Coordinates added successfully", data });
-  } catch (error: any) {
+  } catch (error) {
     next(error);
   }
 };
