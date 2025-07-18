@@ -1,4 +1,4 @@
-import express, { NextFunction, Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getAll, insert, updateById, removeById, getAssetsTreeData, getAssetsFilteredData, updateAssetImageById, getAssetDataSensorList } from './asset.service';
 import { IUser } from '../../models/user.model';
@@ -6,7 +6,7 @@ import { getAssetsMappedData, removeLocationMapping } from '../../transaction/ma
 import mongoose from 'mongoose';
 import { uploadBase64Image } from '../../_config/upload';
 
-export const getAssets = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
@@ -37,7 +37,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
   }
 }
 
-export const getAsset = async (req: Request, res: Response, next: NextFunction) => {
+export const getAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const params: any = req.query;
@@ -71,19 +71,17 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction) 
   }
 }
 
-export const getAssetTree = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssetTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await getAssetsTreeData(req, res, next);
 }
 
-export const getFilteredAssets = async (req: Request, res: Response, next: NextFunction) => {
+export const getFilteredAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await getAssetsFilteredData(req, res, next);
 }
 
-export const createAsset = async (req: Request, res: Response, next: NextFunction) => {
+export const createAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
-    const childAssets: any[] = [];
+    const { Equipment } = req.body;
     if (!Equipment.userList || Equipment.userList.length === 0) {
       throw Object.assign(new Error('Please select at least one user'), { status: 400 });
     }
@@ -91,20 +89,19 @@ export const createAsset = async (req: Request, res: Response, next: NextFunctio
       const image = await uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image.fileName;
     }
-    
     await insert(req, res, next);
   } catch (error: any) {
     next(error);
   }
 }
 
-export const updateAsset = async (req: Request, res: Response, next: NextFunction) => {
+export const updateAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
+    const { Equipment } = req.body;
     if (req.params.id !== Equipment.id) {
       throw Object.assign(new Error('Data mismatch'), { status: 403 });
     }
@@ -118,9 +115,9 @@ export const updateAsset = async (req: Request, res: Response, next: NextFunctio
   }
 }
 
-export const updateAssetImage = async (req: Request, res: Response, next: NextFunction) => {
+export const updateAssetImage = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
@@ -139,7 +136,7 @@ export const updateAssetImage = async (req: Request, res: Response, next: NextFu
   }
 }
 
-export const removeAsset = async (req: Request, res: Response, next: NextFunction) => {
+export const removeAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
@@ -154,13 +151,13 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await removeLocationMapping(req.params.id);
-    await removeById(match);
+    await removeById(match, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error: any) {
     next(error);
   }
 }
 
-export const getAssetSensorList = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssetSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await getAssetDataSensorList(req, res, next);
 }

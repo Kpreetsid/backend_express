@@ -4,7 +4,7 @@ import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import mongoose from "mongoose";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { accountId: account_id };
@@ -31,9 +31,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
@@ -48,7 +48,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const newObservation = new Observation(req.body);
     const data = await newObservation.save();
@@ -58,7 +58,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { params: { id }, body } = req;
     if (!id) {
@@ -74,7 +74,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });

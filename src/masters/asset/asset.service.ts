@@ -23,9 +23,9 @@ export const getAll = async (match: any) => {
   return result;
 }
 
-export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { locations = [], assets = [], top_level, location_id } = req.body;
+    const { locations = [], assets = [], top_level } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     if(userRole !== 'admin') {
@@ -54,7 +54,7 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
   }
 };
 
-export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { locations, id } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
@@ -109,7 +109,7 @@ const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
   const match = { parent_id: asset._id, visible: true };
   const children: IAsset[] = await getData(Asset, { filter: match });
   const withChildren = await Promise.all(
-    children.map(async (child) => {
+    children.map(async (child): Promise<any> => {
       if (child.asset_type) {
         if (!ignoreAssets.includes(child.asset_type)) {
           const childs = await getRecursiveAssets(child, id);
@@ -142,9 +142,9 @@ const getRecursiveLocations = async (asset: any) => {
   return locationData[0];
 }
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } = req.body;
     const childAssets: any[] = [];
  
@@ -465,9 +465,9 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } } = req;
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
@@ -794,15 +794,15 @@ export const updateAssetImageById = async (id: string, image_path: string, user_
   return await Asset.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
 }
 
-export const removeById = async (match: any) => {
+export const removeById = async (match: any, userID: any) => {
   const childAssets = await Asset.find({ parent_id: match._id });
   if (childAssets && childAssets.length > 0) {
     await Asset.updateMany({ parent_id: match._id }, { visible: false, isActive: false });
   }
-  return await Asset.findOneAndUpdate(match, { visible: false, isActive: false }, { new: true });
+  return await Asset.findOneAndUpdate(match, { visible: false, isActive: false, updatedBy: userID }, { new: true });
 };
 
-export const getAssetDataSensorList = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssetDataSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };

@@ -4,7 +4,7 @@ import { verifyUserRole } from "../../masters/user/role/roles.service";
 import { verifyUserLogin } from "../../masters/user/user.service";
 import { UserToken } from "../../models/userToken.model";
 
-export const getAllUserTokens = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllUserTokens = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { token } = req.params;
     if(!token) {
@@ -35,7 +35,7 @@ export const getAllUserTokens = async (req: Request, res: Response, next: NextFu
   }
 };
 
-export const createUserToken = async (req: Request, res: Response, next: NextFunction) => {
+export const createUserToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { userId, token } = req.body;
     const userToken = new UserToken({ userId, token });

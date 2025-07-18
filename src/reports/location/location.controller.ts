@@ -1,9 +1,9 @@
-import express, { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { getAll, createLocationReport, deleteLocationsReport } from './location.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 
-export const getLocationsReport = async (req: Request, res: Response, next: NextFunction) => {
+export const getLocationsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id };
@@ -24,11 +24,11 @@ export const getLocationsReport = async (req: Request, res: Response, next: Next
   }
 };
 
-export const createReport = async (req: Request, res: Response, next: NextFunction) => {
+export const createReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await createLocationReport(req, res, next);
 }
 
-export const deleteReport = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { params: { id }} = req;
     if (!id) {

@@ -1,9 +1,9 @@
-import express, { NextFunction, Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getFloorMaps, insert, updateById, removeById, getCoordinates, floorMapAssetCoordinates, insertCoordinates, deleteCoordinates } from './floorMap.service';
 import { IUser } from '../../models/user.model';
 
-export const getAllFloorMaps = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllFloorMaps = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, isActive: true };
@@ -20,7 +20,7 @@ export const getAllFloorMaps = async (req: Request, res: Response, next: NextFun
   }
 }
 
-export const getFloorMapByID = async (req: Request, res: Response, next: NextFunction) => {
+export const getFloorMapByID = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
@@ -40,31 +40,31 @@ export const getFloorMapByID = async (req: Request, res: Response, next: NextFun
   }
 }
 
-export const createFloorMap = async (req: Request, res: Response, next: NextFunction) => {
+export const createFloorMap = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await insert(req, res, next);
 }
 
-export const updateFloorMap = async (req: Request, res: Response, next: NextFunction) => {
+export const updateFloorMap = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await updateById(req, res, next);
 }
 
-export const removeFloorMap = async (req: Request, res: Response, next: NextFunction) => {
+export const removeFloorMap = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await removeById(req, res, next);
 }
 
-export const getFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+export const getFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await getCoordinates(req, res, next);
 }
 
-export const getFloorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+export const getFloorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await floorMapAssetCoordinates(req, res, next);
 }
 
-export const setFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+export const setFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await insertCoordinates(req, res, next);
 }
 
-export const removeFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+export const removeFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { params: { id }} = req;

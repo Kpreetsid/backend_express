@@ -1,4 +1,4 @@
-import { MapUserAssetLocation, IMapUserLocation } from "../../models/mapUserLocation.model";
+import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
 import { LocationMaster } from "../../models/location.model";
 import { Asset } from "../../models/asset.model";
@@ -14,7 +14,7 @@ export const getLocationsMappedData = async (userId: string) => {
   return await MapUserAssetLocation.find({ userId: userId, locationId: { $exists: true } });
 }
 
-export const userLocations = async (req: Request, res: Response, next: NextFunction) => {
+export const userLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
@@ -79,9 +79,9 @@ export const mapUserLocationData = async (id: any, userIdList: any, account_id: 
   return await MapUserAssetLocation.insertMany(queryArray);
 }
 
-export const mapUserLocations = async (req: Request, res: Response, next: NextFunction) => {
+export const mapUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const body = req.body;
     const queryArray: any = [];
     body.forEach((doc: any) => {
@@ -98,9 +98,9 @@ export const mapUserLocations = async (req: Request, res: Response, next: NextFu
   }
 };
 
-export const updateMappedUserLocations = async (req: Request, res: Response, next: NextFunction) => {
+export const updateMappedUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const body = req.body;
     const queryArray: any = [];
     body.forEach((doc: any) => {
@@ -117,7 +117,7 @@ export const updateMappedUserLocations = async (req: Request, res: Response, nex
   }
 }
 
-export const userAssets = async (req: Request, res: Response, next: NextFunction) => {
+export const userAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
@@ -155,9 +155,8 @@ export const userAssets = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const updateMappedUserFlags = async (req: Request, res: Response, next: NextFunction) => {
+export const updateMappedUserFlags = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, 'user', {}) as IUser;
     const body: { _id: string; sendMail: boolean }[] = req.body;
     if (!Array.isArray(body) || body.length === 0) {
       throw Object.assign(new Error('Invalid input: body must be a non-empty array'), { status: 400 });

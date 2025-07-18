@@ -6,7 +6,7 @@ import { Blog, IBlog } from "../../models/help.model";
 import { WorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
 import mongoose from "mongoose";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id, status, priority, order_no, wo_asset_id } = req.query;
@@ -61,7 +61,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if (!req.params.id) {
@@ -119,7 +119,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const orderStatus = async (req: Request, res: Response, next: NextFunction) => {
+export const orderStatus = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
@@ -158,7 +158,7 @@ export const orderStatus = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const orderPriority = async (req: Request, res: Response, next: NextFunction) => {
+export const orderPriority = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
@@ -197,7 +197,7 @@ export const orderPriority = async (req: Request, res: Response, next: NextFunct
   }
 };
 
-export const monthlyCount = async (req: Request, res: Response, next: NextFunction) => {
+export const monthlyCount = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
@@ -229,7 +229,7 @@ export const monthlyCount = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
-export const plannedUnplanned = async (req: Request, res: Response, next: NextFunction) => {
+export const plannedUnplanned = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
@@ -304,7 +304,7 @@ export const plannedUnplanned = async (req: Request, res: Response, next: NextFu
     let categories = ['Work Order', 'Preventive']
     categories.forEach((element: any) => {
       if (final_result[element].length == 0) {
-        final_result.date.forEach((item: any) => {
+        final_result.date.forEach(() => {
           final_result[element].push(0)
         });
       }
@@ -315,7 +315,7 @@ export const plannedUnplanned = async (req: Request, res: Response, next: NextFu
   }
 }
 
-export const summaryData = async (req: Request, res: Response, next: NextFunction) => {
+export const summaryData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
@@ -337,10 +337,10 @@ export const summaryData = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const todayDate = new Date().toISOString().split('T')[0];
-    let complete_wo_on_time = [];
-    let overdue_WO = [];
-    let planned_WO = [];
-    let Unplanned_WO = [];
+    let complete_wo_on_time: any = [];
+    let overdue_WO : any= [];
+    let planned_WO: any = [];
+    let Unplanned_WO: any = [];
     WO_list.map((item: any) => {
       if (item.status == 'Completed' && (new Date(item.end_date) >= new Date(item.completed_on))) {
         complete_wo_on_time.push(item);
@@ -369,7 +369,7 @@ export const summaryData = async (req: Request, res: Response, next: NextFunctio
   }
 }
 
-export const pendingOrders = async (req: Request, res: Response, next: NextFunction) => {
+export const pendingOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query: any = req.query;
@@ -404,9 +404,9 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
   }
 }
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     req.body.account_id = account_id;
     req.body.user_id = user_id;
     const newAsset = new WorkOrder(req.body);
@@ -417,7 +417,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { body, params: { id } } = req;
     if (!id) {
@@ -433,7 +433,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });

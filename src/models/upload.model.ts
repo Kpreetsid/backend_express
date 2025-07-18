@@ -1,4 +1,4 @@
-import mongoose, { Schema, ObjectId, Document } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUpload extends Document {
     originalName: string;

@@ -1,9 +1,9 @@
-import express, { NextFunction, Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getFormCategories, insert, updateById, removeById } from './formCategory.service';
 import { IUser } from '../../models/user.model';
 
-export const getAllFormCategories = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllFormCategories = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
@@ -20,7 +20,7 @@ export const getAllFormCategories = async (req: Request, res: Response, next: Ne
   }
 }
 
-export const getFormCategoryByID = async (req: Request, res: Response, next: NextFunction) => {
+export const getFormCategoryByID = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
@@ -40,22 +40,21 @@ export const getFormCategoryByID = async (req: Request, res: Response, next: Nex
   }
 }
 
-export const createFormCategory = async (req: Request, res: Response, next: NextFunction) => {
+export const createFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await insert(req, res, next);
   } catch (error: any) {
     next(error);
   }
 }
 
-export const updateFormCategory = async (req: Request, res: Response, next: NextFunction) => {
+export const updateFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await updateById(req, res, next);
 }
 
-export const removeFormCategory = async (req: Request, res: Response, next: NextFunction) => {
+export const removeFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

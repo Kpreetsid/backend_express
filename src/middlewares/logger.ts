@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
-import { UserLog, IUserLog } from '../models/userLogs.model';
+import { UserLog } from '../models/userLogs.model';
 import { get, merge, omit } from 'lodash';
 import { IUser } from '../models/user.model';
 
-export const activityLogger = async (req: Request, res: Response, next: NextFunction) => {
+export const activityLogger = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   const startTime = Date.now();
   res.on('finish', async () => {
     try {

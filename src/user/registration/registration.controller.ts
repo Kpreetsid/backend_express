@@ -1,8 +1,8 @@
-import express, { NextFunction, Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { emailVerificationCode, verifyOTPCode } from './registration.service';
 import { getAllUsers } from '../../masters/user/user.service';
 
-export const userRegister = async (req: Request, res: Response, next: NextFunction) => {
+export const userRegister = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const { email, username, firstName, lastName } = req.body;
         if (!email || !username || !firstName || !lastName) {
@@ -27,7 +27,7 @@ export const userRegister = async (req: Request, res: Response, next: NextFuncti
     }
 }
 
-export const userOTPVerification = async (req: Request, res: Response, next: NextFunction) => {
+export const userOTPVerification = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const body = req.body;
         const data = await verifyOTPCode(body);

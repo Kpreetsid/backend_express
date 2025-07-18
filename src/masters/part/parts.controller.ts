@@ -1,9 +1,9 @@
-import express, { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { getAll, insert, updateById, removeById } from './parts.service';
 import { IUser } from '../../models/user.model';
 
-export const getParts = async (req: Request, res: Response, next: NextFunction) => {
+export const getParts = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id };
@@ -20,7 +20,7 @@ export const getParts = async (req: Request, res: Response, next: NextFunction) 
   }
 }
 
-export const getPart = async (req: Request, res: Response, next: NextFunction) => {
+export const getPart = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
@@ -40,7 +40,7 @@ export const getPart = async (req: Request, res: Response, next: NextFunction) =
   }
 }
 
-export const createPart = async (req: Request, res: Response, next: NextFunction) => {
+export const createPart = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const user = get(req, "user", {}) as IUser;
     const data = await insert(req.body, user);
@@ -50,7 +50,7 @@ export const createPart = async (req: Request, res: Response, next: NextFunction
   }
 }
 
-export const updatePart = async (req: Request, res: Response, next: NextFunction) => {
+export const updatePart = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
@@ -71,7 +71,7 @@ export const updatePart = async (req: Request, res: Response, next: NextFunction
   }
 }
 
-export const removePart = async (req: Request, res: Response, next: NextFunction) => {
+export const removePart = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {

@@ -5,7 +5,7 @@ import { IUser } from "../../../models/user.model";
 import { platformControlData } from '../../../_config/userRoles';
 import { get } from "lodash";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
      const query = req.query;
@@ -26,9 +26,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const getMyRoles = async (req: Request, res: Response, next: NextFunction) => {
+export const getMyRoles = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const data = await UserRoleMenu.findOne({ account_id: account_id, user_id: user_id, visible: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -39,12 +39,11 @@ export const getMyRoles = async (req: Request, res: Response, next: NextFunction
   }
 }
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const data = await UserRoleMenu.findById(req.params.id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -67,7 +66,7 @@ export const verifyUserRole = async (id: string, companyID: string) => {
   }
 }
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const newUserRoleMenu: IUserRoleMenu = new UserRoleMenu(req.body);
     await newUserRoleMenu.save();
@@ -91,7 +90,7 @@ export const createUserRole = async (userRole: any, userData: IUser) => {
   }
 }
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { params: { id }, body } = req;
     if (!id) {
@@ -107,7 +106,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });

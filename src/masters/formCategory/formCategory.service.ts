@@ -7,10 +7,10 @@ export const getFormCategories = async (match: any) => {
   return await Category.find(match);
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const body = req.body;
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const newCategoryBody = new Category({
       ...body,
       account_id,
@@ -23,7 +23,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { params: { id }, body: { name, description } } = req;
     if (!id) {

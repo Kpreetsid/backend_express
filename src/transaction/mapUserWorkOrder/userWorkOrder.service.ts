@@ -4,7 +4,7 @@ import { WorkOrder } from "../../models/workOrder.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 
-export const mappedData = async (req: Request, res: Response, next: NextFunction) => {
+export const mappedData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { workOrderId } = req.params;
     const data: IWorkOrderAssignee[] = await WorkOrderAssignee.find({ woId: workOrderId })
@@ -17,7 +17,7 @@ export const mappedData = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;

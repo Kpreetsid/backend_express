@@ -1,11 +1,11 @@
-import express, { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { getAll, getLatest, insertAssetReport, updateAssetReport, deleteAssetReport } from './asset.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 
-export const getAssetsReport = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match = { accountId: account_id };
     const populateFilter = [{ path: 'locationId', select: 'location_name' }, { path: 'assetId', select: 'asset_name' }, { path: 'userId', select: 'firstName lastName' }];
     const data = await getAll(match, populateFilter);
@@ -18,9 +18,9 @@ export const getAssetsReport = async (req: Request, res: Response, next: NextFun
   }
 };
 
-export const getAssetsReportById = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssetsReportById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
@@ -36,7 +36,7 @@ export const getAssetsReportById = async (req: Request, res: Response, next: Nex
   }
 };
 
-export const getLatestReport = async (req: Request, res: Response, next: NextFunction) => {
+export const getLatestReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
@@ -57,9 +57,9 @@ export const getLatestReport = async (req: Request, res: Response, next: NextFun
   }
 };
 
-export const createAssetsReport = async (req: Request, res: Response, next: NextFunction) => {
+export const createAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const body = req.body;
     body.accountId = account_id;
     body.createdBy = user_id;
@@ -70,13 +70,13 @@ export const createAssetsReport = async (req: Request, res: Response, next: Next
   }
 };
 
-export const updateAssetsReport = async (req: Request, res: Response, next: NextFunction) => {
+export const updateAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { params: { id }, body } = req;
     if(!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { _id: user_id } = get(req, "user", {}) as IUser;
     body.updatedBy = user_id;
     const data = await updateAssetReport(id, body);
     if (!data) {
@@ -88,9 +88,9 @@ export const updateAssetsReport = async (req: Request, res: Response, next: Next
   }
 };
 
-export const deleteAssetsReport = async (req: Request, res: Response, next: NextFunction) => {
+export const deleteAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
     if(!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });

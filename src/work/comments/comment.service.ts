@@ -1,14 +1,15 @@
-import { Comments, IComments } from "../../models/comment.model";
+import { Comments } from "../../models/comment.model";
 import { Request, Response, NextFunction } from 'express';
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
 import mongoose from "mongoose";
 import { WorkOrder } from "../../models/workOrder.model";
+import { IUser } from "../../models/user.model";
+import { get } from "lodash";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const data = await Comments.find({});
+    const { account_id } = get(req, "user", {}) as IUser;
+    const match : any = { account_id: account_id };
+    const data = await Comments.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -18,12 +19,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { order_id: new mongoose.Types.ObjectId(req.params.id) };
     const isOrderExist = await WorkOrder.find({ _id: new mongoose.Types.ObjectId(req.params.id), account_id: account_id, visible: true });
     if (!isOrderExist || isOrderExist.length === 0) {
@@ -39,7 +40,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const newComment = new Comments(req.body);
     const data = await newComment.save();
@@ -49,7 +50,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { body, params: { id } } = req;
     if (!id) {
@@ -65,7 +66,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });

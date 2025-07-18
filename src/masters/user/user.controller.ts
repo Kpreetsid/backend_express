@@ -1,10 +1,10 @@
-import express, { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import _, { get } from 'lodash';
 import { getAllUsers, createNewUser, updateUserDetails, removeById, getLocationWiseUser } from './user.service';
 import { IUser } from '../../models/user.model';
 import { deleteVerificationCode, verifyOTPExists } from '../../user/resetPassword/resetPassword.service';
 
-export const getUsers = async (req: Request, res: Response, next: NextFunction) => {
+export const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, isActive: true };
@@ -21,7 +21,7 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction) 
   }
 }
 
-export const getUser = async (req: Request, res: Response, next: NextFunction) => {
+export const getUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
    try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
@@ -41,16 +41,15 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
   }
 }
 
-export const getLocationWiseUsers = async (req: Request, res: Response, next: NextFunction) => {
+export const getLocationWiseUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await getLocationWiseUser(req, res, next);
   } catch (error: any) {
     next(error);
   }
 }
 
-export const createUser = async (req: Request, res: Response, next: NextFunction) => {
+export const createUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const body = req.body;
@@ -74,9 +73,9 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
   }
 }
 
-export const updateUser = async (req: Request, res: Response, next: NextFunction) => {
+export const updateUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
@@ -93,7 +92,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
   }
 }
 
-export const changeUserPassword = async (req: Request, res: Response, next: NextFunction) => {
+export const changeUserPassword = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { email, newPassword, confirmNewPassword } = req.body;
     if (!email || !newPassword || !confirmNewPassword) {
@@ -123,9 +122,9 @@ export const changeUserPassword = async (req: Request, res: Response, next: Next
   }
 }
 
-export const removeUser = async (req: Request, res: Response, next: NextFunction) => {
+export const removeUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }

@@ -3,7 +3,7 @@ import { SopsMasterModel, ISopsMaster } from '../../models/sops.model';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
         const { categoryId } = req.query;
@@ -36,12 +36,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     }
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         if(!req.params.id) {
             throw Object.assign(new Error('ID is required'), { status: 400 });
         }
-        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        const { account_id } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, _id: req.params.id, visible: true };
         const data: ISopsMaster[] | null = await SopsMasterModel.find(match);
         if (!data || data.length === 0) {
@@ -53,7 +53,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     }
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const newSchedule = new SopsMasterModel(req.body);
         const data = await newSchedule.save();
@@ -63,7 +63,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
     }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const { params: { id }, body } = req;
         if (!id) {
@@ -79,7 +79,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         if (!req.params.id) {
             throw Object.assign(new Error('ID is required'), { status: 400 });

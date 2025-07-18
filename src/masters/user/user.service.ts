@@ -14,10 +14,10 @@ export const verifyUserLogin = async ({ id, companyID, email, username }: UserLo
   return await User.findOne({ _id: id, account_id: companyID, email, username }).select('-password');
 };
 
-export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction) => {
+export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { locationID } = req.params;
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { user_role: userRole } = get(req, "user", {}) as IUser;
     if(userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }

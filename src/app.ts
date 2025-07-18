@@ -39,11 +39,11 @@ app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_request'))
 app.use(fileLogger);
 app.use(activityLogger);
 
-// app.use(rateLimit({
-//   windowMs: 15 * 60 * 1000,
-//   max: 100,
-//   message: 'Too many requests, please try again later.'
-// }));
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: 'Too many requests, please try again later.'
+}));
 
 app.use(compression({
   level: 9,

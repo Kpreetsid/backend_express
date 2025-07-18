@@ -1,4 +1,4 @@
-import express, { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { getAll, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
@@ -6,7 +6,7 @@ import { mapUserLocationData } from '../../transaction/mapUserLocation/userLocat
 import mongoose from 'mongoose';
 const moduleName: string = "location";
 
-export const getLocations = async (req: Request, res: Response, next: NextFunction) => {
+export const getLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id: account_id };
@@ -33,16 +33,15 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
   }
 }
 
-export const getLocationTree = async (req: Request, res: Response, next: NextFunction) => {
+export const getLocationTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     await getTree(req, res, next);
   } catch (error: any) {
     next(error);
   }
 }
 
-export const getKpiFilterLocations = async (req: Request, res: Response, next: NextFunction) => {
+export const getKpiFilterLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const data = await kpiFilterLocations(account_id, user_id, userRole);
@@ -55,9 +54,9 @@ export const getKpiFilterLocations = async (req: Request, res: Response, next: N
   }
 }
 
-export const getChildAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction) => {
+export const getChildAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { location_id: { levelOneLocations, levelTwoLocations } } = req.body;
     const data = await childAssetsAgainstLocation(levelOneLocations, levelTwoLocations, account_id);
     if (!data) {
@@ -69,7 +68,7 @@ export const getChildAssetsAgainstLocation = async (req: Request, res: Response,
   }
 }
 
-export const getLocation = async (req: Request, res: Response, next: NextFunction) => {
+export const getLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if(!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
@@ -89,9 +88,9 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
   }
 }
 
-export const createLocation = async (req: Request, res: Response, next: NextFunction) => {
+export const createLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const role = get(req, "role", {}) as any;
     if (!role[moduleName].add_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
@@ -110,9 +109,9 @@ export const createLocation = async (req: Request, res: Response, next: NextFunc
   }
 }
 
-export const updateLocation = async (req: Request, res: Response, next: NextFunction) => {
+export const updateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const role = get(req, "role", {}) as any;
     if (!role[moduleName].edit_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
@@ -142,9 +141,9 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
   }
 }
 
-export const removeLocation = async (req: Request, res: Response, next: NextFunction) => {
+export const removeLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const role = get(req, "role", {}) as any;
     if (!role[moduleName].delete_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
@@ -164,7 +163,7 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
   }
 }
 
-export const updateLocationFloorMapImage = async (req: Request, res: Response, next: NextFunction) => {
+export const updateLocationFloorMapImage = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { params: { id }, body: { top_level_location_image } } = req;
     if (!id || !top_level_location_image) {
@@ -181,7 +180,7 @@ export const updateLocationFloorMapImage = async (req: Request, res: Response, n
   }
 }
 
-export const getLocationSensorList = async (req: Request, res: Response, next: NextFunction) => {
+export const getLocationSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const data = await getLocationSensor(account_id, user_id, userRole);

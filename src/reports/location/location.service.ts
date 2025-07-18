@@ -44,10 +44,10 @@ const getAssetHealthHistory = (): any[] => {
   return result;
 };
 
-export const createLocationReport = async (req: Request, res: Response, next: NextFunction) => {
+export const createLocationReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { location_id, top_level = true } = req.body;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { location_id } = req.body;
     if (!location_id) {
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
     }

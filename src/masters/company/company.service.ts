@@ -1,6 +1,5 @@
-import mongoose, { ObjectId } from "mongoose";
+import mongoose from "mongoose";
 import { Account, IAccount } from "../../models/account.model";
-import { NextFunction, Request, Response } from 'express';
 
 export const getAllCompanies = async (filter: any) => {
   return await Account.find(filter);
@@ -32,11 +31,11 @@ export const updateById = async (id: string, body: any) => {
   return await Account.findByIdAndUpdate(id, body, { new: true });
 };
 
-export const removeById = async (id: string, accountId: ObjectId, userId: any): Promise<boolean> => {
+export const removeById = async (id: string, userId: any): Promise<boolean> => {
     const data: IAccount | null = await Account.findById(id);
     if (!data || !data.isActive) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await Account.findByIdAndUpdate(id, { isActive: false }, { new: true });
+    await Account.findByIdAndUpdate(id, { isActive: false, updated_by: userId }, { new: true });
     return true;
 };

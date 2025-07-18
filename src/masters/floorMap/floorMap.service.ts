@@ -9,9 +9,9 @@ export const getFloorMaps = async (match: any) => {
   return await EndpointLocation.find(match);
 };
 
-export const getCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+export const getCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { location_id } = req.query;
     let match: any = {};
     if (location_id) {
@@ -43,9 +43,9 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
   }
 };
 
-export const floorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+export const floorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { id: location_id } = req.params;
     let match: any = { account_id: account_id };
     if (location_id) {
@@ -79,7 +79,7 @@ const getAllChildLocationsRecursive = async (parentIds: any): Promise<any> => {
   return childIds;
 }
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const endpointLocation = new EndpointLocation(req.body);
     await endpointLocation.save();
@@ -89,7 +89,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { body: { name, description, location }, params: { id } } = req;
     const data = await EndpointLocation.findByIdAndUpdate(id, { name, description, location }, { new: true });
@@ -102,7 +102,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 }
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
@@ -118,9 +118,9 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const insertCoordinates = async (req: Request, res: Response, next: NextFunction) => {
+export const insertCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const body = req.body;
     const newMappedCoordinates = new EndpointLocation({
       "coordinate": body.coordinate,

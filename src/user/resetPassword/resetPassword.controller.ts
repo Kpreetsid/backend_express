@@ -1,8 +1,8 @@
-import express, { NextFunction, Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { getAllUsers } from '../../masters/user/user.service';
 import { sendVerificationEmailCode, verifyOTPExists, verifyUserOTP } from './resetPassword.service';
 
-export const sendVerificationEmail = async (req: Request, res: Response, next: NextFunction) => {
+export const sendVerificationEmail = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         if (!req.body.email) {
             throw Object.assign(new Error('Email is required'), { status: 400 });
@@ -22,7 +22,7 @@ export const sendVerificationEmail = async (req: Request, res: Response, next: N
     }
 };
 
-export const userOTPVerification = async (req: Request, res: Response, next: NextFunction) => {
+export const userOTPVerification = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const { email, verificationCode } = req.body;
         if (!email || !verificationCode) {

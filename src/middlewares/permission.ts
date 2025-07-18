@@ -26,7 +26,7 @@ export const isOwner = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
-export const isOwnerOrAdmin = async (req: Request, res: Response, next: NextFunction) => {
+export const isOwnerOrAdmin = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { _id: userId, user_role: role } = get(req, 'user', {}) as IUser;
     const { id: targetId } = req.params;

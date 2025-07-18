@@ -11,7 +11,7 @@ import { IAccount } from "../../models/account.model";
 import { getAllCompanies } from "../../masters/company/company.service";
 import { get } from "lodash";
 
-export const userAuthentication = async (req: Request, res: Response, next: NextFunction) => {
+export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -56,7 +56,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
   }
 };
 
-export const userResetPassword = async (req: Request, res: Response, next: NextFunction) => {
+export const userResetPassword = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { token, password } = req.body;
     if(!token) {
@@ -80,7 +80,7 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
   }
 }
 
-export const userLogOutService = async (req: Request, res: Response, next: NextFunction) => {
+export const userLogOutService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { _id: user_id } = get(req, "user", {}) as IUser;
     console.log('User ID:', user_id);

@@ -14,6 +14,6 @@ export default (router: express.Router) => {
     assetRouter.post('/', createAsset);
     assetRouter.put('/:id', isOwnerOrAdmin, updateAsset);
     assetRouter.patch('/:id', isOwnerOrAdmin, updateAssetImage);
-    assetRouter.delete('/:id', hasPermission('admin'),removeAsset);
+    assetRouter.delete('/:id', hasPermission('admin'), removeAsset);
     router.use('/assets', assetRouter);
 }

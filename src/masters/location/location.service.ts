@@ -2,7 +2,7 @@ import { LocationMaster, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
 import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLocation.model";
 import { get } from "lodash";
-import { IUser, User } from "../../models/user.model";
+import { IUser } from "../../models/user.model";
 import { Asset } from "../../models/asset.model";
 import mongoose from "mongoose";
 import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
@@ -33,24 +33,19 @@ const buildTree = async (parentId: string | null, account_id: any): Promise<any[
   );
 };
 
-export const getTree = async (req: Request, res: Response, next: NextFunction) => {
+export const getTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { location_id, location_floor_map_tree } = req.query;
-
     let match: any = { account_id, visible: true };
-    let rootId: string | null = null;
-
     if (location_floor_map_tree) {
       match.top_level = true;
       if (location_id) {
         match._id = location_id;
-        rootId = location_id.toString();
       }
     } else {
       if (location_id) {
         match._id = location_id;
-        rootId = location_id.toString();
       } else {
         match.parent_id = { $exists: false };
       }
@@ -162,9 +157,8 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
 
 export const childAssetsAgainstLocation = async (lOne: any, lTwo: any, account_id: any) => {
   try {
-    var finalList = [];
     const childIds = await getAllChildLocationsRecursive(lTwo);
-    finalList = [...childIds, ...lOne, ...lTwo]
+    const finalList = [...childIds, ...lOne, ...lTwo]
     const data: any = await Asset.find({ locationId: { $in: finalList }, top_level: true, account_id, visible: true }).select('id top_level asset_name asset_type');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

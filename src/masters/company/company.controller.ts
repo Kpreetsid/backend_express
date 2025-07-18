@@ -1,9 +1,9 @@
 import { get } from "lodash";
 import { IUser } from '../../models/user.model';
-import express, { NextFunction, Request, Response } from 'express';
-import { getAllCompanies, createCompany, updateById, removeById } from './company.service';
+import { NextFunction, Request, Response } from 'express';
+import { getAllCompanies, createCompany, updateById } from './company.service';
 
-export const getCompanies = async (req: Request, res: Response, next: NextFunction) => {
+export const getCompanies = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { _id: account_id };
@@ -24,7 +24,7 @@ export const getCompanies = async (req: Request, res: Response, next: NextFuncti
   }
 }
 
-export const getCompany = async (req: Request, res: Response, next: NextFunction) => {
+export const getCompany = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
@@ -47,7 +47,7 @@ export const getCompany = async (req: Request, res: Response, next: NextFunction
   }
 }
 
-export const create = async (req: Request, res: Response, next: NextFunction) => {
+export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const newCompany = {
       account_name: req.body.account_name,
@@ -64,13 +64,13 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
   }
 }
 
-export const updateCompany = async (req: Request, res: Response, next: NextFunction) => {
+export const updateCompany = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { params: { id }, body } = req;
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
@@ -90,7 +90,7 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
   }
 }
 
-export const updateImageCompany = async (req: Request, res: Response, next: NextFunction) => {
+export const updateImageCompany = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { params: { id }, body: { fileName } } = req;
     if(!id) {
@@ -99,7 +99,7 @@ export const updateImageCompany = async (req: Request, res: Response, next: Next
     if(!fileName) {
       throw Object.assign(new Error('File name is required'), { status: 400 });
     }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     if(userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
@@ -114,16 +114,15 @@ export const updateImageCompany = async (req: Request, res: Response, next: Next
   }
 }
 
-export const removeCompany = async (req: Request, res: Response, next: NextFunction) => {
+export const removeCompany = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { user_role: userRole } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     if(userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
-    const result = await removeById(req.params.id, account_id, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error: any) {
     next(error);
