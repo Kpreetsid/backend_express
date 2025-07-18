@@ -1,0 +1,152 @@
+[
+    {
+        "id": "vibration",
+        "categoryName": "Vibration",
+        "subCategory": [
+            {
+                "id": "velocity-rms",
+                "name": "Velocity RMS",
+                "isSelected": true
+            },
+            {
+                "id": "velocity-peak",
+                "name": "Velocity Peak",
+                "isSelected": false
+            },
+            {
+                "id": "velocity-peak_to_peak",
+                "name": "Velocity Peak to Peak",
+                "isSelected": false
+            },
+            {
+                "id": "velocity-kurtosis",
+                "name": "Velocity Kurtosis",
+                "isSelected": false
+            },
+            {
+                "id": "acceleration-rms",
+                "name": "Acceleration RMS",
+                "isSelected": true
+            },
+            {
+                "id": "acceleration-peak",
+                "name": "Acceleration Peak",
+                "isSelected": false
+            },
+            {
+                "id": "acceleration-peak_to_peak",
+                "name": "Acceleration Peak to Peak",
+                "isSelected": false
+            },
+            {
+                "id": "acceleration-kurtosis",
+                "name": "Acceleration Kurtosis",
+                "isSelected": false
+            },
+            {
+                "id": "displacement-rms",
+                "name": "Displacement RMS",
+                "isSelected": true
+            },
+            {
+                "id": "displacement-peak",
+                "name": "Displacement Peak",
+                "isSelected": false
+            },
+            {
+                "id": "displacement-peak_to_peak",
+                "name": "Displacement Peak to Peak",
+                "isSelected": false
+            },
+            {
+                "id": "displacement-kurtosis",
+                "name": "Displacement Kurtosis",
+                "isSelected": false
+            },
+            {
+                "id": "envelope-rms",
+                "name": "Envelope RMS",
+                "isSelected": true
+            },
+            {
+                "id": "envelope-peak",
+                "name": "Envelope Peak",
+                "isSelected": false
+            },
+            {
+                "id": "Harmonics",
+                "name": "Harmonics",
+                "isSelected": false
+            },
+            {
+                "id": "EHNR",
+                "name": "EHNR",
+                "isSelected": false
+            },
+            {
+                "id": "BFF-bsf_amp",
+                "name": "BFF Bsf",
+                "isSelected": false
+            },
+            {
+                "id": "BFF-bpfi_amp",
+                "name": "BFF BPFI",
+                "isSelected": false
+            },
+            {
+                "id": "BFF-bpfo_amp",
+                "name": "BFF BPFO",
+                "isSelected": false
+            },
+            {
+                "id": "BFF-ftf_amp",
+                "name": "BFF FTF",
+                "isSelected": false
+            }
+        ]
+    },
+    {
+        "id": "temperature",
+        "categoryName": "Temperature",
+        "subCategory": [
+            {
+                "id": "temperature",
+                "name": "Temperature",
+                "isSelected": true
+            }
+        ]
+    },
+    {
+        "id": "acoustics",
+        "categoryName": "Acoustics",
+        "subCategory": [
+            {
+                "id": "acoustics",
+                "name": "Acoustics Trend",
+                "isSelected": true
+            }
+        ]
+    },
+    {
+        "id": "magnetic-flux",
+        "categoryName": "Magnetic Flux",
+        "subCategory": [
+            {
+                "id": "magnetic-flux",
+                "name": "Magnetic Flux Trend",
+                "isSelected": true
+            }
+        ]
+    },
+    {
+        "id": "current",
+        "categoryName": "Current",
+        "subCategory": [
+            {
+                "id": "current",
+                "name": "current Trend",
+                "isSelected": true
+            }
+        ]
+    }
+]

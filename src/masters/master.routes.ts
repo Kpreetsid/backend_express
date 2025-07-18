@@ -12,6 +12,7 @@ import scheduleRoutes from './schedule/schedule.routes';
 import sopsRoutes from './sops/sops.routes';
 import teamRoutes from './team/team.routes';
 import floorMapRoutes from './floorMap/floorMap.routes';
+import featuresRoutes from './feature/features.routes';
 
 export default (): express.Router => {
     usersRouter(router);
@@ -26,5 +27,6 @@ export default (): express.Router => {
     observationRoutes(router);
     teamRoutes(router);
     floorMapRoutes(router);
+    featuresRoutes(router);
     return router;
 }
