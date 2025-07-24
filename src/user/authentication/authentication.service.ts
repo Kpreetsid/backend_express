@@ -84,7 +84,7 @@ export const userLogOutService = async (req: Request, res: Response, next: NextF
   try {
     const { _id: user_id } = get(req, "user", {}) as IUser;
     console.log('User ID:', user_id);
-    await UserToken.deleteMany({ userId: user_id });
+    // await UserToken.deleteMany({ userId: user_id });
     res.clearCookie('token');
     res.clearCookie('companyID');
     return res.status(200).json({ status: true, message: 'Logout successful' });
