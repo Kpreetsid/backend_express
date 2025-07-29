@@ -465,6 +465,12 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
+function getValidUpdateFields(obj: Record<string, any>) {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null)
+  );
+}
+
 export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
@@ -487,12 +493,14 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
           const image = await uploadBase64Image(Equipment.image_path, "assets");
           Equipment.image_path = image.fileName;
         }
-        updatePromises.push(Asset.updateOne({ _id: Equipment.id }, { $set: { ...Equipment, updatedBy: user_id } }));
+        const safeUpdate = { ...getValidUpdateFields(Equipment), updatedBy: user_id };
+        updatePromises.push(Asset.updateOne({ _id: Equipment.id }, { $set: safeUpdate }));
       }
     }
     if (Motor || Motor.id) {
       if (Object.keys(Motor).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Motor.id }, { $set: { ...Motor, updatedBy: user_id } }));
+        const safeUpdate = { ...getValidUpdateFields(Motor), updatedBy: user_id };
+        updatePromises.push(Asset.updateOne({ _id: Motor.id }, { $set: safeUpdate }));
       }
     } else {
       const newMotorAsset = new Asset({
@@ -523,7 +531,8 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     }
     if (Flexible || Flexible.id) {
       if (Object.keys(Flexible).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Flexible.id }, { $set: { ...Flexible, updatedBy: user_id } }));
+        const safeUpdate = { ...getValidUpdateFields(Flexible), updatedBy: user_id };
+        updatePromises.push(Asset.updateOne({ _id: Flexible.id }, { $set: safeUpdate }));
       }
     } else {
       const newFlexibleAsset = new Asset({
@@ -549,7 +558,8 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     }
     if (Rigid || Rigid.id) {
       if (Object.keys(Rigid).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Rigid.id }, { $set: { ...Rigid, updatedBy: user_id } }));
+        const safeUpdate = { ...getValidUpdateFields(Rigid), updatedBy: user_id };
+        updatePromises.push(Asset.updateOne({ _id: Rigid.id }, { $set: safeUpdate }));
       }
     } else {
       const newRigidAsset = new Asset({
@@ -578,7 +588,8 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
       Belt_Pulley.forEach((beltPulley: any) => {
         if (beltPulley.id) {
           if (Object.keys(beltPulley).length > 0) {
-            updatePromises.push(Asset.updateOne({ _id: beltPulley.id }, { $set: { ...beltPulley, updatedBy: user_id } }));
+            const safeUpdate = { ...getValidUpdateFields(beltPulley), updatedBy: user_id };
+            updatePromises.push(Asset.updateOne({ _id: beltPulley.id }, { $set: safeUpdate }));
           }
         } else {
           const newBeltPulleyAsset = new Asset({
@@ -611,7 +622,8 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
       Gearbox.forEach((gearbox: any) => {
         if (gearbox.id) {
           if (Object.keys(gearbox).length > 0) {
-            updatePromises.push(Asset.updateOne({ _id: gearbox.id }, { $set: { ...gearbox, updatedBy: user_id } }));
+             const safeUpdate = { ...getValidUpdateFields(gearbox), updatedBy: user_id };
+            updatePromises.push(Asset.updateOne({ _id: gearbox.id }, { $set: safeUpdate }));
           }
         } else {
           const newGearBoxAsset = new Asset({
@@ -661,7 +673,8 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     }
     if (Fan_Blower || Fan_Blower.id) {
       if (Object.keys(Fan_Blower).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Fan_Blower.id }, { $set: { ...Fan_Blower, updatedBy: user_id } }));
+        const safeUpdate = { ...getValidUpdateFields(Fan_Blower), updatedBy: user_id };
+        updatePromises.push(Asset.updateOne({ _id: Fan_Blower.id }, { $set: safeUpdate }));
       }
     } else {
       const newFanBlowerAsset = new Asset({
@@ -695,7 +708,8 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     }
     if (Pumps || Pumps.id) {
       if (Object.keys(Pumps).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Pumps.id }, { $set: { ...Pumps, updatedBy: user_id } }));
+        const safeUpdate = { ...getValidUpdateFields(Pumps), updatedBy: user_id };
+        updatePromises.push(Asset.updateOne({ _id: Pumps.id }, { $set: safeUpdate }));
       }
     } else {
       const newPumpAsset = new Asset({
@@ -728,7 +742,8 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     }
     if (Compressor || Compressor.id) {
       if (Object.keys(Compressor).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Compressor.id }, { $set: { ...Compressor, updatedBy: user_id } }));
+        const safeUpdate = { ...getValidUpdateFields(Compressor), updatedBy: user_id };
+        updatePromises.push(Asset.updateOne({ _id: Compressor.id }, { $set: safeUpdate }));
       }
     } else {
       const newCompressorAsset = new Asset({
@@ -784,7 +799,8 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
       }))
     );
     await MapUserAssetLocation.insertMany(allMapUserAssetData);
-    return res.status(200).json({ status: true, message: "Data updated successfully", data: id });
+    const updatedData =  await getAll({ _id: id, account_id: account_id, visible: true });
+    return res.status(200).json({ status: true, message: "Data updated successfully", data: updatedData });
   } catch (error) {
     next(error);
   }
