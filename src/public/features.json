@@ -102,6 +102,31 @@
                 "id": "BFF-ftf_amp",
                 "name": "BFF FTF",
                 "isSelected": false
+            },
+            {
+                "id": "velocity-1x",
+                "name": "Velocity 1x",
+                "isSelected": true
+            },
+            {
+                "id": "velocity-2x",
+                "name": "Velocity 2x",
+                "isSelected": false
+            },
+            {
+                "id": "velocity-3x",
+                "name": "velocity 3x",
+                "isSelected": false
+            },
+            {
+                "id": "velocity-4x",
+                "name": "Velocity 4x",
+                "isSelected": false
+            },
+            {
+                "id": "velocity-5x",
+                "name": "Velocity 5x",
+                "isSelected": false
             }
         ]
     },
