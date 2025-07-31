@@ -79,6 +79,10 @@ export const mapUserLocationData = async (id: any, userIdList: any, account_id: 
   return await MapUserAssetLocation.insertMany(queryArray);
 }
 
+export const createMapUserAssets = async (data: any): Promise<any> => {
+  return await MapUserAssetLocation.insertMany(data);
+};
+
 export const mapUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id } = get(req, "user", {}) as IUser;
@@ -178,6 +182,10 @@ export const updateMappedUserFlags = async (req: Request, res: Response, next: N
     next(error);
   }
 };
+
+export const removeAssetMapping = async (id: string) => {
+  return await MapUserAssetLocation.deleteMany({ assetId: id });
+}
 
 export const removeLocationMapping = async (id: string) => {
   return await MapUserAssetLocation.deleteMany({ locationId: id });
