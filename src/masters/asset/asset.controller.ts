@@ -150,7 +150,9 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
     await createExternalAPICall(assetsMapData, account_id, user_id, token);
     res.status(200).json({ status: true, message: "Data created successfully", data: equipmentData._id });
   } catch (error) {
-    await deleteAssetsById(equipmentId);
+    if(equipmentId) {
+      await deleteAssetsById(equipmentId);
+    }
     next(error);
   }
 }
