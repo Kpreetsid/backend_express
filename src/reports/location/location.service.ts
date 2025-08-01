@@ -5,6 +5,7 @@ import { LocationMaster } from '../../models/location.model';
 import { ILocationReport, LocationReport } from '../../models/locationReport.model';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
+import { getAllUsers } from '../../masters/user/user.service';
 
 export const getAll = async (match: any): Promise<ILocationReport[]> => {
   match.isActive = true;
@@ -50,6 +51,10 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
     const { location_id } = req.body;
     if (!location_id) {
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
+    }
+    const userDetails = await getAllUsers({ _id: user_id, account_id: account_id, isActive: true });
+    if (!userDetails || userDetails.length === 0) {
+      throw Object.assign(new Error('User not found'), { status: 404 });
     }
     const locationIds = await fetchAllChildLocationIds(location_id, `${account_id}`);
     locationIds.push(location_id);
@@ -113,11 +118,11 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
       }
       subLocationMap[locationId].asset_data.push({
         asset_id: report.top_level_asset_id,
+        asset_name: report.assetId.asset_name,
         observations: report.Observations,
         recommendations: report.Recommendations,
         created_on: report.createdOn,
-        asset_name: report.assetName,
-        location_name: report.locationName,
+        location_name: report.locationId.location_name,
         fault_data: report.faultData,
         endpointRMSData: report.endpointRMSData,
         healthFlag: report.EquipmentHealth,
@@ -162,7 +167,8 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
       location_id,
       account_id,
       createdBy: user_id,
-      userId: user_id
+      userId: user_id,
+      user: userDetails[0]
     });
     await insertData.save();
     return res.status(200).json({ status: true, message: 'Location Report Created Successfully' });
