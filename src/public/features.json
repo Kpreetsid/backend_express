@@ -115,7 +115,7 @@
             },
             {
                 "id": "velocity-3x",
-                "name": "velocity 3x",
+                "name": "Velocity 3x",
                 "isSelected": false
             },
             {
@@ -169,7 +169,7 @@
         "subCategory": [
             {
                 "id": "current",
-                "name": "current Trend",
+                "name": "Current Trend",
                 "isSelected": true
             }
         ]
