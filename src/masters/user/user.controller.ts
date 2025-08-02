@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import _, { get } from 'lodash';
+import { get } from 'lodash';
 import { getAllUsers, createNewUser, updateUserDetails, removeById, getLocationWiseUser } from './user.service';
 import { IUser } from '../../models/user.model';
 import { deleteVerificationCode, verifyOTPExists } from '../../user/resetPassword/resetPassword.service';
