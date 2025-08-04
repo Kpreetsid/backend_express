@@ -35,7 +35,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
 
 export const createNewUser = async (body: IUser) => {
   body.password = await hashPassword(body.password);
-  const newUser = new User(body);
+  const newUser = new User({ ...body, isActive: true, user_status: 'active', isFirstUser: false, visible: true, isVerified: true });
   const userDetails = await newUser.save();
   const roleDetails = await createUserRole(body.user_role, userDetails);
   return { userDetails, roleDetails };

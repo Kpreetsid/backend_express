@@ -44,7 +44,7 @@ interface SOPComponent {
     };
     attributes: Record<string, any>;
     validateOn: string;
-    validate: {
+    validationStatus: {
         required: boolean;
         custom: string;
         customPrivate: boolean;
@@ -131,7 +131,7 @@ const SOPComponentSchema = new Schema<SOPComponent>({
     },
     attributes: { type: Schema.Types.Mixed, default: {} },
     validateOn: { type: String },
-    validate: {
+    validationStatus: {
         required: { type: Boolean },
         custom: { type: String },
         customPrivate: { type: Boolean },

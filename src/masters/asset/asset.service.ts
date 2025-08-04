@@ -222,6 +222,7 @@ export const createEquipment = async (equipment: any, account_id: any, user_id: 
     imageNodeData: equipment.imageNodeData,
     createdBy: user_id
   });
+  newEquipment.top_level_asset_id = newEquipment._id;
   return await newEquipment.save();
 }
 
