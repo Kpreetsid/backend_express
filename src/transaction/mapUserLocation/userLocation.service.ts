@@ -14,6 +14,14 @@ export const getLocationsMappedData = async (userId: string) => {
   return await MapUserAssetLocation.find({ userId: userId, locationId: { $exists: true } });
 }
 
+export const getDataByLocationId = async (locationId: string) => {
+  return await MapUserAssetLocation.find({ locationId: locationId });
+}
+
+export const getDataByAssetId = async (assetId: string) => {
+  return await MapUserAssetLocation.find({ assetId: assetId });
+}
+
 export const userLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
@@ -31,7 +39,7 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
       match.userId = user_id;
     }
     if (query.locationId) {
-      match.locationId = query.locationId;
+      match.locationId = new mongoose.Types.ObjectId(query.locationId as string);
       const locationMatch = { _id: query.locationId, account_id: account_id };
       const locationData = await LocationMaster.find(locationMatch);
       if (!locationData || locationData.length === 0) {
@@ -41,25 +49,32 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
     if (query?.populate) {
       filter.populate = query.populate;
     }
-    let data: any = await MapUserAssetLocation.find(match).populate(filter.populate);
+    const pipeline: any = [{ $match: match }, { $addFields: { id: '$_id' } }];
+    if (filter.populate === 'locationId') {
+      pipeline.push(
+        { $lookup: { from: 'location_master', localField: 'locationId', foreignField: '_id', as: 'location' } },
+        { $unwind: '$location' }
+      );
+    } else if (filter.populate === 'userId') {
+      pipeline.push(
+        { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user', pipeline: [{ $project: { password: 0 } }] } },
+        { $unwind: '$user' }
+      );
+    }
+    pipeline.push({ $addFields: { id: '$_id' } });
+    let data = await MapUserAssetLocation.aggregate(pipeline);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    if (filter.populate === 'locationId') {
-      data = data.map((doc: any) => {
-        doc = doc.toObject();
-        doc.location = doc.locationId;
-        doc.locationId = doc.location._id;
-        return doc;
-      })
-    } else if (filter.populate === 'userId') {
-      data = data.map((doc: any) => {
-        doc = doc.toObject();
-        doc.user = doc.userId;
-        doc.userId = doc.user._id;
-        return doc;
-      })
-    }
+    data = data.map((doc: any) => {
+      if(doc.location) {
+        doc.location.id = doc.location._id;
+      }
+      if(doc.user) {
+        doc.user.id = doc.user._id;
+      }
+      return doc;
+    })
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);

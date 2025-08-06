@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAll, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import { mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
+import { getDataByLocationId, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 const moduleName: string = "location";
 
@@ -188,6 +188,39 @@ export const getLocationSensorList = async (req: Request, res: Response, next: N
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const createDuplicateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const role = get(req, "role", {}) as any;
+    if (!role[moduleName].add_location) {
+      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
+    }
+    const { id } = req.params;
+    if(!id) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    const match = { _id: id, account_id: account_id, visible: true };
+    const locationData = await getAll(match);
+    if(!locationData || locationData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const body = locationData[0];
+    const userList: any = await getDataByLocationId(id);
+    if(!userList && userList.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    body.location_name = `${body.location_name} - copy`;
+    body.userIdList = userList.map((doc: any) => doc.userId);
+    body.account_id = account_id;
+    body.createdBy = user_id;
+    const data: any = await insertLocation(body);
+    await mapUserLocationData(data._id, body.userIdList, account_id);
+    res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
   } catch (error) {
     next(error);
   }

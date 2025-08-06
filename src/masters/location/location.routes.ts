@@ -1,5 +1,5 @@
 import express from 'express';
-import { getLocations, getLocation, updateLocation, getLocationTree, removeLocation, getKpiFilterLocations, getChildAssetsAgainstLocation, createLocation, updateLocationFloorMapImage, getLocationSensorList } from './location.controller';
+import { getLocations, getLocation, updateLocation, getLocationTree, removeLocation, createDuplicateLocation, getKpiFilterLocations, getChildAssetsAgainstLocation, createLocation, updateLocationFloorMapImage, getLocationSensorList } from './location.controller';
 import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
@@ -8,6 +8,7 @@ export default (router: express.Router) => {
     locationRouter.get('/tree', getLocationTree);
     locationRouter.get('/sensor-list', getLocationSensorList);
     locationRouter.get('/kpi-filter', getKpiFilterLocations);
+    locationRouter.get('/make-copy/:id', createDuplicateLocation);
     locationRouter.get('/:id', getLocation);
     locationRouter.post('/', createLocation);
     locationRouter.post('/child-assets', getChildAssetsAgainstLocation);
