@@ -1,13 +1,13 @@
 import express from 'express';
-import { getComments, getComment, createComment, updateComment, removeComment } from './comment.controller';
+import { getAll, getDataById, create, update, remove } from './comment.controller';
 import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const commentRouter = express.Router();
-    commentRouter.get('/', getComments);
-    commentRouter.get('/:id', getComment);
-    commentRouter.post('/', createComment);
-    commentRouter.put('/:id', updateComment);
-    commentRouter.delete('/:id', hasPermission('admin'),removeComment);
+    commentRouter.get('/', getAll);
+    commentRouter.get('/:id', getDataById);
+    commentRouter.post('/', create);
+    commentRouter.put('/:id', update);
+    commentRouter.delete('/:id', hasPermission('admin'), remove);
     router.use('/comments', commentRouter);
 }

@@ -14,6 +14,6 @@ export default (router: express.Router) => {
     orderRouter.get('/:id', getOrder);
     orderRouter.post('/', createOrder);
     orderRouter.put('/:id', updateOrder);
-    orderRouter.delete('/:id', hasPermission('admin'),removeOrder);
+    orderRouter.delete('/:id', hasPermission('admin'), removeOrder);
     router.use('/orders', orderRouter);
 }

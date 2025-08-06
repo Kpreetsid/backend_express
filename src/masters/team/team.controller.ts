@@ -1,8 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { getAll, getDataById, insert, updateById, removeById } from './team.service';
+import { get } from 'lodash';
+import { IUser } from '../../models/user.model';
 
 export const getAllTeams = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
+        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        console.log({ account_id, user_id, userRole });
         await getAll(req, res, next);
     } catch (error) {
         next(error);
@@ -11,6 +15,8 @@ export const getAllTeams = async (req: Request, res: Response, next: NextFunctio
 
 export const getTeamsByID = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
+        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        console.log({ account_id, user_id, userRole });
         await getDataById(req, res, next);
     } catch (error) {
         next(error);
@@ -19,6 +25,8 @@ export const getTeamsByID = async (req: Request, res: Response, next: NextFuncti
 
 export const createTeams = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
+        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        console.log({ account_id, user_id, userRole });
         await insert(req, res, next);
     } catch (error) {
         next(error);
@@ -27,6 +35,8 @@ export const createTeams = async (req: Request, res: Response, next: NextFunctio
 
 export const updateTeams = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
+        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        console.log({ account_id, user_id, userRole });
         await updateById(req, res, next);
     } catch (error) {
         next(error);
@@ -35,6 +45,8 @@ export const updateTeams = async (req: Request, res: Response, next: NextFunctio
 
 export const removeTeams = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
+        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+        console.log({ account_id, user_id, userRole });
         await removeById(req, res, next);
     } catch (error) {
         next(error);

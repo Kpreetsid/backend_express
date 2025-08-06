@@ -42,6 +42,8 @@ export const getFormCategoryByID = async (req: Request, res: Response, next: Nex
 
 export const createFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    console.log({ account_id, user_id, userRole });
     await insert(req, res, next);
   } catch (error) {
     next(error);
@@ -49,7 +51,13 @@ export const createFormCategory = async (req: Request, res: Response, next: Next
 }
 
 export const updateFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await updateById(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    console.log({ account_id, user_id, userRole });
+    await updateById(req, res, next);
+  } catch (error) {
+    next(error);
+  }
 }
 
 export const removeFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

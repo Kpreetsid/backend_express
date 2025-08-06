@@ -43,6 +43,8 @@ export const getUser = async (req: Request, res: Response, next: NextFunction): 
 
 export const getLocationWiseUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    console.log({ account_id, user_id, userRole });
     await getLocationWiseUser(req, res, next);
   } catch (error) {
     next(error);
