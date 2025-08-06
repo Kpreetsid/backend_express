@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const getAllRequests = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
@@ -24,7 +24,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const getRequestById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if(!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
@@ -41,7 +41,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const createRequest = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const body = req.body;
@@ -55,7 +55,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const updateRequest = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
      const { params: { id }, body } = req;
     if(!id) {
@@ -73,7 +73,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const deleteRequestById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     if(!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });

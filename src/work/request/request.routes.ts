@@ -1,13 +1,13 @@
 import express from 'express';
-import { getRequests, getRequest, createRequest, updateRequest, removeRequest } from './request.controller';
+import { getAll, getById, create, update, remove } from './request.controller';
 import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const requestRouter = express.Router();
-    requestRouter.get('/', getRequests);
-    requestRouter.get('/:id', getRequest);
-    requestRouter.post('/', createRequest);
-    requestRouter.put('/:id', updateRequest);
-    requestRouter.delete('/:id', hasPermission('admin'),removeRequest);
+    requestRouter.get('/', getAll);
+    requestRouter.get('/:id', getById);
+    requestRouter.post('/', create);
+    requestRouter.put('/:id', update);
+    requestRouter.delete('/:id', hasPermission('admin'), remove);
     router.use('/requests', requestRouter);
 }

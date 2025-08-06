@@ -1,22 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, insert, updateById, removeById } from './request.service';
+import { getAllRequests, getRequestById, createRequest, updateRequest, deleteRequestById } from './request.service';
 
-export const getRequests = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await getAll(req, res, next);
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  await getAllRequests(req, res, next);
 }
 
-export const getRequest = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await getDataById(req, res, next);
+export const getById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  await getRequestById(req, res, next);
 }
 
-export const createRequest = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await insert(req, res, next);
+export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  await createRequest(req, res, next);
 }
 
-export const updateRequest = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await updateById(req, res, next);
+export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  await updateRequest(req, res, next);
 }
 
-export const removeRequest = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await removeById(req, res, next);
+export const remove = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  await deleteRequestById(req, res, next);
 }

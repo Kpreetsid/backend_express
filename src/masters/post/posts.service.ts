@@ -1,28 +1,9 @@
 import { Post, IPost } from "../../models/post.model";
 import { Request, Response, NextFunction } from 'express';
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
 
-export const getAllParts = async (match: any) => {
+export const getAllParts = async (match: any): Promise<IPost[]> => {
   match.isActive = true;
   return await Post.find(match);
-};
-
-export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    if(!req.params.id) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-     const { account_id } = get(req, "user", {}) as IUser;
-    const match = { account_id: account_id, _id: req.params.id };
-    const data: IPost[] = await Post.find(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
 };
 
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
