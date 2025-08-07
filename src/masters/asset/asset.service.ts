@@ -15,7 +15,9 @@ export const getAll = async (match: any) => {
   const mapData = await MapUserAssetLocation.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
   const result: any = assetsData.map((doc: any) => {
     const { _id: id, ...obj} = doc.toObject(); 
-    obj.locationId.id = obj.locationId._id;
+    if(obj.locationId) {
+      obj.locationId.id = obj.locationId._id;
+    }
     obj.id = id;
     const mappedUser = mapData.filter(map => `${map.assetId}` === `${id}`);
     obj.userList = mappedUser.length > 0 ? mappedUser.map((a: any) => a.userId).filter((user: any) => user) : [];

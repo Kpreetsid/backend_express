@@ -88,7 +88,12 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     }
     req.body.updatedBy = user_id;
     await updateUserDetails(req.params.id, req.body);
-    res.status(200).json({ status: true, message: "User updated successfully" });
+    const data = await getAllUsers(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    data[0].id = data[0]._id;
+    res.status(200).json({ status: true, message: "User updated successfully", data: data[0] });
   } catch (error) {
     next(error);
   }

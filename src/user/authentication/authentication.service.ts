@@ -35,6 +35,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });
     }
     const { password: _, ...safeUser } = user.toObject();
+    safeUser.id = safeUser._id;
     const userTokenPayload: UserLoginPayload = { id: `${user._id}`, username: user.username, email: user.email, companyID: `${user.account_id}` };
     const token = generateAccessToken(userTokenPayload);
     const userRoleData = await verifyUserRole(`${user._id}`, `${user.account_id}`);
