@@ -1,8 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
-import { getAllUsers, createNewUser, updateUserDetails, removeById, getLocationWiseUser } from './user.service';
+import { getAllUsers, createNewUser, updateUserDetails, removeById, getLocationWiseUser, getUserDetails, updateUserPassword } from './user.service';
 import { IUser } from '../../models/user.model';
 import { deleteVerificationCode, verifyOTPExists } from '../../user/resetPassword/resetPassword.service';
+import { comparePassword } from '../../_config/bcrypt';
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -94,6 +95,33 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     }
     data[0].id = data[0]._id;
     res.status(200).json({ status: true, message: "User updated successfully", data: data[0] });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const updatePasswordUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const match = { _id: user_id, account_id: account_id, isActive: true };
+    const userData = await getUserDetails(match);
+    if (!userData) {
+      throw Object.assign(new Error('No user found'), { status: 404 });
+    }
+    const { password, newPassword, confirmNewPassword } = req.body;
+    if (!password || !newPassword || !confirmNewPassword) {
+      throw Object.assign(new Error('Password, new password and confirm password are required'), { status: 400 });
+    }
+    if (newPassword !== confirmNewPassword) {
+      throw Object.assign(new Error('Passwords do not match'), { status: 400 });
+    }
+    const checkPassword = await comparePassword(password, userData.password);
+    if (!checkPassword) {
+      throw Object.assign(new Error('Incorrect current password'), { status: 400 });
+    }
+    userData.password = newPassword;
+    await updateUserPassword(user_id, userData);
+    res.status(200).json({ status: true, message: "User updated successfully" });
   } catch (error) {
     next(error);
   }

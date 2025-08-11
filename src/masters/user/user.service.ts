@@ -10,6 +10,10 @@ export const getAllUsers = async (match: any) => {
   return await User.find(match).select('-password');
 };
 
+export const getUserDetails = async (match: any) => {
+  return await User.findOne(match).select('+password');
+};
+
 export const verifyUserLogin = async ({ id, companyID, email, username }: UserLoginPayload) => {
   return await User.findOne({ _id: id, account_id: companyID, email, username }).select('-password');
 };
@@ -41,10 +45,12 @@ export const createNewUser = async (body: IUser) => {
   return { userDetails, roleDetails };
 };
 
+export const updateUserPassword = async (user_id: any, body: any) => {
+  body.password = await hashPassword(body.password);
+  return await User.findByIdAndUpdate(user_id, body, { new: true });
+};
+
 export const updateUserDetails = async (id: string, body: IUser) => {
-  if(body.password) {
-    body.password = await hashPassword(body.password);
-  }
   return await User.findByIdAndUpdate(id, body, { new: true });
 }
 export const removeById = async (id: string) => {
