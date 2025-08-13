@@ -109,7 +109,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
     asset_id: { type: String },
     org_id: { type: String },
     mac_id: { type: String },
-    image: { type: String , default: null },
+    image: { type: String, default: null },
     online: { type: Boolean, default: null },
     asset_type: { type: String },
     acceleration: {

@@ -13,7 +13,7 @@ const verificationCodeSchema = new Schema<IVerificationCode>({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   code: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 60*30 }
+  createdAt: { type: Date, default: Date.now, expires: 60 * 60 }
 }, {
   collection: 'user_verification_code',
   timestamps: true,
@@ -26,7 +26,6 @@ const verificationCodeSchema = new Schema<IVerificationCode>({
       return ret;
     }
   }
-}
-);
+});
 
 export const VerificationCode = mongoose.model<IVerificationCode>('VerificationCode', verificationCodeSchema);

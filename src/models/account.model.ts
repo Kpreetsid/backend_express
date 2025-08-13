@@ -28,7 +28,7 @@ const accountSchema = new Schema<IAccount>(
         delete ret._id;
         return ret;
       }
-     }
+    }
   }
 );
 

@@ -78,9 +78,9 @@ const CommentsSchema = new Schema<IComments>({
   createdOn: { type: Date, default: Date.now },
   order_id: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
   comments: { type: [CommentSchema] },
-}, { 
+}, {
   collection: 'work_order_comment',
-  timestamps: true ,
+  timestamps: true,
   versionKey: false,
   toJSON: {
     virtuals: true,
