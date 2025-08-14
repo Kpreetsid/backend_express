@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getFloorMaps, insert, updateById, removeById, getCoordinates, floorMapAssetCoordinates, insertCoordinates, deleteCoordinates } from './floorMap.service';
 import { IUser } from '../../models/user.model';
+import mongoose from 'mongoose';
 
 export const getAllFloorMaps = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -107,7 +108,7 @@ export const removeFloorMapCoordinates = async (req: Request, res: Response, nex
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const match: any = { _id: id, account_id: account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }

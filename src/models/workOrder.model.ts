@@ -48,7 +48,8 @@ export interface IWorkOrder extends Document {
   attachment: string[];
   estimatedParts: IEstimatedPart[];
   visible: boolean;
-  created_by: ObjectId;
+  createdBy: ObjectId;
+  updatedBy?: ObjectId;
   createdOn: Date;
 }
 
@@ -100,7 +101,8 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   attachment: { type: [String] },
   estimatedParts: { type: [estimatedPartSchema] },
   visible: { type: Boolean, default: true },
-  created_by: { type: Schema.Types.ObjectId, required: true },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   createdOn: { type: Date, default: Date.now }
 }, {
   collection: 'work_orders',

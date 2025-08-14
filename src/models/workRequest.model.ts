@@ -54,6 +54,7 @@ export interface IWorkRequest extends Document {
   };
   help?: boolean;
   comments?: any[];
+  reject_reason?: string;
   likes?: any[];
   isActive: boolean;
   createdBy: ObjectId;
@@ -78,6 +79,7 @@ const WorkRequestSchema = new Schema<IWorkRequest>({
   tags: { type: Object },
   help: { type: Boolean, default: false },
   comments: { type: [Schema.Types.Mixed] },
+  reject_reason: { type: String },
   likes: { type: [Schema.Types.Mixed] },
   isActive: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },

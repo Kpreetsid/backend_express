@@ -27,22 +27,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
       { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
       { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
       { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
-      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
-      // { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
-      // { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
+      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }}
     ]);
     if (!data.length) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const result = await Promise.all(data.map(async (item: any) => {
-      // let createdBy = {
-      //   firstName: item.createdBy.firstName || "",
-      //   id: item.createdBy._id,
-      //   lastName: item.createdBy.lastName || "",
-      //   user_profile_img: item.createdBy.user_profile_img || ""
-      // };
-      // item.createdBy = createdBy;
-      console.log("item.assignedUsers");
       item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
         const user = await User.find({ _id: mapItem.userId });
         mapItem.user = user.length > 0 ? user[0] : {};
@@ -54,7 +44,6 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     if (!result || result.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
   } catch (error) {
     next(error);
@@ -78,18 +67,27 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
       { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
       { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
-      { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
-      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
+      { $lookup: { 
+        from: "users", 
+        let: { createdById: "$createdBy" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$createdById"] } } },
+          { $project: { _id: 1, firstName: 1, lastName: 1, user_profile_img: 1 } }
+        ],
+        as: "createdBy" 
+      }},
+      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
+      { $addFields: { id: '$_id' } }
     ]);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const result = await Promise.all(data.map(async (item: any) => {
       let createdBy = {
-        firstName: item.createdBy.firstName || "",
+        firstName: item.createdBy?.firstName || "",
         id: item.createdBy._id,
-        lastName: item.createdBy.lastName || "",
-        user_profile_img: item.createdBy.user_profile_img || ""
+        lastName: item.createdBy?.lastName || "",
+        user_profile_img: item.createdBy?.user_profile_img || ""
       };
       item.createdBy = createdBy;
       item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
@@ -408,7 +406,9 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     req.body.account_id = account_id;
-    req.body.user_id = user_id;
+    req.body.createdBy = user_id;
+    const totalCount = await WorkOrder.countDocuments({ account_id });
+    req.body.order_no = `WO-${totalCount + 1}`;
     const newAsset = new WorkOrder(req.body);
     const data = await newAsset.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
@@ -419,10 +419,12 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
 
 export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    const { _id: user_id } = get(req, "user", {}) as IUser;
     const { body, params: { id } } = req;
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
+    body.updatedBy = user_id;
     const data = await WorkOrder.findByIdAndUpdate(id, body, { new: true });
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -435,14 +437,16 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
 
 export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    if (!req.params.id) {
+    const { _id: user_id } = get(req, "user", {}) as IUser;
+    const { params: { id } } = req;
+    if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await WorkOrder.findById(req.params.id);
+    const data = await WorkOrder.findOne({ _id: new mongoose.Types.ObjectId(id) });
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await WorkOrder.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
+    await WorkOrder.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getSchedules, createSchedules, updateSchedules, removeSchedules } from './schedule.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
+import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -27,7 +28,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const match: any = { _id: id, account_id: account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }

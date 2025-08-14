@@ -8,6 +8,7 @@ export default (router: express.Router) => {
     requestRouter.get('/:id', getById);
     requestRouter.post('/', create);
     requestRouter.put('/:id', update);
+    requestRouter.patch('/reject/:id', update);
     requestRouter.delete('/:id', hasPermission('admin'), remove);
     router.use('/requests', requestRouter);
 }
