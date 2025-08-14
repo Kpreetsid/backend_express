@@ -14,6 +14,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     if(userRole !== 'admin') {
       match.created_by = user_id;
     }
+    console.log(match);
     const data = await getAllRequests(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -50,10 +51,9 @@ export const getById = async (req: Request, res: Response, next: NextFunction): 
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
+    const user = get(req, "user", {}) as IUser;
     const body = req.body;
-    const data = await createRequest(body, account_id, user_id);
+    const data = await createRequest(body, user);
     res.status(200).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
     next(error);

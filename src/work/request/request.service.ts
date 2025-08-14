@@ -1,7 +1,7 @@
 import { WorkRequestModel, IWorkRequest } from "../../models/workRequest.model";
 
 export const getAllRequests = async (match: any): Promise<IWorkRequest[]> => {
-  match.visible = true;
+  match.isActive = true;
   return await WorkRequestModel.find(match)
 };
 
@@ -9,11 +9,13 @@ export const getRequestById = async (id: string): Promise<IWorkRequest | null> =
   return await WorkRequestModel.findById(id);
 }
 
-export const createRequest = async (body: any, account_id: any, user_id: any): Promise<any> => {
+export const createRequest = async (body: any, user: any): Promise<any> => {
     const newWorkRequest = new WorkRequestModel({
       ...body,
-      account_id,
-      createdBy: user_id
+      account_id: user.account_id,
+      emailId: user.email,
+      userId: user._id,
+      createdBy: user._id
     });
     return await newWorkRequest.save();
 };
