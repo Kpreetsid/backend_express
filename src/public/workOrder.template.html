@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Work Order Notification</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
+    <style>
+        body {
+            background-color: #f9f9f9;
+            font-family: Helvetica, Arial, sans-serif;
+        }
+    
+        .email-container {
+            max-width: 786px;
+            margin: 30px auto;
+        }
+    
+        .logo {
+            max-height: 50px;
+            width: 8rem;
+        }
+    
+        .img-fluid {
+            width: 2.5rem;
+        }
+    
+        .username {
+            font-weight: bold;
+        }
+    
+        .content-box img {
+            max-width: 80px;
+            margin-right: 15px;
+        }
+    
+        .px-6 {
+            padding-left: 6rem;
+            padding-right: 6rem;
+        }
+        .btn-primary {
+            border-radius: 4px;
+        }
+    </style>
+  </head>
+  <body>
+    <div class="container email-container bg-white p-4 rounded shadow-sm border">
+      <!-- Header -->
+      <div class="d-flex justify-content-between align-items-center mb-5">
+        <img alt="Presage Logo" src="https://app.presageinsights.ai/cmms/assets/Icon/logo/presageLogo.png" class="logo">
+        <span class="text-muted small">Date: {{date}}</span>
+      </div>
+
+      <div class="container px-6">
+        <div class="row">
+            <h5 class="fw-bold">Hello <span class="username">{{userFullName}}</span></h5>
+            <p class="text-secondary">You have been assigned a new work order. Please find the details below:</p>
+      
+            <!-- Content Box -->
+            <div class="d-flex align-items-center my-3 content-box">
+              <img src="https://app.presageinsights.ai/cmms/assets/images/app_logo.png" alt="Work Order Image" class="img-fluid">
+              <p class="mb-0">Body content of work order notification mail formatting.</p>
+            </div>
+            <hr>
+      
+            <!-- Details Table -->
+            <table class="table table-sm table-borderless">
+              <tbody>
+                <tr>
+                  <td class="text-secondary">Title</td>
+                  <td class="fw-bold text-end">{{title}}</td>
+                </tr>
+                <tr>
+                  <td class="text-secondary">Location Name</td>
+                  <td class="fw-bold text-end">{{locationName}}</td>
+                </tr>
+                <tr>
+                  <td class="text-secondary">Asset Name</td>
+                  <td class="fw-bold text-end">{{assetName}}</td>
+                </tr>
+                <tr>
+                  <td class="text-secondary">Created By</td>
+                  <td class="fw-bold text-end">{{createdBy}}</td>
+                </tr>
+                <tr>
+                  <td class="text-secondary">Start Date</td>
+                  <td class="fw-bold text-end">{{startDate}}</td>
+                </tr>
+                <tr>
+                  <td class="text-secondary">End Date</td>
+                  <td class="fw-bold text-end">{{endDate}}</td>
+                </tr>
+                <tr>
+                  <td class="text-secondary">Work Order Status</td>
+                  <td class="fw-bold text-end">{{status}}</td>
+                </tr>
+              </tbody>
+            </table>
+      
+            <!-- Button -->
+            <div class="text-center mt-2">
+              <a href="{{detailsLink}}" class="btn btn-primary p-3 fw-bold w-100" target="_blank">More Details</a>
+            </div>
+        </div>
+      </div>
+      <!-- Greeting -->
+    </div>
+  </body>
+</html>

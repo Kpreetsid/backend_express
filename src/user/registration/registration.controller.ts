@@ -1,10 +1,11 @@
 import { NextFunction, Request, Response } from 'express';
 import { emailVerificationCode, verifyOTPCode } from './registration.service';
 import { getAllUsers } from '../../masters/user/user.service';
+import { getAllCompanies } from '../../masters/company/company.service';
 
 export const userRegister = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-        const { email, username, firstName, lastName } = req.body;
+        const { email, username, firstName, lastName, account_name } = req.body;
         if (!email || !username || !firstName || !lastName) {
             throw Object.assign(new Error('Email and Username are required'), { status: 400 });
         }
@@ -15,6 +16,10 @@ export const userRegister = async (req: Request, res: Response, next: NextFuncti
         const isUserNameExists = await getAllUsers({ username: username });
         if (isUserNameExists.length > 0) {
             throw Object.assign(new Error('Username already exists'), { status: 403 });
+        }
+        const isAccountExists = await getAllCompanies({ account_name: account_name });
+        if (isAccountExists.length > 0) {
+            throw Object.assign(new Error('Account already exists'), { status: 403 });
         }
         const match = { email: email, firstName: firstName, lastName: lastName };
         const data = await emailVerificationCode(match);

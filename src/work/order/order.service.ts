@@ -5,6 +5,7 @@ import { get } from "lodash";
 import { Blog, IBlog } from "../../models/help.model";
 import { WorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
 import mongoose from "mongoose";
+import { sendWorkOrderMail } from "../../_config/mailer";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -404,13 +405,14 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
 
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    req.body.account_id = account_id;
-    req.body.createdBy = user_id;
-    const totalCount = await WorkOrder.countDocuments({ account_id });
+    const user = get(req, "user", {}) as IUser;
+    req.body.account_id = user.account_id;
+    req.body.createdBy = user._id;
+    const totalCount = await WorkOrder.countDocuments({ account_id: user.account_id });
     req.body.order_no = `WO-${totalCount + 1}`;
     const newAsset = new WorkOrder(req.body);
     const data = await newAsset.save();
+    await sendWorkOrderMail(user, data);
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
     next(error);

@@ -49,3 +49,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     next(error);
   }
 };
+
+export const createMapUserWorkOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const body = req.body;
+    await WorkOrderAssignee.insertMany(body);
+    return res.status(201).json({ message: 'Work orders mapped successfully' });
+  } catch (error) {
+    next(error);
+  }
+};

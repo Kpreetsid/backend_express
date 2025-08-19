@@ -7,6 +7,7 @@ export const database = {
   userName: process.env.DB_USERNAME!,
   password: process.env.DB_PASSWORD!,
   databaseName: process.env.DB_NAME!,
+  authSource: process.env.DB_AUTH_SOURCE || 'admin'
 };
 
 export const server = {

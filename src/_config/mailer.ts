@@ -72,3 +72,20 @@ export const sendPasswordChangeConfirmation = async (user: any): Promise<void> =
     console.error('Error sending password change confirmation:', error);
   }
 };
+
+export const sendWorkOrderMail = async (user: any, workOrder: any): Promise<void> => {
+  try {
+    const templatePath = path.join(__dirname, '../public/workOrder.template.html');
+    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    htmlTemplate = htmlTemplate.replace('{{userFullName}}', user.firstName + ' ' + user.lastName);
+    htmlTemplate = htmlTemplate.replace('{{workOrderId}}', workOrder.id);
+    htmlTemplate = htmlTemplate.replace('{{workOrderDescription}}', workOrder.description);
+    await sendMail({
+      to: user.email,
+      subject: 'New Work Order Assigned',
+      html: htmlTemplate
+    });
+  } catch (error) {
+    console.error('Error sending work order email:', error);
+  }
+};
