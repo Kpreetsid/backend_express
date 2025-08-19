@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox } from './asset.service';
+import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { createMapUserAssets, getAssetsMappedData, removeLocationMapping } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
@@ -155,6 +155,10 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
     }
     next(error);
   }
+}
+
+export const createOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  await createAssetOld(req, res, next);
 }
 
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

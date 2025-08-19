@@ -146,7 +146,7 @@ export const changeUserPassword = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('OTP has expired'), { status: 404 });
     }
     userData[0].password = newPassword;
-    const updatedData = await updateUserDetails(`${userData[0]._id}`, userData[0]);
+    const updatedData = await updateUserPassword(`${userData[0]._id}`, userData[0]);
     if (!updatedData) {
       throw Object.assign(new Error('Failed to update password'), { status: 500 });
     }

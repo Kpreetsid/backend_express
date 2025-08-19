@@ -38,6 +38,7 @@ export interface IWorkOrder extends Document {
   assigned_to: number;
   start_date: string;
   end_date: string;
+  task: [object];
   sopForm: string | null;
   teamId: string | null;
   workInstruction: string | null;
@@ -91,6 +92,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   assigned_to: { type: Number },
   start_date: { type: String },
   end_date: { type: String },
+  task: { type: [Object] },
   sopForm: { type: String },
   teamId: { type: String },
   workInstruction: { type: String },

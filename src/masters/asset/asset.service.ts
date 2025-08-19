@@ -195,6 +195,18 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
   }
 }
 
+export const createAssetOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const data: any = new Asset({ ...req.body, account_id: account_id, isActive: true, createdBy: user_id, visible: true });
+    data.top_level_asset_id = data._id;
+    await data.save();
+    return res.status(200).json({ status: true, message: "Data created successfully", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
 const removeExtraFields = (obj: Record<string, any>) => {
   return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null));
 }
