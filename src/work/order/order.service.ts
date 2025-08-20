@@ -97,13 +97,13 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
         return mapItem;
       }));
       const asset = {
-        id: item.asset._id,
-        asset_name: item.asset.asset_name || ""
+        id: item.asset?._id || item.asset?.id,
+        asset_name: item.asset?.asset_name || ""
       };
       item.asset = asset;
       const location = {
-        id: item.location._id,
-        location_name: item.location.location_name || ""
+        id: item.location?._id || item.location?.id,
+        location_name: item.location?.location_name || ""
       };
       item.location = location;
       item.id = item._id;
