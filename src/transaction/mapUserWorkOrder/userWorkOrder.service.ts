@@ -50,12 +50,26 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
-export const createMapUserWorkOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const body = req.body;
-    await WorkOrderAssignee.insertMany(body);
-    return res.status(201).json({ message: 'Work orders mapped successfully' });
-  } catch (error) {
-    next(error);
-  }
+export const mapUsersWorkOrder = async (body: any) => {
+  return await WorkOrderAssignee.insertMany(body);
+};
+
+export const getMappedWorkOrderUserIDs = async (workOrderId: any): Promise<any[]> => {
+  const assigneeMappings = await WorkOrderAssignee.find({ woId: workOrderId });
+  return assigneeMappings.map(item => item.userId);
+};
+
+export const getMappedWorkOrderIDs = async (user_id: any): Promise<any[]> => {
+  const assigneeMappings = await WorkOrderAssignee.find({ user_id });
+  return assigneeMappings.map(item => item.woId);
+};
+
+export const updateMappedUsers = async (id: any, userIdList: any[]): Promise<any> => {
+  await WorkOrderAssignee.deleteMany({ woId: id });
+  const newMappings = userIdList.map(userId => ({ userId, woId: id }));
+  return await WorkOrderAssignee.insertMany(newMappings);
+};
+
+export const removeMappedUsers = async (id: any): Promise<any> => {
+  return await WorkOrderAssignee.deleteMany({ woId: id });
 };

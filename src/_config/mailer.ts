@@ -6,33 +6,33 @@ import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
 import { VerificationCode } from '../models/userVerification.model';
 
 const transporter = nodemailer.createTransport({
-    host: mailCredential.host,
-    port: mailCredential.port,
-    secure: mailCredential.secure,
-    tls: { rejectUnauthorized: false },
-    auth: { user: mailCredential.user, pass: mailCredential.pass }
+  host: mailCredential.host,
+  port: mailCredential.port,
+  secure: mailCredential.secure,
+  tls: { rejectUnauthorized: false },
+  auth: { user: mailCredential.user, pass: mailCredential.pass }
 });
 
 interface MailOptions {
-    to: string;
-    subject: string;
-    html: string;
+  to: string;
+  subject: string;
+  html: string;
 }
 
 export const sendMail = async ({ to, subject, html }: MailOptions): Promise<void> => {
-    const mailLogData: IMailLog = new MailLogModel({ to, subject, html});
-    try {
-        const info = await transporter.sendMail({ from: `${mailCredential.user}`, to, subject, html });
-        mailLogData.messageId = info.messageId;
-        mailLogData.mailInfo = info;
-        mailLogData.status = 'success';
-        console.log(`Message preview URL: ${nodemailer.getTestMessageUrl(info)}`);
-    } catch (err: any) {
-        console.error('Error sending email:', err);
-        mailLogData.status = 'failed';
-        mailLogData.error = err?.message || 'Unknown error';
-    }
-    await createMailLog(mailLogData);
+  const mailLogData: IMailLog = new MailLogModel({ to, subject, html });
+  try {
+    const info = await transporter.sendMail({ from: `${mailCredential.user}`, to, subject, html });
+    mailLogData.messageId = info.messageId;
+    mailLogData.mailInfo = info;
+    mailLogData.status = 'success';
+    console.log(`Message preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+  } catch (err: any) {
+    console.error('Error sending email:', err);
+    mailLogData.status = 'failed';
+    mailLogData.error = err?.message || 'Unknown error';
+  }
+  await createMailLog(mailLogData);
 };
 
 export const sendVerificationCode = async (match: any): Promise<boolean> => {
@@ -73,16 +73,25 @@ export const sendPasswordChangeConfirmation = async (user: any): Promise<void> =
   }
 };
 
-export const sendWorkOrderMail = async (user: any, workOrder: any): Promise<void> => {
+export const sendWorkOrderMail = async (workOrder: any, assignedUsers: any, user: any): Promise<void> => {
   try {
     const templatePath = path.join(__dirname, '../public/workOrder.template.html');
     let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
-    htmlTemplate = htmlTemplate.replace('{{userFullName}}', user.firstName + ' ' + user.lastName);
+    htmlTemplate = htmlTemplate.replace('{{userFullName}}', assignedUsers.firstName + ' ' + assignedUsers.lastName);
     htmlTemplate = htmlTemplate.replace('{{workOrderId}}', workOrder.id);
     htmlTemplate = htmlTemplate.replace('{{workOrderDescription}}', workOrder.description);
+    htmlTemplate = htmlTemplate.replace('{{title}}', workOrder.title);
+    htmlTemplate = htmlTemplate.replace('{{locationName}}', workOrder.locationName);
+    htmlTemplate = htmlTemplate.replace('{{assetName}}', workOrder.assetName);
+    htmlTemplate = htmlTemplate.replace('{{createdBy}}', `${user.firstName} ${user.lastName}`);
+    htmlTemplate = htmlTemplate.replace('{{startDate}}', workOrder.start_date);
+    htmlTemplate = htmlTemplate.replace('{{endDate}}', workOrder.end_date);
+    htmlTemplate = htmlTemplate.replace('{{status}}', workOrder.status);
+    htmlTemplate = htmlTemplate.replace('{{detailsLink}}', `https://app.presageinsights.ai/cmms/work-order/list/1/${workOrder.id || workOrder._id}/info`);
     await sendMail({
-      to: user.email,
-      subject: 'New Work Order Assigned',
+      to: assignedUsers.email,
+      subject: `"${workOrder.title}" – New Work Order Assigned by ${user.firstName} ${user.lastName}`,
+      // Action Required: "${workOrder.title}" Work Order Assigned by ${user.firstName} ${user.lastName}
       html: htmlTemplate
     });
   } catch (error) {

@@ -3,52 +3,46 @@ import { Request, Response, NextFunction } from 'express';
 import { IUser, User } from "../../models/user.model";
 import { get } from "lodash";
 import { Blog, IBlog } from "../../models/help.model";
-import { WorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
 import mongoose from "mongoose";
 import { sendWorkOrderMail } from "../../_config/mailer";
+import { mapUsersWorkOrder, removeMappedUsers, updateMappedUsers } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id, status, priority, order_no, wo_asset_id } = req.query;
-    const match: any = { account_id, visible: true };
-    if (userRole !== 'admin') {
-      const assigneeMappings = await WorkOrderAssignee.find({ user_id }, { woId: 1 });
-      const mappedWoIds = assigneeMappings.map(item => item.woId);
-      match._id = { $in: mappedWoIds };
-    }
-    if (id) match._id = { $in: id.toString().split(',').map(id => new mongoose.Types.ObjectId(id)) };
-    if (status !== "all") match.status = { $nin: ["Completed"] };
-    if (priority) match.priority = { $in: priority.toString().split(',') };
-    if (order_no) match.order_no = { $in: order_no.toString().split(',') };
-    if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',') };
-    let data = await WorkOrder.aggregate([
-      { $match: match },
-      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
-      { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
-      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
-      { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
-      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }}
-    ]);
-    if (!data.length) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const result = await Promise.all(data.map(async (item: any) => {
-      item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await User.find({ _id: mapItem.userId });
-        mapItem.user = user.length > 0 ? user[0] : {};
-        return mapItem;
-      }));
-      item.id = item._id;
-      return item;
-    }));
-    if (!result || result.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
-  } catch (error) {
-    next(error);
+export const getAllOrders = async (match: any): Promise<any> => {
+  match.visible = true;
+  let data = await WorkOrder.aggregate([
+    { $match: match },
+    { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
+    { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
+    { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
+    { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
+    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }}
+  ]);
+  if (!data.length) {
+    throw Object.assign(new Error('No data found'), { status: 404 });
   }
+  const result = await Promise.all(data.map(async (item: any) => {
+    item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
+      const user = await User.find({ _id: mapItem.userId });
+      mapItem.user = user.length > 0 ? user[0] : {};
+      return mapItem;
+    }));
+    item.id = item._id;
+    return item;
+  }));
+  return result;
+};
+
+export const getOrders = async (match: any): Promise<any> => {
+  match.visible = true;
+  const data = await WorkOrder.aggregate([
+    { $match: match },
+    { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
+    { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
+    { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
+    { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
+    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }}
+  ]);
+  return data;
 };
 
 export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -403,54 +397,60 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
   }
 }
 
-export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const user = get(req, "user", {}) as IUser;
-    req.body.account_id = user.account_id;
-    req.body.createdBy = user._id;
-    const totalCount = await WorkOrder.countDocuments({ account_id: user.account_id });
-    req.body.order_no = `WO-${totalCount + 1}`;
-    const newAsset = new WorkOrder(req.body);
-    const data = await newAsset.save();
-    await sendWorkOrderMail(user, data);
-    return res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    next(error);
+export const insert = async (body: any, user: IUser): Promise<any> => {
+  const totalCount = await WorkOrder.countDocuments({ account_id: user.account_id });
+  const newAsset = new WorkOrder({
+    account_id : user.account_id,
+    order_no : `WO-${totalCount + 1}`,
+    title : body.title,
+    description : body.description,
+    estimated_time : body.estimated_time,
+    priority : body.priority,
+    status : body.status,
+    nature_of_work : body.nature_of_work,
+    rescheduleEnabled : false,
+    created_by : user._id,
+    wo_asset_id : body.wo_asset_id,
+    wo_location_id : body.wo_location_id,
+    assigned_to : body.assigned_to,
+    end_date : body.end_date,
+    start_date : body.start_date,
+    sopForm : body.sopForm,
+    teamId : body.teamId,
+    workInstruction : body.workInstruction,
+    actualParts : body.actualParts,
+    createdFrom : "Work Order",
+    creatorEmail : body.creatorEmail,
+    attachment : body.attachment,
+    task : body.task,
+    estimatedParts : body.estimatedParts,
+    createdBy: user._id
+  });
+  const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
+  const result = await mapUsersWorkOrder(mappedUsers);
+  if (!result || result.length === 0) {
+    throw Object.assign(new Error('Failed to map users to work order'), { status: 500 });
   }
+  const data = await newAsset.save();
+  if (!data) {
+    throw Object.assign(new Error('Failed to create work order'), { status: 400 });
+  }
+  const userDetails = await User.find({ _id: { $in: body.userIdList } });
+  if (!userDetails || userDetails.length === 0) {
+    throw Object.assign(new Error('No users found'), { status: 404 });
+  }
+  userDetails.forEach(async (assignedUsers: IUser) => {
+    await sendWorkOrderMail(data, assignedUsers, user);
+  });
+  return data;
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { _id: user_id } = get(req, "user", {}) as IUser;
-    const { body, params: { id } } = req;
-    if (!id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    body.updatedBy = user_id;
-    const data = await WorkOrder.findByIdAndUpdate(id, body, { new: true });
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    next(error);
-  }
+export const updateById = async (id: any, body: any): Promise<any> => {
+  await updateMappedUsers(id, body.userIdList);
+  return await WorkOrder.findByIdAndUpdate(id, body, { new: true });
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { _id: user_id } = get(req, "user", {}) as IUser;
-    const { params: { id } } = req;
-    if (!id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const data = await WorkOrder.findOne({ _id: new mongoose.Types.ObjectId(id) });
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await WorkOrder.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    next(error);
-  }
+export const removeOrder = async (id: any, user_id: any): Promise<any> => {
+  await removeMappedUsers(id);
+  return await WorkOrder.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
 };

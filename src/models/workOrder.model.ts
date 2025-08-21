@@ -44,7 +44,7 @@ export interface IWorkOrder extends Document {
   workInstruction: string | null;
   actualParts: string[];
   createdFrom: string;
-  createrEmail: string;
+  creatorEmail: string;
   requestId: string;
   attachment: string[];
   estimatedParts: IEstimatedPart[];
@@ -98,7 +98,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   workInstruction: { type: String },
   actualParts: { type: [String] },
   createdFrom: { type: String },
-  createrEmail: { type: String },
+  creatorEmail: { type: String },
   requestId: { type: String },
   attachment: { type: [String] },
   estimatedParts: { type: [estimatedPartSchema] },

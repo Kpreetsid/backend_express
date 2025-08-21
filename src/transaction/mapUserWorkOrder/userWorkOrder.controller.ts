@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAll, mappedData, createMapUserWorkOrders } from './userWorkOrder.service';
+import { getAll, mappedData } from './userWorkOrder.service';
 
 export const getUserWorkOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -12,14 +12,6 @@ export const getUserWorkOrders = async (req: Request, res: Response, next: NextF
 export const getMappedData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     await mappedData(req, res, next);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const setUserWorkOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    await createMapUserWorkOrders(req, res, next);
   } catch (error) {
     next(error);
   }
