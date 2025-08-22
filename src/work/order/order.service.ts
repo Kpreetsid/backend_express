@@ -379,18 +379,16 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
     var priorDate = new Date(today.setDate(today.getDate() - query.no_of_days)).toISOString();
     match.createdOn = { $gte: priorDate };
     match.status = { $nin: ['Completed'] };
-    const populate = [{ path: 'wo_asset_id', select: '_id asset_name' }, { path: 'wo_location_id', select: '_id location_name' }]
-    let data: IWorkOrder[] = await WorkOrder.find(match).populate(populate);
+    let data: any = await WorkOrder.aggregate([
+      { $match: match },
+      { $lookup: { from: 'asset_master', localField: 'wo_asset_id', foreignField: '_id', as: 'asset' } },
+      { $lookup: { from: 'location_master', localField: 'wo_location_id', foreignField: '_id', as: 'location' } },
+      { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } }
+    ]);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    data = data.map((item: any) => {
-      item.asset = { id: item.wo_asset_id._id, asset_name: item.wo_asset_id.asset_name };
-      item.wo_asset_id = item.wo_asset_id._id;
-      item.location = { id: item.wo_location_id._id, location_name: item.wo_location_id.location_name };
-      item.wo_location_id = item.wo_location_id._id;
-      return item;
-    })
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
