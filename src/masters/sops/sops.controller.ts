@@ -5,14 +5,14 @@ import { get } from 'lodash';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id };
-    const { categoryId } = req.query;
-    if (categoryId) {
-      match.categoryId = categoryId;
+    const { category, location } = req.query;
+    if (category) {
+      match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
     }
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
+    if (location) {
+      match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
     }
     let data = await getSOPs(match);
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -23,17 +23,17 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 
 export const getSop = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { query: { categoryId }, params: { id } } = req;
+    const { account_id } = get(req, "user", {}) as IUser;
+    const { query: { category, location }, params: { id } } = req;
     if (!id) {
       throw Object.assign(new Error('Id is required'), { status: 400 });
     }
     const match: any = { account_id: account_id };
-    if (categoryId) {
-      match.categoryId = categoryId;
+    if (category) {
+      match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
     }
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
+    if (location) {
+      match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
     }
     let data = await getSOPs(match);
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });

@@ -9,5 +9,5 @@ export default (router: express.Router) => {
     scheduleRouter.post('/', create);
     scheduleRouter.put('/:id', update);
     scheduleRouter.delete('/:id', hasPermission('admin'), remove);
-    router.use('/schedules', scheduleRouter);
+    router.use('/schedulers', scheduleRouter);
 }

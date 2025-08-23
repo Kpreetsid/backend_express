@@ -1,44 +1,25 @@
 import { Category, ICategory } from "../../models/formCategory.model";
-import { Request, Response, NextFunction } from 'express';
-import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 
-export const getFormCategories = async (match: any) => {
+export const getFormCategories = async (match: any): Promise<ICategory[]> => {
+  match.visible = true;
   return await Category.find(match);
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const body = req.body;
-     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const newCategoryBody = new Category({
-      ...body,
-      account_id,
-      createdBy: user_id
-    })
-    const newCategory: ICategory = await newCategoryBody.save();
-    return res.status(201).json({ status: true, message: "Data inserted successfully", data: newCategory });
-  } catch (error) {
-    next(error);
-  }
+export const createFormCategory = async (body: any, user: IUser): Promise<ICategory | null> => {
+  const newCategoryBody = new Category({
+    account_id: user.account_id,
+    name: body.name,
+    description: body.description,
+    createdBy: user._id
+  });
+  return await newCategoryBody.save();
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { params: { id }, body: { name, description } } = req;
-    if (!id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const updatedCategory = await Category.findByIdAndUpdate(id, { name, description }, { new: true });
-    if (!updatedCategory) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data: updatedCategory });
-  } catch (error) {
-    next(error);
-  }
+export const updateById = async (id: string, body: any, user: IUser): Promise<ICategory | null> => {
+  return await Category.findByIdAndUpdate(id, { name: body.name, description: body.description, updatedBy: user._id }, { new: true });
 };
 
-export const removeById = async (id: string) => {
+export const removeById = async (id: string): Promise<ICategory | null> => {
   return await Category.findByIdAndUpdate(id, { visible: false }, { new: true });
 };

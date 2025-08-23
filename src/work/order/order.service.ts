@@ -80,7 +80,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const result = await Promise.all(data.map(async (item: any) => {
       let createdBy = {
         firstName: item.createdBy?.firstName || "",
-        id: item.createdBy._id,
+        id: item.createdBy?._id || item.createdBy?.id,
         lastName: item.createdBy?.lastName || "",
         user_profile_img: item.createdBy?.user_profile_img || ""
       };

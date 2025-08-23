@@ -47,7 +47,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const body = req.body;
     const data = await createSchedules(body, account_id, user_id);
-    res.status(200).json({ status: true, message: "Data created successfully", data });
+    res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
     next(error);
   }

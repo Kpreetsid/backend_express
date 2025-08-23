@@ -6,14 +6,16 @@ export interface ICategory extends Document {
   visible: boolean;
   account_id: ObjectId;
   createdBy: ObjectId;
+  updatedBy?: ObjectId;
 }
 
 const categorySchema = new Schema<ICategory>({
-  name: { type: String, required: true },
+  name: { type: String, required: true, unique: true },
   description: { type: String },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
   visible: { type: Boolean, default: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, {
   collection: 'form_category',
   timestamps: true,

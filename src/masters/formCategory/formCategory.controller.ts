@@ -1,12 +1,12 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getFormCategories, insert, updateById, removeById } from './formCategory.service';
+import { getFormCategories, createFormCategory, updateById, removeById } from './formCategory.service';
 import { IUser } from '../../models/user.model';
 
 export const getAllFormCategories = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
+    const match: any = { account_id: account_id };
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }
@@ -26,7 +26,7 @@ export const getFormCategoryByID = async (req: Request, res: Response, next: Nex
     if(!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: req.params.id, account_id: account_id, visible: true };
+    const match: any = { _id: req.params.id, account_id: account_id };
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }
@@ -40,11 +40,15 @@ export const getFormCategoryByID = async (req: Request, res: Response, next: Nex
   }
 }
 
-export const createFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await insert(req, res, next);
+    const user = get(req, "user", {}) as IUser;
+    const { body } = req;
+    const data = await createFormCategory(body, user);
+    if (!data) {
+      throw Object.assign(new Error('Failed to create category'), { status: 400 });
+    }
+    res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
     next(error);
   }
@@ -52,9 +56,20 @@ export const createFormCategory = async (req: Request, res: Response, next: Next
 
 export const updateFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await updateById(req, res, next);
+    const user = get(req, "user", {}) as IUser;
+    const { params: { id }, body } = req;
+    if(!id) {
+      throw Object.assign(new Error('No category ID provided'), { status: 400 });
+    }
+    const isData = await getFormCategories({ _id: id, account_id: user.account_id });
+    if (!isData || isData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const data = await updateById(id, body, user);
+    if (!data) {
+      throw Object.assign(new Error('Failed to update form category'), { status: 400 });
+    }
+    res.status(200).json({ status: true, message: "Form category updated successfully", data });
   } catch (error) {
     next(error);
   }

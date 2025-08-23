@@ -116,10 +116,10 @@ export interface IScheduleMaster extends Document {
     monday?: boolean;
     tuesday?: boolean;
     wednesday?: boolean;
-    thursday?: string;
-    friday?: string;
-    saturday?: string;
-    sunday?: string;
+    thursday?: boolean;
+    friday?: boolean;
+    saturday?: boolean;
+    sunday?: boolean;
     location?: Location[];
     asset?: Asset[];
     prev_asset_id?: ObjectId;
@@ -133,29 +133,27 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     {
         title: { type: String },
         description: { type: String },
-        start_date: String,
-        days_to_complete: Number,
-        schedule_mode: String,
-        work_order: Object,
-        rescheduleEnabled: Boolean,
-        no_of_time_call: Number,
-        visible: Boolean,
-        account_id: mongoose.Types.ObjectId,
-        rescheduleWeekDays: Number,
-        monday: Boolean,
-        tuesday: Boolean,
-        wednesday: Boolean,
-        thursday: String,
-        friday: String,
-        saturday: String,
-        sunday: String,
-        location: [Object],
-        asset: [Object],
-        prev_asset_id: mongoose.Types.ObjectId,
-        prev_loc_id: mongoose.Types.ObjectId,
-        month: Number,
-        dayOfMonth: String,
-        next_execute_date: String
+        start_date: { type: String },
+        days_to_complete: { type: Number },
+        schedule_mode: { type: String },
+        work_order: { type: Object },
+        rescheduleEnabled: { type: Boolean },
+        no_of_time_call: { type: Number },
+        visible: { type: Boolean },
+        account_id: { type: mongoose.Types.ObjectId },
+        rescheduleWeekDays: { type: Number },
+        monday: { type: Boolean, default: false },
+        tuesday: { type: Boolean, default: false },
+        wednesday: { type: Boolean, default: false },
+        thursday: { type: Boolean, default: false },
+        friday: { type: Boolean, default: false },
+        saturday: { type: Boolean, default: false },
+        sunday: { type: Boolean, default: false },
+        prev_asset_id: { type: mongoose.Types.ObjectId },
+        prev_loc_id: { type: mongoose.Types.ObjectId },
+        month: { type: Number },
+        dayOfMonth: { type: String },
+        next_execute_date: { type: String }
     },
     {
         collection: 'schedule_master',
