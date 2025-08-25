@@ -7,10 +7,16 @@ import mongoose from 'mongoose';
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
+    const { query: { priority, location, status }} = req;
     let match: any = { account_id: account_id };
-    if(query) {
-      match = { ...match, ...query };
+    if(priority) {
+      match.priority = priority.toString().split(",").filter((p) => p !== "");
+    }
+    if(location) {
+      match.locationId = location.toString().split(",").filter((l) => l !== "");
+    }
+    if(status) {
+      match.status = status.toString().split(",").filter((s) => s !== "");
     }
     if(userRole !== 'admin') {
       match.created_by = user_id;

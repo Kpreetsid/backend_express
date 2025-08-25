@@ -6,6 +6,8 @@ export interface IWorkRequest extends Document {
   description: string;
   problemType: string;
   priority: string;
+  locationId: ObjectId;
+  assetId: ObjectId;
   files: string[];
   status?: string;
   emailId?: string;
@@ -30,6 +32,8 @@ const WorkRequestSchema = new Schema<IWorkRequest>({
   files: { type: [String] },
   status: { type: String },
   emailId: { type: String },
+  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location', required: true },
+  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
   tags: { type: Object },
   comments: { type: [Schema.Types.Mixed] },
   reject_reason: { type: String },
