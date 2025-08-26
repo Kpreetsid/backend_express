@@ -9,12 +9,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id };
-    const { id, status, priority, order_no, wo_asset_id } = req.query;
+    const { id, status, priority, order_no, wo_asset_id, location } = req.query;
     if (id) match._id = { $in: id.toString().split(',').map(id => new mongoose.Types.ObjectId(id)) };
-    if (status !== "all") match.status = { $nin: ["Completed"] };
-    if (status === "Completed") match.status = { $in: ["Completed"] };
+    if (status) match.status = { $in: status.toString().split(',') };
     if (priority) match.priority = { $in: priority.toString().split(',') };
     if (order_no) match.order_no = { $in: order_no.toString().split(',') };
+    if (location) match.wo_location_id = { $in: location.toString().split(',') };
     if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',') };
     if (userRole !== 'admin') {
       match._id = await getMappedWorkOrderIDs(user_id);
