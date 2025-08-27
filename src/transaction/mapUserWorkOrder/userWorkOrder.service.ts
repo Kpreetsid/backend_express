@@ -60,7 +60,7 @@ export const getMappedWorkOrderUserIDs = async (workOrderId: any): Promise<any[]
 };
 
 export const getMappedWorkOrderIDs = async (user_id: any): Promise<any[]> => {
-  const assigneeMappings = await WorkOrderAssignee.find({ user_id });
+  const assigneeMappings = await WorkOrderAssignee.find({ userId: user_id });
   return assigneeMappings.map(item => item.woId);
 };
 
