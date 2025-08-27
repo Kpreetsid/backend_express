@@ -57,7 +57,7 @@ export const getKpiFilterLocations = async (req: Request, res: Response, next: N
 export const getChildAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id } = get(req, "user", {}) as IUser;
-    const { location_id: { levelOneLocations, levelTwoLocations } } = req.body;
+    const { levelOneLocations, levelTwoLocations } = req.body;
     const data = await childAssetsAgainstLocation(levelOneLocations, levelTwoLocations, account_id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
