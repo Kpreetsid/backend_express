@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { UserLog } from '../models/userLogs.model';
+import { UserLogModel } from '../models/userLogs.model';
 import { get, merge, omit } from 'lodash';
 import { IUser } from '../models/user.model';
 
@@ -56,7 +56,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
       const module = extractModule(req.originalUrl);
       const description = `${userName} performed ${req.method} method on ${module} from ${headers['origin']} at ${new Date().toISOString()}`;
 
-      const newLog = new UserLog({
+      const newLog = new UserLogModel({
         userId: _id,
         userName,
         accountId: account_id,

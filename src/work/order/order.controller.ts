@@ -44,7 +44,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
   try {
     const user = get(req, "user", {}) as IUser;
     const body = req.body;
-    if(body.userIdList.length === 0) {
+    if(!body.userIdList || body.userIdList.length === 0) {
       throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
     }
     const data = await insert(body, user);
@@ -61,7 +61,7 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if(body?.userIdList?.length === 0) {
+    if(!body?.userIdList || body.userIdList?.length === 0) {
       throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
     }
     const isWorkOrderExist: any = await getOrders({ _id: id, account_id });

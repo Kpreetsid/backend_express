@@ -47,4 +47,4 @@ const SopsMasterSchema = new Schema<ISopsMaster>(
     }
 );
 
-export const SopsMasterModel = mongoose.model<ISopsMaster>("SopsMaster", SopsMasterSchema);
+export const SOPsModel = mongoose.model<ISopsMaster>("SopsMaster", SopsMasterSchema);

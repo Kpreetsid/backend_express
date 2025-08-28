@@ -22,7 +22,7 @@ interface MailOptions {
 export const sendMail = async ({ to, subject, html }: MailOptions): Promise<void> => {
   const mailLogData: IMailLog = new MailLogModel({ to, subject, html });
   try {
-    const info = await transporter.sendMail({ from: `${mailCredential.user}`, to, subject, html });
+    const info = await transporter.sendMail({ from: `${mailCredential.from}`, to, subject, html });
     mailLogData.messageId = info.messageId;
     mailLogData.mailInfo = info;
     mailLogData.status = 'success';

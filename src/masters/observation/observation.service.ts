@@ -1,4 +1,4 @@
-import { Observation, IObservation } from "../../models/observation.model";
+import { ObservationModel, IObservation } from "../../models/observation.model";
 import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
@@ -21,7 +21,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     if (params?.assetId) {
       match['assetId'] = new mongoose.Types.ObjectId(params.assetId);
     }
-    const data: IObservation[] | null = await Observation.find(match);
+    const data: IObservation[] | null = await ObservationModel.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -38,7 +38,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     const match = { accountId: account_id, _id: req.params.id };
-    const data: IObservation[] | null = await Observation.find(match);
+    const data: IObservation[] | null = await ObservationModel.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -50,7 +50,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const newObservation = new Observation(req.body);
+    const newObservation = new ObservationModel(req.body);
     const data = await newObservation.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
@@ -64,7 +64,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await Observation.findByIdAndUpdate(id, body, { new: true });
+    const data = await ObservationModel.findByIdAndUpdate(id, body, { new: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -79,11 +79,11 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await Observation.findById(req.params.id);
+    const data = await ObservationModel.findById(req.params.id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await Observation.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
+    await ObservationModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);

@@ -1,16 +1,16 @@
 import mongoose from "mongoose";
-import { UserRoleMenu, IUserRoleMenu } from "../../../models/userRoleMenu.model";
+import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model";
 import { Request, Response, NextFunction } from 'express';
 import { IUser } from "../../../models/user.model";
 import { platformControlData } from '../../../_config/userRoles';
 
 export const getRoles = async (match: any): Promise<any> => {
-  return await UserRoleMenu.find(match);
+  return await RoleMenuModel.find(match);
 };
 
 export const verifyUserRole = async (id: string, companyID: string) => {
   try {
-    const userRole: IUserRoleMenu | null = await UserRoleMenu.findOne({ user_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
+    const userRole: IUserRoleMenu | null = await RoleMenuModel.findOne({ user_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
     if (!userRole) {
       return null;
     }
@@ -22,7 +22,7 @@ export const verifyUserRole = async (id: string, companyID: string) => {
 
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const newUserRoleMenu: IUserRoleMenu = new UserRoleMenu(req.body);
+    const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel(req.body);
     await newUserRoleMenu.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: newUserRoleMenu });
   } catch (error) {
@@ -33,7 +33,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
 export const createUserRole = async (userRole: any, userData: IUser) => {
   try {
     var platformControl =  await platformControlData(userRole);
-    const newUserRoleMenu: IUserRoleMenu = new UserRoleMenu({
+    const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({
       user_id: userData._id,
       account_id: userData.account_id,
       data: platformControl
@@ -50,7 +50,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const updatedUserRoleMenu = await UserRoleMenu.findByIdAndUpdate(id, body, { new: true });
+    const updatedUserRoleMenu = await RoleMenuModel.findByIdAndUpdate(id, body, { new: true });
     if (!updatedUserRoleMenu) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -65,11 +65,11 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await UserRoleMenu.findById(req.params.id);
+    const data = await RoleMenuModel.findById(req.params.id);
     if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await UserRoleMenu.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
+    await RoleMenuModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
