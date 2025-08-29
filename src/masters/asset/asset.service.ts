@@ -1,18 +1,18 @@
-import { Asset, IAsset } from "../../models/asset.model";
+import { AssetModel, IAsset } from '../../models/asset.model';
 import { NextFunction, Request, Response } from 'express';
-import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLocation.model";
+import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { removeAssetMapping } from "../../transaction/mapUserLocation/userLocation.service";
-import { IUser, User } from "../../models/user.model";
-import { LocationMaster } from "../../models/location.model";
+import { IUser, UserModel } from "../../models/user.model";
+import { LocationModel } from "../../models/location.model";
 import { get } from "lodash";
 import { getData } from "../../util/queryBuilder";
 import { getExternalData } from "../../util/externalAPI";
 import mongoose from "mongoose";
 
 export const getAll = async (match: any) => {
-  const assetsData = await Asset.find(match).populate([{ path: 'locationId', select: 'location_name assigned_to' }, { path: 'parent_id', select: 'asset_name'}]);
+  const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', select: 'location_name assigned_to' }, { path: 'parent_id', select: 'asset_name'}]);
   const assetsIds = assetsData.map((asset: any) => `${asset._id}`);
-  const mapData = await MapUserAssetLocation.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
+  const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
   const result: any = assetsData.map((doc: any) => {
     const { _id: id, ...obj} = doc.toObject(); 
     if(obj.locationId) {
@@ -32,7 +32,7 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     if(userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -63,7 +63,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query: any = { account_id: account_id, visible: true, parent_id: { $in: [null, undefined] }};
     if (userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (mapData && mapData.length > 0) {
         query._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
@@ -75,7 +75,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
     if (locations && Array.isArray(locations) && locations.length > 0) {
       query.locationId = { $in: locations };
     }
-    const rootAssets: IAsset[] = await getData(Asset, { filter: query });
+    const rootAssets: IAsset[] = await getData(AssetModel, { filter: query });
     let data = await Promise.all(rootAssets.map(async (asset) => {
       return {
         ...asset,
@@ -103,7 +103,7 @@ const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
     ignoreAssets = [];
   }
   const match = { parent_id: asset._id, visible: true };
-  const children: IAsset[] = await getData(Asset, { filter: match });
+  const children: IAsset[] = await getData(AssetModel, { filter: match });
   const withChildren = await Promise.all(
     children.map(async (child): Promise<any> => {
       if (child.asset_type) {
@@ -124,43 +124,43 @@ const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
 
 const getRecursiveUsers = async (asset: any) => {
   const match = { assetId: asset._id };
-  const mapUsersAssets: IMapUserLocation[] = await MapUserAssetLocation.find(match);
+  const mapUsersAssets: IMapUserLocation[] = await MapUserAssetLocationModel.find(match);
   const userIds = mapUsersAssets.map((user: any) => user.userId);
   const fields = 'firstName lastName user_role';
-  const data: IUser[] = await User.find({ _id: { $in: userIds } }).select(fields);
+  const data: IUser[] = await UserModel.find({ _id: { $in: userIds } }).select(fields);
   return data.map((user: any) => user._id).filter((user: any) => user);
 }
 
 const getRecursiveLocations = async (asset: any) => {
   const match = { _id: asset.locationId };
   const fields = 'location_name';
-  const locationData = await LocationMaster.find(match).select(fields);
+  const locationData = await LocationModel.find(match).select(fields);
   return locationData[0];
 }
 
 export const updateAssetImageById = async (id: string, image_path: string, user_id: string) => {
-  return await Asset.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
+  return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
 }
 
 export const removeById = async (match: any, userID: any) => {
-  const childAssets = await Asset.find({ parent_id: match._id });
+  const childAssets = await AssetModel.find({ parent_id: match._id });
   if (childAssets && childAssets.length > 0) {
-    await Asset.updateMany({ parent_id: match._id }, { visible: false, isActive: false });
+    await AssetModel.updateMany({ parent_id: match._id }, { visible: false, isActive: false });
   }
-  return await Asset.findOneAndUpdate(match, { visible: false, isActive: false, updatedBy: userID }, { new: true });
+  return await AssetModel.findOneAndUpdate(match, { visible: false, isActive: false, updatedBy: userID }, { new: true });
 };
 
 export const deleteAsset = async (id: string): Promise<any> => {
   console.log(`Deleting asset with ID: ${id}`);
-  const childAssets = await Asset.find({ parent_id: id });
+  const childAssets = await AssetModel.find({ parent_id: id });
   if (childAssets && childAssets.length > 0) {
     for(const asset of childAssets) {
       await removeAssetMapping(`${asset._id}`);
     }
-    await Asset.deleteMany({ parent_id: id });
+    await AssetModel.deleteMany({ parent_id: id });
   }
   await removeAssetMapping(id);
-  return await Asset.deleteOne({ _id: id });
+  return await AssetModel.deleteOne({ _id: id });
 }
 
 export const getAssetDataSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -168,12 +168,12 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     if(userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (mapData && mapData.length > 0) {
         match._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
     }
-    const data = await Asset.find(match).populate([{ path: 'locationId', select: 'location_name' }, { path: 'top_level_asset_id', select: 'asset_name'}, { path: 'account_id', select: 'account_name' }]);
+    const data = await AssetModel.find(match).populate([{ path: 'locationId', select: 'location_name' }, { path: 'top_level_asset_id', select: 'asset_name'}, { path: 'account_id', select: 'account_name' }]);
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -198,7 +198,7 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
 export const createAssetOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const data: any = new Asset({ ...req.body, account_id: account_id, isActive: true, createdBy: user_id, visible: true });
+    const data: any = new AssetModel({ ...req.body, account_id: account_id, isActive: true, createdBy: user_id, visible: true });
     data.top_level_asset_id = data._id;
     await data.save();
     return res.status(200).json({ status: true, message: "Data created successfully", data });
@@ -213,7 +213,7 @@ const removeExtraFields = (obj: Record<string, any>) => {
 
 export const createEquipment = async (equipment: any, account_id: any, user_id: any) => {
   equipment = removeExtraFields(equipment);
-  const newEquipment: any = new Asset({
+  const newEquipment: any = new AssetModel({
     asset_name: equipment.asset_name,
     asset_id: equipment.asset_id,
     asset_type: equipment.asset_type || "Equipment",
@@ -242,7 +242,7 @@ export const createEquipment = async (equipment: any, account_id: any, user_id: 
 
 export const createMotor = async (motor: any, equipment: any, account_id: any, user_id: any) => {
   motor = removeExtraFields(motor);
-  return new Asset({
+  return new AssetModel({
     parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
     asset_name: motor.asset_name,
     asset_id: motor.asset_id || equipment.asset_id,
@@ -270,7 +270,7 @@ export const createMotor = async (motor: any, equipment: any, account_id: any, u
 
 export const createFlexible = async (flexible: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   flexible = removeExtraFields(flexible);
-  return new Asset({
+  return new AssetModel({
     parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
     asset_name: flexible.asset_name,
     element: flexible.element,
@@ -293,7 +293,7 @@ export const createFlexible = async (flexible: any, equipment: any, account_id: 
 
 export const createRigid = async (rigid: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   rigid = removeExtraFields(rigid);
-  return new Asset({
+  return new AssetModel({
     parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
     asset_name: rigid.asset_name,
     asset_id: rigid.asset_id || equipment.asset_id,
@@ -317,7 +317,7 @@ export const createRigid = async (rigid: any, equipment: any, account_id: any, u
 
 export const createBeltPulley = async (beltPulley: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   beltPulley = removeExtraFields(beltPulley);
-  return new Asset({
+  return new AssetModel({
     parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
     asset_name: beltPulley.asset_name,
     asset_id: beltPulley.asset_id || equipment.asset_id,
@@ -343,7 +343,7 @@ export const createBeltPulley = async (beltPulley: any, equipment: any, account_
 
 export const createGearbox = async (gearbox: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   gearbox = removeExtraFields(gearbox);
-  return new Asset({
+  return new AssetModel({
     parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
     asset_name: gearbox.asset_name,
     asset_id: gearbox.asset_id || equipment.asset_id,
@@ -388,7 +388,7 @@ export const createGearbox = async (gearbox: any, equipment: any, account_id: an
 
 export const createFanBlower = async (fanBlower: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   fanBlower = removeExtraFields(fanBlower);
-  return new Asset({
+  return new AssetModel({
     parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
     asset_name: fanBlower.asset_name,
     asset_id: fanBlower.asset_id || equipment.asset_id,
@@ -419,7 +419,7 @@ export const createFanBlower = async (fanBlower: any, equipment: any, account_id
 
 export const createPumps = async (pumps: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   pumps = removeExtraFields(pumps);
-  return new Asset({
+  return new AssetModel({
     parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
     asset_name: pumps.asset_name,
     brand: pumps.brand,
@@ -449,7 +449,7 @@ export const createPumps = async (pumps: any, equipment: any, account_id: any, u
 
 export const createCompressor = async (compressor: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   compressor = removeExtraFields(compressor);
-  return new Asset({
+  return new AssetModel({
     parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
     asset_name: compressor.asset_name,
     asset_id: compressor.asset_id || equipment.asset_id,
@@ -485,20 +485,20 @@ export const createExternalAPICall = async (assetsList: any, account_id: any, us
 
 export const deleteAssetsById = async (assetId: any) => {
   console.log(`Deleting asset with ID: ${assetId}`);
-  const childData = await Asset.find({ parent_id: assetId });
+  const childData = await AssetModel.find({ parent_id: assetId });
   if(childData.length > 0) {
     for(const asset of childData) {
       await removeAssetMapping(`${asset._id}`);
     }
-    await Asset.deleteMany({ _id: { $in: childData.map(doc => doc._id) } });
+    await AssetModel.deleteMany({ _id: { $in: childData.map(doc => doc._id) } });
   }
-  await Asset.deleteMany({ _id: assetId });
+  await AssetModel.deleteMany({ _id: assetId });
   await removeAssetMapping(assetId);
 }
 
 export const updateEquipment = async (equipment: any, account_id: any, user_id: any) => {
   equipment = removeExtraFields(equipment);
-  const updatedEquipment: any = new Asset({
+  const updatedEquipment: any = new AssetModel({
     _id: equipment.id,
     asset_name: equipment.asset_name,
     asset_id: equipment.asset_id,
@@ -523,12 +523,12 @@ export const updateEquipment = async (equipment: any, account_id: any, user_id: 
     updatedBy: user_id
   });
   await removeAssetMapping(equipment.id);
-  return await Asset.updateOne({ _id: equipment.id }, updatedEquipment);
+  return await AssetModel.updateOne({ _id: equipment.id }, updatedEquipment);
 }
 
 export const updateMotor = async (motor: any, equipment: any, account_id: any, user_id: any) => {
   motor = removeExtraFields(motor);
-  const updatedMotor = new Asset({
+  const updatedMotor = new AssetModel({
     _id: motor.id,
     parent_id: equipment.id,
     asset_name: motor.asset_name,
@@ -554,12 +554,12 @@ export const updateMotor = async (motor: any, equipment: any, account_id: any, u
     updatedBy: user_id
   })
   await removeAssetMapping(motor.id);
-  return await Asset.updateOne({ _id: motor.id }, updatedMotor);
+  return await AssetModel.updateOne({ _id: motor.id }, updatedMotor);
 }
 
 export const updateFlexible = async (flexible: any, equipment: any, account_id: any, user_id: any) => {
   flexible = removeExtraFields(flexible);
-  const updatedFlexible = new Asset({
+  const updatedFlexible = new AssetModel({
     _id: flexible.id,
     parent_id: equipment.id,
     asset_name: flexible.asset_name,
@@ -580,12 +580,12 @@ export const updateFlexible = async (flexible: any, equipment: any, account_id: 
     updatedBy: user_id
   })
   await removeAssetMapping(flexible.id);
-  return await Asset.updateOne({ _id: flexible.id }, updatedFlexible);
+  return await AssetModel.updateOne({ _id: flexible.id }, updatedFlexible);
 }
 
 export const updateRigid = async (rigid: any, equipment: any, account_id: any, user_id: any) => {
   rigid = removeExtraFields(rigid);
-  const updatedRigid =  new Asset({
+  const updatedRigid =  new AssetModel({
     _id: rigid.id,
     parent_id: equipment.id,
     asset_name: rigid.asset_name,
@@ -607,12 +607,12 @@ export const updateRigid = async (rigid: any, equipment: any, account_id: any, u
     updatedBy: user_id
   });
   await removeAssetMapping(rigid.id);
-  return await Asset.updateOne({ _id: rigid.id }, updatedRigid);
+  return await AssetModel.updateOne({ _id: rigid.id }, updatedRigid);
 }
 
 export const updateBeltPulley = async (beltPulley: any, equipment: any, account_id: any, user_id: any) => {
   beltPulley = removeExtraFields(beltPulley);
-  const updatedBeltPulley = new Asset({
+  const updatedBeltPulley = new AssetModel({
     _id: beltPulley.id,
     parent_id: equipment.id,
     asset_name: beltPulley.asset_name,
@@ -636,12 +636,12 @@ export const updateBeltPulley = async (beltPulley: any, equipment: any, account_
     updatedBy: user_id
   })
   await removeAssetMapping(beltPulley.id);
-  return await Asset.updateOne({ _id: beltPulley.id }, updatedBeltPulley);
+  return await AssetModel.updateOne({ _id: beltPulley.id }, updatedBeltPulley);
 }
 
 export const updateGearbox = async (gearbox: any, equipment: any, account_id: any, user_id: any) => {
   gearbox = removeExtraFields(gearbox);
-  const updatedGearbox = new Asset({
+  const updatedGearbox = new AssetModel({
     _id: gearbox.id,
     parent_id: equipment.id,
     asset_name: gearbox.asset_name,
@@ -684,12 +684,12 @@ export const updateGearbox = async (gearbox: any, equipment: any, account_id: an
     updatedBy: user_id
   })
   await removeAssetMapping(gearbox.id);
-  return await Asset.updateOne({ _id: gearbox.id }, updatedGearbox);
+  return await AssetModel.updateOne({ _id: gearbox.id }, updatedGearbox);
 }
 
 export const updateFanBlower = async (fanBlower: any, equipment: any, account_id: any, user_id: any) => {
   fanBlower = removeExtraFields(fanBlower);
-  const updatedFanBlower = new Asset({
+  const updatedFanBlower = new AssetModel({
     _id: fanBlower.id,
     parent_id: equipment.id,
     asset_name: fanBlower.asset_name,
@@ -718,12 +718,12 @@ export const updateFanBlower = async (fanBlower: any, equipment: any, account_id
     updatedBy: user_id
   })
   await removeAssetMapping(fanBlower.id);
-  return await Asset.updateOne({ _id: fanBlower.id }, updatedFanBlower);
+  return await AssetModel.updateOne({ _id: fanBlower.id }, updatedFanBlower);
 }
 
 export const updatePumps = async (pumps: any, equipment: any, account_id: any, user_id: any) => {
   pumps = removeExtraFields(pumps);
-  const updatedPumps = new Asset({
+  const updatedPumps = new AssetModel({
     _id: pumps.id,
     parent_id: equipment.id,
     asset_name: pumps.asset_name,
@@ -751,12 +751,12 @@ export const updatePumps = async (pumps: any, equipment: any, account_id: any, u
     updatedBy: user_id
   })
   await removeAssetMapping(pumps.id);
-  return await Asset.updateOne({ _id: pumps.id }, updatedPumps);
+  return await AssetModel.updateOne({ _id: pumps.id }, updatedPumps);
 }
 
 export const updateCompressor = async (compressor: any, equipment: any, account_id: any, user_id: any) => {
   compressor = removeExtraFields(compressor);
-  const updatedCompressor = new Asset({
+  const updatedCompressor = new AssetModel({
     _id: compressor.id,
     parent_id: equipment.id,
     asset_name: compressor.asset_name,
@@ -784,5 +784,5 @@ export const updateCompressor = async (compressor: any, equipment: any, account_
     updatedBy: user_id
   })
   await removeAssetMapping(compressor.id);
-  return await Asset.updateOne({ _id: compressor.id }, updatedCompressor);
+  return await AssetModel.updateOne({ _id: compressor.id }, updatedCompressor);
 }

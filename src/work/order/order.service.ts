@@ -1,15 +1,15 @@
-import { WorkOrder, IWorkOrder } from "../../models/workOrder.model";
+import { IWorkOrder, WorkOrderModel } from "../../models/workOrder.model";
 import { Request, Response, NextFunction } from 'express';
-import { IUser, User } from "../../models/user.model";
+import { IUser, UserModel } from "../../models/user.model";
 import { get } from "lodash";
-import { Blog, IBlog } from "../../models/help.model";
+import { BlogModel, IBlog } from "../../models/help.model";
 import mongoose from "mongoose";
 import { sendWorkOrderMail } from "../../_config/mailer";
 import { mapUsersWorkOrder, removeMappedUsers, updateMappedUsers } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
 
 export const getAllOrders = async (match: any): Promise<any> => {
   match.visible = true;
-  let data = await WorkOrder.aggregate([
+  let data = await WorkOrderModel.aggregate([
     { $match: match },
     { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
     { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
@@ -22,7 +22,7 @@ export const getAllOrders = async (match: any): Promise<any> => {
   }
   const result = await Promise.all(data.map(async (item: any) => {
     item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-      const user = await User.find({ _id: mapItem.userId });
+      const user = await UserModel.find({ _id: mapItem.userId });
       mapItem.user = user.length > 0 ? user[0] : {};
       return mapItem;
     }));
@@ -34,7 +34,7 @@ export const getAllOrders = async (match: any): Promise<any> => {
 
 export const getOrders = async (match: any): Promise<any> => {
   match.visible = true;
-  const data = await WorkOrder.aggregate([
+  const data = await WorkOrderModel.aggregate([
     { $match: match },
     { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
     { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
@@ -55,7 +55,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }
-    const data = await WorkOrder.aggregate([
+    const data = await WorkOrderModel.aggregate([
       { $match: match },
       { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
       { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
@@ -86,7 +86,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       };
       item.createdBy = createdBy;
       item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await User.find({ _id: mapItem.userId }, '_id firstName lastName user_profile_img');
+        const user = await UserModel.find({ _id: mapItem.userId }, '_id firstName lastName user_profile_img');
         mapItem.user = user[0];
         return mapItem;
       }));
@@ -124,7 +124,7 @@ export const orderStatus = async (req: Request, res: Response, next: NextFunctio
     } else {
       match.user_id = user_id;
     }
-    const data: IWorkOrder[] = await WorkOrder.find(match)
+    const data: IWorkOrder[] = await WorkOrderModel.find(match)
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -163,7 +163,7 @@ export const orderPriority = async (req: Request, res: Response, next: NextFunct
     } else {
       match.user_id = user_id;
     }
-    const data: IWorkOrder[] = await WorkOrder.find(match);
+    const data: IWorkOrder[] = await WorkOrderModel.find(match);
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -202,7 +202,7 @@ export const monthlyCount = async (req: Request, res: Response, next: NextFuncti
     if (query.wo_asset_id) {
       match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
     }
-    const data: IWorkOrder[] = await WorkOrder.find(match)
+    const data: IWorkOrder[] = await WorkOrderModel.find(match)
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -234,7 +234,7 @@ export const plannedUnplanned = async (req: Request, res: Response, next: NextFu
     if (query.wo_asset_id) {
       match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
     }
-    const data: IWorkOrder[] = await WorkOrder.find(match).select("_id createdOn createdFrom");
+    const data: IWorkOrder[] = await WorkOrderModel.find(match).select("_id createdOn createdFrom");
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -321,11 +321,11 @@ export const summaryData = async (req: Request, res: Response, next: NextFunctio
       match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
     }
     const helpMatch: any = { account_id, isActive: true, status: 'Approved' };
-    const helpData: IBlog[] = await Blog.find(helpMatch);
+    const helpData: IBlog[] = await BlogModel.find(helpMatch);
     if (helpData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const WO_list: IWorkOrder[] = await WorkOrder.find(match);
+    const WO_list: IWorkOrder[] = await WorkOrderModel.find(match);
     if (WO_list.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -379,7 +379,7 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
     var priorDate = new Date(today.setDate(today.getDate() - query.no_of_days)).toISOString();
     match.createdOn = { $gte: priorDate };
     match.status = { $nin: ['Completed'] };
-    let data: any = await WorkOrder.aggregate([
+    let data: any = await WorkOrderModel.aggregate([
       { $match: match },
       { $lookup: { from: 'asset_master', localField: 'wo_asset_id', foreignField: '_id', as: 'asset' } },
       { $lookup: { from: 'location_master', localField: 'wo_location_id', foreignField: '_id', as: 'location' } },
@@ -396,8 +396,8 @@ export const pendingOrders = async (req: Request, res: Response, next: NextFunct
 }
 
 export const insert = async (body: any, user: IUser): Promise<any> => {
-  const totalCount = await WorkOrder.countDocuments({ account_id: user.account_id });
-  const newAsset = new WorkOrder({
+  const totalCount = await WorkOrderModel.countDocuments({ account_id: user.account_id });
+  const newAsset = new WorkOrderModel({
     account_id : user.account_id,
     order_no : `WO-${totalCount + 1}`,
     title : body.title,
@@ -433,7 +433,7 @@ export const insert = async (body: any, user: IUser): Promise<any> => {
   if (!data) {
     throw Object.assign(new Error('Failed to create work order'), { status: 400 });
   }
-  const userDetails = await User.find({ _id: { $in: body.userIdList } });
+  const userDetails = await UserModel.find({ _id: { $in: body.userIdList } });
   if (!userDetails || userDetails.length === 0) {
     throw Object.assign(new Error('No users found'), { status: 404 });
   }
@@ -445,10 +445,10 @@ export const insert = async (body: any, user: IUser): Promise<any> => {
 
 export const updateById = async (id: any, body: any): Promise<any> => {
   await updateMappedUsers(id, body.userIdList);
-  return await WorkOrder.findByIdAndUpdate(id, body, { new: true });
+  return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
 };
 
 export const removeOrder = async (id: any, user_id: any): Promise<any> => {
   await removeMappedUsers(id);
-  return await WorkOrder.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
+  return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
 };

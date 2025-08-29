@@ -28,4 +28,4 @@ const verificationCodeSchema = new Schema<IVerificationCode>({
   }
 });
 
-export const VerificationCode = mongoose.model<IVerificationCode>('VerificationCode', verificationCodeSchema);
+export const VerificationCodeModel = mongoose.model<IVerificationCode>('VerificationCode', verificationCodeSchema);

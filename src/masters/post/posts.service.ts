@@ -1,14 +1,14 @@
-import { Post, IPost } from "../../models/post.model";
+import { PostModel, IPost } from "../../models/post.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAllParts = async (match: any): Promise<IPost[]> => {
   match.isActive = true;
-  return await Post.find(match);
+  return await PostModel.find(match);
 };
 
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const newPost = new Post(req.body);
+    const newPost = new PostModel(req.body);
     const data = await newPost.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
@@ -22,7 +22,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await Post.findByIdAndUpdate(id, body, { new: true });
+    const data = await PostModel.findByIdAndUpdate(id, body, { new: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -38,11 +38,11 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await Post.findById(id);
+    const data = await PostModel.findById(id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await Post.findByIdAndUpdate(id, { visible: false }, { new: true });
+    await PostModel.findByIdAndUpdate(id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);

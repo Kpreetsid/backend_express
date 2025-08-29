@@ -1,23 +1,23 @@
 import mongoose from "mongoose";
-import { Account, IAccount } from "../../models/account.model";
+import { AccountModel, IAccount } from "../../models/account.model";
 
 export const getAllCompanies = async (filter: any) => {
-  return await Account.find(filter);
+  return await AccountModel.find(filter);
 };
 
 export const createCompany = async (body: any) => {
   const match: any = { account_name: body.account_name };
-  const existingCompany: IAccount[] = await Account.find(match);
+  const existingCompany: IAccount[] = await AccountModel.find(match);
   if (existingCompany.length > 0) {
     throw Object.assign(new Error('Company already exists'), { status: 403 });
   }
-  const newCompany = new Account(body);
+  const newCompany = new AccountModel(body);
   return await newCompany.save();
 };
 
 export const verifyCompany = async (id: string) => {
   try {
-    const data: IAccount | null = await Account.findById(new mongoose.Types.ObjectId(id));
+    const data: IAccount | null = await AccountModel.findById(new mongoose.Types.ObjectId(id));
     if(!data || !data.isActive) {
       return null;
     }
@@ -28,14 +28,14 @@ export const verifyCompany = async (id: string) => {
 };
 
 export const updateById = async (id: string, body: any) => {
-  return await Account.findByIdAndUpdate(id, body, { new: true });
+  return await AccountModel.findByIdAndUpdate(id, body, { new: true });
 };
 
 export const removeById = async (id: string, userId: any): Promise<boolean> => {
-    const data: IAccount | null = await Account.findById(id);
-    if (!data || !data.isActive) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await Account.findByIdAndUpdate(id, { isActive: false, updated_by: userId }, { new: true });
-    return true;
+  const data: IAccount | null = await AccountModel.findById(id);
+  if (!data || !data.isActive) {
+    throw Object.assign(new Error('No data found'), { status: 404 });
+  }
+  await AccountModel.findByIdAndUpdate(id, { isActive: false, updated_by: userId }, { new: true });
+  return true;
 };

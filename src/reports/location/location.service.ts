@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { Asset } from '../../models/asset.model';
-import { ReportAsset } from '../../models/assetReport.model';
-import { LocationMaster } from '../../models/location.model';
-import { ILocationReport, LocationReport } from '../../models/locationReport.model';
+import { AssetModel } from '../../models/asset.model';
+import { ReportAssetModel } from '../../models/assetReport.model';
+import { LocationModel } from '../../models/location.model';
+import { ILocationReport, ReportLocationModel } from '../../models/locationReport.model';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { getAllUsers } from '../../masters/user/user.service';
@@ -10,7 +10,7 @@ import { getAllUsers } from '../../masters/user/user.service';
 export const getAll = async (match: any): Promise<ILocationReport[]> => {
   match.isActive = true;
   const populateFilter = [{ path: 'userId', select: 'firstName lastName' }, { path: 'location_id', select: '' }];
-  return await LocationReport.find(match).populate(populateFilter).sort({ _id: -1 });
+  return await ReportLocationModel.find(match).populate(populateFilter).sort({ _id: -1 });
 };
 
 const getDummyMonthList = (): any[] => {
@@ -29,7 +29,7 @@ const fetchAllChildLocationIds = async (locationId: string, account_id: string):
   while (stack.length > 0) {
     const current = stack.pop()!;
     result.push(current);
-    const children = await LocationMaster.find({ parent_id: current, account_id, visible: true }).select('_id');
+    const children = await LocationModel.find({ parent_id: current, account_id, visible: true }).select('_id');
     children.forEach((child: any) => stack.push(child._id.toString()));
   }
   return result;
@@ -58,12 +58,12 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
     }
     const locationIds = await fetchAllChildLocationIds(location_id, `${account_id}`);
     locationIds.push(location_id);
-    const assets = await Asset.find({ locationId: { $in: locationIds }, account_id, top_level: true, visible: true });
+    const assets = await AssetModel.find({ locationId: { $in: locationIds }, account_id, top_level: true, visible: true });
     if (!assets || assets.length === 0) {
       throw Object.assign(new Error('No asset found under this location.'), { status: 404 });
     }
     const reportList = await Promise.all(assets.map(async (asset: any) => {
-      const [latestReport] = await ReportAsset.find({ top_level_asset_id: asset._id, accountId: account_id }).sort({ createdOn: -1 }).populate([{ path: 'userId', select: 'firstName lastName' }, { path: 'locationId', select: '' }, { path: 'assetId', select: '' }]).limit(1);
+      const [latestReport] = await ReportAssetModel.find({ top_level_asset_id: asset._id, accountId: account_id }).sort({ createdOn: -1 }).populate([{ path: 'userId', select: 'firstName lastName' }, { path: 'locationId', select: '' }, { path: 'assetId', select: '' }]).limit(1);
       return latestReport || null;
     }));
     const validReports = reportList.filter(Boolean);
@@ -159,7 +159,7 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
       loc.sub_location_asset_fault_summary_data = faultSummary;
     }
     const assetReportData = Object.values(subLocationMap).flatMap((loc: any) => loc.asset_data);
-    const insertData = new LocationReport({
+    const insertData = new ReportLocationModel({
       asset_condition_summary_data: assetConditionSummaryData,
       asset_fault_summary_data: assetFaultSummaryData,
       asset_report_data: assetReportData,
@@ -178,5 +178,5 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
 };
 
 export const deleteLocationsReport = async (id: string, accountId: string, user_id: string) => {
-  return await LocationReport.findOneAndUpdate({ _id: id, account_id: accountId, isActive: true }, { isActive: false, updatedBy: user_id }, { new: true });
-}
+  return await ReportLocationModel.findOneAndUpdate({ _id: id, account_id: accountId, isActive: true }, { isActive: false, updatedBy: user_id }, { new: true });
+};

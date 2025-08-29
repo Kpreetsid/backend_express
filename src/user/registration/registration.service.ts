@@ -1,11 +1,11 @@
 import { IAccount } from "../../models/account.model";
 import { sendVerificationCode } from '../../_config/mailer'
-import { VerificationCode } from "../../models/userVerification.model";
+import { VerificationCodeModel } from "../../models/userVerification.model";
 import { createNewUser } from "../../masters/user/user.service";
 import { createCompany } from "../../masters/company/company.service";
 
 export const verifyOTPCode = async (body: any) => {
-  const userVerification = await VerificationCode.findOne({ email: body.email, code: body.verificationCode });
+  const userVerification = await VerificationCodeModel.findOne({ email: body.email, code: body.verificationCode });
   if (!userVerification) {
     throw Object.assign(new Error('OTP expired'), { status: 403 });
   }

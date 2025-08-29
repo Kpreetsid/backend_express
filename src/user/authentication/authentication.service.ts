@@ -1,11 +1,11 @@
-import { IUser, User, UserLoginPayload } from "../../models/user.model";
+import { IUser, UserModel, UserLoginPayload } from "../../models/user.model";
 import { Request, Response, NextFunction } from 'express';
 import { comparePassword, hashPassword } from '../../_config/bcrypt';
 import { generateAccessToken } from '../../_config/auth';
-import { UserToken } from "../../models/userToken.model";
+import { TokenModel } from "../../models/userToken.model";
 import { verifyUserRole } from "../../masters/user/role/roles.service";
 import { sendPasswordChangeConfirmation } from "../../_config/mailer";
-import { VerificationCode } from "../../models/userVerification.model";
+import { VerificationCodeModel } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
 import { IAccount } from "../../models/account.model";
 import { getAllCompanies } from "../../masters/company/company.service";
@@ -18,7 +18,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match: any = { $or: [{ username: username }, { email: username }], user_status: 'active' };
-    const user: IUser | null = await User.findOne(match).select('+password');
+    const user: IUser | null = await UserModel.findOne(match).select('+password');
     if (!user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
@@ -44,7 +44,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     }
     res.cookie('token', token, { httpOnly: true, secure: false , sameSite: 'lax'});
     res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
-    const userTokenData = new UserToken({
+    const userTokenData = new TokenModel({
       _id: token,
       userId: user._id,
       principalType: 'user',
@@ -63,18 +63,18 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
     if(!token) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const userToken = await UserToken.findOne({ _id: token });
+    const userToken = await TokenModel.findOne({ _id: token });
     if (!userToken) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const user = await User.findOne({ _id: userToken.userId });
+    const user = await UserModel.findOne({ _id: userToken.userId });
     if (!user) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const hashNewPassword = await hashPassword(password);
-    await User.updateOne({ _id: user._id, account_id: user.account_id }, { $set: { password: hashNewPassword } });
+    await UserModel.updateOne({ _id: user._id, account_id: user.account_id }, { $set: { password: hashNewPassword } });
     await sendPasswordChangeConfirmation(user);
-    await VerificationCode.deleteOne({ email: user.email, code: token.toString() });
+    await VerificationCodeModel.deleteOne({ email: user.email, code: token.toString() });
     return res.status(200).json({ status: true, message: 'Password reset successful' });
   } catch (error) {
     next(error);

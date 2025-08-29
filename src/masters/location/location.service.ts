@@ -1,17 +1,17 @@
-import { LocationMaster, ILocationMaster } from "../../models/location.model";
+import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { Request, Response, NextFunction } from 'express';
-import { IMapUserLocation, MapUserAssetLocation } from "../../models/mapUserLocation.model";
+import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import { Asset } from "../../models/asset.model";
+import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
 import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
 import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (match: any) => {
-  const locationData = await LocationMaster.find(match).populate([{ path: 'parent_id', select: 'location_name' }]);
+  const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', select: 'location_name' }]);
   const locationIds = locationData.map(doc => `${doc._id}`);
-  const mapData = await MapUserAssetLocation.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
+  const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
   const result: any = locationData.map((doc: any) => {
     const { _id: id, ...obj} = doc.toObject(); 
     obj.id = id;
@@ -24,7 +24,7 @@ export const getAll = async (match: any) => {
 
 const buildTree = async (parentId: string | null, account_id: any): Promise<any[]> => {
   const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false }};
-  const nodes = await getData(LocationMaster, { filter: match });
+  const nodes = await getData(LocationModel, { filter: match });
   return Promise.all(
     nodes.map(async (node: any) => {
       const children = await buildTree(node._id.toString(), account_id);
@@ -53,7 +53,7 @@ export const getTree = async (req: Request, res: Response, next: NextFunction): 
 
     // Restrict for non-admins
     if (userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       const allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
 
       if (allowedLocationIds.length === 0) {
@@ -71,7 +71,7 @@ export const getTree = async (req: Request, res: Response, next: NextFunction): 
       }
     }
 
-    const rootLocations: ILocationMaster[] = await getData(LocationMaster, { filter: match });
+    const rootLocations: ILocationMaster[] = await getData(LocationModel, { filter: match });
     if (!rootLocations?.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
     }
@@ -111,7 +111,7 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
       }
       match._id = { $in: locationIds };
     }
-    const locations: ILocationMaster[] = await LocationMaster.find(match).lean();;
+    const locations: ILocationMaster[] = await LocationModel.find(match).lean();
     if (!locations?.length) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -159,7 +159,7 @@ export const childAssetsAgainstLocation = async (lOne: any, lTwo: any, account_i
   try {
     const childIds = await getAllChildLocationsRecursive(lTwo);
     const finalList = [...childIds, ...lOne, ...lTwo]
-    const data: any = await Asset.find({ locationId: { $in: finalList }, top_level: true, account_id, visible: true }).select('id top_level asset_name asset_type');
+    const data: any = await AssetModel.find({ locationId: { $in: finalList }, top_level: true, account_id, visible: true }).select('id top_level asset_name asset_type');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -173,8 +173,8 @@ const getAllChildLocationsRecursive = async (parentIds: any) => {
   try {
     let childIds: any = [];
     for (let i = 0; i < parentIds.length; i++) {
-      const parent: any = await LocationMaster.findById(parentIds[i]);
-      const children = await LocationMaster.find({ where: { parent_id: parent.id, visible: true }});
+      const parent: any = await LocationModel.findById(parentIds[i]);
+      const children = await LocationModel.find({ where: { parent_id: parent.id, visible: true }});
       if (children.length > 0) {
         const childrenIds = children.map(child => child.id);
         childIds = [...childIds, ...childrenIds];
@@ -189,16 +189,16 @@ const getAllChildLocationsRecursive = async (parentIds: any) => {
 }
 
 export const insertLocation = async (body: any) => {
-  const newLocation = new LocationMaster(body);
+  const newLocation = new LocationModel(body);
   newLocation.top_level_location_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
   body.parent_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
   return await newLocation.save();
 };
 
 export const updateById = async (id: string, body: any) => {
-  await MapUserAssetLocation.deleteMany({ locationId: id });
-  await LocationMaster.updateOne({ _id: id }, body);
-  return await LocationMaster.findById(id);
+  await MapUserAssetLocationModel.deleteMany({ locationId: id });
+  await LocationModel.updateOne({ _id: id }, body);
+  return await LocationModel.findById(id);
 };
 
 export const removeById = async (id: string, data: any) => {
@@ -207,16 +207,16 @@ export const removeById = async (id: string, data: any) => {
   if(data.top_level) {
     const childIds = await getAllChildLocationsRecursive([id]);
     totalIds.push(...childIds);
-    promiseList.push(LocationMaster.updateMany({ _id: { $in: childIds } }, { visible: false }));
+    promiseList.push(LocationModel.updateMany({ _id: { $in: childIds } }, { visible: false }));
   }
-  promiseList.push(Asset.updateMany({ locationId: { $in: totalIds } }, { visible: false }));
-  promiseList.push(LocationMaster.updateMany({ _id: { $in: totalIds } }, { visible: false }));
+  promiseList.push(AssetModel.updateMany({ locationId: { $in: totalIds } }, { visible: false }));
+  promiseList.push(LocationModel.updateMany({ _id: { $in: totalIds } }, { visible: false }));
   await Promise.all(promiseList);
   return true;
 };
 
 export const updateFloorMapImage = async (id: string, account_id: any, user_id: any, top_level_location_image: string) => {
-  return await LocationMaster.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id }});
+  return await LocationModel.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id }});
 };
 
 export const getLocationSensor = async (account_id: any, user_id: any, userRole: string) => {
@@ -229,7 +229,7 @@ export const getLocationSensor = async (account_id: any, user_id: any, userRole:
       }
       match._id = { $in: mappedData.map(doc => doc.locationId) };
     }
-    const data = await LocationMaster.find(match).populate([{ path: 'account_id', select: 'account_name' }, { path: 'top_level_location_id', select: 'location_name' }]);
+    const data = await LocationModel.find(match).populate([{ path: 'account_id', select: 'account_name' }, { path: 'top_level_location_id', select: 'location_name' }]);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

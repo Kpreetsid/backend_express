@@ -139,7 +139,7 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
         work_order: { type: Object },
         rescheduleEnabled: { type: Boolean },
         no_of_time_call: { type: Number },
-        visible: { type: Boolean },
+        visible: { type: Boolean, default: true },
         account_id: { type: mongoose.Types.ObjectId },
         rescheduleWeekDays: { type: Number },
         monday: { type: Boolean, default: false },
@@ -178,4 +178,4 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     }
 );
 
-export const ScheduleMasterModel = mongoose.model<IScheduleMaster>("Preventive", ScheduleMasterSchema);
+export const SchedulerModel = mongoose.model<IScheduleMaster>("Preventive", ScheduleMasterSchema);

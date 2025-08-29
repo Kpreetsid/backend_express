@@ -7,7 +7,7 @@ export const getAssetsReport = async (req: Request, res: Response, next: NextFun
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const match = { accountId: account_id };
-    const populateFilter = [{ path: 'locationId', select: 'location_name' }, { path: 'assetId', select: 'asset_name' }, { path: 'userId', select: 'firstName lastName' }];
+    const populateFilter = [{ path: 'locationId', select: 'id location_name' }, { path: 'assetId', select: 'id asset_name' }, { path: 'userId', select: 'id firstName lastName' }];
     const data = await getAll(match, populateFilter);
     if(!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

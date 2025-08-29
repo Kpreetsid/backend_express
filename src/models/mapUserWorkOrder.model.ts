@@ -33,4 +33,4 @@ const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(
   }
 );
 
-export const WorkOrderAssignee = model<IWorkOrderAssignee>('WorkOrderAssignee', workOrderAssigneeSchema);
+export const WorkOrderAssigneeModel = model<IWorkOrderAssignee>('WorkOrderAssignee', workOrderAssigneeSchema);

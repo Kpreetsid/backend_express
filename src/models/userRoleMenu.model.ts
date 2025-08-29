@@ -116,4 +116,4 @@ const userRoleMenuSchema = new Schema<IUserRoleMenu>({
   }
 });
 
-export const UserRoleMenu = mongoose.model<IUserRoleMenu>('UserRoleMenu', userRoleMenuSchema);
+export const RoleMenuModel = mongoose.model<IUserRoleMenu>('UserRoleMenu', userRoleMenuSchema);

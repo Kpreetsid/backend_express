@@ -1,12 +1,12 @@
-import { EndpointLocation } from "../../models/floorMap.model";
+import { EndpointLocationModel } from "../../models/floorMap.model";
 import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import { LocationMaster } from "../../models/location.model";
-import { Asset } from "../../models/asset.model";
+import { LocationModel } from "../../models/location.model";
+import { AssetModel } from "../../models/asset.model";
 
 export const getFloorMaps = async (match: any) => {
-  return await EndpointLocation.find(match);
+  return await EndpointLocationModel.find(match);
 };
 
 export const getCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -21,7 +21,7 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
       match = { account_id, data_type: 'kpi' };
     }
 
-    const floorMaps = await EndpointLocation.find(match).populate([{ path: 'locationId', select: 'location_name' }]);
+    const floorMaps = await EndpointLocationModel.find(match).populate([{ path: 'locationId', select: 'location_name' }]);
     if (!floorMaps || floorMaps.length === 0) {
       throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });
     }
@@ -30,7 +30,7 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
         const childLocations = await getAllChildLocationsRecursive([`${item.locationId._id}`]);
         const finalLocIds = [item.locationId, ...childLocations];
         const assetsMatch: any = { locationId: { $in: finalLocIds }, visible: true, account_id, asset_type: { $nin: ['Flexible', 'Rigid', 'Belt_Pulley'] } };
-        const assetList = await Asset.find(assetsMatch).select('asset_name asset_type');
+        const assetList = await AssetModel.find(assetsMatch).select('asset_name asset_type');
         return { item, assetList };
       })
     );
@@ -52,7 +52,7 @@ export const floorMapAssetCoordinates = async (req: Request, res: Response, next
       match.data_type = 'asset';
       match.locationId = location_id;
     }
-    const floorMaps = await EndpointLocation.find(match);
+    const floorMaps = await EndpointLocationModel.find(match);
     if (!floorMaps || floorMaps.length === 0) {
       throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });
     }
@@ -65,10 +65,10 @@ export const floorMapAssetCoordinates = async (req: Request, res: Response, next
 const getAllChildLocationsRecursive = async (parentIds: any): Promise<any> => {
   let childIds: string[] = [];
   for (const parentId of parentIds) {
-    const parent = await LocationMaster.findById(parentId);
+    const parent = await LocationModel.findById(parentId);
     if (!parent) continue;
     const match = { parent_id: parent._id, visible: true };
-    const children = await LocationMaster.find(match);
+    const children = await LocationModel.find(match);
     if (children?.length > 0) {
       const childrenIds = children.map((child: any) => child._id.toString());
       childIds.push(...childrenIds);
@@ -81,7 +81,7 @@ const getAllChildLocationsRecursive = async (parentIds: any): Promise<any> => {
 
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const endpointLocation = new EndpointLocation(req.body);
+    const endpointLocation = new EndpointLocationModel(req.body);
     await endpointLocation.save();
     return res.status(201).json({ status: true, message: "Data inserted successfully", data: endpointLocation });
   } catch (error) {
@@ -92,7 +92,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
 export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { body: { name, description, location }, params: { id } } = req;
-    const data = await EndpointLocation.findByIdAndUpdate(id, { name, description, location }, { new: true });
+    const data = await EndpointLocationModel.findByIdAndUpdate(id, { name, description, location }, { new: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -107,11 +107,11 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await EndpointLocation.findById(req.params.id);
+    const data = await EndpointLocationModel.findById(req.params.id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await EndpointLocation.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
+    await EndpointLocationModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
@@ -122,7 +122,7 @@ export const insertCoordinates = async (req: Request, res: Response, next: NextF
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const body = req.body;
-    const newMappedCoordinates = new EndpointLocation({
+    const newMappedCoordinates = new EndpointLocationModel({
       "coordinate": body.coordinate,
       "locationId": body.locationId,
       "account_id": account_id,
@@ -144,5 +144,5 @@ export const insertCoordinates = async (req: Request, res: Response, next: NextF
 };
 
 export const deleteCoordinates = async (match: any) => {
-  return await EndpointLocation.findOneAndDelete(match);
+  return await EndpointLocationModel.findOneAndDelete(match);
 };

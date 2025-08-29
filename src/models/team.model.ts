@@ -37,4 +37,4 @@ const teamSchema = new Schema<ITeam>(
   }
 );
 
-export const Teams = mongoose.model<ITeam>('Team', teamSchema);
+export const TeamsModel = mongoose.model<ITeam>('Team', teamSchema);

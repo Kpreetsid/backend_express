@@ -1,11 +1,11 @@
 import { CronJob } from "cron";
 
-export const startCronJob = async() => {
-  const job = new CronJob("5 * * * * *", async () => {
-      console.log(`[${new Date().toISOString()}] Running password auto-update job...`);
-    },
+export const startCronJob = async () => {
+  const job = new CronJob("*/5 * * * * *", async () => {
+    console.log(`[${new Date().toISOString()}] Running order data fetch job...`);
+  },
     null,
-    false, // Start manually
+    false,
     "Asia/Kolkata"
   );
   job.start();

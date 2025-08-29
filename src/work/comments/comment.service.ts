@@ -1,17 +1,17 @@
-import { Comments, IComments } from "../../models/comment.model";
+import { CommentsModel, IComments } from "../../models/comment.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAllComments = async (match: any): Promise<IComments[]> => {
-  return await Comments.find(match);
+  return await CommentsModel.find(match);
 };
 
 export const getDataById = async (id: string): Promise<IComments | null> => {
-  return await Comments.findById(id);
+  return await CommentsModel.findById(id);
 };
 
 export const insertComment = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const newComment = new Comments(req.body);
+    const newComment = new CommentsModel(req.body);
     const data = await newComment.save();
     return res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
@@ -25,7 +25,7 @@ export const updateComment = async (req: Request, res: Response, next: NextFunct
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await Comments.findByIdAndUpdate(id, body, { new: true });
+    const data = await CommentsModel.findByIdAndUpdate(id, body, { new: true });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -40,11 +40,11 @@ export const removeComment = async (req: Request, res: Response, next: NextFunct
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await Comments.findById(req.params.id);
+    const data = await CommentsModel.findById(req.params.id);
     if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await Comments.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
+    await CommentsModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
