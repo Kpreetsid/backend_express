@@ -60,7 +60,6 @@ export const orderStatus = async (match: any): Promise<any> => {
   return result;
 };
 
-
 export const orderPriority = async (match: any): Promise<any> => {
   match.visible = true;
   const data: IWorkOrder[] = await WorkOrderModel.aggregate([
@@ -265,7 +264,8 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     throw Object.assign(new Error('Failed to create work order'), { status: 400 });
   }
   userDetails.forEach(async (assignedUsers: IUser) => {
-    await sendWorkOrderMail(data, assignedUsers, user);
+    const orders = await getOrders({ _id: data._id });
+    await sendWorkOrderMail(orders[0], assignedUsers, user);
   });
   return data;
 };
