@@ -405,11 +405,11 @@ export const insert = async (body: any, user: IUser): Promise<any> => {
     estimated_time : body.estimated_time,
     priority : body.priority,
     status : body.status,
-    nature_of_work : body.nature_of_work,
+    type : body.type,
     rescheduleEnabled : false,
     created_by : user._id,
-    wo_asset_id : body.wo_asset_id,
-    wo_location_id : body.wo_location_id,
+    asset_id : body.asset_id,
+    location_id : body.location_id,
     assigned_to : body.assigned_to,
     end_date : body.end_date,
     start_date : body.start_date,
@@ -418,13 +418,16 @@ export const insert = async (body: any, user: IUser): Promise<any> => {
     workInstruction : body.workInstruction,
     actualParts : body.actualParts,
     createdFrom : "Work Order",
-    creatorEmail : body.creatorEmail,
     attachment : body.attachment,
     task : body.task,
     estimatedParts : body.estimatedParts,
     createdBy: user._id
   });
   const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
+  const userDetails = await UserModel.find({ _id: { $in: body.userIdList } });
+  if (!userDetails || userDetails.length === 0) {
+    throw Object.assign(new Error('No users found'), { status: 404 });
+  }
   const result = await mapUsersWorkOrder(mappedUsers);
   if (!result || result.length === 0) {
     throw Object.assign(new Error('Failed to map users to work order'), { status: 500 });
@@ -432,10 +435,6 @@ export const insert = async (body: any, user: IUser): Promise<any> => {
   const data = await newAsset.save();
   if (!data) {
     throw Object.assign(new Error('Failed to create work order'), { status: 400 });
-  }
-  const userDetails = await UserModel.find({ _id: { $in: body.userIdList } });
-  if (!userDetails || userDetails.length === 0) {
-    throw Object.assign(new Error('No users found'), { status: 404 });
   }
   userDetails.forEach(async (assignedUsers: IUser) => {
     await sendWorkOrderMail(data, assignedUsers, user);
