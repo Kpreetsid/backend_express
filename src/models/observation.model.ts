@@ -42,4 +42,4 @@ const ObservationSchema = new Schema<IObservation>({
   }
 });
 
-export const ObservationModel = mongoose.model<IObservation>('Observation', ObservationSchema);
+export const ObservationModel = mongoose.model<IObservation>('Schema_Observation', ObservationSchema);

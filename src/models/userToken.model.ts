@@ -38,4 +38,4 @@ const userTokenSchema = new Schema<IUserToken>({
   }
 });
 
-export const TokenModel = mongoose.model<IUserToken>('UserToken', userTokenSchema);
+export const TokenModel = mongoose.model<IUserToken>('Schema_UserToken', userTokenSchema);

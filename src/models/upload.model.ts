@@ -42,4 +42,4 @@ export const uploadSchema = new Schema<IUpload>({
   }
 });
 
-export const UploadModel = mongoose.model<IUpload>('Upload', uploadSchema);
+export const UploadModel = mongoose.model<IUpload>('Schema_Upload', uploadSchema);

@@ -80,4 +80,4 @@ const endpointLocationSchema = new Schema<IEndpointLocation>({
   }
 });
 
-export const EndpointLocationModel = mongoose.model<IEndpointLocation>('EndpointLocation', endpointLocationSchema);
+export const EndpointLocationModel = mongoose.model<IEndpointLocation>('Schema_EndPoints', endpointLocationSchema);

@@ -158,4 +158,4 @@ const reportAssetSchema = new Schema<IReportAsset>({
   }
 });
 
-export const ReportAssetModel = mongoose.model<IReportAsset>('ReportAsset', reportAssetSchema);
+export const ReportAssetModel = mongoose.model<IReportAsset>('Schema_ReportAsset', reportAssetSchema);

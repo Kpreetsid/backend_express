@@ -90,8 +90,8 @@ interface WorkOrder {
     nature_of_work: string;
     account_id: string;
     assigned_to: number;
-    wo_asset_id: string;
-    wo_location_id: string;
+    asset_id: string;
+    location_id: string;
     created_by: string;
     sopForm: any;
     userId: User[];
@@ -178,4 +178,4 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     }
 );
 
-export const SchedulerModel = mongoose.model<IScheduleMaster>("Preventive", ScheduleMasterSchema);
+export const SchedulerModel = mongoose.model<IScheduleMaster>("Schema_Schedule", ScheduleMasterSchema);

@@ -2,7 +2,7 @@ import { WorkRequestModel, IWorkRequest } from "../../models/workRequest.model";
 
 export const getAllRequests = async (match: any): Promise<IWorkRequest[]> => {
   match.visible = true;
-  const populateList = [{ path: "locationId", model: "LocationMaster", select: "location_name" }, { path: "account_id", model: "Account", select: "account_name" }, { path: "createdBy", model: "User", select: "firstName lastName" }];
+  const populateList = [{ path: "locationId", model: "Schema_Location", select: "id location_name" }, { path: "account_id", model: "Schema_Account", select: "id account_name" }, { path: "createdBy", model: "Schema_User", select: "id firstName lastName" }];
   return await WorkRequestModel.find(match).populate(populateList);
 };
 

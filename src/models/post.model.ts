@@ -134,4 +134,4 @@ const PostSchema = new Schema<IPost>({
   }
 });
 
-export const PostModel = mongoose.model<IPost>('Post', PostSchema);
+export const PostModel = mongoose.model<IPost>('Schema_Post', PostSchema);

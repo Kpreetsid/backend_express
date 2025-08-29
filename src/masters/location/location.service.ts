@@ -9,9 +9,9 @@ import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLo
 import { getData } from "../../util/queryBuilder";
 
 export const getAll = async (match: any) => {
-  const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', select: 'location_name' }]);
+  const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name' }]);
   const locationIds = locationData.map(doc => `${doc._id}`);
-  const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
+  const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
   const result: any = locationData.map((doc: any) => {
     const { _id: id, ...obj} = doc.toObject(); 
     obj.id = id;
@@ -229,7 +229,7 @@ export const getLocationSensor = async (account_id: any, user_id: any, userRole:
       }
       match._id = { $in: mappedData.map(doc => doc.locationId) };
     }
-    const data = await LocationModel.find(match).populate([{ path: 'account_id', select: 'account_name' }, { path: 'top_level_location_id', select: 'location_name' }]);
+    const data = await LocationModel.find(match).populate([{ path: 'account_id', model: "Schema_Account", select: 'id account_name' }, { path: 'top_level_location_id', model: "Schema_Location", select: 'id location_name' }]);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

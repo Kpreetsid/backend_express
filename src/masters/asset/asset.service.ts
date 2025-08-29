@@ -10,9 +10,9 @@ import { getExternalData } from "../../util/externalAPI";
 import mongoose from "mongoose";
 
 export const getAll = async (match: any) => {
-  const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', select: 'location_name assigned_to' }, { path: 'parent_id', select: 'asset_name'}]);
+  const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name'}]);
   const assetsIds = assetsData.map((asset: any) => `${asset._id}`);
-  const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', select: 'firstName lastName' }]);
+  const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
   const result: any = assetsData.map((doc: any) => {
     const { _id: id, ...obj} = doc.toObject(); 
     if(obj.locationId) {
@@ -151,7 +151,6 @@ export const removeById = async (match: any, userID: any) => {
 };
 
 export const deleteAsset = async (id: string): Promise<any> => {
-  console.log(`Deleting asset with ID: ${id}`);
   const childAssets = await AssetModel.find({ parent_id: id });
   if (childAssets && childAssets.length > 0) {
     for(const asset of childAssets) {
@@ -173,7 +172,13 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
         match._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
     }
-    const data = await AssetModel.find(match).populate([{ path: 'locationId', select: 'location_name' }, { path: 'top_level_asset_id', select: 'asset_name'}, { path: 'account_id', select: 'account_name' }]);
+    const data = await AssetModel.find(match).populate(
+      [
+        { path: 'locationId', model: "Schema_Location", select: 'id location_name' }, 
+        { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name'}, 
+        { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
+      ]
+    );
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -484,7 +489,6 @@ export const createExternalAPICall = async (assetsList: any, account_id: any, us
 }
 
 export const deleteAssetsById = async (assetId: any) => {
-  console.log(`Deleting asset with ID: ${assetId}`);
   const childData = await AssetModel.find({ parent_id: assetId });
   if(childData.length > 0) {
     for(const asset of childData) {

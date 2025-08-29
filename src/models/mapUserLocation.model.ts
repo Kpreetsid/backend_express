@@ -29,4 +29,4 @@ const MapUserLocationSchema = new Schema<IMapUserLocation>({
   }
 });
 
-export const MapUserAssetLocationModel = mongoose.model<IMapUserLocation>('MapUserLocation', MapUserLocationSchema);
+export const MapUserAssetLocationModel = mongoose.model<IMapUserLocation>('Schema_MapUserLocation', MapUserLocationSchema);

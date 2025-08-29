@@ -42,4 +42,4 @@ const partSchema = new Schema<IPart>({
   }
 });
 
-export const PartsModel = mongoose.model<IPart>('Part', partSchema);
+export const PartsModel = mongoose.model<IPart>('Schema_Part', partSchema);

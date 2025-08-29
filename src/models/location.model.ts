@@ -54,4 +54,4 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   }
 });
 
-export const LocationModel = mongoose.model<ILocationMaster>('LocationMaster', locationMasterSchema);
+export const LocationModel = mongoose.model<ILocationMaster>('Schema_Location', locationMasterSchema);

@@ -1,5 +1,20 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
+interface IUsedParts {
+  part_id: ObjectId;
+  quantity: number;
+}
+
+interface IParts {
+  estimated: IUsedParts[];
+  actual: IUsedParts[];
+}
+
+const PartsSchema = new Schema<IParts>({
+  estimated: [{ part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' }, quantity: { type: Number, required: true } }, { _id: false, versionKey: false }],
+  actual: [{ part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' }, quantity: { type: Number, required: true } }, { _id: false, versionKey: false }]
+}, { _id: false, versionKey: false });
+
 export interface IWorkOrder extends Document {
   account_id: ObjectId;
   order_no: string;
@@ -18,7 +33,7 @@ export interface IWorkOrder extends Document {
   comment_id: ObjectId;
   cron_id: ObjectId;
   task_id: ObjectId;
-  parts: object[];
+  parts: IParts;
   request_id: ObjectId;
   attachment: object[];
   visible: boolean;
@@ -39,10 +54,9 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   start_date: { type: Date },
   end_date: { type: Date },
-  task_id: { type: Schema.Types.ObjectId, ref: 'TaskModel' },
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
   work_instruction: { type: Schema.Types.ObjectId, ref: 'WorkInstructionModel' },
-  parts: { type: [Object] },
+  parts: { type: PartsSchema },
   request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   attachment: { type: [Object] },
   visible: { type: Boolean, default: true },
@@ -62,4 +76,4 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   }
 });
 
-export const WorkOrderModel = mongoose.model<IWorkOrder>('WorkOrder', WorkOrderSchema);
+export const WorkOrderModel = mongoose.model<IWorkOrder>('Schema_WorkOrder', WorkOrderSchema);

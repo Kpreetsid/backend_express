@@ -92,4 +92,4 @@ const CommentsSchema = new Schema<IComments>({
   }
 });
 
-export const CommentsModel = mongoose.model<IComments>('Comments', CommentsSchema);
+export const CommentsModel = mongoose.model<IComments>('Schema_Comments', CommentsSchema);

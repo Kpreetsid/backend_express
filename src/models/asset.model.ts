@@ -172,4 +172,4 @@ const assetSchema = new Schema<IAsset>({
   }
 });
 
-export const AssetModel = mongoose.model<IAsset>('Asset', assetSchema);
+export const AssetModel = mongoose.model<IAsset>('Schema_Asset', assetSchema);

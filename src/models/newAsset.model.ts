@@ -153,4 +153,4 @@ const EquipmentSetSchema = new mongoose.Schema({
   }
 });
 
-export const EquipmentSetModel = mongoose.model('EquipmentSet', EquipmentSetSchema);
+export const EquipmentSetModel = mongoose.model('Schema_EquipmentSet', EquipmentSetSchema);

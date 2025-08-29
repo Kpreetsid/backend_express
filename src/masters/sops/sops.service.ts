@@ -2,12 +2,17 @@ import { SOPsModel, ISopsMaster } from '../../models/sops.model';
 
 export const getSOPs = async (match: any): Promise<ISopsMaster[]> => {
     match.visible = true;
-    const populateList = [{ path: 'account_id', select: 'id account_name' }, { path: 'locationId', select: 'id location_name' }, { path: 'categoryId', select: 'id name' }, { path: 'createdBy', select: 'id firstName lastName' }, { path: 'updatedBy', select: 'id firstName lastName' }];
+    const populateList = [
+        { path: 'account_id', model: "Schema_Account", select: 'id account_name' },
+        { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
+        { path: 'categoryId', model: "Schema_Category", select: 'id name' },
+        { path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' },
+        { path: 'updatedBy', model: "Schema_User", select: 'id firstName lastName' }
+    ];
     let data = await SOPsModel.find(match).populate(populateList);
     if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    console.log("SOPs fetched successfully:", data);
     return data;
 };
 

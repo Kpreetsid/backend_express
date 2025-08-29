@@ -76,8 +76,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
 
 export const remove = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
     if (!id) {
       throw Object.assign(new Error('Id is required'), { status: 400 });

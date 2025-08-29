@@ -135,4 +135,4 @@ const LocationReportSchema = new Schema<ILocationReport>({
     }
 });
 
-export const ReportLocationModel = mongoose.model<ILocationReport>('LocationReport', LocationReportSchema);
+export const ReportLocationModel = mongoose.model<ILocationReport>('Schema_ReportLocation', LocationReportSchema);

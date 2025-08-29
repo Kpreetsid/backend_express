@@ -40,6 +40,6 @@ const mailLogSchema = new Schema<IMailLog>({
   }
 });
 
-export const MailLogModel = mongoose.model<IMailLog>('MailLog', mailLogSchema);
+export const MailLogModel = mongoose.model<IMailLog>('Schema_MailLog', mailLogSchema);
 
 export const createMailLog = async (mailLog: Partial<IMailLog>) => await new MailLogModel(mailLog).save();

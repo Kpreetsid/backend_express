@@ -21,7 +21,7 @@ export const getCoordinates = async (req: Request, res: Response, next: NextFunc
       match = { account_id, data_type: 'kpi' };
     }
 
-    const floorMaps = await EndpointLocationModel.find(match).populate([{ path: 'locationId', select: 'location_name' }]);
+    const floorMaps = await EndpointLocationModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'location_name' }]);
     if (!floorMaps || floorMaps.length === 0) {
       throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });
     }

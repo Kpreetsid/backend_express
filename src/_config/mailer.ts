@@ -78,11 +78,12 @@ export const sendWorkOrderMail = async (workOrder: any, assignedUsers: any, user
     const templatePath = path.join(__dirname, '../public/workOrder.template.html');
     let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
     htmlTemplate = htmlTemplate.replace('{{userFullName}}', assignedUsers.firstName + ' ' + assignedUsers.lastName);
-    htmlTemplate = htmlTemplate.replace('{{workOrderId}}', workOrder.id);
+    htmlTemplate = htmlTemplate.replaceAll('{{workOrderNo}}', workOrder.order_no);
     htmlTemplate = htmlTemplate.replace('{{workOrderDescription}}', workOrder.description);
-    htmlTemplate = htmlTemplate.replace('{{title}}', workOrder.title);
+    htmlTemplate = htmlTemplate.replaceAll('{{title}}', workOrder.title);
     htmlTemplate = htmlTemplate.replace('{{locationName}}', workOrder.locationName);
     htmlTemplate = htmlTemplate.replace('{{assetName}}', workOrder.assetName);
+    htmlTemplate = htmlTemplate.replace('{{datetime}}', new Date().toLocaleString());
     htmlTemplate = htmlTemplate.replace('{{createdBy}}', `${user.firstName} ${user.lastName}`);
     htmlTemplate = htmlTemplate.replace('{{startDate}}', workOrder.start_date.toISOString().split('T')[0]);
     htmlTemplate = htmlTemplate.replace('{{endDate}}', workOrder.end_date.toISOString().split('T')[0]);
@@ -90,7 +91,7 @@ export const sendWorkOrderMail = async (workOrder: any, assignedUsers: any, user
     htmlTemplate = htmlTemplate.replace('{{detailsLink}}', `https://app.presageinsights.ai/cmms/work-order/list/1/${workOrder.id || workOrder._id}/info`);
     await sendMail({
       to: assignedUsers.email,
-      subject: `"${workOrder.title}" – New Work Order Assigned by ${user.firstName} ${user.lastName}`,
+      subject: `${workOrder.title} - New Work Order Assigned by ${user.firstName} ${user.lastName}`,
       // Action Required: "${workOrder.title}" Work Order Assigned by ${user.firstName} ${user.lastName}
       html: htmlTemplate
     });

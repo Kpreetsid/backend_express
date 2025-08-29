@@ -100,12 +100,12 @@ export const monthlyCount = async (match: any): Promise<any> => {
 
 export const plannedUnplanned = async (match: any): Promise<any> => {
   match.visible = true;
-  const data: IWorkOrder[] = await WorkOrderModel.find(match).select("_id createdOn createdFrom");
+  const data: IWorkOrder[] = await WorkOrderModel.find(match).select("_id createdAt createdFrom");
   if (!data || data.length === 0) {
     throw Object.assign(new Error('No data found'), { status: 404 });
   }
   const groupByCreatedFromAndMonth = data.reduce((acc: any, document: any) => {
-    const monthYear = document.createdOn.toISOString().slice(0, 7);
+    const monthYear = document.createdAt.toISOString().slice(0, 7);
     const key = `${document.createdFrom}-${monthYear}`;
     acc[key] = acc[key] || {
       createdFrom: document.createdFrom,
@@ -234,6 +234,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     priority : body.priority,
     status : body.status,
     type : body.type,
+    sop_form_id : body.sop_form_id,
     rescheduleEnabled : false,
     created_by : user._id,
     asset_id : body.asset_id,
@@ -244,10 +245,10 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     sopForm : body.sopForm,
     workInstruction : body.workInstruction,
     actualParts : body.actualParts,
-    createdFrom : "Work Order",
+    createdFrom : body.createdFrom,
     attachment : body.attachment,
     task : body.task,
-    estimatedParts : body.estimatedParts,
+    parts : body.parts,
     createdBy: user._id
   });
   const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));

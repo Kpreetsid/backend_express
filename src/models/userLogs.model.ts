@@ -143,4 +143,4 @@ userLogSchema.statics.findByUserId = function (userId: string) {
     return this.find({ userId: new mongoose.Types.ObjectId(userId) });
 };
 
-export const UserLogModel = mongoose.model<IUserLog>('UserLog', userLogSchema);
+export const UserLogModel = mongoose.model<IUserLog>('Schema_UserLog', userLogSchema);
