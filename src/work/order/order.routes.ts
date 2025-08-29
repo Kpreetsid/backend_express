@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAll, getOrder, createOrder, updateOrder, remove, getOrderStatus, getOrderPriority, getMonthlyCount, getPlannedUnplanned, getSummaryData, getPendingOrders } from './order.controller';
+import { getAll, createOrder, updateOrder, remove, getOrderStatus, getOrderPriority, getMonthlyCount, getPlannedUnplanned, getSummaryData, getPendingOrders } from './order.controller';
 import { hasPermission } from '../../middlewares';
 
 export default (router: express.Router) => {
@@ -11,7 +11,7 @@ export default (router: express.Router) => {
     orderRouter.get('/priority', getOrderPriority);
     orderRouter.get('/monthly-count', getMonthlyCount);
     orderRouter.get('/planned-unplanned', getPlannedUnplanned);
-    orderRouter.get('/:id', getOrder);
+    orderRouter.get('/:id', getAll);
     orderRouter.post('/', createOrder);
     orderRouter.put('/:id', updateOrder);
     orderRouter.delete('/:id', hasPermission('admin'), remove);

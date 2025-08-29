@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAllOrders, getOrders, getDataById, insert, updateById, orderStatus, orderPriority, monthlyCount, plannedUnplanned, summaryData, pendingOrders, removeOrder } from './order.service';
+import { getAllOrders, getOrders, createWorkOrder, updateById, orderStatus, orderPriority, monthlyCount, plannedUnplanned, summaryData, pendingOrders, removeOrder } from './order.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { getMappedWorkOrderIDs } from '../../transaction/mapUserWorkOrder/userWorkOrder.service';
@@ -9,32 +9,22 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id };
-    const { id, status, priority, order_no, wo_asset_id, location, assignedMe = false } = req.query;
-    if (id) match._id = { $in: id.toString().split(',').map(id => new mongoose.Types.ObjectId(id)) };
+    const { params: { id } } = req;
+    const { status, priority, order_no, asset_id, location, assignedMe = false } = req.query;
+    if (id) match._id = new mongoose.Types.ObjectId(id);
     if (status) match.status = { $in: status.toString().split(',') };
     if (priority) match.priority = { $in: priority.toString().split(',') };
     if (order_no) match.order_no = { $in: order_no.toString().split(',') };
-    if (location) match.wo_location_id = { $in: location.toString().split(',') };
-    if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',') };
+    if (location) match.location_id = { $in: location.toString().split(',') };
+    if (asset_id) match.asset_id = { $in: asset_id.toString().split(',') };
     if (String(assignedMe) === "true" || userRole !== "admin") {
       match._id = { $in: await getMappedWorkOrderIDs(user_id) };
     }
-    console.log({ match });
     const data = await getAllOrders(match);
     if(!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const getOrder = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await getDataById(req, res, next);
   } catch (error) {
     next(error);
   }
@@ -47,7 +37,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
     if(!body.userIdList || body.userIdList.length === 0) {
       throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
     }
-    const data = await insert(body, user);
+    const data = await createWorkOrder(body, user);
     if (!data) {
       throw Object.assign(new Error('Failed to create work order'), { status: 400 });
     }
@@ -97,8 +87,19 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
 export const getOrderStatus = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await orderStatus(req, res, next);
+    const match: any = { account_id: account_id };
+    const { asset_id } = req.query;
+    if (asset_id) {
+      match.asset_id = { $in: asset_id.toString().split(',') };
+    }
+    if (userRole !== "admin") {
+      match.user_id = user_id;
+    }
+    const data = await orderStatus(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
@@ -107,8 +108,19 @@ export const getOrderStatus = async (req: Request, res: Response, next: NextFunc
 export const getOrderPriority = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await orderPriority(req, res, next);
+    const match: any = { account_id: account_id };
+    const { asset_id } = req.query;
+    if (asset_id) {
+      match.asset_id = { $in: asset_id.toString().split(',') };
+    }
+    if (userRole !== "admin") {
+      match.user_id = user_id;
+    }
+    const data = await orderPriority(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
@@ -117,8 +129,19 @@ export const getOrderPriority = async (req: Request, res: Response, next: NextFu
 export const getMonthlyCount = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await monthlyCount(req, res, next);
+    const match: any = { account_id: account_id };
+    const query = req.query;
+    if (userRole !== 'admin') {
+      match.user_id = user_id;
+    }
+    if (query.asset_id) {
+      match.asset_id = { $in: query.asset_id.toString().split(',') };
+    }
+    const data = await monthlyCount(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
@@ -127,8 +150,19 @@ export const getMonthlyCount = async (req: Request, res: Response, next: NextFun
 export const getPlannedUnplanned = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await plannedUnplanned(req, res, next);
+    const match: any = { account_id: account_id };
+    const query = req.query;
+    if (userRole !== 'admin') {
+      match.user_id = user_id;
+    }
+    if (query.asset_id) {
+      match.asset_id = { $in: query.asset_id.toString().split(',') };
+    }
+    const data = await plannedUnplanned(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
@@ -138,7 +172,19 @@ export const getSummaryData = async (req: Request, res: Response, next: NextFunc
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     console.log({ account_id, user_id, userRole });
-    await summaryData(req, res, next);
+    const query = req.query;
+    const match: any = { account_id: account_id, visible: true };
+    if (userRole !== 'admin') {
+      match.user_id = user_id;
+    }
+    if (query.asset_id) {
+      match.asset_id = { $in: query.asset_id.toString().split(',') };
+    }
+    const data = await summaryData(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
@@ -147,8 +193,24 @@ export const getSummaryData = async (req: Request, res: Response, next: NextFunc
 export const getPendingOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await pendingOrders(req, res, next);
+    const query: any = req.query;
+    const match: any = { account_id: account_id };
+    if (userRole !== 'admin') {
+      match.user_id = user_id;
+    }
+    if (query.asset_id) {
+      match.asset_id = { $in: query.asset_id.toString().split(',') };
+    }
+    query.no_of_days = query.no_of_days || 30;
+    var today = new Date();
+    var priorDate = new Date(today.setDate(today.getDate() - query.no_of_days)).toISOString();
+    match.createdOn = { $gte: priorDate };
+    match.status = { $nin: ['Completed'] };
+    const data = await pendingOrders(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
