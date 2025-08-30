@@ -158,6 +158,9 @@ export const getPlannedUnplanned = async (req: Request, res: Response, next: Nex
     if (query.asset_id) {
       match.asset_id = { $in: query.asset_id.toString().split(',') };
     }
+    if (query.order_no) {
+      match.order_no = query.order_no;
+    }
     const data = await plannedUnplanned(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
