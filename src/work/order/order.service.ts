@@ -12,7 +12,9 @@ export const getAllOrders = async (match: any): Promise<any> => {
     { $lookup: { from: "asset_master", localField: "asset_id", foreignField: "_id", as: "asset" }},
     { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
     { $lookup: { from: "location_master", localField: "location_id", foreignField: "_id", as: "location" }},
-    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }}
+    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
+    { $lookup: { from: "work_order_comment", localField: "_id", foreignField: "work_order_id", as: "comments" }},
+    { $addFields: { id: "$_id" }}
   ]);
   if (!data.length) {
     throw Object.assign(new Error('No data found'), { status: 404 });
