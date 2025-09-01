@@ -1,5 +1,8 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
+export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
+export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High'];
+
 interface IUsedParts {
   part_id: ObjectId;
   quantity: number;
@@ -34,7 +37,7 @@ export interface IWorkOrder extends Document {
   cron_id: ObjectId;
   task_id: ObjectId;
   parts: IParts;
-  request_id: ObjectId;
+  work_request_id: ObjectId;
   attachment: object[];
   visible: boolean;
   createdBy: ObjectId;
@@ -47,8 +50,8 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   title: { type: String, required: true },
   description: { type: String },
   estimated_time: { type: Number },
-  priority: { type: String, enum: ["None", "Low", "Medium", "High"], default: "None" },
-  status: { type: String, enum: ["Open", "In-Progress", "On-Hold", "Completed"], default: "Open" },
+  priority: { type: String, enum: WORK_ORDER_PRIORITIES, default: "None" },
+  status: { type: String, enum: WORK_ORDER_STATUSES, default: "Open" },
   type: { type: String },
   asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
   location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
@@ -57,7 +60,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
   work_instruction: { type: Schema.Types.ObjectId, ref: 'WorkInstructionModel' },
   parts: { type: PartsSchema },
-  request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
+  work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   attachment: { type: [Object] },
   visible: { type: Boolean, default: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },

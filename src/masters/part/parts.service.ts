@@ -10,7 +10,7 @@ export const getAll = async (match: any): Promise<IPart[]> => {
         let: { locId: "$locationId" },
         pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
-          { $project: { _id: 1, location_name: 1 } }
+          { $project: { _id: 1, location_name: 1, location_type: 1 } }
         ],
         as: "location"
       }

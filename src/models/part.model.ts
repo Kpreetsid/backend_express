@@ -23,11 +23,11 @@ const partSchema = new Schema<IPart>({
   min_quantity: { type: Number, required: true },
   cost: { type: Number, required: true },
   part_type: { type: String, required: true },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   isActive: { type: Boolean, required: true, default: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'parts',
   timestamps: true,

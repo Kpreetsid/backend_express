@@ -16,13 +16,13 @@ const SopsMasterSchema = new Schema<ISopsMaster>(
     {
         name: { type: String, required: true },
         description: { type: String },
-        account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
-        locationId: { type: Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
-        categoryId: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
+        account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+        locationId: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+        categoryId: { type: Schema.Types.ObjectId, ref: 'CategoryModel', required: true },
         json_temp: { type: Schema.Types.Mixed },
         visible: { type: Boolean, default: true },
-        createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-        updatedBy: { type: Schema.Types.ObjectId, ref: 'User' }
+        createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+        updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
     },
     {
         collection: "sops",

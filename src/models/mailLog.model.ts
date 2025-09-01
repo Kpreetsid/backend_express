@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export const MAIL_LOG_STATUSES = ['success', 'failed'];
+
 export interface IMailLog extends Document {
   to: string;
   subject: string;
@@ -14,7 +16,7 @@ const mailLogSchema = new Schema<IMailLog>({
   to: { type: String, required: true },
   subject: { type: String, required: true },
   html: { type: String, required: true },
-  status: { type: String, enum: ['success', 'failed'], required: true },
+  status: { type: String, enum: MAIL_LOG_STATUSES, required: true },
   messageId: { type: String },
   mailInfo: { type: Object },
   error: { type: String },

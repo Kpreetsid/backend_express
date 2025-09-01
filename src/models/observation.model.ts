@@ -21,13 +21,13 @@ const ObservationSchema = new Schema<IObservation>({
   faults: { type: [String] },
   files: { type: Schema.Types.Mixed, default: {} },
   createdOn: { type: Date, default: Date.now },
-  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
-  accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
+  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   status: { type: String, required: true },
   user: { type: Schema.Types.Mixed, required: true },
   alarmId: { type: Number },
-  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
-  top_level_asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true }
+  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  top_level_asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true }
 }, {
   collection: 'observation',
   timestamps: true,

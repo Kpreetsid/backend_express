@@ -1,4 +1,8 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
+import { IUpload } from './upload.model';
+
+export const WORK_REQUEST_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected'];
+export const WORK_REQUEST_PRIORITIES = ['None', 'Low', 'Medium', 'High'];
 
 export interface IWorkRequest extends Document {
   account_id: ObjectId;
@@ -6,41 +10,34 @@ export interface IWorkRequest extends Document {
   description: string;
   problemType: string;
   priority: string;
-  locationId: ObjectId;
-  assetId: ObjectId;
-  files: string[];
-  status?: string;
-  emailId?: string;
-  tags?: {
-    id: string;
-  };
-  help?: boolean;
-  comments?: any[];
-  reject_reason?: string;
-  likes?: any[];
+  location_id: ObjectId;
+  asset_id: ObjectId;
+  files: IUpload[];
+  status: string;
+  tags?: string[];
+  remarks?: string;
   visible: boolean;
+  approvedBy?: ObjectId;
   createdBy: ObjectId;
   updatedBy?: ObjectId;
 }
 
 const WorkRequestSchema = new Schema<IWorkRequest>({
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   title: { type: String },
   description: { type: String, required: true },
   problemType: { type: String, required: true },
-  priority: { type: String, enum: ['None', 'Low', 'Medium', 'High'], default: 'None' },
-  files: { type: [String] },
-  status: { type: String },
-  emailId: { type: String },
-  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Location', required: true },
-  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', required: true },
-  tags: { type: Object },
-  comments: { type: [Schema.Types.Mixed] },
-  reject_reason: { type: String },
-  likes: { type: [Schema.Types.Mixed] },
+  priority: { type: String, enum: WORK_REQUEST_PRIORITIES, default: 'None' },
+  files: { type: [Object], default: [] },
+  status: { type: String, enum: WORK_REQUEST_STATUSES, default: 'Open' },
+  location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  tags: { type: [String] },
+  remarks: { type: String },
   visible: { type: Boolean, default: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'work_request',
   timestamps: true,

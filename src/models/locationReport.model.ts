@@ -113,14 +113,14 @@ const LocationReportSchema = new Schema<ILocationReport>({
     asset_fault_summary_data: { type: [FaultSummarySchema] },
     asset_report_data: { type: [AssetReportSchema] },
     created_on: { type: Date, default: Date.now },
-    account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
+    account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
     sub_location_data: { type: [SubLocationSchema] },
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
     user: { type: Schema.Types.Mixed },
-    location_id: { type: Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
+    location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
     isActive: { type: Boolean, default: true },
-    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' }
+    createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
     collection: 'location-report',
     timestamps: true,

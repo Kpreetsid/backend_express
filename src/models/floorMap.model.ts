@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
+export const FLOOR_MAP_DATA_TYPES = ['location', 'asset', 'kpi'];
+
 interface ICoordinate {
   x: number;
   y: number;
@@ -28,10 +30,11 @@ export interface IEndpointLocation extends Document {
   locationId: ObjectId;
   account_id: ObjectId;
   data_type: string;
-  createdBy: ObjectId;
   createdOn: Date;
   end_point_id: number;
   end_point: IEndPoint;
+  createdBy: ObjectId;
+  updatedBy?: ObjectId;
 }
 
 const coordinateSchema = new Schema<ICoordinate>({
@@ -59,13 +62,14 @@ const endPointSchema = new Schema<IEndPoint>({
 
 const endpointLocationSchema = new Schema<IEndpointLocation>({
   coordinate: { type: coordinateSchema, required: true },
-  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  data_type: { type: String, enum: ['location', 'asset', 'kpi'], required: true },
+  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  data_type: { type: String, enum: FLOOR_MAP_DATA_TYPES, required: true },
   createdOn: { type: Date, default: Date.now },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   end_point_id: { type: Number },
-  end_point: { type: endPointSchema }
+  end_point: { type: endPointSchema },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'floor_map',
   timestamps: true,

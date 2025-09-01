@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export const STATUS = ['active', 'inactive'];
+
 export interface IAccount extends Document {
   account_name: string;
   type: string;
@@ -15,7 +17,7 @@ const accountSchema = new Schema<IAccount>(
     type: { type: String, required: true },
     description: { type: String},
     fileName: { type: String },
-    account_status: { type: String, enum: ['active', 'inactive'], default: 'active' },
+    account_status: { type: String, enum: STATUS, default: 'active' },
     isActive: { type: Boolean, required: true, default: true },
   },
   {

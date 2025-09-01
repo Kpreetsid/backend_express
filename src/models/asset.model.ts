@@ -1,5 +1,7 @@
 import mongoose, { Schema, ObjectId, Document } from 'mongoose';
 
+export const ASSETS_TYPE = ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'Other'];
+
 export interface IAsset extends Document {
   asset_name: string;
   asset_id: string;
@@ -83,7 +85,7 @@ export interface IAsset extends Document {
 const assetSchema = new Schema<IAsset>({
   asset_name: { type: String, required: true },
   asset_id: { type: String },
-  asset_type: { type: String, enum: ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers'], required: true },
+  asset_type: { type: String, enum: ASSETS_TYPE, required: true },
   asset_model: { type: String },
   asset_orient: { type: String },
   asset_behavior: { type: String },
@@ -91,7 +93,7 @@ const assetSchema = new Schema<IAsset>({
   asset_timezone: { type: String },
   imageNodeData: { type: Object },
   isNewFlow: { type: Boolean },
-  equipment_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
+  equipment_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel' },
   loadType: { type: String },
   motorType: { type: String },
   lineFreq: { type: String },
@@ -125,10 +127,10 @@ const assetSchema = new Schema<IAsset>({
   impellerType: { type: String },
   rotationUnit: { type: String },
   top_level: { type: Boolean, default: false },
-  locationId: { type: Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
-  account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
-  top_level_asset_id: { type: Schema.Types.ObjectId, ref: 'Asset' },
-  parent_id: { type: Schema.Types.ObjectId, ref: 'Asset' },
+  locationId: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  top_level_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel' },
+  parent_id: { type: Schema.Types.ObjectId, ref: 'AssetModel' },
   description: { type: String },
   manufacturer: { type: String },
   year: { type: String },
@@ -156,8 +158,8 @@ const assetSchema = new Schema<IAsset>({
   stage_7th_driven_teeth: { type: Number },
   stage_8th_driving_teeth: { type: Number },
   stage_8th_driven_teeth: { type: Number },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  updatedBy: { type: Schema.Types.ObjectId, ref: 'User' }
+  createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'asset_master',
   timestamps: true,

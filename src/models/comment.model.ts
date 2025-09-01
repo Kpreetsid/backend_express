@@ -14,13 +14,13 @@ export interface IComments extends Document {
 
 const CommentsSchema: Schema<IComments> = new Schema(
   { 
-    work_order_id: { type: Schema.Types.ObjectId, ref: "WorkOrder", required: true },
-    account_id: { type: Schema.Types.ObjectId, ref: "Account", required: true },
+    work_order_id: { type: Schema.Types.ObjectId, ref: "WorkOrderModel", required: true },
+    account_id: { type: Schema.Types.ObjectId, ref: "AccountModel", required: true },
     comments: { type: String, required: true, trim: true },
-    parentCommentId: { type: Schema.Types.ObjectId, ref: "Comment", default: null },
+    parentCommentId: { type: Schema.Types.ObjectId, ref: "CommentModel", default: null },
     visible: { type: Boolean, default: true },
-    createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    updatedBy: { type: Schema.Types.ObjectId, ref: "User" }
+    createdBy: { type: Schema.Types.ObjectId, ref: "UserModel", required: true },
+    updatedBy: { type: Schema.Types.ObjectId, ref: "UserModel" }
   },
   {
     collection: 'work_order_comment',

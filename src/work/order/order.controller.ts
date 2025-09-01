@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAllOrders, getOrders, createWorkOrder, updateById, orderStatus, orderPriority, monthlyCount, plannedUnplanned, summaryData, pendingOrders, removeOrder } from './order.service';
+import { getAllOrders, createWorkOrder, updateById, orderStatus, orderPriority, monthlyCount, plannedUnplanned, summaryData, pendingOrders, removeOrder } from './order.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { getMappedWorkOrderIDs } from '../../transaction/mapUserWorkOrder/userWorkOrder.service';
@@ -10,13 +10,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id };
     const { params: { id } } = req;
-    const { status, priority, order_no, asset_id, location, assignedMe = false } = req.query;
+    const { status, priority, order_no, asset_id, location_id, assignedMe = false } = req.query;
     if (id) match._id = new mongoose.Types.ObjectId(id);
     if (status) match.status = { $in: status.toString().split(',') };
     if (priority) match.priority = { $in: priority.toString().split(',') };
     if (order_no) match.order_no = { $in: order_no.toString().split(',') };
-    if (location) match.location_id = { $in: location.toString().split(',') };
     if (asset_id) match.asset_id = { $in: asset_id.toString().split(',') };
+    if (location_id) match.location_id = { $in: location_id.toString().split(',') };
     if (String(assignedMe) === "true" || userRole !== "admin") {
       match._id = { $in: await getMappedWorkOrderIDs(user_id) };
     }
@@ -54,7 +54,7 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
     if(!body?.userIdList || body.userIdList?.length === 0) {
       throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
     }
-    const isWorkOrderExist: any = await getOrders({ _id: id, account_id });
+    const isWorkOrderExist: any = await getAllOrders({ _id: id, account_id });
     if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
       throw Object.assign(new Error('Work order not found'), { status: 404 });
     }

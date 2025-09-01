@@ -7,8 +7,8 @@ export interface IWorkOrderAssignee extends Document {
 
 const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(
   {
-    woId: { type: Schema.Types.ObjectId, ref: 'WorkOrder', required: true },
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    woId: { type: Schema.Types.ObjectId, ref: 'WorkOrderModel', required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
   },
   {
     collection: 'wo_user_mapping',

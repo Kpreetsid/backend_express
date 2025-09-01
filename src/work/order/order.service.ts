@@ -9,9 +9,25 @@ export const getAllOrders = async (match: any): Promise<any> => {
   let data = await WorkOrderModel.aggregate([
     { $match: match },
     { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
-    { $lookup: { from: "asset_master", localField: "asset_id", foreignField: "_id", as: "asset" }},
+    { $lookup: { 
+      from: "asset_master", 
+      let: { asset_id: '$asset_id' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$asset_id'] } } },
+        { $project: { _id: 1, asset_name: 1, asset_type: 1 } }
+      ],
+      as: "asset" 
+    }},
     { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
-    { $lookup: { from: "location_master", localField: "location_id", foreignField: "_id", as: "location" }},
+    { $lookup: { 
+      from: "location_master", 
+      let: { location_id: '$location_id' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$location_id'] } } },
+        { $project: { _id: 1, location_name: 1, location_type: 1 } }
+      ],
+      as: "location" 
+    }},
     { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
     { $lookup: { from: "work_order_comment", localField: "_id", foreignField: "work_order_id", as: "comments" }},
     { $addFields: { id: "$_id" }}
@@ -21,27 +37,17 @@ export const getAllOrders = async (match: any): Promise<any> => {
   }
   const result = await Promise.all(data.map(async (item: any) => {
     item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-      const user = await UserModel.find({ _id: mapItem.userId });
+      const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username');
       mapItem.user = user.length > 0 ? user[0] : {};
+      mapItem.id = mapItem._id;
       return mapItem;
     }));
+    item.asset.id = item.asset._id;
+    item.location.id = item.location._id;
     item.id = item._id;
     return item;
   }));
   return result;
-};
-
-export const getOrders = async (match: any): Promise<any> => {
-  match.visible = true;
-  const data = await WorkOrderModel.aggregate([
-    { $match: match },
-    { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
-    { $lookup: { from: "asset_master", localField: "asset_id", foreignField: "_id", as: "asset" }},
-    { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
-    { $lookup: { from: "location_master", localField: "location_id", foreignField: "_id", as: "location" }},
-    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }}
-  ]);
-  return data;
 };
 
 export const orderStatus = async (match: any): Promise<any> => {
@@ -217,18 +223,47 @@ export const pendingOrders = async (match: any): Promise<any> => {
   match.visible = true;
   return await WorkOrderModel.aggregate([
     { $match: match },
-    { $lookup: { from: 'asset_master', localField: 'asset_id', foreignField: '_id', as: 'asset' } },
-    { $lookup: { from: 'location_master', localField: 'location_id', foreignField: '_id', as: 'location' } },
+    { $lookup: { 
+      from: 'asset_master', 
+      let: { asset_id: '$asset_id' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$asset_id'] } } },
+        { $project: { _id: 1, asset_name: 1, asset_type: 1 } }
+      ],
+      as: 'asset'
+    }},
     { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
-    { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } }
+    { $lookup: { 
+      from: 'location_master', 
+      let: { location_id: '$location_id' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$location_id'] } } },
+        { $project: { _id: 1, location_name: 1, location_type: 1 } }
+      ],
+      as: 'location'
+    }},
+    { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } },
+    { $addFields: { id: '$_id' } }
   ]);
 }
 
+const generateOrderNo = async (account_id: any): Promise<string> => {
+  const year = new Date().getFullYear();
+  const totalCount = await WorkOrderModel.countDocuments({
+    account_id,
+    createdAt: {
+      $gte: new Date(`${year}-01-01T00:00:00Z`),
+      $lte: new Date(`${year}-12-31T23:59:59Z`)
+    }
+  });
+  const sequence = String(totalCount + 1).padStart(4, "0");
+  return `WO-${year}${sequence}`;
+};
+
 export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
-  const totalCount = await WorkOrderModel.countDocuments({ account_id: user.account_id });
   const newAsset = new WorkOrderModel({
     account_id : user.account_id,
-    order_no : `WO-${totalCount + 1}`,
+    order_no : await generateOrderNo(user.account_id),
     title : body.title,
     description : body.description,
     estimated_time : body.estimated_time,
@@ -250,6 +285,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     attachment : body.attachment,
     task : body.task,
     parts : body.parts,
+    work_request_id : body.work_request_id,
     createdBy: user._id
   });
   const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
@@ -266,7 +302,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     throw Object.assign(new Error('Failed to create work order'), { status: 400 });
   }
   userDetails.forEach(async (assignedUsers: IUser) => {
-    const orders = await getOrders({ _id: data._id });
+    const orders = await getAllOrders({ _id: data._id });
     await sendWorkOrderMail(orders[0], assignedUsers, user);
   });
   return data;

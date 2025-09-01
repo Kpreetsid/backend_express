@@ -1,5 +1,8 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
+export const STATUS = ['active', 'inactive'];
+export const ROLE = ['super_admin', 'admin', 'manager', 'employee', 'customer', 'user'];
+
 export interface UserLoginPayload {
   id: string;
   companyID: string;
@@ -52,9 +55,9 @@ const userSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true, lowercase: true },
   emailStatus: { type: Boolean, default: false },
   user_profile_img: { type: String },
-  user_status: { type: String, enum: ['active', 'inactive'], default: 'active' },
-  user_role: { type: String, required: true, enum: ['super_admin', 'admin', 'manager', 'employee', 'customer', 'user'], default: 'user' },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
+  user_status: { type: String, enum: STATUS, default: 'active' },
+  user_role: { type: String, required: true, enum: ROLE, default: 'user' },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   phone_no: { type: phoneNumberSchema, required: true },
   isFirstUser: { type: Boolean, default: false },
   visible: { type: Boolean, default: true },

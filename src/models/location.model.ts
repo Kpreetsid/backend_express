@@ -27,9 +27,9 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   location_type: { type: String, required: true },
   top_level: { type: Boolean, required: true },
   assigned_to: { type: String, required: true },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  top_level_location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster' },
-  parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster' },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  top_level_location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },
+  parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },
   parent_name: { type: String },
   equipment_id: { type: String },
   teamId: { type: String },
@@ -38,8 +38,8 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   location: { type: String },
   qr_code: { type: String },
   visible: { type: Boolean, required: true, default: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'location_master',
   timestamps: true,

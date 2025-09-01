@@ -12,10 +12,10 @@ export interface ICategory extends Document {
 const categorySchema = new Schema<ICategory>({
   name: { type: String, required: true, unique: true },
   description: { type: String },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   visible: { type: Boolean, default: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'form_category',
   timestamps: true,

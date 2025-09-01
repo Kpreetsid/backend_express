@@ -114,7 +114,7 @@ const PostSchema = new Schema<IPost>({
   description: { type: String, required: true },
   files: { type: Map, of: [FileSchema] },
   createdOn: { type: Date, default: Date.now },
-  account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
+  account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   user: { type: UserSchema, required: true },
   help: { type: Boolean, default: false },
   publishTo: { type: [String] },

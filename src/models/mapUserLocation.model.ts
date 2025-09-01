@@ -10,10 +10,10 @@ export interface IMapUserLocation extends Document {
 }
 
 const MapUserLocationSchema = new Schema<IMapUserLocation>({
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account' },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster' },
-  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset' },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel' },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },
+  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel' },
   sendMail: { type: Boolean, default: true }
 }, {
   collection: 'location_user_mapping',

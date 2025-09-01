@@ -19,7 +19,7 @@ const userTokenSchema = new Schema<IUserToken>({
   userId: {
     type: Schema.Types.ObjectId,
     required: true,
-    ref: 'User'
+    ref: 'UserModel'
   },
   principalType: {
     type: String,

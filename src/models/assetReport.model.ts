@@ -70,9 +70,9 @@ export interface IReportAsset extends Document {
 }
 
 const reportAssetSchema = new Schema<IReportAsset>({
-  accountId: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
-  top_level_asset_id: { type: Schema.Types.ObjectId, ref: 'Asset', required: true },
-  assetId: { type: Schema.Types.ObjectId, ref: 'Asset' },
+  accountId: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  top_level_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  assetId: { type: Schema.Types.ObjectId, ref: 'AssetModel' },
   Observations: { type: String },
   Recommendations: { type: String },
   CreateWorkRequest: { type: String },
@@ -84,10 +84,10 @@ const reportAssetSchema = new Schema<IReportAsset>({
   EquipmentHealth: { type: String },
   files: { type: [uploadSchema], default: [] },
   user: { type: Schema.Types.Mixed },
-  userId: { type: Schema.Types.ObjectId, ref: 'User' },
+  userId: { type: Schema.Types.ObjectId, ref: 'UserModel' },
   createdOn: { type: Date, default: Date.now },
   assetName: { type: String },
-  locationId: { type: Schema.Types.ObjectId, ref: 'LocationMaster' },
+  locationId: { type: Schema.Types.ObjectId, ref: 'LocationModel' },
   locationName: { type: String },
   faultData: [{
     value: { type: Number },
@@ -142,8 +142,8 @@ const reportAssetSchema = new Schema<IReportAsset>({
     },
     asset_name: { type: String }
   }],
-  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  updatedBy: { type: Schema.Types.ObjectId, ref: 'User' }
+  createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'assets-report',
   timestamps: true,
