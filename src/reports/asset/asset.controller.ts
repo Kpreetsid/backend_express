@@ -25,7 +25,7 @@ export const getAssetsReportById = async (req: Request, res: Response, next: Nex
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match = { accountId: account_id, top_level_asset_id: req.params.id };
-    const populateFilter = [{ path: 'locationId', select: 'location_name' }, { path: 'assetId', select: 'asset_name' }, { path: 'userId', select: 'firstName lastName' }];
+    const populateFilter = [{ path: 'locationId', model: "Schema_Location", select: 'id location_name' }, { path: 'assetId', model: "Schema_Asset", select: 'id asset_name' }, { path: 'userId', model: "Schema_User", select: 'id firstName lastName' }];
     const data = await getAll(match, populateFilter);
     if(!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
