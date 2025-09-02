@@ -117,16 +117,13 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
 
 export const approve = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, firstName, lastName, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
     const { params: { id }, body: { remarks } } = req;
     if(!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     if(!remarks) {
       throw Object.assign(new Error('Remarks is required'), { status: 400 });
-    }
-    if(userRole !== 'admin') {
-      throw Object.assign(new Error('Only admin can approve requests'), { status: 400 });
     }
     const existingRequest = await getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
     if (!existingRequest || existingRequest.length === 0) {

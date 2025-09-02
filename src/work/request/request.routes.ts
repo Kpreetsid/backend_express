@@ -8,9 +8,9 @@ export default (router: express.Router) => {
     requestRouter.get('/:id', getById);
     requestRouter.post('/', create);
     requestRouter.put('/:id', update);
+    requestRouter.patch('/approve/:id', hasPermission('admin'), approve);
+    requestRouter.patch('/reject/:id', reject);
     requestRouter.patch('/:id/:status', update);
-    requestRouter.patch('/:id/approve', hasPermission('admin'), approve);
-    requestRouter.patch('/:id/reject', reject);
     requestRouter.delete('/:id', hasPermission('admin'), remove);
     router.use('/requests', requestRouter);
 }
