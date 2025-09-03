@@ -38,7 +38,7 @@ export interface IWorkOrder extends Document {
   task_id: ObjectId;
   parts: IParts;
   work_request_id: ObjectId;
-  attachment: object[];
+  files: object[];
   visible: boolean;
   createdBy: ObjectId;
   updatedBy?: ObjectId;
@@ -61,7 +61,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   work_instruction: { type: Schema.Types.ObjectId, ref: 'WorkInstructionModel' },
   parts: { type: PartsSchema },
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
-  attachment: { type: [Object] },
+  files: { type: [Object] },
   visible: { type: Boolean, default: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }

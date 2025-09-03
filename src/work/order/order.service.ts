@@ -37,7 +37,7 @@ export const getAllOrders = async (match: any): Promise<any> => {
   }
   const result = await Promise.all(data.map(async (item: any) => {
     item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-      const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username');
+      const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username user_profile_img');
       mapItem.user = user.length > 0 ? user[0] : {};
       mapItem.id = mapItem._id;
       return mapItem;
@@ -282,7 +282,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     workInstruction : body.workInstruction,
     actualParts : body.actualParts,
     createdFrom : body.createdFrom,
-    attachment : body.attachment,
+    files : body.files,
     task : body.task,
     parts : body.parts,
     work_request_id : body.work_request_id,

@@ -117,13 +117,10 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
 
 export const approve = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
-    const { params: { id }, body: { remarks } } = req;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { params: { id } } = req;
     if(!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    if(!remarks) {
-      throw Object.assign(new Error('Remarks is required'), { status: 400 });
     }
     const existingRequest = await getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
     if (!existingRequest || existingRequest.length === 0) {
@@ -132,9 +129,7 @@ export const approve = async (req: Request, res: Response, next: NextFunction): 
     if(existingRequest[0].status === 'Approved') {
       throw Object.assign(new Error('Request is already approved'), { status: 400 });
     }
-    const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
-    const updatedRemarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${remarks} by ${firstName} ${lastName} on ${dateTime}` : `${remarks} by ${firstName} ${lastName} on ${dateTime}`;
-    const data = await updateRequest(id, { status: 'Approved', approvedBy: user_id, remarks: updatedRemarks }, user_id);
+    const data = await updateRequest(id, { status: 'Approved', updatedBy: user_id }, user_id);
     if (!data || data.modifiedCount === 0) {
       throw Object.assign(new Error('No data updated'), { status: 404 });
     }
