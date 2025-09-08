@@ -2,10 +2,21 @@ import { CommentsModel } from "../../models/comment.model";
 
 export const getAllComments = async (match: any) => {
   match.visible = true;
-  match.parentCommentId = null;
+  match.parentCommentId = match.parentCommentId || null;
   const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' }]).lean();
   if (!comments || comments.length === 0) {
     throw Object.assign(new Error('No data found'), { status: 404 });
+  }
+  const replies = await Promise.all(comments.map(comment => getNestedComments(comment._id)));
+  return comments.map((comment: any, index) => ({ ...comment, id: comment._id, replies: replies[index] }));
+};
+
+export const getAllCommentsForWorkOrder = async (match: any) => {
+  match.visible = true;
+  match.parentCommentId = null;
+  const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' }]).lean();
+  if (!comments || comments.length === 0) {
+    return [];
   }
   const replies = await Promise.all(comments.map(comment => getNestedComments(comment._id)));
   return comments.map((comment: any, index) => ({ ...comment, id: comment._id, replies: replies[index] }));

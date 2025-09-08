@@ -64,7 +64,8 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    res.status(201).json({ status: true, message: "Data created successfully", data });
+    const result = await getAllComments({ _id: data._id, parentCommentId: data.parentCommentId, account_id: account_id, work_order_id: new mongoose.Types.ObjectId(orderId) });
+    res.status(201).json({ status: true, message: "Data created successfully", data: result[0] });
   } catch (error) {
     next(error);
   }

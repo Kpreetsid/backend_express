@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
-import { getAll, insert, updateById, removeById } from './parts.service';
+import { getAll, insert, updatePartById, removeById } from './parts.service';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
 
@@ -8,6 +8,10 @@ export const getParts = async (req: Request, res: Response, next: NextFunction):
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id };
+    const { query: { id } } = req;
+    if(id) {
+      match._id = { $in: id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    }
     if(userRole !== 'admin') {
       match.createdBy = user_id;
     }
@@ -66,7 +70,7 @@ export const updatePart = async (req: Request, res: Response, next: NextFunction
     if (!isDataExists || isDataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const data = await updateById(id, body, user_id);
+    const data = await updatePartById(id, body, user_id);
     res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
     next(error);

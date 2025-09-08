@@ -3,6 +3,8 @@ import { IUser, UserModel } from "../../models/user.model";
 import { BlogModel, IBlog } from "../../models/help.model";
 import { sendWorkOrderMail } from "../../_config/mailer";
 import { mapUsersWorkOrder, removeMappedUsers, updateMappedUsers } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
+import { assignPartToWorkOrder } from "../../masters/part/parts.service";
+import { getAllCommentsForWorkOrder } from "../comments/comment.service";
 
 export const getAllOrders = async (match: any): Promise<any> => {
   match.visible = true;
@@ -14,7 +16,8 @@ export const getAllOrders = async (match: any): Promise<any> => {
       let: { asset_id: '$asset_id' },
       pipeline: [
         { $match: { $expr: { $eq: ['$_id', '$$asset_id'] } } },
-        { $project: { _id: 1, asset_name: 1, asset_type: 1 } }
+        { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+        { $addFields: { id: '$_id' } }
       ],
       as: "asset" 
     }},
@@ -24,12 +27,12 @@ export const getAllOrders = async (match: any): Promise<any> => {
       let: { location_id: '$location_id' },
       pipeline: [
         { $match: { $expr: { $eq: ['$_id', '$$location_id'] } } },
-        { $project: { _id: 1, location_name: 1, location_type: 1 } }
+        { $project: { _id: 1, location_name: 1, location_type: 1 } },
+        { $addFields: { id: '$_id' } }
       ],
       as: "location" 
     }},
     { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
-    { $lookup: { from: "work_order_comment", localField: "_id", foreignField: "work_order_id", as: "comments" }},
     { $addFields: { id: "$_id" }}
   ]);
   if (!data || data.length === 0) {
@@ -42,9 +45,7 @@ export const getAllOrders = async (match: any): Promise<any> => {
       mapItem.id = mapItem._id;
       return mapItem;
     }));
-    item.asset.id = item.asset?._id;
-    item.location.id = item.location?._id;
-    item.id = item?._id;
+    item.comments = await getAllCommentsForWorkOrder({ work_order_id: item._id });
     return item;
   }));
   return result;
@@ -300,6 +301,9 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
   const data = await newAsset.save();
   if (!data) {
     throw Object.assign(new Error('Failed to create work order'), { status: 400 });
+  }
+  if(body.parts?.estimated?.length > 0) {
+    await assignPartToWorkOrder(body.parts, user);
   }
   userDetails.forEach(async (assignedUsers: IUser) => {
     const orders = await getAllOrders({ _id: data._id });
