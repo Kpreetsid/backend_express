@@ -10,7 +10,7 @@ export const getAssetsMappedData = async (userId: string) => {
   return await MapUserAssetLocationModel.find({ userId: userId, assetId: { $exists: true } });
 }
 
-export const getLocationsMappedData = async (userId: string) => {
+export const getLocationsMappedData = async (userId: any) => {
   return await MapUserAssetLocationModel.find({ userId: userId, locationId: { $exists: true } });
 }
 

@@ -8,16 +8,28 @@ import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../../models/wor
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { query: { priority, location_id, status }} = req;
+    const { query: { priority, location, status, assignedTo, assignedBy, approvedBy, rejectedBy }} = req;
     let match: any = { account_id: account_id };
     if(priority) {
       match.priority = priority.toString().split(",").map((p) => p.trim()).filter((p) => p !== "");
     }
-    if(location_id) {
-      match.location_id = location_id.toString().split(",").map((l) => l.trim()).filter((l) => l !== "");
+    if(location) {
+      match.location_id = location.toString().split(",").map((l) => l.trim()).filter((l) => l !== "");
     }
     if(status) {
       match.status = status.toString().split(",").map((s) => s.trim()).filter((s) => s !== "");
+    }
+    if(assignedTo) {
+      match.assigned_to = assignedTo.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+    }
+    if(assignedBy) {
+      match.createdBy = assignedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+    }
+    if(approvedBy) {
+      match.updatedBy = approvedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+    }
+    if(rejectedBy) {
+      match.updatedBy = rejectedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
     }
     if(userRole !== 'admin') {
       match.created_by = user_id;

@@ -28,7 +28,7 @@ export const getAll = async (match: any) => {
 
 export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { locations = [], assets = [], top_level } = req.body;
+    const { locationList = [], assets = [], top_level } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id, visible: true };
     if(userRole !== 'admin') {
@@ -41,8 +41,8 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
     if (top_level) {
       match.top_level = top_level;
     }
-    if (locations && locations.length > 0) {
-      match.locationId = { $in: locations };
+    if (locationList && locationList.length > 0) {
+      match.locationId = { $in: locationList };
     }
     if (assets && assets.length > 0) {
       match._id = { $in: assets };

@@ -32,7 +32,7 @@ export const getAllOrders = async (match: any): Promise<any> => {
     { $lookup: { from: "work_order_comment", localField: "_id", foreignField: "work_order_id", as: "comments" }},
     { $addFields: { id: "$_id" }}
   ]);
-  if (!data.length) {
+  if (!data || data.length === 0) {
     throw Object.assign(new Error('No data found'), { status: 404 });
   }
   const result = await Promise.all(data.map(async (item: any) => {
@@ -42,9 +42,9 @@ export const getAllOrders = async (match: any): Promise<any> => {
       mapItem.id = mapItem._id;
       return mapItem;
     }));
-    item.asset.id = item.asset._id;
-    item.location.id = item.location._id;
-    item.id = item._id;
+    item.asset.id = item.asset?._id;
+    item.location.id = item.location?._id;
+    item.id = item?._id;
     return item;
   }));
   return result;
@@ -312,6 +312,10 @@ export const updateById = async (id: any, body: any): Promise<any> => {
   await updateMappedUsers(id, body.userIdList);
   return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
 };
+
+export const orderStatusChange = async (id: any, body: any): Promise<any> => {
+  return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
+}
 
 export const removeOrder = async (id: any, user_id: any): Promise<any> => {
   await removeMappedUsers(id);

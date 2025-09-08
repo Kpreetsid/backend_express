@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAll, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import { getDataByLocationId, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
+import { getDataByLocationId, getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 const moduleName: string = "location";
 
@@ -11,7 +11,8 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { visible: true, account_id: account_id };
     if(userRole !== 'admin') {
-      match.userId = user_id;
+      const mappedUserList = await getLocationsMappedData(user_id);
+      match.userIdList = { $in: mappedUserList.map((doc: any) => doc.userId) };
     }
     const query: any = req.query;
     if (query?.locationId) {

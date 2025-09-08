@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAllOrders, createWorkOrder, updateById, orderStatus, orderPriority, monthlyCount, plannedUnplanned, summaryData, pendingOrders, removeOrder } from './order.service';
+import { getAllOrders, createWorkOrder, updateById, orderStatus, orderPriority, monthlyCount, plannedUnplanned, summaryData, pendingOrders, removeOrder, orderStatusChange } from './order.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { getMappedWorkOrderIDs } from '../../transaction/mapUserWorkOrder/userWorkOrder.service';
@@ -7,18 +7,22 @@ import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id} = get(req, "user", {}) as IUser;
     const match: any = { account_id };
     const { params: { id } } = req;
-    const { status, priority, order_no, asset_id, location_id, assignedMe = false } = req.query;
+    const { status, priority, order_no, asset_id, location_id, assignedUser } = req.query;
     if (id) match._id = new mongoose.Types.ObjectId(id);
     if (status) match.status = { $in: status.toString().split(',') };
     if (priority) match.priority = { $in: priority.toString().split(',') };
     if (order_no) match.order_no = { $in: order_no.toString().split(',') };
     if (asset_id) match.asset_id = { $in: asset_id.toString().split(',') };
     if (location_id) match.location_id = { $in: location_id.toString().split(',') };
-    if (String(assignedMe) === "true" || userRole !== "admin") {
-      match._id = { $in: await getMappedWorkOrderIDs(user_id) };
+    const workOrderIds: any = [];
+    if(assignedUser) {
+      for(let i = 0; i < assignedUser.toString().split(',').length; i++) {
+        workOrderIds.push(await getMappedWorkOrderIDs(assignedUser.toString().split(',')[i]));
+      }
+      match._id = { $in: workOrderIds.flat() };
     }
     const data = await getAllOrders(match);
     if(!data || data.length === 0) {
@@ -61,6 +65,22 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
     body.updatedBy = user_id;
     await updateById(id, body);
     res.status(200).send({ status: true, message: 'Work order updated successfully', data: body });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const statusUpdateOrder = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { params: { id }, body: { status } } = req;
+    const isWorkOrderExist: any = await getAllOrders({ _id: new mongoose.Types.ObjectId(id), account_id });
+    if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
+      throw Object.assign(new Error('Work order not found'), { status: 404 });
+    }
+    const body = { status, updatedBy: user_id };
+    await orderStatusChange(id, body);
+    res.status(200).send({ status: true, message: 'Work order updated successfully' });
   } catch (error) {
     next(error);
   }
