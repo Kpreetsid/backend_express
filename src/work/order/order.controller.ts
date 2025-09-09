@@ -10,13 +10,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     const { account_id} = get(req, "user", {}) as IUser;
     const match: any = { account_id };
     const { params: { id } } = req;
-    const { status, priority, order_no, asset_id, location_id, assignedUser } = req.query;
+    const { status, priority, asset_id, location_id, assignedUser } = req.query;
     if (id) match._id = new mongoose.Types.ObjectId(id);
     if (status) match.status = { $in: status.toString().split(',') };
     if (priority) match.priority = { $in: priority.toString().split(',') };
-    if (order_no) match.order_no = { $in: order_no.toString().split(',') };
-    if (asset_id) match.asset_id = { $in: asset_id.toString().split(',') };
-    if (location_id) match.location_id = { $in: location_id.toString().split(',') };
+    if (asset_id) match.asset_id = { $in: asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    if (location_id) match.location_id = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     const workOrderIds: any = [];
     if(assignedUser) {
       for(let i = 0; i < assignedUser.toString().split(',').length; i++) {

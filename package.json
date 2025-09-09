@@ -4,7 +4,7 @@
   "description": "",
   "main": "ts-node src/server.js",
   "scripts": {
-    "start": "rm -rf dist && npx tsc && cp -r src/public dist/public && node dist/server.js --host 0.0.0.0 --port 3010"
+    "start": "rm -rf dist && npx tsc && cp -r src/public dist/public && node dist/server.js"
   },
   "keywords": [],
   "author": "Pawan Kumar Gautam",
