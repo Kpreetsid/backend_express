@@ -4,7 +4,7 @@ export const getSOPs = async (match: any): Promise<ISopsMaster[]> => {
     match.visible = true;
     const populateList = [
         { path: 'account_id', model: "Schema_Account", select: 'id account_name' },
-        { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
+        { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type' },
         { path: 'categoryId', model: "Schema_Category", select: 'id name' },
         { path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' },
         { path: 'updatedBy', model: "Schema_User", select: 'id firstName lastName' }
