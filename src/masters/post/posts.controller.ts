@@ -7,15 +7,17 @@ import mongoose from 'mongoose';
 export const getPosts = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id };
+    // const match: any = { account_id: account_id };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+
     const { postType, relatedTo } = req.query;
-    if(postType) {
+    if (postType) {
       match.postType = postType.toString().split(',');
     }
-    if(relatedTo) {
+    if (relatedTo) {
       match.relatedTo = relatedTo.toString().split(',');
     }
-    if(userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       match.userId = user_id;
     }
     const data = await getAllParts(match);
@@ -32,18 +34,18 @@ export const getPost = async (req: Request, res: Response, next: NextFunction): 
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    if(!id) {
+    if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     const { postType, relatedTo } = req.query;
-    if(postType) {
+    if (postType) {
       match.postType = postType.toString().split(',');
     }
-    if(relatedTo) {
+    if (relatedTo) {
       match.relatedTo = relatedTo.toString().split(',');
     }
-    if(userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       match.userId = user_id;
     }
     const data = await getAllParts(match);
@@ -70,7 +72,7 @@ export const updatePost = async (req: Request, res: Response, next: NextFunction
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if(!id) {
+    if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
@@ -90,7 +92,7 @@ export const removePost = async (req: Request, res: Response, next: NextFunction
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    if(!id) {
+    if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };

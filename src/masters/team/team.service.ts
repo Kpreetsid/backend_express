@@ -5,7 +5,7 @@ import { IUser } from "../../models/user.model";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-         const { account_id } = get(req, "user", {}) as IUser;
+        const { account_id } = get(req, "user", {}) as IUser;
         const match = { account_id: account_id, isActive: true };
         const data = await TeamsModel.find(match);
         if (!data || data.length === 0) {
@@ -36,7 +36,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-         const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+        const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
         const body = req.body;
         const newTeam = new TeamsModel({
             team_name: body.team_name,

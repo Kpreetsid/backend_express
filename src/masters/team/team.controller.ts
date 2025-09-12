@@ -6,6 +6,7 @@ import { IUser } from '../../models/user.model';
 export const getAllTeams = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+
         console.log({ account_id, user_id, userRole });
         await getAll(req, res, next);
     } catch (error) {

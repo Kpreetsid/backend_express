@@ -6,8 +6,10 @@ import { IUser } from '../../models/user.model';
 export const getAllFormCategories = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id };
-    if (userRole !== 'admin') {
+    // const match: any = { account_id: account_id };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       match.user_id = user_id;
     }
     const data = await getFormCategories(match);
@@ -23,11 +25,12 @@ export const getAllFormCategories = async (req: Request, res: Response, next: Ne
 export const getFormCategoryByID = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: req.params.id, account_id: account_id };
-    if (userRole !== 'admin') {
+    // const match: any = { _id: req.params.id, account_id: account_id };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       match.user_id = user_id;
     }
     const data = await getFormCategories(match);
@@ -58,7 +61,7 @@ export const updateFormCategory = async (req: Request, res: Response, next: Next
   try {
     const user = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if(!id) {
+    if (!id) {
       throw Object.assign(new Error('No category ID provided'), { status: 400 });
     }
     const isData = await getFormCategories({ _id: id, account_id: user.account_id });
@@ -78,14 +81,14 @@ export const updateFormCategory = async (req: Request, res: Response, next: Next
 export const removeFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const isData = await getFormCategories({ _id: req.params.id, account_id: account_id });
     if (!isData || isData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    if(userRole !== 'admin') {
+    if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     await removeById(req.params.id);

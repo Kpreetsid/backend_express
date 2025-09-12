@@ -9,8 +9,9 @@ const moduleName: string = "location";
 export const getLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { visible: true, account_id: account_id };
-    if(userRole !== 'admin') {
+    // const match: any = { visible: true, account_id: account_id };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       const mappedUserList = await getLocationsMappedData(user_id);
       match.userIdList = { $in: mappedUserList.map((doc: any) => doc.userId) };
     }
@@ -58,6 +59,7 @@ export const getKpiFilterLocations = async (req: Request, res: Response, next: N
 export const getChildAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id } = get(req, "user", {}) as IUser;
+
     const { levelOneLocations, levelTwoLocations } = req.body;
     const data = await childAssetsAgainstLocation(levelOneLocations, levelTwoLocations, account_id);
     if (!data) {
@@ -71,12 +73,13 @@ export const getChildAssetsAgainstLocation = async (req: Request, res: Response,
 
 export const getLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { _id: req.params.id, account_id: account_id };
-    if(userRole !== 'admin') {
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    // const match: any = { _id: req.params.id, account_id: account_id };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       match.userId = user_id;
     }
     const data = await getAll(match);
@@ -97,7 +100,7 @@ export const createLocation = async (req: Request, res: Response, next: NextFunc
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const body = req.body;
-    if(body.userIdList.length === 0) {
+    if (body.userIdList.length === 0) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     body.account_id = account_id;
@@ -118,15 +121,15 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const { params: { id }, body } = req;
-    if(!id) {
+    if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    if(!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
+    if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match = { _id: id, account_id: account_id, visible: true };
     const location = await getAll(match);
-    if(!location || location.length === 0 || !location[0].visible) {
+    if (!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     body.updatedBy = user_id;
@@ -149,12 +152,12 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
     if (!role[moduleName].delete_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match = { _id: req.params.id, account_id: account_id, visible: true };
     const location = await getAll(match);
-    if(!location || location.length === 0 || !location[0].visible) {
+    if (!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await removeById(req.params.id, location);
@@ -171,11 +174,11 @@ export const updateLocationFloorMapImage = async (req: Request, res: Response, n
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
     }
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if(userRole !== 'admin') {
+    if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     await updateFloorMapImage(id, account_id, user_id, top_level_location_image);
-    res.status(200).json({ status: true, message: "Data updated successfully"});
+    res.status(200).json({ status: true, message: "Data updated successfully" });
   } catch (error) {
     next(error);
   }
@@ -202,17 +205,17 @@ export const createDuplicateLocation = async (req: Request, res: Response, next:
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const { id } = req.params;
-    if(!id) {
+    if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match = { _id: id, account_id: account_id, visible: true };
     const locationData = await getAll(match);
-    if(!locationData || locationData.length === 0) {
+    if (!locationData || locationData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const body = locationData[0];
     const userList: any = await getDataByLocationId(id);
-    if(!userList && userList.length === 0) {
+    if (!userList && userList.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     body.location_name = `${body.location_name} - copy`;

@@ -13,7 +13,7 @@ export const getAll = async (match: any) => {
   const locationIds = locationData.map(doc => `${doc._id}`);
   const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
   const result: any = locationData.map((doc: any) => {
-    const { _id: id, ...obj} = doc.toObject(); 
+    const { _id: id, ...obj } = doc.toObject();
     obj.id = id;
     const mappedUser = mapData.filter(map => `${map.locationId}` === `${id}`);
     obj.userList = mappedUser.length > 0 ? mappedUser.map((a: any) => a.userId).filter((user: any) => user) : [];
@@ -23,7 +23,7 @@ export const getAll = async (match: any) => {
 };
 
 const buildTree = async (parentId: string | null, account_id: any): Promise<any[]> => {
-  const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false }};
+  const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false } };
   const nodes = await getData(LocationModel, { filter: match });
   return Promise.all(
     nodes.map(async (node: any) => {
@@ -37,7 +37,8 @@ export const getTree = async (req: Request, res: Response, next: NextFunction): 
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { location_id, location_floor_map_tree } = req.query;
-    let match: any = { account_id, visible: true };
+    // let match: any = { account_id, visible: true };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
     if (location_floor_map_tree) {
       match.top_level = true;
       if (location_id) {
@@ -51,16 +52,13 @@ export const getTree = async (req: Request, res: Response, next: NextFunction): 
       }
     }
 
-    // Restrict for non-admins
-    if (userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       const allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
 
       if (allowedLocationIds.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-
-      // Apply permission filtering
       if (match._id) {
         const isAllowed = allowedLocationIds.includes(match._id.toString());
         if (!isAllowed) {
@@ -99,8 +97,9 @@ export const getTree = async (req: Request, res: Response, next: NextFunction): 
 
 export const kpiFilterLocations = async (account_id: any, user_id: any, userRole: any) => {
   try {
-    const match: any = { visible: true, account_id };
-    if (userRole !== 'admin') {
+    // const match: any = { visible: true, account_id };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       const mapLocationData: IMapUserLocation[] = await getLocationsMappedData(`${user_id}`);
       if (!mapLocationData.length) {
         throw Object.assign(new Error('No location mapping found for user'), { status: 404 });
@@ -174,7 +173,7 @@ const getAllChildLocationsRecursive = async (parentIds: any) => {
     let childIds: any = [];
     for (let i = 0; i < parentIds.length; i++) {
       const parent: any = await LocationModel.findById(parentIds[i]);
-      const children = await LocationModel.find({ where: { parent_id: parent.id, visible: true }});
+      const children = await LocationModel.find({ where: { parent_id: parent.id, visible: true } });
       if (children.length > 0) {
         const childrenIds = children.map(child => child.id);
         childIds = [...childIds, ...childrenIds];
@@ -204,7 +203,7 @@ export const updateById = async (id: string, body: any) => {
 export const removeById = async (id: string, data: any) => {
   const promiseList: any = [];
   const totalIds = [id];
-  if(data.top_level) {
+  if (data.top_level) {
     const childIds = await getAllChildLocationsRecursive([id]);
     totalIds.push(...childIds);
     promiseList.push(LocationModel.updateMany({ _id: { $in: childIds } }, { visible: false }));
@@ -216,13 +215,15 @@ export const removeById = async (id: string, data: any) => {
 };
 
 export const updateFloorMapImage = async (id: string, account_id: any, user_id: any, top_level_location_image: string) => {
-  return await LocationModel.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id }});
+  return await LocationModel.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id } });
 };
 
 export const getLocationSensor = async (account_id: any, user_id: any, userRole: string) => {
   try {
-    const match: any = { account_id, visible: true };
-    if(userRole !== 'admin') {
+    // const match: any = { account_id, visible: true };
+
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       const mappedData = await getLocationsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });

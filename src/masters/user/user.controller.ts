@@ -8,8 +8,9 @@ import { comparePassword } from '../../_config/bcrypt';
 export const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, isActive: true };
-    if(userRole !== 'admin') {
+    // const match: any = { account_id: account_id, isActive: true };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       match._id = user_id;
     }
     const data = await getAllUsers(match);
@@ -23,13 +24,14 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction):
 }
 
 export const getUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-   try {
+  try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: req.params.id, account_id: account_id, isActive: true };
-    if(userRole !== 'admin') {
+    // const match: any = { _id: req.params.id, account_id: account_id, isActive: true };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       match._id = user_id;
     }
     const data = await getAllUsers(match);
@@ -56,15 +58,15 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const body = req.body;
-    if(userRole !== 'admin') {
+    if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const checkMailId = await getAllUsers({ email: body.email });
-    if(checkMailId && checkMailId.length > 0) {
+    if (checkMailId && checkMailId.length > 0) {
       throw Object.assign(new Error('Email already exists'), { status: 400 });
     }
     const checkUserName = await getAllUsers({ username: body.username });
-    if(checkUserName && checkUserName.length > 0) {
+    if (checkUserName && checkUserName.length > 0) {
       throw Object.assign(new Error('Username already exists'), { status: 400 });
     }
     body.account_id = account_id;
@@ -79,7 +81,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 export const updateUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match = { _id: req.params.id, account_id: account_id, isActive: true };
@@ -160,7 +162,7 @@ export const changeUserPassword = async (req: Request, res: Response, next: Next
 export const removeUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id } = get(req, "user", {}) as IUser;
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match: any = { _id: req.params.id, account_id: account_id, isActive: true };

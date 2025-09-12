@@ -10,12 +10,12 @@ import { getExternalData } from "../../util/externalAPI";
 import mongoose from "mongoose";
 
 export const getAll = async (match: any) => {
-  const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name'}]);
+  const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }]);
   const assetsIds = assetsData.map((asset: any) => `${asset._id}`);
   const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
   const result: any = assetsData.map((doc: any) => {
-    const { _id: id, ...obj} = doc.toObject(); 
-    if(obj.locationId) {
+    const { _id: id, ...obj } = doc.toObject();
+    if (obj.locationId) {
       obj.locationId.id = obj.locationId._id;
     }
     obj.id = id;
@@ -30,8 +30,10 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
   try {
     const { locationList = [], assets = [], top_level } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
-    if(userRole !== 'admin') {
+    // const match: any = { account_id: account_id, visible: true };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -61,8 +63,8 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
   try {
     const { locations, id } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query: any = { account_id: account_id, visible: true, parent_id: { $in: [null, undefined] }};
-    if (userRole !== 'admin') {
+    const query: any = { account_id: account_id, visible: true, parent_id: { $in: [null, undefined] } };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (mapData && mapData.length > 0) {
         query._id = { $in: mapData.map((doc: any) => doc.assetId) };
@@ -153,7 +155,7 @@ export const removeById = async (match: any, userID: any) => {
 export const deleteAsset = async (id: string): Promise<any> => {
   const childAssets = await AssetModel.find({ parent_id: id });
   if (childAssets && childAssets.length > 0) {
-    for(const asset of childAssets) {
+    for (const asset of childAssets) {
       await removeAssetMapping(`${asset._id}`);
     }
     await AssetModel.deleteMany({ parent_id: id });
@@ -165,8 +167,10 @@ export const deleteAsset = async (id: string): Promise<any> => {
 export const getAssetDataSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
-    if(userRole !== 'admin') {
+    // const match: any = { account_id: account_id, visible: true };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (mapData && mapData.length > 0) {
         match._id = { $in: mapData.map((doc: any) => doc.assetId) };
@@ -174,8 +178,8 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
     }
     const data = await AssetModel.find(match).populate(
       [
-        { path: 'locationId', model: "Schema_Location", select: 'id location_name' }, 
-        { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name'}, 
+        { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
+        { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
         { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
       ]
     );
@@ -490,8 +494,8 @@ export const createExternalAPICall = async (assetsList: any, account_id: any, us
 
 export const deleteAssetsById = async (assetId: any) => {
   const childData = await AssetModel.find({ parent_id: assetId });
-  if(childData.length > 0) {
-    for(const asset of childData) {
+  if (childData.length > 0) {
+    for (const asset of childData) {
       await removeAssetMapping(`${asset._id}`);
     }
     await AssetModel.deleteMany({ _id: { $in: childData.map(doc => doc._id) } });
@@ -589,7 +593,7 @@ export const updateFlexible = async (flexible: any, equipment: any, account_id: 
 
 export const updateRigid = async (rigid: any, equipment: any, account_id: any, user_id: any) => {
   rigid = removeExtraFields(rigid);
-  const updatedRigid =  new AssetModel({
+  const updatedRigid = new AssetModel({
     _id: rigid.id,
     parent_id: equipment.id,
     asset_name: rigid.asset_name,

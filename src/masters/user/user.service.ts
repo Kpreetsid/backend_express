@@ -22,7 +22,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
   try {
     const { locationID } = req.params;
     const { user_role: userRole } = get(req, "user", {}) as IUser;
-    if(userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const data = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
@@ -30,7 +30,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const userIDList = data.map((doc: any) => doc.userId);
-    const userData = await UserModel.find({ _id: { $in: userIDList }}).select('-password');
+    const userData = await UserModel.find({ _id: { $in: userIDList } }).select('-password');
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
   } catch (error) {
     next(error);

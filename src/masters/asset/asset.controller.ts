@@ -9,9 +9,11 @@ import { deleteBase64Image, uploadBase64Image } from '../../_config/upload';
 export const getAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
+    // const match: any = { account_id: account_id, visible: true };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+
     const params: any = req.query;
-    if (userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       const mappedData = await getAssetsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -40,12 +42,14 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
 export const getAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+
     const params: any = req.query;
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: req.params.id, account_id: account_id, visible: true };
-    if (userRole !== 'admin') {
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    // const match: any = { _id: req.params.id, account_id: account_id, visible: true };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       const mappedData = await getAssetsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -71,6 +75,46 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
   }
 }
 
+
+// export const getAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+//   try {
+//     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+//     const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
+//     if (!id) {
+//       throw Object.assign(new Error('No data found'), { status: 404 });
+//     }
+//     const match: any = { _id: new mongoose.Types.ObjectId(id) };
+//     if (userRole !== "super_admin") {
+//       match.account_id = account_id;
+//       match.visible = true;
+//     }
+//     if (userRole !== 'admin' && userRole !== 'super_admin') {
+//       const mappedData = await getAssetsMappedData(`${user_id}`);
+//       if (!mappedData || mappedData.length === 0) {
+//         throw Object.assign(new Error('No data found'), { status: 404 });
+//       }
+//       match._id = { $in: mappedData.map(doc => doc.assetId) };
+//     }
+//     if (top_level_asset_id && top_level_asset_id.toString().split(',').length > 0) {
+//       match.top_level_asset_id = top_level_asset_id.toString().split(',');
+//     }
+//     if (top_level) {
+//       match.top_level = top_level == 'true' ? true : false;
+//     }
+//     if (locationId) {
+//       match.locationId = new mongoose.Types.ObjectId(`${locationId}`);
+//     }
+//     console.log(match)
+//     const data = await getAll(match);
+//     if (!data || data.length === 0) {
+//       throw Object.assign(new Error('No data found'), { status: 404 });
+//     }
+//     res.status(200).json({ status: true, message: "Data fetched successfully", data });
+//   } catch (error) {
+//     next(error);
+//   }
+// }
+
 export const getAssetTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await getAssetsTreeData(req, res, next);
 }
@@ -94,47 +138,47 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
     const equipmentData = await createEquipment(Equipment, account_id, user_id);
     equipmentId = equipmentData._id;
     const assetsPromiseList: any = [];
-    if(Motor) {
-      if(Object.keys(Motor).length !== 0) {
+    if (Motor) {
+      if (Object.keys(Motor).length !== 0) {
         assetsPromiseList.push(await createMotor(Motor, equipmentData, account_id, user_id));
       }
     }
-    if(Flexible) {
-      if(Object.keys(Flexible).length !== 0) {
+    if (Flexible) {
+      if (Object.keys(Flexible).length !== 0) {
         assetsPromiseList.push(await createFlexible(Flexible, equipmentData, account_id, user_id));
       }
     }
-    if(Rigid) {
-      if(Object.keys(Rigid).length !== 0) {
+    if (Rigid) {
+      if (Object.keys(Rigid).length !== 0) {
         assetsPromiseList.push(await createRigid(Rigid, equipmentData, account_id, user_id));
       }
     }
-    if(Belt_Pulley && Belt_Pulley.length > 0) {
-      for(let beltPulley of Belt_Pulley) {
-        if(Object.keys(beltPulley).length !== 0) {
+    if (Belt_Pulley && Belt_Pulley.length > 0) {
+      for (let beltPulley of Belt_Pulley) {
+        if (Object.keys(beltPulley).length !== 0) {
           assetsPromiseList.push(await createBeltPulley(beltPulley, equipmentData, account_id, user_id));
         }
       }
     }
-    if(Gearbox && Gearbox.length > 0) {
-      for(let gearbox of Gearbox) {
-        if(Object.keys(gearbox).length !== 0) {
+    if (Gearbox && Gearbox.length > 0) {
+      for (let gearbox of Gearbox) {
+        if (Object.keys(gearbox).length !== 0) {
           assetsPromiseList.push(await createGearbox(gearbox, equipmentData, account_id, user_id));
         }
       }
     }
-    if(Fan_Blower) {
-      if(Object.keys(Fan_Blower).length !== 0) {
+    if (Fan_Blower) {
+      if (Object.keys(Fan_Blower).length !== 0) {
         assetsPromiseList.push(await createFanBlower(Fan_Blower, equipmentData, account_id, user_id));
       }
     }
-    if(Pumps) {
-      if(Object.keys(Pumps).length !== 0) {
+    if (Pumps) {
+      if (Object.keys(Pumps).length !== 0) {
         assetsPromiseList.push(await createPumps(Pumps, equipmentData, account_id, user_id));
       }
     }
-    if(Compressor) {
-      if(Object.keys(Compressor).length !== 0) {
+    if (Compressor) {
+      if (Object.keys(Compressor).length !== 0) {
         assetsPromiseList.push(await createCompressor(Compressor, equipmentData, account_id, user_id));
       }
     }
@@ -150,7 +194,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
     await createExternalAPICall(assetsMapData, account_id, user_id, token);
     res.status(200).json({ status: true, message: "Data created successfully", data: equipmentData._id });
   } catch (error) {
-    if(equipmentId) {
+    if (equipmentId) {
       await deleteAssetsById(equipmentId);
     }
     next(error);
@@ -164,7 +208,7 @@ export const createOld = async (req: Request, res: Response, next: NextFunction)
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor }} = req;
+    const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } } = req;
     if (!Equipment || !Equipment.id) {
       throw Object.assign(new Error("Invalid request: Equipment ID is required"), { status: 400 });
     }
@@ -189,38 +233,38 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     await updateEquipment(Equipment, account_id, user_id);
     const assetUpdatePromises: any[] = [];
     if (Motor && Object.keys(Motor).length !== 0) {
-      if(Motor.id) {
+      if (Motor.id) {
         assetUpdatePromises.push(await updateMotor(Motor, Equipment, account_id, user_id));
       } else {
         assetUpdatePromises.push(await createMotor(Motor, Equipment, account_id, user_id));
       }
     }
     if (Flexible && Object.keys(Flexible).length !== 0) {
-      if(Flexible.id) {
+      if (Flexible.id) {
         assetUpdatePromises.push(await updateFlexible(Flexible, Equipment, account_id, user_id));
       } else {
         assetUpdatePromises.push(await createFlexible(Flexible, Equipment, account_id, user_id));
       }
     }
     if (Rigid && Object.keys(Rigid).length !== 0) {
-      if(Rigid.id) {
+      if (Rigid.id) {
         assetUpdatePromises.push(await updateRigid(Rigid, Equipment, account_id, user_id));
       } else {
         assetUpdatePromises.push(await createRigid(Rigid, Equipment, account_id, user_id));
       }
     }
-    if(Belt_Pulley.length > 0) {
-      for(let beltPulley of Belt_Pulley) {
-        if(beltPulley.id) {
+    if (Belt_Pulley.length > 0) {
+      for (let beltPulley of Belt_Pulley) {
+        if (beltPulley.id) {
           assetUpdatePromises.push(await updateBeltPulley(beltPulley, Equipment, account_id, user_id));
         } else {
           assetUpdatePromises.push(await createBeltPulley(beltPulley, Equipment, account_id, user_id));
         }
       }
     }
-    if(Gearbox.length > 0) {
-      for(let gearbox of Gearbox) {
-        if(gearbox.id) {
+    if (Gearbox.length > 0) {
+      for (let gearbox of Gearbox) {
+        if (gearbox.id) {
           assetUpdatePromises.push(await updateGearbox(gearbox, Equipment, account_id, user_id));
         } else {
           assetUpdatePromises.push(await createGearbox(gearbox, Equipment, account_id, user_id));
@@ -228,21 +272,21 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
       }
     }
     if (Fan_Blower && Object.keys(Fan_Blower).length !== 0) {
-      if(Fan_Blower.id) {
+      if (Fan_Blower.id) {
         assetUpdatePromises.push(await updateFanBlower(Fan_Blower, Equipment, account_id, user_id));
       } else {
         assetUpdatePromises.push(await createFanBlower(Fan_Blower, Equipment, account_id, user_id));
       }
     }
     if (Pumps && Object.keys(Pumps).length !== 0) {
-      if(Pumps.id) {
+      if (Pumps.id) {
         assetUpdatePromises.push(await updatePumps(Pumps, Equipment, account_id, user_id));
       } else {
         assetUpdatePromises.push(await createPumps(Pumps, Equipment, account_id, user_id));
       }
     }
     if (Compressor && Object.keys(Compressor).length !== 0) {
-      if(Compressor.id) {
+      if (Compressor.id) {
         assetUpdatePromises.push(await updateCompressor(Compressor, Equipment, account_id, user_id));
       } else {
         assetUpdatePromises.push(await createCompressor(Compressor, Equipment, account_id, user_id));
@@ -256,7 +300,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
 
     for (const asset of updatedAssets) {
       if (asset && asset._id) {
-        Equipment.userList.forEach((userId: any) => { 
+        Equipment.userList.forEach((userId: any) => {
           assetsMapData.push({ userId, assetId: asset._id, account_id });
         });
       }
@@ -276,7 +320,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
 export const updateAssetImage = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const { image_path } = req.body;
@@ -297,9 +341,11 @@ export const updateAssetImage = async (req: Request, res: Response, next: NextFu
 export const removeAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if(!req.params.id) {
+    if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
+
+
     const match: any = { _id: req.params.id, account_id: account_id, visible: true };
     if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });

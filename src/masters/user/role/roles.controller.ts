@@ -7,11 +7,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
-    const match: any = { account_id: account_id };
-    if(userRole !== 'admin') {
+    // const match: any = { account_id: account_id };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       match.user_id = user_id;
     }
-    if(query?.user_id) {
+    if (query?.user_id) {
       match.user_id = query.user_id;
     }
     const data = await getRoles(match);
@@ -46,7 +47,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     const match: any = { account_id: account_id, _id: id };
-    if(userRole !== 'admin') {
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
       match.user_id = user_id;
     }
     const data = await getRoles(match);
