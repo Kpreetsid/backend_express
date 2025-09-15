@@ -53,7 +53,6 @@ export const getTree = async (match: any, location_id: any): Promise<any> => {
 
 export const kpiFilterLocations = async (account_id: any, user_id: any, userRole: any) => {
   try {
-    // const match: any = { visible: true, account_id };
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
       const mapLocationData: IMapUserLocation[] = await getLocationsMappedData(`${user_id}`);
@@ -176,8 +175,6 @@ export const updateFloorMapImage = async (id: string, account_id: any, user_id: 
 
 export const getLocationSensor = async (account_id: any, user_id: any, userRole: string) => {
   try {
-    // const match: any = { account_id, visible: true };
-
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
       const mappedData = await getLocationsMappedData(`${user_id}`);

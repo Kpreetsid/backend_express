@@ -3,7 +3,6 @@ import { database } from '../configDB';
 
 export const connectDB = async () => {
   try {
-    // const ConnectionStringMongoDB = `mongodb://${database.host}/${database.databaseName}`;
     const ConnectionStringMongoDB = `mongodb://${database.userName}:${database.password}@${database.host}/${database.databaseName}?authSource=${database.authSource}`;
     await mongoose.connect(ConnectionStringMongoDB);
     console.log('MongoDB connected');

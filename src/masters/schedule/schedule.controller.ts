@@ -7,9 +7,7 @@ import mongoose from 'mongoose';
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const match: any = { account_id };
     const match: any = { account_id, visible: true };
-
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }
@@ -23,53 +21,22 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   }
 }
 
-// export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-//   try {
-//     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-
-//     const { id } = req.params;
-//     if (!id) {
-//       throw Object.assign(new Error('ID is required'), { status: 400 });
-//     }
-//     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
-
-//     if (userRole !== 'admin') {
-//       match.user_id = user_id;
-//     }
-//     const data = await getSchedules(match);
-//     if (!data || data.length === 0) {
-//       throw Object.assign(new Error('No data found'), { status: 404 });
-//     }
-//     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-//   } catch (error) {
-//     next(error);
-//   }
-// }
-
-
 export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-
     const match: any = { account_id, visible: true };
-
     if (!id) {
       throw Object.assign(new Error("Invalid ID"), { status: 400 });
     }
-
     match._id = new mongoose.Types.ObjectId(id);
-
     if (userRole !== "admin") {
       match.user_id = user_id;
     }
-
     const data = await getSchedules(match);
-
     if (!data || data.length === 0) {
       throw Object.assign(new Error("No data found"), { status: 404 });
     }
-
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     console.error(error);

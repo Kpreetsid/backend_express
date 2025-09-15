@@ -32,7 +32,6 @@ export const getPart = async (req: Request, res: Response, next: NextFunction): 
     if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    // const match: any = { _id: req.params.id, account_id: account_id };
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
       match.createdBy = user_id;

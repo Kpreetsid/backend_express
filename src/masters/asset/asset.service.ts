@@ -165,9 +165,7 @@ export const deleteAsset = async (id: string): Promise<any> => {
 export const getAssetDataSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const match: any = { account_id: account_id, visible: true };
     const match: any = { account_id, visible: true };
-
     if (userRole !== 'admin') {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (mapData && mapData.length > 0) {

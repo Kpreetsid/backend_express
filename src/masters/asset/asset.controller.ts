@@ -9,9 +9,7 @@ import { deleteBase64Image, uploadBase64Image } from '../../_config/upload';
 export const getAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const match: any = { account_id: account_id, visible: true };
     const match: any = { account_id, visible: true };
-
     const params: any = req.query;
     if (userRole !== 'admin') {
       const mappedData = await getAssetsMappedData(`${user_id}`);

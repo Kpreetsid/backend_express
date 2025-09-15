@@ -7,7 +7,7 @@ import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id} = get(req, "user", {}) as IUser;
+    const { account_id, user_role: userRole, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id };
     const { params: { id } } = req;
     const { status, priority, asset_id, location_id, assignedUser } = req.query;
@@ -23,6 +23,14 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
       }
       match._id = { $in: workOrderIds.flat() };
     }
+    if(userRole !== 'admin') {
+      const userWorkOrderIdList = await getMappedWorkOrderIDs(user_id);
+      if(!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });  
+      }
+      match._id = { $in: userWorkOrderIdList };
+    }
+    console.log(match);
     const data = await getAllOrders(match);
     if(!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

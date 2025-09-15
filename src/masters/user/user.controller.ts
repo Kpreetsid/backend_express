@@ -4,16 +4,12 @@ import { getAllUsers, createNewUser, updateUserDetails, removeById, getLocationW
 import { IUser } from '../../models/user.model';
 import { deleteVerificationCode, verifyOTPExists } from '../../user/resetPassword/resetPassword.service';
 import { comparePassword } from '../../_config/bcrypt';
+import mongoose from 'mongoose';
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const match: any = { account_id: account_id, isActive: true };
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
-    if (userRole !== 'admin') {
-      match._id = user_id;
-    }
-    console.log(match);
     const data = await getAllUsers(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -30,8 +26,7 @@ export const getUser = async (req: Request, res: Response, next: NextFunction): 
     if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    // const match: any = { _id: req.params.id, account_id: account_id, isActive: true };
-    const match: any = { account_id, visible: true };
+    const match: any = { _id: new mongoose.Types.ObjectId(req.params.id), account_id, visible: true };
     if (userRole !== 'admin') {
       match._id = user_id;
     }

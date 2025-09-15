@@ -7,7 +7,6 @@ import mongoose from "mongoose";
 export const getCompanies = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const match: any = { _id: account_id };
     const match: any = { account_id, visible: true };
     const { type } = req.query;
     if (type) {
@@ -30,7 +29,6 @@ export const getCompany = async (req: Request, res: Response, next: NextFunction
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    // const match: any = { _id: id };
     const match: any = { account_id, visible: true };
     if (!id) {
       throw Object.assign(new Error('Invalid ID'), { status: 400 });

@@ -27,7 +27,6 @@ export const getFormCategoryByID = async (req: Request, res: Response, next: Nex
     if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    // const match: any = { _id: req.params.id, account_id: account_id };
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
       match.user_id = user_id;

@@ -7,9 +7,7 @@ import mongoose from 'mongoose';
 export const getAllFloorMaps = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const match: any = { account_id: account_id, isActive: true };
     const match: any = { account_id, visible: true };
-
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }
@@ -30,10 +28,7 @@ export const getFloorMapByID = async (req: Request, res: Response, next: NextFun
     if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    // const match: any = { _id: req.params.id, account_id: account_id, isActive: true };
-    const match: any = { account_id, visible: true };
-
-
+    const match: any = { _id: new mongoose.Types.ObjectId(req.params.id), account_id, visible: true };
     if (userRole !== 'admin') {
       match.user_id = user_id;
     }

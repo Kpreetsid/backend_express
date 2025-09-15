@@ -9,7 +9,6 @@ const moduleName: string = "location";
 export const getLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const match: any = { visible: true, account_id: account_id };
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
       const mappedUserList = await getLocationsMappedData(user_id);
