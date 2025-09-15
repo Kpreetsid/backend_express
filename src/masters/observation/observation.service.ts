@@ -7,9 +7,7 @@ import mongoose from "mongoose";
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const match: any = { accountId: account_id };
     const match: any = { account_id, visible: true };
-
     if (userRole !== 'admin') {
       match['user.id'] = user_id;
     }
@@ -35,12 +33,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 
 export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     if (!req.params.id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    // const match = { accountId: account_id, _id: req.params.id };
-    const match: any = { account_id, visible: true };
+    const match = { accountId: account_id, _id: new mongoose.Types.ObjectId(req.params.id), visible: true };
     const data: IObservation[] | null = await ObservationModel.find(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
