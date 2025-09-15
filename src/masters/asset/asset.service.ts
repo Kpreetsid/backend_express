@@ -30,10 +30,8 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
   try {
     const { locationList = [], assets = [], top_level } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const match: any = { account_id: account_id, visible: true };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
-
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    const match: any = { account_id, visible: true };
+    if(userRole !== "admin") {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -64,7 +62,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
     const { locations, id } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query: any = { account_id: account_id, visible: true, parent_id: { $in: [null, undefined] } };
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (mapData && mapData.length > 0) {
         query._id = { $in: mapData.map((doc: any) => doc.assetId) };
@@ -168,9 +166,9 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     // const match: any = { account_id: account_id, visible: true };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    const match: any = { account_id, visible: true };
 
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (mapData && mapData.length > 0) {
         match._id = { $in: mapData.map((doc: any) => doc.assetId) };

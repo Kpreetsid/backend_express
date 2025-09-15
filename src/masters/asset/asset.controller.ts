@@ -10,10 +10,10 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     // const match: any = { account_id: account_id, visible: true };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    const match: any = { account_id, visible: true };
 
     const params: any = req.query;
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       const mappedData = await getAssetsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -72,46 +72,6 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
     next(error);
   }
 }
-
-
-// export const getAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-//   try {
-//     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-//     const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
-//     if (!id) {
-//       throw Object.assign(new Error('No data found'), { status: 404 });
-//     }
-//     const match: any = { _id: new mongoose.Types.ObjectId(id) };
-//     if (userRole !== "super_admin") {
-//       match.account_id = account_id;
-//       match.visible = true;
-//     }
-//     if (userRole !== 'admin' && userRole !== 'super_admin') {
-//       const mappedData = await getAssetsMappedData(`${user_id}`);
-//       if (!mappedData || mappedData.length === 0) {
-//         throw Object.assign(new Error('No data found'), { status: 404 });
-//       }
-//       match._id = { $in: mappedData.map(doc => doc.assetId) };
-//     }
-//     if (top_level_asset_id && top_level_asset_id.toString().split(',').length > 0) {
-//       match.top_level_asset_id = top_level_asset_id.toString().split(',');
-//     }
-//     if (top_level) {
-//       match.top_level = top_level == 'true' ? true : false;
-//     }
-//     if (locationId) {
-//       match.locationId = new mongoose.Types.ObjectId(`${locationId}`);
-//     }
-//     console.log(match)
-//     const data = await getAll(match);
-//     if (!data || data.length === 0) {
-//       throw Object.assign(new Error('No data found'), { status: 404 });
-//     }
-//     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-//   } catch (error) {
-//     next(error);
-//   }
-// }
 
 export const getAssetTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await getAssetsTreeData(req, res, next);

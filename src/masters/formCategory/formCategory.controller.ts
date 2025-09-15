@@ -7,9 +7,9 @@ export const getAllFormCategories = async (req: Request, res: Response, next: Ne
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     // const match: any = { account_id: account_id };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    const match: any = { account_id, visible: true };
 
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       match.user_id = user_id;
     }
     const data = await getFormCategories(match);
@@ -29,8 +29,8 @@ export const getFormCategoryByID = async (req: Request, res: Response, next: Nex
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     // const match: any = { _id: req.params.id, account_id: account_id };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    const match: any = { account_id, visible: true };
+    if (userRole !== 'admin') {
       match.user_id = user_id;
     }
     const data = await getFormCategories(match);

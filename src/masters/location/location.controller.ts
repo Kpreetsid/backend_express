@@ -10,8 +10,8 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     // const match: any = { visible: true, account_id: account_id };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    const match: any = { account_id, visible: true };
+    if (userRole !== 'admin') {
       const mappedUserList = await getLocationsMappedData(user_id);
       match.userIdList = { $in: mappedUserList.map((doc: any) => doc.userId) };
     }

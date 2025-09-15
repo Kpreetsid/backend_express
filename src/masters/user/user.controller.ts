@@ -9,10 +9,11 @@ export const getUsers = async (req: Request, res: Response, next: NextFunction):
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     // const match: any = { account_id: account_id, isActive: true };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    const match: any = { account_id, visible: true };
+    if (userRole !== 'admin') {
       match._id = user_id;
     }
+    console.log(match);
     const data = await getAllUsers(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -30,8 +31,8 @@ export const getUser = async (req: Request, res: Response, next: NextFunction): 
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     // const match: any = { _id: req.params.id, account_id: account_id, isActive: true };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    const match: any = { account_id, visible: true };
+    if (userRole !== 'admin') {
       match._id = user_id;
     }
     const data = await getAllUsers(match);

@@ -54,8 +54,8 @@ export const getTree = async (match: any, location_id: any): Promise<any> => {
 export const kpiFilterLocations = async (account_id: any, user_id: any, userRole: any) => {
   try {
     // const match: any = { visible: true, account_id };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    const match: any = { account_id, visible: true };
+    if (userRole !== 'admin') {
       const mapLocationData: IMapUserLocation[] = await getLocationsMappedData(`${user_id}`);
       if (!mapLocationData.length) {
         throw Object.assign(new Error('No location mapping found for user'), { status: 404 });
@@ -178,8 +178,8 @@ export const getLocationSensor = async (account_id: any, user_id: any, userRole:
   try {
     // const match: any = { account_id, visible: true };
 
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    const match: any = { account_id, visible: true };
+    if (userRole !== 'admin') {
       const mappedData = await getLocationsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });

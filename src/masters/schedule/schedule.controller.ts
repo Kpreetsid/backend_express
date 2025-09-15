@@ -8,9 +8,9 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     // const match: any = { account_id };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    const match: any = { account_id, visible: true };
 
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       match.user_id = user_id;
     }
     const data = await getSchedules(match);
@@ -33,7 +33,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 //     }
 //     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
 
-//     if (userRole !== 'admin' && userRole !== 'super_admin') {
+//     if (userRole !== 'admin') {
 //       match.user_id = user_id;
 //     }
 //     const data = await getSchedules(match);
@@ -52,7 +52,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
 
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    const match: any = { account_id, visible: true };
 
     if (!id) {
       throw Object.assign(new Error("Invalid ID"), { status: 400 });
@@ -60,7 +60,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
     match._id = new mongoose.Types.ObjectId(id);
 
-    if (userRole !== "admin" && userRole !== "super_admin") {
+    if (userRole !== "admin") {
       match.user_id = user_id;
     }
 

@@ -22,7 +22,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
   try {
     const { locationID } = req.params;
     const { user_role: userRole } = get(req, "user", {}) as IUser;
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const data = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');

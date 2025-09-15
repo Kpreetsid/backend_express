@@ -8,12 +8,12 @@ export const getCompanies = async (req: Request, res: Response, next: NextFuncti
   try {
     const { account_id, id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     // const match: any = { _id: account_id };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    const match: any = { account_id, visible: true };
     const { type } = req.query;
     if (type) {
       match.type = type;
     }
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       match._id = user_id;
     }
     const data = await getAllCompanies(match);
@@ -31,12 +31,12 @@ export const getCompany = async (req: Request, res: Response, next: NextFunction
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
     // const match: any = { _id: id };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    const match: any = { account_id, visible: true };
     if (!id) {
       throw Object.assign(new Error('Invalid ID'), { status: 400 });
     }
     match._id = new mongoose.Types.ObjectId(id);
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       match._id = user_id;
     }
     const data = await getAllCompanies(match);

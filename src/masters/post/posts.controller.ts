@@ -8,7 +8,7 @@ export const getPosts = async (req: Request, res: Response, next: NextFunction):
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     // const match: any = { account_id: account_id };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+    const match: any = { account_id, visible: true };
 
     const { postType, relatedTo } = req.query;
     if (postType) {
@@ -17,7 +17,7 @@ export const getPosts = async (req: Request, res: Response, next: NextFunction):
     if (relatedTo) {
       match.relatedTo = relatedTo.toString().split(',');
     }
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       match.userId = user_id;
     }
     const data = await getAllParts(match);
@@ -45,7 +45,7 @@ export const getPost = async (req: Request, res: Response, next: NextFunction): 
     if (relatedTo) {
       match.relatedTo = relatedTo.toString().split(',');
     }
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    if (userRole !== 'admin') {
       match.userId = user_id;
     }
     const data = await getAllParts(match);
