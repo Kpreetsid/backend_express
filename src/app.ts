@@ -7,7 +7,6 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { isAuthenticated } from './_config/auth';
-import authorizeRouterIndex from './authRoutes';
 import routerIndex from './nonAuthRoutes';
 import workRoutes from './work/work.routes';
 import uploadRoutes from './upload/upload.routes';
@@ -42,7 +41,7 @@ app.use(activityLogger);
 
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 1000,
   message: 'Too many requests, please try again later.'
 }));
 
@@ -57,7 +56,6 @@ app.use(compression({
 const apiRouter: Router = Router();
 
 apiRouter.use('/', routerIndex());
-apiRouter.use('/', isAuthenticated, authorizeRouterIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
 apiRouter.use('/master', isAuthenticated, masterRoutes());
 apiRouter.use('/work', isAuthenticated, workRoutes());

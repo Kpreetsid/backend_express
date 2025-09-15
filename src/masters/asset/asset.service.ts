@@ -1,67 +1,40 @@
-import { Asset, IAsset } from "../../models/asset.model";
+import { AssetModel, IAsset } from '../../models/asset.model';
 import { NextFunction, Request, Response } from 'express';
-import { MapUserAssetLocation } from "../../models/mapUserLocation.model";
-import { deleteBase64Image, uploadBase64Image } from "../../_config/upload";
-import { getExternalData } from "../../util/externalAPI";
-import { getData } from "../../util/queryBuilder";
-import { IUser, User } from "../../models/user.model";
-import { LocationMaster } from "../../models/location.model";
+import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
+import { removeAssetMapping } from "../../transaction/mapUserLocation/userLocation.service";
+import { IUser, UserModel } from "../../models/user.model";
+import { LocationModel } from "../../models/location.model";
 import { get } from "lodash";
+import { getData } from "../../util/queryBuilder";
+import { getExternalData } from "../../util/externalAPI";
 import mongoose from "mongoose";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
-    const params: any = req.query;
-    if (userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({ userId: user_id });
-      if (!mapData || mapData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      match._id = { $in: mapData.map(doc => doc.assetId) };
+export const getAll = async (match: any) => {
+  const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }]);
+  const assetsIds = assetsData.map((asset: any) => `${asset._id}`);
+  const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
+  const result: any = assetsData.map((doc: any) => {
+    const { _id: id, ...obj } = doc.toObject();
+    if (obj.locationId) {
+      obj.locationId.id = obj.locationId._id;
     }
-    if (params.top_level_asset_id && params.top_level_asset_id.split(',').length > 0) {
-      match.top_level_asset_id = params.top_level_asset_id.split(',');
-    }
-    if (params.top_level) {
-      match.top_level = true;
-    }
-    if (params.locationId) {
-      match.locationId = new mongoose.Types.ObjectId(params.locationId);
-    }
-    const data: IAsset[] | null = await getData(Asset, { filter: match });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
+    obj.id = id;
+    const mappedUser = mapData.filter(map => `${map.assetId}` === `${id}`);
+    obj.userList = mappedUser.length > 0 ? mappedUser.map((a: any) => a.userId).filter((user: any) => user) : [];
+    return obj;
+  });
+  return result;
+}
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { id } = req.params;
-    const data = await Asset.findById(id);
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
-export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { locations = [], assets = [], top_level, location_id } = req.body;
+    const { locationList = [], assets = [], top_level } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
-    if(userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+    // const match: any = { account_id: account_id, visible: true };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
+
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -70,37 +43,29 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
     if (top_level) {
       match.top_level = top_level;
     }
-    if (locations && locations.length > 0) {
-      match.locationId = { $in: locations };
+    if (locationList && locationList.length > 0) {
+      match.locationId = { $in: locationList };
     }
     if (assets && assets.length > 0) {
       match._id = { $in: assets };
     }
-    const data = await getData(Asset, { filter: match });
+    const data: IAsset[] = await getAll(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
 
-export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction) => {
+export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { locations, id } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if (!account_id) {
-      throw Object.assign(new Error('Missing accountId'), { status: 403 });
-    }
-    const query: any = {
-      account_id: account_id,
-      visible: true,
-      parent_id: { $in: [null, undefined] }
-    };
-    if (userRole !== 'admin') {
-      const mapData = await MapUserAssetLocation.find({ userId: user_id });
+    const query: any = { account_id: account_id, visible: true, parent_id: { $in: [null, undefined] } };
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (mapData && mapData.length > 0) {
         query._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
@@ -112,8 +77,7 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
     if (locations && Array.isArray(locations) && locations.length > 0) {
       query.locationId = { $in: locations };
     }
-    // const rootAssets = await Asset.find(query);
-    const rootAssets = await getData(Asset, { filter: query });
+    const rootAssets: IAsset[] = await getData(AssetModel, { filter: query });
     let data = await Promise.all(rootAssets.map(async (asset) => {
       return {
         ...asset,
@@ -131,7 +95,6 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
@@ -142,9 +105,9 @@ const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
     ignoreAssets = [];
   }
   const match = { parent_id: asset._id, visible: true };
-  const children = await getData(Asset, { filter: match });
+  const children: IAsset[] = await getData(AssetModel, { filter: match });
   const withChildren = await Promise.all(
-    children.map(async (child) => {
+    children.map(async (child): Promise<any> => {
       if (child.asset_type) {
         if (!ignoreAssets.includes(child.asset_type)) {
           const childs = await getRecursiveAssets(child, id);
@@ -163,693 +126,671 @@ const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
 
 const getRecursiveUsers = async (asset: any) => {
   const match = { assetId: asset._id };
-  const mapUsersAssets = await getData(MapUserAssetLocation, { filter: match });
+  const mapUsersAssets: IMapUserLocation[] = await MapUserAssetLocationModel.find(match);
   const userIds = mapUsersAssets.map((user: any) => user.userId);
   const fields = 'firstName lastName user_role';
-  const data = await getData(User, { filter: { _id: { $in: userIds } }, select: fields });
+  const data: IUser[] = await UserModel.find({ _id: { $in: userIds } }).select(fields);
   return data.map((user: any) => user._id).filter((user: any) => user);
 }
 
 const getRecursiveLocations = async (asset: any) => {
   const match = { _id: asset.locationId };
   const fields = 'location_name';
-  const locationData = await getData(LocationMaster, { filter: match, select: fields });
+  const locationData = await LocationModel.find(match).select(fields);
   return locationData[0];
 }
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
+export const updateAssetImageById = async (id: string, image_path: string, user_id: string) => {
+  return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
+}
+
+export const removeById = async (match: any, userID: any) => {
+  const childAssets = await AssetModel.find({ parent_id: match._id });
+  if (childAssets && childAssets.length > 0) {
+    await AssetModel.updateMany({ parent_id: match._id }, { visible: false, isActive: false });
+  }
+  return await AssetModel.findOneAndUpdate(match, { visible: false, isActive: false, updatedBy: userID }, { new: true });
+};
+
+export const deleteAsset = async (id: string): Promise<any> => {
+  const childAssets = await AssetModel.find({ parent_id: id });
+  if (childAssets && childAssets.length > 0) {
+    for (const asset of childAssets) {
+      await removeAssetMapping(`${asset._id}`);
+    }
+    await AssetModel.deleteMany({ parent_id: id });
+  }
+  await removeAssetMapping(id);
+  return await AssetModel.deleteOne({ _id: id });
+}
+
+export const getAssetDataSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
-    const childAssets: any[] = [];
-    if (!Equipment.userList || Equipment.userList.length === 0) {
-      throw Object.assign(new Error('Please select at least one user'), { status: 400 });
-    }
+    // const match: any = { account_id: account_id, visible: true };
+    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
 
-    if (Equipment.image_path) {
-      const image = await uploadBase64Image(Equipment.image_path, "assets");
-      Equipment.image_path = image;
+    if (userRole !== 'admin' && userRole !== 'super_admin') {
+      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
+      if (mapData && mapData.length > 0) {
+        match._id = { $in: mapData.map((doc: any) => doc.assetId) };
+      }
     }
-
-    const newParentAsset = new Asset({
-      asset_name: Equipment.asset_name,
-      asset_id: Equipment.asset_id,
-      asset_type: Equipment.asset_type || "Equipment",
-      asset_orient: Equipment.asset_orient,
-      asset_timezone: Equipment.asset_timezone,
-      isNewFLow: Equipment.isNewFLow,
-      loadType: Equipment.loadType,
-      powUnit: Equipment.powUnit,
-      rotation_type: Equipment.rotation_type,
-      top_level: true,
-      isNewFlow: true,
-      locationId: Equipment.locationId,
-      account_id: account_id,
-      description: Equipment.description,
-      asset_model: Equipment.asset_model,
-      manufacturer: Equipment.manufacturer,
-      year: Equipment.year,
-      assigned_to: Equipment.assigned_to,
-      image_path: Equipment.image_path,
-      imageNodeData: Equipment.imageNodeData,
-      createdBy: user_id
+    const data = await AssetModel.find(match).populate(
+      [
+        { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
+        { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
+        { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
+      ]
+    );
+    if (data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const result = data.map((doc: any) => {
+      doc = doc.toObject();
+      return {
+        "asset_id": doc._id,
+        "asset_name": doc.asset_name,
+        "top_level_asset_id": doc.top_level_asset_id ? doc.top_level_asset_id._id : "",
+        "top_level_asset_name": doc.top_level_asset_id ? doc.top_level_asset_id?.asset_name : "NA",
+        "location_id": doc.locationId ? doc.locationId._id : "",
+        "location_name": doc.locationId ? doc.locationId.location_name : "NA",
+        "company_name": doc.account_id ? doc.account_id.account_name : "NA"
+      };
     })
-    const parentAssetData = await newParentAsset.save();
-    await Asset.updateOne({ _id: parentAssetData._id }, { $set: { top_level_asset_id: parentAssetData._id } });
-
-    const parentMapData = Equipment.userList.map((user: any) => ({
-      userId: user,
-      assetId: parentAssetData._id,
-      accountId: account_id
-    }));
-    await MapUserAssetLocation.insertMany(parentMapData);
-
-    if (Motor) {
-      if (Object.keys(Motor).length > 0) {
-        const newMotorAsset = new Asset({
-          parent_id: parentAssetData._id,
-          asset_name: Motor.asset_name,
-          asset_id: Motor.asset_id || Equipment.asset_id,
-          asset_type: Motor.asset_type || "Motor",
-          motorType: Motor.motorType,
-          lineFreq: Motor.lineFreq,
-          asset_behavior: Motor.asset_behavior,
-          specificFrequency: Motor.specificFrequency,
-          mounting: Motor.mounting,
-          isNewFlow: true,
-          minInputRotation: Motor.minInputRotation,
-          maxInputRotation: Motor.maxInputRotation,
-          rotationUnit: Motor.rotationUnit,
-          powerRating: Motor.powerRating,
-          top_level: false,
-          locationId: parentAssetData.locationId,
-          top_level_asset_id: parentAssetData._id,
-          account_id: account_id,
-          asset_model: Motor.asset_model,
-          manufacturer: Motor.manufacturer,
-          year: Motor.year,
-          createdBy: user_id
-        });
-        childAssets.push(newMotorAsset);
-      }
-    }
-
-    if (Flexible) {
-      if (Object.keys(Flexible).length > 0) {
-        const newFlexibleAsset = new Asset({
-          parent_id: parentAssetData._id,
-          asset_name: Flexible.asset_name,
-          element: Flexible.element,
-          asset_id: Flexible.asset_id || Equipment.asset_id,
-          asset_type: Flexible.asset_type || "Flexible",
-          top_level: false,
-          isNewFlow: true,
-          locationId: parentAssetData.locationId,
-          top_level_asset_id: parentAssetData._id,
-          account_id: account_id,
-          description: Flexible.description,
-          asset_model: Flexible.asset_model,
-          manufacturer: Flexible.manufacturer,
-          year: Flexible.year,
-          assigned_to: Flexible.assigned_to,
-          image_path: Flexible.image_path,
-          createdBy: user_id
-        });
-        childAssets.push(newFlexibleAsset);
-      }
-    }
-
-    if (Rigid) {
-      if (Object.keys(Rigid).length > 0) {
-        const newRigidAsset = new Asset({
-          parent_id: parentAssetData._id,
-          asset_name: Rigid.asset_name,
-          asset_id: Rigid.asset_id || Equipment.asset_id,
-          asset_type: Rigid.asset_type || "Rigid",
-          asset_orient: Rigid.asset_orient,
-          powUnit: Rigid.powUnit,
-          top_level: false,
-          isNewFlow: true,
-          locationId: parentAssetData.locationId,
-          top_level_asset_id: parentAssetData._id,
-          account_id: account_id,
-          description: Rigid.description,
-          asset_model: Rigid.model,
-          manufacturer: Rigid.manufacturer,
-          year: Rigid.year,
-          assigned_to: Rigid.assigned_to,
-          image_path: Rigid.image_path,
-          createdBy: user_id
-        });
-        childAssets.push(newRigidAsset);
-      }
-    }
-
-    if (Belt_Pulley.length > 0) {
-      Belt_Pulley.forEach((beltPulley: any) => {
-        if (beltPulley) {
-          if (Object.keys(beltPulley).length > 0) {
-            const newBeltPulleyAsset = new Asset({
-              parent_id: parentAssetData._id,
-              asset_name: beltPulley.asset_name,
-              asset_id: beltPulley.asset_id || Equipment.asset_id,
-              asset_type: beltPulley.asset_type || "Belt_Pulley",
-              top_level: false,
-              isNewFlow: true,
-              locationId: parentAssetData.locationId,
-              top_level_asset_id: parentAssetData._id,
-              account_id: account_id,
-              drivenPulleyDia: beltPulley.drivenPulleyDia,
-              beltLength: beltPulley.beltLength,
-              outputRPM: beltPulley.outputRPM,
-              noOfGroove: beltPulley.noOfGroove,
-              minInputRotation: beltPulley.minInputRotation,
-              maxInputRotation: beltPulley.maxInputRotation,
-              minOutputRotation: beltPulley.minOutputRotation,
-              maxOutputRotation: beltPulley.maxOutputRotation,
-              drivingPulleyDia: beltPulley.drivingPulleyDia,
-              drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
-              createdBy: user_id
-            });
-            childAssets.push(newBeltPulleyAsset);
-          }
-        }
-      })
-    }
-
-    if (Gearbox.length > 0) {
-      Gearbox.forEach((gearbox: any) => {
-        if (gearbox) {
-          if (Object.keys(gearbox).length > 0) {
-            const newGearBoxAsset = new Asset({
-              parent_id: parentAssetData._id,
-              asset_name: gearbox.asset_name,
-              asset_id: gearbox.asset_id || Equipment.asset_id,
-              asset_type: gearbox.asset_type || "Gearbox",
-              top_level: false,
-              isNewFlow: true,
-              locationId: parentAssetData.locationId,
-              top_level_asset_id: parentAssetData._id,
-              account_id: account_id,
-              mounting: gearbox.mounting,
-              minInputRotation: gearbox.minInputRotation,
-              maxInputRotation: gearbox.maxInputRotation,
-              minOutputRotation: gearbox.minOutputRotation,
-              maxOutputRotation: gearbox.maxOutputRotation,
-              noStages: gearbox.noStages,
-              bearingType: gearbox.bearingType,
-              stage_1st_driving_teeth: gearbox.stage_1st_driving_teeth,
-              stage_1st_driven_teeth: gearbox.stage_1st_driven_teeth,
-              stage_2nd_driving_teeth: gearbox.stage_2nd_driving_teeth,
-              stage_2nd_driven_teeth: gearbox.stage_2nd_driven_teeth,
-              stage_3rd_driving_teeth: gearbox.stage_3rd_driving_teeth,
-              stage_3rd_driven_teeth: gearbox.stage_3rd_driven_teeth,
-              stage_4th_driving_teeth: gearbox.stage_4th_driving_teeth,
-              stage_4th_driven_teeth: gearbox.stage_4th_driven_teeth,
-              stage_5th_driving_teeth: gearbox.stage_5th_driving_teeth,
-              stage_5th_driven_teeth: gearbox.stage_5th_driven_teeth,
-              stage_6th_driving_teeth: gearbox.stage_6th_driving_teeth,
-              stage_6th_driven_teeth: gearbox.stage_6th_driven_teeth,
-              stage_7th_driving_teeth: gearbox.stage_7th_driving_teeth,
-              stage_7th_driven_teeth: gearbox.stage_7th_driven_teeth,
-              stage_8th_driving_teeth: gearbox.stage_8th_driving_teeth,
-              stage_8th_driven_teeth: gearbox.stage_8th_driven_teeth,
-              description: gearbox.description,
-              asset_model: gearbox.model,
-              manufacturer: gearbox.manufacturer,
-              year: gearbox.year,
-              assigned_to: gearbox.assigned_to,
-              image_path: gearbox.image_path,
-              createdBy: user_id
-            });
-            childAssets.push(newGearBoxAsset);
-          }
-        }
-      })
-    }
-
-    if (Fans_Blowers) {
-      if (Object.keys(Fans_Blowers).length > 0) {
-        const newFanBlowerAsset = new Asset({
-          parent_id: parentAssetData._id,
-          asset_name: Fans_Blowers.asset_name,
-          asset_id: Fans_Blowers.asset_id || Equipment.asset_id,
-          asset_type: Fans_Blowers.asset_type || "Fans_Blowers",
-          brandId: Fans_Blowers.brandId,
-          mountType: Fans_Blowers.mountType,
-          brandMake: Fans_Blowers.brandMake,
-          mounting: Fans_Blowers.mounting,
-          bearingType: Fans_Blowers.bearingType,
-          bladeCount: Fans_Blowers.bladeCount,
-          minInputRotation: Fans_Blowers.minInputRotation,
-          maxInputRotation: Fans_Blowers.maxInputRotation,
-          specificFrequency: Fans_Blowers.specificFrequency,
-          top_level: false,
-          isNewFlow: true,
-          locationId: parentAssetData.locationId,
-          top_level_asset_id: parentAssetData._id,
-          account_id: account_id,
-          description: Fans_Blowers.description,
-          asset_model: Fans_Blowers.asset_model,
-          manufacturer: Fans_Blowers.manufacturer,
-          year: Fans_Blowers.year,
-          assigned_to: Fans_Blowers.assigned_to,
-          image_path: Fans_Blowers.image_path,
-          createdBy: user_id
-        });
-        childAssets.push(newFanBlowerAsset);
-      }
-    }
-    if (Pumps) {
-      if (Object.keys(Pumps).length > 0) {
-        const newPumpAsset = new Asset({
-          parent_id: parentAssetData._id,
-          asset_name: Pumps.asset_name,
-          brand: Pumps.brand,
-          asset_id: Pumps.asset_id || Equipment.asset_id,
-          casing: Pumps.casing,
-          asset_type: Pumps.asset_type || "Pumps",
-          impellerBladeCount: Pumps.impellerBladeCount,
-          pump_model: Pumps.pump_model,
-          impellerType: Pumps.impellerType,
-          minInputRotation: Pumps.minInputRotation,
-          maxInputRotation: Pumps.maxInputRotation,
-          specificFrequency: Pumps.specificFrequency,
-          top_level: false,
-          isNewFlow: true,
-          locationId: parentAssetData.locationId,
-          top_level_asset_id: parentAssetData._id,
-          account_id: account_id,
-          description: Pumps.description,
-          asset_model: Pumps.model,
-          manufacturer: Pumps.manufacturer,
-          year: Pumps.year,
-          assigned_to: Pumps.assigned_to,
-          image_path: Pumps.image_path,
-          createdBy: user_id
-        });
-        childAssets.push(newPumpAsset);
-      }
-    }
-
-    if (Compressor) {
-      if (Object.keys(Compressor).length > 0) {
-        const newCompressorAsset = new Asset({
-          parent_id: parentAssetData._id,
-          asset_name: Compressor.asset_name,
-          asset_id: Compressor.asset_id || Equipment.asset_id,
-          asset_type: Compressor.asset_type || "Compressor",
-          brandModel: Compressor.brandModel,
-          pinionGearTeethCount: Compressor.pinionGearTeethCount,
-          timingGearTeethCount: Compressor.timingGearTeethCount,
-          powerRating: Compressor.powerRating,
-          minInputRotation: Compressor.minInputRotation,
-          maxInputRotation: Compressor.maxInputRotation,
-          mountType: Compressor.mountType,
-          specificFrequency: Compressor.specificFrequency,
-          top_level: false,
-          isNewFlow: true,
-          locationId: parentAssetData.locationId,
-          top_level_asset_id: parentAssetData._id,
-          account_id: account_id,
-          description: Compressor.description,
-          asset_model: Compressor.asset_model,
-          manufacturer: Compressor.manufacturer,
-          year: Compressor.year,
-          assigned_to: Compressor.assigned_to,
-          image_path: Compressor.image_path,
-          createdBy: user_id
-        });
-        childAssets.push(newCompressorAsset);
-      }
-    }
-    const insertedChildAssets = await Asset.insertMany(childAssets);
-    const assetIdList: string[] = insertedChildAssets.map((asset: any) => `${asset._id}`);
-    assetIdList.push(`${parentAssetData._id}`);
-    const match = {
-      "org_id": `${account_id}`,
-      "asset_status": "Not Defined",
-      "asset_id": assetIdList
-    };
-    const token: string = req.headers.authorization as string;
-    await getExternalData(`/asset_health_status/`, match, token, `${user_id}`);
-
-    const allMapUserAssetData = insertedChildAssets.flatMap((asset: any) =>
-      Equipment.userList.map((user: any) => ({
-        userId: user,
-        assetId: asset._id,
-        accountId: account_id
-      }))
-    );
-    await MapUserAssetLocation.insertMany(allMapUserAssetData);
-    return res.status(201).json({ status: true, message: "Data created successfully", data: parentAssetData._id });
+    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
   } catch (error) {
-    console.error(error);
     next(error);
   }
-};
+}
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+export const createAssetOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fans_Blowers, Pumps, Compressor } = req.body;
-    if (!id) {
-      throw Object.assign(new Error('Id is required'), { status: 403 });
-    }
-    if (id !== Equipment.id) {
-      throw Object.assign(new Error('Data mismatch'), { status: 403 });
-    }
-    const data: any = await Asset.findById(id);
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const createPromises: Promise<any>[] = [];
-    const updatePromises: Promise<any>[] = [];
-    if (Equipment) {
-      if (Object.keys(Equipment).length > 0) {
-        if (Equipment.image_path) {
-          if (data.image_path && data.image_path['fileName']) {
-            await deleteBase64Image(data.image_path['fileName'], "asset");
-          }
-          const image = await uploadBase64Image(Equipment.image_path, "assets");
-          Equipment.image_path = image.fileName;
-        }
-        updatePromises.push(Asset.updateOne({ _id: Equipment.id }, { $set: { ...Equipment, updatedBy: user_id } }));
-      }
-    }
-    if (Motor || Motor.id) {
-      if (Object.keys(Motor).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Motor.id }, { $set: { ...Motor, updatedBy: user_id } }));
-      }
-    } else {
-      const newMotorAsset = new Asset({
-        parent_id: id,
-        asset_name: Motor.asset_name,
-        asset_id: Motor.asset_id || Equipment.asset_id,
-        asset_type: Motor.asset_type || "Motor",
-        motorType: Motor.motorType,
-        lineFreq: Motor.lineFreq,
-        asset_behavior: Motor.asset_behavior,
-        specificFrequency: Motor.specificFrequency,
-        mounting: Motor.mounting,
-        isNewFlow: true,
-        minInputRotation: Motor.minInputRotation,
-        maxInputRotation: Motor.maxInputRotation,
-        rotationUnit: Motor.rotationUnit,
-        powerRating: Motor.powerRating,
-        top_level: false,
-        locationId: Equipment.locationId,
-        top_level_asset_id: Equipment.id,
-        account_id: account_id,
-        asset_model: Motor.asset_model,
-        manufacturer: Motor.manufacturer,
-        year: Motor.year,
-        createdBy: user_id
-      });
-      createPromises.push(newMotorAsset.save());
-    }
-    if (Flexible || Flexible.id) {
-      if (Object.keys(Flexible).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Flexible.id }, { $set: { ...Flexible, updatedBy: user_id } }));
-      }
-    } else {
-      const newFlexibleAsset = new Asset({
-        parent_id: id,
-        asset_name: Flexible.asset_name,
-        element: Flexible.element,
-        asset_id: Flexible.asset_id || Equipment.asset_id,
-        asset_type: Flexible.asset_type || "Flexible",
-        top_level: false,
-        isNewFlow: true,
-        locationId: Equipment.locationId,
-        top_level_asset_id: Equipment.id,
-        account_id: account_id,
-        description: Flexible.description,
-        asset_model: Flexible.asset_model,
-        manufacturer: Flexible.manufacturer,
-        year: Flexible.year,
-        assigned_to: Flexible.assigned_to,
-        image_path: Flexible.image_path,
-        createdBy: user_id
-      });
-      createPromises.push(newFlexibleAsset.save());
-    }
-    if (Rigid || Rigid.id) {
-      if (Object.keys(Rigid).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Rigid.id }, { $set: { ...Rigid, updatedBy: user_id } }));
-      }
-    } else {
-      const newRigidAsset = new Asset({
-        parent_id: id,
-        asset_name: Rigid.asset_name,
-        asset_id: Rigid.asset_id || Equipment.asset_id,
-        asset_type: Rigid.asset_type || "Rigid",
-        asset_orient: Rigid.asset_orient,
-        powUnit: Rigid.powUnit,
-        top_level: false,
-        isNewFlow: true,
-        locationId: Equipment.locationId,
-        top_level_asset_id: Equipment.id,
-        account_id: account_id,
-        description: Rigid.description,
-        asset_model: Rigid.model,
-        manufacturer: Rigid.manufacturer,
-        year: Rigid.year,
-        assigned_to: Rigid.assigned_to,
-        image_path: Rigid.image_path,
-        createdBy: user_id
-      });
-      createPromises.push(newRigidAsset.save());
-    }
-    if (Belt_Pulley.length > 0) {
-      Belt_Pulley.forEach((beltPulley: any) => {
-        if (beltPulley.id) {
-          if (Object.keys(beltPulley).length > 0) {
-            updatePromises.push(Asset.updateOne({ _id: beltPulley.id }, { $set: { ...beltPulley, updatedBy: user_id } }));
-          }
-        } else {
-          const newBeltPulleyAsset = new Asset({
-            parent_id: id,
-            asset_name: beltPulley.asset_name,
-            asset_id: beltPulley.asset_id || Equipment.asset_id,
-            asset_type: beltPulley.asset_type || "Belt_Pulley",
-            top_level: false,
-            isNewFlow: true,
-            locationId: Equipment.locationId,
-            top_level_asset_id: Equipment.id,
-            account_id: account_id,
-            drivenPulleyDia: beltPulley.drivenPulleyDia,
-            beltLength: beltPulley.beltLength,
-            outputRPM: beltPulley.outputRPM,
-            noOfGroove: beltPulley.noOfGroove,
-            minInputRotation: beltPulley.minInputRotation,
-            maxInputRotation: beltPulley.maxInputRotation,
-            minOutputRotation: beltPulley.minOutputRotation,
-            maxOutputRotation: beltPulley.maxOutputRotation,
-            drivingPulleyDia: beltPulley.drivingPulleyDia,
-            drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
-            createdBy: user_id
-          });
-          createPromises.push(newBeltPulleyAsset.save());
-        }
-      });
-    }
-    if (Gearbox.length > 0) {
-      Gearbox.forEach((gearbox: any) => {
-        if (gearbox.id) {
-          if (Object.keys(gearbox).length > 0) {
-            updatePromises.push(Asset.updateOne({ _id: gearbox.id }, { $set: { ...gearbox, updatedBy: user_id } }));
-          }
-        } else {
-          const newGearBoxAsset = new Asset({
-            parent_id: id,
-            asset_name: gearbox.asset_name,
-            asset_id: gearbox.asset_id || Equipment.asset_id,
-            asset_type: gearbox.asset_type || "Gearbox",
-            top_level: false,
-            isNewFlow: true,
-            locationId: Equipment.locationId,
-            top_level_asset_id: Equipment.id,
-            account_id: account_id,
-            mounting: gearbox.mounting,
-            minInputRotation: gearbox.minInputRotation,
-            maxInputRotation: gearbox.maxInputRotation,
-            minOutputRotation: gearbox.minOutputRotation,
-            maxOutputRotation: gearbox.maxOutputRotation,
-            noStages: gearbox.noStages,
-            bearingType: gearbox.bearingType,
-            stage_1st_driving_teeth: gearbox.stage_1st_driving_teeth,
-            stage_1st_driven_teeth: gearbox.stage_1st_driven_teeth,
-            stage_2nd_driving_teeth: gearbox.stage_2nd_driving_teeth,
-            stage_2nd_driven_teeth: gearbox.stage_2nd_driven_teeth,
-            stage_3rd_driving_teeth: gearbox.stage_3rd_driving_teeth,
-            stage_3rd_driven_teeth: gearbox.stage_3rd_driven_teeth,
-            stage_4th_driving_teeth: gearbox.stage_4th_driving_teeth,
-            stage_4th_driven_teeth: gearbox.stage_4th_driven_teeth,
-            stage_5th_driving_teeth: gearbox.stage_5th_driving_teeth,
-            stage_5th_driven_teeth: gearbox.stage_5th_driven_teeth,
-            stage_6th_driving_teeth: gearbox.stage_6th_driving_teeth,
-            stage_6th_driven_teeth: gearbox.stage_6th_driven_teeth,
-            stage_7th_driving_teeth: gearbox.stage_7th_driving_teeth,
-            stage_7th_driven_teeth: gearbox.stage_7th_driven_teeth,
-            stage_8th_driving_teeth: gearbox.stage_8th_driving_teeth,
-            stage_8th_driven_teeth: gearbox.stage_8th_driven_teeth,
-            description: gearbox.description,
-            asset_model: gearbox.model,
-            manufacturer: gearbox.manufacturer,
-            year: gearbox.year,
-            assigned_to: gearbox.assigned_to,
-            image_path: gearbox.image_path,
-            createdBy: user_id
-          });
-          createPromises.push(newGearBoxAsset.save());
-        }
-      });
-    }
-    if (Fans_Blowers || Fans_Blowers.id) {
-      if (Object.keys(Fans_Blowers).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Fans_Blowers.id }, { $set: { ...Fans_Blowers, updatedBy: user_id } }));
-      }
-    } else {
-      const newFanBlowerAsset = new Asset({
-        parent_id: id,
-        asset_name: Fans_Blowers.asset_name,
-        asset_id: Fans_Blowers.asset_id || Equipment.asset_id,
-        asset_type: Fans_Blowers.asset_type || "Fans_Blowers",
-        brandId: Fans_Blowers.brandId,
-        mountType: Fans_Blowers.mountType,
-        brandMake: Fans_Blowers.brandMake,
-        mounting: Fans_Blowers.mounting,
-        bearingType: Fans_Blowers.bearingType,
-        bladeCount: Fans_Blowers.bladeCount,
-        minInputRotation: Fans_Blowers.minInputRotation,
-        maxInputRotation: Fans_Blowers.maxInputRotation,
-        specificFrequency: Fans_Blowers.specificFrequency,
-        top_level: false,
-        isNewFlow: true,
-        locationId: Equipment.locationId,
-        top_level_asset_id: Equipment.id,
-        account_id: account_id,
-        description: Fans_Blowers.description,
-        asset_model: Fans_Blowers.asset_model,
-        manufacturer: Fans_Blowers.manufacturer,
-        year: Fans_Blowers.year,
-        assigned_to: Fans_Blowers.assigned_to,
-        image_path: Fans_Blowers.image_path,
-        createdBy: user_id
-      });
-      createPromises.push(newFanBlowerAsset.save());
-    }
-    if (Pumps || Pumps.id) {
-      if (Object.keys(Pumps).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Pumps.id }, { $set: { ...Pumps, updatedBy: user_id } }));
-      }
-    } else {
-      const newPumpAsset = new Asset({
-        parent_id: id,
-        asset_name: Pumps.asset_name,
-        brand: Pumps.brand,
-        asset_id: Pumps.asset_id || Equipment.asset_id,
-        casing: Pumps.casing,
-        asset_type: Pumps.asset_type || "Pumps",
-        impellerBladeCount: Pumps.impellerBladeCount,
-        pump_model: Pumps.pump_model,
-        impellerType: Pumps.impellerType,
-        minInputRotation: Pumps.minInputRotation,
-        maxInputRotation: Pumps.maxInputRotation,
-        specificFrequency: Pumps.specificFrequency,
-        top_level: false,
-        isNewFlow: true,
-        locationId: Equipment.locationId,
-        top_level_asset_id: Equipment.id,
-        account_id: account_id,
-        description: Pumps.description,
-        asset_model: Pumps.model,
-        manufacturer: Pumps.manufacturer,
-        year: Pumps.year,
-        assigned_to: Pumps.assigned_to,
-        image_path: Pumps.image_path,
-        createdBy: user_id
-      });
-      createPromises.push(newPumpAsset.save());
-    }
-    if (Compressor || Compressor.id) {
-      if (Object.keys(Compressor).length > 0) {
-        updatePromises.push(Asset.updateOne({ _id: Compressor.id }, { $set: { ...Compressor, updatedBy: user_id } }));
-      }
-    } else {
-      const newCompressorAsset = new Asset({
-        parent_id: id,
-        asset_name: Compressor.asset_name,
-        asset_id: Compressor.asset_id || Equipment.asset_id,
-        asset_type: Compressor.asset_type || "Compressor",
-        brandModel: Compressor.brandModel,
-        pinionGearTeethCount: Compressor.pinionGearTeethCount,
-        timingGearTeethCount: Compressor.timingGearTeethCount,
-        powerRating: Compressor.powerRating,
-        minInputRotation: Compressor.minInputRotation,
-        maxInputRotation: Compressor.maxInputRotation,
-        mountType: Compressor.mountType,
-        specificFrequency: Compressor.specificFrequency,
-        top_level: false,
-        isNewFlow: true,
-        locationId: Equipment.locationId,
-        top_level_asset_id: Equipment._id,
-        account_id: account_id,
-        description: Compressor.description,
-        asset_model: Compressor.asset_model,
-        manufacturer: Compressor.manufacturer,
-        year: Compressor.year,
-        assigned_to: Compressor.assigned_to,
-        image_path: Compressor.image_path,
-        createdBy: user_id
-      });
-      createPromises.push(newCompressorAsset.save());
-    }
-    if (updatePromises.length > 0) {
-      await Promise.all(updatePromises);
-    }
-    let childAssets: any[] = [];
-    if (createPromises.length > 0) {
-      childAssets = await Promise.all(createPromises);
-    }
-    const assetIdList: string[] = childAssets.map((asset: any) => `${asset._id}`);
-    assetIdList.push(`${Equipment.id}`);
-    const match = {
-      "org_id": `${account_id}`,
-      "asset_status": "Not Defined",
-      "asset_id": assetIdList
-    };
-    const token: string = req.headers.authorization as string;
-    await getExternalData(`/asset_health_status/`, match, token, `${user_id}`);
-
-    const allMapUserAssetData = childAssets.flatMap((asset: any) =>
-      Equipment.userList.map((user: any) => ({
-        userId: user,
-        assetId: asset._id,
-        accountId: account_id
-      }))
-    );
-    await MapUserAssetLocation.insertMany(allMapUserAssetData);
-    return res.status(200).json({ status: true, message: "Data updated successfully", data: id });
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const data: any = new AssetModel({ ...req.body, account_id: account_id, isActive: true, createdBy: user_id, visible: true });
+    data.top_level_asset_id = data._id;
+    await data.save();
+    return res.status(200).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
-    console.error(error);
     next(error);
   }
-};
+}
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data = await Asset.findById(id);
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+const removeExtraFields = (obj: Record<string, any>) => {
+  return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null));
+}
+
+export const createEquipment = async (equipment: any, account_id: any, user_id: any) => {
+  equipment = removeExtraFields(equipment);
+  const newEquipment: any = new AssetModel({
+    asset_name: equipment.asset_name,
+    asset_id: equipment.asset_id,
+    asset_type: equipment.asset_type || "Equipment",
+    asset_orient: equipment.asset_orient,
+    asset_timezone: equipment.asset_timezone,
+    isNewFLow: equipment.isNewFLow,
+    loadType: equipment.loadType,
+    powUnit: equipment.powUnit,
+    rotation_type: equipment.rotation_type,
+    top_level: true,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    account_id: account_id,
+    description: equipment.description,
+    asset_model: equipment.asset_model,
+    manufacturer: equipment.manufacturer,
+    year: equipment.year,
+    assigned_to: equipment.assigned_to,
+    image_path: equipment.image_path,
+    imageNodeData: equipment.imageNodeData,
+    createdBy: user_id
+  });
+  newEquipment.top_level_asset_id = newEquipment._id;
+  return await newEquipment.save();
+}
+
+export const createMotor = async (motor: any, equipment: any, account_id: any, user_id: any) => {
+  motor = removeExtraFields(motor);
+  return new AssetModel({
+    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    asset_name: motor.asset_name,
+    asset_id: motor.asset_id || equipment.asset_id,
+    asset_type: motor.asset_type || "Motor",
+    motorType: motor.motorType,
+    lineFreq: motor.lineFreq,
+    asset_behavior: motor.asset_behavior,
+    specificFrequency: motor.specificFrequency,
+    mounting: motor.mounting,
+    isNewFlow: true,
+    minInputRotation: motor.minInputRotation,
+    maxInputRotation: motor.maxInputRotation,
+    rotationUnit: motor.rotationUnit,
+    powerRating: motor.powerRating,
+    top_level: false,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment._id || equipment.id,
+    account_id: account_id,
+    asset_model: motor.asset_model,
+    manufacturer: motor.manufacturer,
+    year: motor.year,
+    createdBy: user_id
+  }).save();
+}
+
+export const createFlexible = async (flexible: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
+  flexible = removeExtraFields(flexible);
+  return new AssetModel({
+    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    asset_name: flexible.asset_name,
+    element: flexible.element,
+    asset_id: flexible.asset_id || equipment.asset_id,
+    asset_type: flexible.asset_type || "Flexible",
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment._id || equipment.id,
+    account_id: account_id,
+    description: flexible.description,
+    asset_model: flexible.asset_model,
+    manufacturer: flexible.manufacturer,
+    year: flexible.year,
+    assigned_to: flexible.assigned_to,
+    image_path: flexible.image_path,
+    createdBy: user_id
+  }).save();
+}
+
+export const createRigid = async (rigid: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
+  rigid = removeExtraFields(rigid);
+  return new AssetModel({
+    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    asset_name: rigid.asset_name,
+    asset_id: rigid.asset_id || equipment.asset_id,
+    asset_type: rigid.asset_type || "Rigid",
+    asset_orient: rigid.asset_orient,
+    powUnit: rigid.powUnit,
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment._id || equipment.id,
+    account_id: account_id,
+    description: rigid.description,
+    asset_model: rigid.model,
+    manufacturer: rigid.manufacturer,
+    year: rigid.year,
+    assigned_to: rigid.assigned_to,
+    image_path: rigid.image_path,
+    createdBy: user_id
+  }).save();
+}
+
+export const createBeltPulley = async (beltPulley: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
+  beltPulley = removeExtraFields(beltPulley);
+  return new AssetModel({
+    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    asset_name: beltPulley.asset_name,
+    asset_id: beltPulley.asset_id || equipment.asset_id,
+    asset_type: beltPulley.asset_type || "Belt_Pulley",
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment._id || equipment.id,
+    account_id: account_id,
+    drivenPulleyDia: beltPulley.drivenPulleyDia,
+    beltLength: beltPulley.beltLength,
+    outputRPM: beltPulley.outputRPM,
+    noOfGroove: beltPulley.noOfGroove,
+    minInputRotation: beltPulley.minInputRotation,
+    maxInputRotation: beltPulley.maxInputRotation,
+    minOutputRotation: beltPulley.minOutputRotation,
+    maxOutputRotation: beltPulley.maxOutputRotation,
+    drivingPulleyDia: beltPulley.drivingPulleyDia,
+    drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
+    createdBy: user_id
+  }).save();
+}
+
+export const createGearbox = async (gearbox: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
+  gearbox = removeExtraFields(gearbox);
+  return new AssetModel({
+    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    asset_name: gearbox.asset_name,
+    asset_id: gearbox.asset_id || equipment.asset_id,
+    asset_type: gearbox.asset_type || "Gearbox",
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment._id || equipment.id,
+    account_id: account_id,
+    mounting: gearbox.mounting,
+    minInputRotation: gearbox.minInputRotation,
+    maxInputRotation: gearbox.maxInputRotation,
+    minOutputRotation: gearbox.minOutputRotation,
+    maxOutputRotation: gearbox.maxOutputRotation,
+    noStages: gearbox.noStages,
+    bearingType: gearbox.bearingType,
+    stage_1st_driving_teeth: gearbox.stage_1st_driving_teeth,
+    stage_1st_driven_teeth: gearbox.stage_1st_driven_teeth,
+    stage_2nd_driving_teeth: gearbox.stage_2nd_driving_teeth,
+    stage_2nd_driven_teeth: gearbox.stage_2nd_driven_teeth,
+    stage_3rd_driving_teeth: gearbox.stage_3rd_driving_teeth,
+    stage_3rd_driven_teeth: gearbox.stage_3rd_driven_teeth,
+    stage_4th_driving_teeth: gearbox.stage_4th_driving_teeth,
+    stage_4th_driven_teeth: gearbox.stage_4th_driven_teeth,
+    stage_5th_driving_teeth: gearbox.stage_5th_driving_teeth,
+    stage_5th_driven_teeth: gearbox.stage_5th_driven_teeth,
+    stage_6th_driving_teeth: gearbox.stage_6th_driving_teeth,
+    stage_6th_driven_teeth: gearbox.stage_6th_driven_teeth,
+    stage_7th_driving_teeth: gearbox.stage_7th_driving_teeth,
+    stage_7th_driven_teeth: gearbox.stage_7th_driven_teeth,
+    stage_8th_driving_teeth: gearbox.stage_8th_driving_teeth,
+    stage_8th_driven_teeth: gearbox.stage_8th_driven_teeth,
+    description: gearbox.description,
+    asset_model: gearbox.model,
+    manufacturer: gearbox.manufacturer,
+    year: gearbox.year,
+    assigned_to: gearbox.assigned_to,
+    image_path: gearbox.image_path,
+    createdBy: user_id
+  }).save();
+}
+
+export const createFanBlower = async (fanBlower: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
+  fanBlower = removeExtraFields(fanBlower);
+  return new AssetModel({
+    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    asset_name: fanBlower.asset_name,
+    asset_id: fanBlower.asset_id || equipment.asset_id,
+    asset_type: fanBlower.asset_type || "Fan_Blower",
+    brandId: fanBlower.brandId,
+    mountType: fanBlower.mountType,
+    brandMake: fanBlower.brandMake,
+    mounting: fanBlower.mounting,
+    bearingType: fanBlower.bearingType,
+    bladeCount: fanBlower.bladeCount,
+    minInputRotation: fanBlower.minInputRotation,
+    maxInputRotation: fanBlower.maxInputRotation,
+    specificFrequency: fanBlower.specificFrequency,
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment._id || equipment.id,
+    account_id: account_id,
+    description: fanBlower.description,
+    asset_model: fanBlower.asset_model,
+    manufacturer: fanBlower.manufacturer,
+    year: fanBlower.year,
+    assigned_to: fanBlower.assigned_to,
+    image_path: fanBlower.image_path,
+    createdBy: user_id
+  }).save();
+}
+
+export const createPumps = async (pumps: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
+  pumps = removeExtraFields(pumps);
+  return new AssetModel({
+    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    asset_name: pumps.asset_name,
+    brand: pumps.brand,
+    asset_id: pumps.asset_id || equipment.asset_id,
+    casing: pumps.casing,
+    asset_type: pumps.asset_type || "Pumps",
+    impellerBladeCount: pumps.impellerBladeCount,
+    pump_model: pumps.pump_model,
+    impellerType: pumps.impellerType,
+    minInputRotation: pumps.minInputRotation,
+    maxInputRotation: pumps.maxInputRotation,
+    specificFrequency: pumps.specificFrequency,
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment._id || equipment.id,
+    account_id: account_id,
+    description: pumps.description,
+    asset_model: pumps.model,
+    manufacturer: pumps.manufacturer,
+    year: pumps.year,
+    assigned_to: pumps.assigned_to,
+    image_path: pumps.image_path,
+    createdBy: user_id
+  }).save();
+}
+
+export const createCompressor = async (compressor: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
+  compressor = removeExtraFields(compressor);
+  return new AssetModel({
+    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    asset_name: compressor.asset_name,
+    asset_id: compressor.asset_id || equipment.asset_id,
+    asset_type: compressor.asset_type || "Compressor",
+    brandModel: compressor.brandModel,
+    pinionGearTeethCount: compressor.pinionGearTeethCount,
+    timingGearTeethCount: compressor.timingGearTeethCount,
+    powerRating: compressor.powerRating,
+    minInputRotation: compressor.minInputRotation,
+    maxInputRotation: compressor.maxInputRotation,
+    mountType: compressor.mountType,
+    specificFrequency: compressor.specificFrequency,
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment._id || equipment.id,
+    account_id: account_id,
+    description: compressor.description,
+    asset_model: compressor.asset_model,
+    manufacturer: compressor.manufacturer,
+    year: compressor.year,
+    assigned_to: compressor.assigned_to,
+    image_path: compressor.image_path,
+    createdBy: user_id
+  }).save();
+}
+
+export const createExternalAPICall = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {
+  const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);
+  const match = { org_id: `${account_id}`, asset_status: "Not Defined", asset_id: assetIdList };
+  return await getExternalData(`/asset_health_status/`, match, token, `${user_id}`);
+}
+
+export const deleteAssetsById = async (assetId: any) => {
+  const childData = await AssetModel.find({ parent_id: assetId });
+  if (childData.length > 0) {
+    for (const asset of childData) {
+      await removeAssetMapping(`${asset._id}`);
     }
-    await Asset.findByIdAndUpdate(id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    next(error);
+    await AssetModel.deleteMany({ _id: { $in: childData.map(doc => doc._id) } });
   }
-};
+  await AssetModel.deleteMany({ _id: assetId });
+  await removeAssetMapping(assetId);
+}
+
+export const updateEquipment = async (equipment: any, account_id: any, user_id: any) => {
+  equipment = removeExtraFields(equipment);
+  const updatedEquipment: any = new AssetModel({
+    _id: equipment.id,
+    asset_name: equipment.asset_name,
+    asset_id: equipment.asset_id,
+    asset_type: equipment.asset_type || "Equipment",
+    asset_orient: equipment.asset_orient,
+    asset_timezone: equipment.asset_timezone,
+    isNewFLow: equipment.isNewFLow,
+    loadType: equipment.loadType,
+    powUnit: equipment.powUnit,
+    rotation_type: equipment.rotation_type,
+    top_level: true,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    account_id: account_id,
+    description: equipment.description,
+    asset_model: equipment.asset_model,
+    manufacturer: equipment.manufacturer,
+    year: equipment.year,
+    assigned_to: equipment.assigned_to,
+    image_path: equipment.image_path,
+    imageNodeData: equipment.imageNodeData,
+    updatedBy: user_id
+  });
+  await removeAssetMapping(equipment.id);
+  return await AssetModel.updateOne({ _id: equipment.id }, updatedEquipment);
+}
+
+export const updateMotor = async (motor: any, equipment: any, account_id: any, user_id: any) => {
+  motor = removeExtraFields(motor);
+  const updatedMotor = new AssetModel({
+    _id: motor.id,
+    parent_id: equipment.id,
+    asset_name: motor.asset_name,
+    asset_id: motor.asset_id || equipment.asset_id,
+    asset_type: motor.asset_type || "Motor",
+    motorType: motor.motorType,
+    lineFreq: motor.lineFreq,
+    asset_behavior: motor.asset_behavior,
+    specificFrequency: motor.specificFrequency,
+    mounting: motor.mounting,
+    isNewFlow: true,
+    minInputRotation: motor.minInputRotation,
+    maxInputRotation: motor.maxInputRotation,
+    rotationUnit: motor.rotationUnit,
+    powerRating: motor.powerRating,
+    top_level: false,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment.id,
+    account_id: account_id,
+    asset_model: motor.asset_model,
+    manufacturer: motor.manufacturer,
+    year: motor.year,
+    updatedBy: user_id
+  })
+  await removeAssetMapping(motor.id);
+  return await AssetModel.updateOne({ _id: motor.id }, updatedMotor);
+}
+
+export const updateFlexible = async (flexible: any, equipment: any, account_id: any, user_id: any) => {
+  flexible = removeExtraFields(flexible);
+  const updatedFlexible = new AssetModel({
+    _id: flexible.id,
+    parent_id: equipment.id,
+    asset_name: flexible.asset_name,
+    element: flexible.element,
+    asset_id: flexible.asset_id || equipment.asset_id,
+    asset_type: flexible.asset_type || "Flexible",
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment._id || equipment.id,
+    account_id: account_id,
+    description: flexible.description,
+    asset_model: flexible.asset_model,
+    manufacturer: flexible.manufacturer,
+    year: flexible.year,
+    assigned_to: flexible.assigned_to,
+    image_path: flexible.image_path,
+    updatedBy: user_id
+  })
+  await removeAssetMapping(flexible.id);
+  return await AssetModel.updateOne({ _id: flexible.id }, updatedFlexible);
+}
+
+export const updateRigid = async (rigid: any, equipment: any, account_id: any, user_id: any) => {
+  rigid = removeExtraFields(rigid);
+  const updatedRigid = new AssetModel({
+    _id: rigid.id,
+    parent_id: equipment.id,
+    asset_name: rigid.asset_name,
+    asset_id: rigid.asset_id || equipment.asset_id,
+    asset_type: rigid.asset_type || "Rigid",
+    asset_orient: rigid.asset_orient,
+    powUnit: rigid.powUnit,
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment.id,
+    account_id: account_id,
+    description: rigid.description,
+    asset_model: rigid.model,
+    manufacturer: rigid.manufacturer,
+    year: rigid.year,
+    assigned_to: rigid.assigned_to,
+    image_path: rigid.image_path,
+    updatedBy: user_id
+  });
+  await removeAssetMapping(rigid.id);
+  return await AssetModel.updateOne({ _id: rigid.id }, updatedRigid);
+}
+
+export const updateBeltPulley = async (beltPulley: any, equipment: any, account_id: any, user_id: any) => {
+  beltPulley = removeExtraFields(beltPulley);
+  const updatedBeltPulley = new AssetModel({
+    _id: beltPulley.id,
+    parent_id: equipment.id,
+    asset_name: beltPulley.asset_name,
+    asset_id: beltPulley.asset_id || equipment.asset_id,
+    asset_type: beltPulley.asset_type || "Belt_Pulley",
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment.id,
+    account_id: account_id,
+    drivenPulleyDia: beltPulley.drivenPulleyDia,
+    beltLength: beltPulley.beltLength,
+    outputRPM: beltPulley.outputRPM,
+    noOfGroove: beltPulley.noOfGroove,
+    minInputRotation: beltPulley.minInputRotation,
+    maxInputRotation: beltPulley.maxInputRotation,
+    minOutputRotation: beltPulley.minOutputRotation,
+    maxOutputRotation: beltPulley.maxOutputRotation,
+    drivingPulleyDia: beltPulley.drivingPulleyDia,
+    drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
+    updatedBy: user_id
+  })
+  await removeAssetMapping(beltPulley.id);
+  return await AssetModel.updateOne({ _id: beltPulley.id }, updatedBeltPulley);
+}
+
+export const updateGearbox = async (gearbox: any, equipment: any, account_id: any, user_id: any) => {
+  gearbox = removeExtraFields(gearbox);
+  const updatedGearbox = new AssetModel({
+    _id: gearbox.id,
+    parent_id: equipment.id,
+    asset_name: gearbox.asset_name,
+    asset_id: gearbox.asset_id || equipment.asset_id,
+    asset_type: gearbox.asset_type || "Gearbox",
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment.id,
+    account_id: account_id,
+    mounting: gearbox.mounting,
+    minInputRotation: gearbox.minInputRotation,
+    maxInputRotation: gearbox.maxInputRotation,
+    minOutputRotation: gearbox.minOutputRotation,
+    maxOutputRotation: gearbox.maxOutputRotation,
+    noStages: gearbox.noStages,
+    bearingType: gearbox.bearingType,
+    stage_1st_driving_teeth: gearbox.stage_1st_driving_teeth,
+    stage_1st_driven_teeth: gearbox.stage_1st_driven_teeth,
+    stage_2nd_driving_teeth: gearbox.stage_2nd_driving_teeth,
+    stage_2nd_driven_teeth: gearbox.stage_2nd_driven_teeth,
+    stage_3rd_driving_teeth: gearbox.stage_3rd_driving_teeth,
+    stage_3rd_driven_teeth: gearbox.stage_3rd_driven_teeth,
+    stage_4th_driving_teeth: gearbox.stage_4th_driving_teeth,
+    stage_4th_driven_teeth: gearbox.stage_4th_driven_teeth,
+    stage_5th_driving_teeth: gearbox.stage_5th_driving_teeth,
+    stage_5th_driven_teeth: gearbox.stage_5th_driven_teeth,
+    stage_6th_driving_teeth: gearbox.stage_6th_driving_teeth,
+    stage_6th_driven_teeth: gearbox.stage_6th_driven_teeth,
+    stage_7th_driving_teeth: gearbox.stage_7th_driving_teeth,
+    stage_7th_driven_teeth: gearbox.stage_7th_driven_teeth,
+    stage_8th_driving_teeth: gearbox.stage_8th_driving_teeth,
+    stage_8th_driven_teeth: gearbox.stage_8th_driven_teeth,
+    description: gearbox.description,
+    asset_model: gearbox.model,
+    manufacturer: gearbox.manufacturer,
+    year: gearbox.year,
+    assigned_to: gearbox.assigned_to,
+    image_path: gearbox.image_path,
+    updatedBy: user_id
+  })
+  await removeAssetMapping(gearbox.id);
+  return await AssetModel.updateOne({ _id: gearbox.id }, updatedGearbox);
+}
+
+export const updateFanBlower = async (fanBlower: any, equipment: any, account_id: any, user_id: any) => {
+  fanBlower = removeExtraFields(fanBlower);
+  const updatedFanBlower = new AssetModel({
+    _id: fanBlower.id,
+    parent_id: equipment.id,
+    asset_name: fanBlower.asset_name,
+    asset_id: fanBlower.asset_id || equipment.asset_id,
+    asset_type: fanBlower.asset_type || "Fan_Blower",
+    brandId: fanBlower.brandId,
+    mountType: fanBlower.mountType,
+    brandMake: fanBlower.brandMake,
+    mounting: fanBlower.mounting,
+    bearingType: fanBlower.bearingType,
+    bladeCount: fanBlower.bladeCount,
+    minInputRotation: fanBlower.minInputRotation,
+    maxInputRotation: fanBlower.maxInputRotation,
+    specificFrequency: fanBlower.specificFrequency,
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment.id,
+    account_id: account_id,
+    description: fanBlower.description,
+    asset_model: fanBlower.asset_model,
+    manufacturer: fanBlower.manufacturer,
+    year: fanBlower.year,
+    assigned_to: fanBlower.assigned_to,
+    image_path: fanBlower.image_path,
+    updatedBy: user_id
+  })
+  await removeAssetMapping(fanBlower.id);
+  return await AssetModel.updateOne({ _id: fanBlower.id }, updatedFanBlower);
+}
+
+export const updatePumps = async (pumps: any, equipment: any, account_id: any, user_id: any) => {
+  pumps = removeExtraFields(pumps);
+  const updatedPumps = new AssetModel({
+    _id: pumps.id,
+    parent_id: equipment.id,
+    asset_name: pumps.asset_name,
+    brand: pumps.brand,
+    asset_id: pumps.asset_id || equipment.asset_id,
+    casing: pumps.casing,
+    asset_type: pumps.asset_type || "Pumps",
+    impellerBladeCount: pumps.impellerBladeCount,
+    pump_model: pumps.pump_model,
+    impellerType: pumps.impellerType,
+    minInputRotation: pumps.minInputRotation,
+    maxInputRotation: pumps.maxInputRotation,
+    specificFrequency: pumps.specificFrequency,
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment.id,
+    account_id: account_id,
+    description: pumps.description,
+    asset_model: pumps.model,
+    manufacturer: pumps.manufacturer,
+    year: pumps.year,
+    assigned_to: pumps.assigned_to,
+    image_path: pumps.image_path,
+    updatedBy: user_id
+  })
+  await removeAssetMapping(pumps.id);
+  return await AssetModel.updateOne({ _id: pumps.id }, updatedPumps);
+}
+
+export const updateCompressor = async (compressor: any, equipment: any, account_id: any, user_id: any) => {
+  compressor = removeExtraFields(compressor);
+  const updatedCompressor = new AssetModel({
+    _id: compressor.id,
+    parent_id: equipment.id,
+    asset_name: compressor.asset_name,
+    asset_id: compressor.asset_id || equipment.asset_id,
+    asset_type: compressor.asset_type || "Compressor",
+    brandModel: compressor.brandModel,
+    pinionGearTeethCount: compressor.pinionGearTeethCount,
+    timingGearTeethCount: compressor.timingGearTeethCount,
+    powerRating: compressor.powerRating,
+    minInputRotation: compressor.minInputRotation,
+    maxInputRotation: compressor.maxInputRotation,
+    mountType: compressor.mountType,
+    specificFrequency: compressor.specificFrequency,
+    top_level: false,
+    isNewFlow: true,
+    locationId: equipment.locationId,
+    top_level_asset_id: equipment.id,
+    account_id: account_id,
+    description: compressor.description,
+    asset_model: compressor.asset_model,
+    manufacturer: compressor.manufacturer,
+    year: compressor.year,
+    assigned_to: compressor.assigned_to,
+    image_path: compressor.image_path,
+    updatedBy: user_id
+  })
+  await removeAssetMapping(compressor.id);
+  return await AssetModel.updateOne({ _id: compressor.id }, updatedCompressor);
+}

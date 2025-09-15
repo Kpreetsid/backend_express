@@ -100,12 +100,20 @@ const userRoleMenuSchema = new Schema<IUserRoleMenu>({
       upload_floor_map: { type: Boolean, default: false }
     }
   },
-  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true }
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true }
 }, {
   collection: 'platform-control',
   timestamps: true,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
 });
 
-export const UserRoleMenu = mongoose.model<IUserRoleMenu>('UserRoleMenu', userRoleMenuSchema);
+export const RoleMenuModel = mongoose.model<IUserRoleMenu>('Schema_RoleMenu', userRoleMenuSchema);

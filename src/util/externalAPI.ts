@@ -1,4 +1,3 @@
-import { Request, Response, NextFunction } from "express";
 import { externalAPI } from "../configDB";
 
 export const getExternalData = async (path: string, body: any, token: string, userID: string) => {

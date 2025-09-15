@@ -19,7 +19,7 @@ const userTokenSchema = new Schema<IUserToken>({
   userId: {
     type: Schema.Types.ObjectId,
     required: true,
-    ref: 'User'
+    ref: 'UserModel'
   },
   principalType: {
     type: String,
@@ -27,7 +27,15 @@ const userTokenSchema = new Schema<IUserToken>({
   }
 }, {
   collection: 'CustomAccessToken',
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
 });
 
-export const UserToken = mongoose.model<IUserToken>('UserToken', userTokenSchema);
+export const TokenModel = mongoose.model<IUserToken>('Schema_UserToken', userTokenSchema);

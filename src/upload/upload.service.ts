@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { UploadModel } from '../models/upload.model';
 import { uploadBase64Image } from '../_config/upload';
 
-export const uploadService = async (req: Request, res: Response, next: NextFunction) => {
+export const uploadService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const files: any = req.files;
     const { folderName } = req.params;
@@ -27,13 +27,12 @@ export const uploadService = async (req: Request, res: Response, next: NextFunct
       return data;
     });
     return res.status(200).send({ status: true, message: 'Files uploaded successfully', data });
-  } catch (err) {
-    console.error(err);
-    next(err);
+ } catch (error) {
+    next(error);
   }
 };
 
-export const uploadBaseImageService = async (req: Request, res: Response, next: NextFunction) => {
+export const uploadBaseImageService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     let { baseImage, folderName } = req.body;
     if (!baseImage || typeof baseImage !== "string") {
@@ -41,8 +40,7 @@ export const uploadBaseImageService = async (req: Request, res: Response, next: 
     }
     const fileInfo = await uploadBase64Image(baseImage, folderName);
     return res.status(200).send({ status: true, message: "File uploaded successfully", data: fileInfo });
-  } catch (err) {
-    console.error("Image upload error:", err);
-    next(err);
+ } catch (error) {
+    next(error);
   }
 };

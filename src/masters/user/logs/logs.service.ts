@@ -1,12 +1,12 @@
-import { UserLog, IUserLog } from "../../../models/userLogs.model";
+import { UserLogModel, IUserLog } from "../../../models/userLogs.model";
 import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { IUser } from "../../../models/user.model";
 
-export const getAllUserLogs = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllUserLogs = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const data: IUserLog[] | null = await UserLog.find({accountId: account_id});
+     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const data: IUserLog[] | null = await UserLogModel.find({accountId: account_id, userId: user_id});
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

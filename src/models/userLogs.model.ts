@@ -59,9 +59,9 @@ export interface IUserLog extends Document {
 }
 
 const userLogSchema = new Schema<IUserLog>({
-    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    userId: { type: Schema.Types.ObjectId, ref: 'UserModel' },
     userName: { type: String, required: true },
-    accountId: { type: Schema.Types.ObjectId, ref: 'Account' },
+    accountId: { type: Schema.Types.ObjectId, ref: 'AccountModel' },
     method: { type: String, required: true },
     module: { type: String, required: true },
     description: { type: String, required: true },
@@ -116,24 +116,16 @@ const userLogSchema = new Schema<IUserLog>({
     }
 }, {
     collection: 'user_logs',
-    versionKey: false,         // No __v
-    timestamps: true,          // Adds createdAt and updatedAt
-    toJSON: {
-        virtuals: true,
-        transform: (_, ret) => {
-            ret.id = ret._id;
-            delete ret._id;
-            return ret;
-        }
-    },
-    toObject: {
-        virtuals: true,
-        transform: (_, ret) => {
-            ret.id = ret._id;
-            delete ret._id;
-            return ret;
-        }
+    versionKey: false,
+    timestamps: true,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
     }
+  }
 });
 
 // Virtual field: isSuccess
@@ -151,4 +143,4 @@ userLogSchema.statics.findByUserId = function (userId: string) {
     return this.find({ userId: new mongoose.Types.ObjectId(userId) });
 };
 
-export const UserLog = mongoose.model<IUserLog>('UserLog', userLogSchema);
+export const UserLogModel = mongoose.model<IUserLog>('Schema_UserLog', userLogSchema);

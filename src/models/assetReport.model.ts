@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
+import { IUpload, uploadSchema } from './upload.model';
 
 interface FaultData {
   value: number;
@@ -10,15 +11,15 @@ interface AssetHealthEntry {
   status: string;
 }
 
-interface DirectionalRMS {
-  timestamp: number;
-  rms: number;
+interface RMSPoint {
+  timestamp: number | string;
+  rms: number | string;
 }
 
 interface RMSData {
-  Axial?: DirectionalRMS;
-  Horizontal?: DirectionalRMS;
-  Vertical?: DirectionalRMS;
+  Axial?: RMSPoint;
+  Horizontal?: RMSPoint;
+  Vertical?: RMSPoint;
 }
 
 interface EndpointRMS {
@@ -26,159 +27,135 @@ interface EndpointRMS {
   composite_id: string;
   point_name: string;
   mount_location: string;
-  mount_type: string;
-  mount_material: string;
+  mount_type?: string | null;
+  mount_material?: string | null;
   mount_direction: string;
   asset_id: string;
   org_id: string;
   mac_id: string;
   image?: string | null;
+  online?: boolean | null;
+  asset_type?: string;
   acceleration?: RMSData;
   velocity?: RMSData;
   asset_name: string;
 }
 
-interface PhoneNo {
-  number: string;
-  internationalNumber: string;
-  nationalNumber: string;
-  e164Number: string;
-  countryCode: string;
-  dialCode: string;
-}
-
-interface UserInfo {
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  emailStatus: boolean;
-  user_status: string;
-  user_role: string;
-  createdOn: Date;
-  id: string;
-  account_id: string;
-  phone_no: PhoneNo;
-  isFirstUser: boolean;
-}
-
 export interface IReportAsset extends Document {
+  accountId: ObjectId;
   top_level_asset_id: ObjectId;
+  assetId: ObjectId;
   Observations: string;
   Recommendations: string;
   CreateWorkRequest: string;
   FaultDetected: string;
-  Severity: string;
+  Severity?: string;
   NewFault: string;
-  ISO: string;
-  TrendOfAlarm: string;
+  ISO: boolean | string;
+  TrendOfAlarm?: string;
   EquipmentHealth: string;
-  files: string[];
-  user: UserInfo;
+  files: [IUpload];
+  user: any;
+  userId: ObjectId;
   createdOn: Date;
-  assetName: string;
-  locationId: string;
-  locationName: string;
-  accountId: string;
+  assetName?: string;
+  locationId: ObjectId;
+  locationName?: string;
   faultData: FaultData[];
-  assetImage: string;
+  assetImage?: string;
   asset_health_history: AssetHealthEntry[];
   endpointRMSData: EndpointRMS[];
+  createdBy: ObjectId;
+  updatedBy: ObjectId;
 }
 
 const reportAssetSchema = new Schema<IReportAsset>({
-  top_level_asset_id: { type: Schema.Types.ObjectId, required: true },
-  Observations: String,
-  Recommendations: String,
-  CreateWorkRequest: String,
-  FaultDetected: String,
-  Severity: String,
-  NewFault: String,
-  ISO: String,
-  TrendOfAlarm: String,
-  EquipmentHealth: String,
-  files: [String],
-  user: {
-    firstName: String,
-    lastName: String,
-    username: String,
-    email: String,
-    emailStatus: Boolean,
-    user_status: String,
-    user_role: String,
-    createdOn: Date,
-    id: String,
-    account_id: String,
-    phone_no: {
-      number: String,
-      internationalNumber: String,
-      nationalNumber: String,
-      e164Number: String,
-      countryCode: String,
-      dialCode: String
-    },
-    isFirstUser: Boolean
-  },
+  accountId: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  top_level_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  assetId: { type: Schema.Types.ObjectId, ref: 'AssetModel' },
+  Observations: { type: String },
+  Recommendations: { type: String },
+  CreateWorkRequest: { type: String },
+  FaultDetected: { type: String },
+  Severity: { type: String },
+  NewFault: { type: String },
+  ISO: { type: Schema.Types.Mixed },
+  TrendOfAlarm: { type: String },
+  EquipmentHealth: { type: String },
+  files: { type: [uploadSchema], default: [] },
+  user: { type: Schema.Types.Mixed },
+  userId: { type: Schema.Types.ObjectId, ref: 'UserModel' },
   createdOn: { type: Date, default: Date.now },
-  assetName: String,
-  locationId: String,
-  locationName: String,
-  accountId: String,
+  assetName: { type: String },
+  locationId: { type: Schema.Types.ObjectId, ref: 'LocationModel' },
+  locationName: { type: String },
   faultData: [{
-    value: Number,
-    name: String
+    value: { type: Number },
+    name: { type: String }
   }],
-  assetImage: String,
+  assetImage: { type: String },
   asset_health_history: [{
-    date: String,
-    status: String
+    date: { type: String },
+    status: { type: String }
   }],
   endpointRMSData: [{
-    is_linked: Boolean,
-    composite_id: String,
-    point_name: String,
-    mount_location: String,
-    mount_type: String,
-    mount_material: String,
-    mount_direction: String,
-    asset_id: String,
-    org_id: String,
-    mac_id: String,
-    image: { type: String },
+    is_linked: { type: Boolean },
+    composite_id: { type: String },
+    point_name: { type: String },
+    mount_location: { type: String },
+    mount_type: { type: String, default: null },
+    mount_material: { type: String, default: null },
+    mount_direction: { type: String },
+    asset_id: { type: String },
+    org_id: { type: String },
+    mac_id: { type: String },
+    image: { type: String, default: null },
+    online: { type: Boolean, default: null },
+    asset_type: { type: String },
     acceleration: {
       Axial: {
-        timestamp: Number,
-        rms: Number
+        timestamp: Schema.Types.Mixed,
+        rms: Schema.Types.Mixed
       },
       Horizontal: {
-        timestamp: Number,
-        rms: Number
+        timestamp: Schema.Types.Mixed,
+        rms: Schema.Types.Mixed
       },
       Vertical: {
-        timestamp: Number,
-        rms: Number
+        timestamp: Schema.Types.Mixed,
+        rms: Schema.Types.Mixed
       }
     },
     velocity: {
       Axial: {
-        timestamp: Number,
-        rms: Number
+        timestamp: Schema.Types.Mixed,
+        rms: Schema.Types.Mixed
       },
       Horizontal: {
-        timestamp: Number,
-        rms: Number
+        timestamp: Schema.Types.Mixed,
+        rms: Schema.Types.Mixed
       },
       Vertical: {
-        timestamp: Number,
-        rms: Number
+        timestamp: Schema.Types.Mixed,
+        rms: Schema.Types.Mixed
       }
     },
-    asset_name: String
-  }]
+    asset_name: { type: String }
+  }],
+  createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'assets-report',
-  timestamps: false ,
-  versionKey: false
+  timestamps: true,
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
 });
 
-export const ReportAsset = mongoose.model<IReportAsset>('ReportAsset', reportAssetSchema);
+export const ReportAssetModel = mongoose.model<IReportAsset>('Schema_ReportAsset', reportAssetSchema);

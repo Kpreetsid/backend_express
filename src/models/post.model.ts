@@ -114,7 +114,7 @@ const PostSchema = new Schema<IPost>({
   description: { type: String, required: true },
   files: { type: Map, of: [FileSchema] },
   createdOn: { type: Date, default: Date.now },
-  account_id: { type: Schema.Types.ObjectId, ref: 'Account', required: true },
+  account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   user: { type: UserSchema, required: true },
   help: { type: Boolean, default: false },
   publishTo: { type: [String] },
@@ -123,7 +123,15 @@ const PostSchema = new Schema<IPost>({
 }, { 
   collection: 'posts',
   timestamps: true ,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
 });
 
-export const Post = mongoose.model<IPost>('Post', PostSchema);
+export const PostModel = mongoose.model<IPost>('Schema_Post', PostSchema);

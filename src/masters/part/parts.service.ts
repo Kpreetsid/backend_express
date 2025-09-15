@@ -1,77 +1,78 @@
-import { Part, IPart } from "../../models/part.model";
-import { Request, Response, NextFunction } from 'express';
-import { getData } from "../../util/queryBuilder";
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
+import mongoose from "mongoose";
+import { PartsModel, IPart } from "../../models/part.model";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match = { account_id: account_id };
-    const data = await getData(Part, { filter: { account_id: account_id } });
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const getAll = async (match: any): Promise<IPart[]> => {
+  match.isActive = true;
+  return await PartsModel.aggregate([
+    { $match: match },
+    {
+      $lookup: {
+        from: "location_master",
+        let: { locId: "$locationId" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
+          { $project: { _id: 1, location_name: 1, location_type: 1 } }
+        ],
+        as: "location"
+      }
+    },
+    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
+    { $addFields: { id: "$_id" } }
+  ]);
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    // const data = await Part.findById(id);
-    const match = { account_id: account_id, _id: id };
-    const data: IPart[] | null = await getData(Part, { filter: match });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const insert = async (body: IPart, account_id: any, user_id: any): Promise<IPart> => {
+  body.createdBy = user_id;
+  body.account_id = account_id;
+  return await new PartsModel(body).save();
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const newPart = new Part(req.body);
-    const data = await newPart.save();
-    return res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const updatePartById = async (id: string, body: IPart, userID: any) => {
+  body.updatedBy = userID;
+  return await PartsModel.findByIdAndUpdate(id, body, { new: true });
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data = await Part.findByIdAndUpdate(id, req.body, { new: true });
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const removeById = async (id: string, userID: any) => {
+  return await PartsModel.findByIdAndUpdate(id, { visible: false, updatedBy: userID }, { new: true });
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data: IPart | null = await Part.findById(id);
-    if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+export const assignPartToWorkOrder = async (body: any, user: any) => {
+  const { estimated } = body;
+  await Promise.all(
+    estimated.map(async (doc: any) => {
+      doc.part_id = new mongoose.Types.ObjectId(doc.part_id);
+      const data = await PartsModel.findOne({ _id: doc.part_id });
+      if (!data) return;
+      data.quantity = data.quantity - doc.quantity;
+      data.updatedBy = user._id;
+      await data.save();
+    })
+  );
+  return true;
+};
+
+export const revertPartFromWorkOrder = async (body: any, user: any) => {
+  const { estimated = [], actual = [] } = body;
+  const actualMap = new Map();
+  actual.forEach((a: any) => {
+    const id = a.part_id.toString();
+    if (!actualMap.has(id)) {
+      actualMap.set(id, 0);
     }
-    await Part.findByIdAndUpdate(id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+    actualMap.set(id, actualMap.get(id) + a.quantity);
+  });
+
+  await Promise.all(
+    estimated.map(async (doc: any) => {
+      if (!doc?.part_id || !doc?.quantity) return;
+      const data = await PartsModel.findOne({ _id: new mongoose.Types.ObjectId(doc.part_id) });
+      if (!data) return;
+      const assignedQty = doc.quantity;
+      const actualQty = actualMap.get(doc.part_id.toString()) || 0;
+      data.quantity = data.quantity + assignedQty - actualQty;
+      data.updatedBy = user._id;
+      await data.save();
+    })
+  );
+  return true;
 };

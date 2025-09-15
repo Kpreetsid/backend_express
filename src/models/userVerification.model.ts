@@ -13,12 +13,19 @@ const verificationCodeSchema = new Schema<IVerificationCode>({
   firstName: { type: String, required: true },
   lastName: { type: String, required: true },
   code: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 60*30 }
+  createdAt: { type: Date, default: Date.now, expires: 60 * 60 }
 }, {
   collection: 'user_verification_code',
   timestamps: true,
-  versionKey: false
-}
-);
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
+});
 
-export const VerificationCode = mongoose.model<IVerificationCode>('VerificationCode', verificationCodeSchema);
+export const VerificationCodeModel = mongoose.model<IVerificationCode>('Schema_VerificationCode', verificationCodeSchema);

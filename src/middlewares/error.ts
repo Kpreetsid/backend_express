@@ -14,7 +14,7 @@ export const errorMiddleware = (err: any, req: Request, res: Response, next: Nex
 
   const statusCode = err.status || 500;
 
-  console.error({ name: err.name, code: err.code, message: err.message, stack: err.stack, path: req.path, method: req.method });
+  console.error({ name: err.name, method: req.method, statusCode: err.status, path: req.path, message: err.message, stack: err.stack });
 
   if (err instanceof multer.MulterError) {
     let message = 'File upload error';

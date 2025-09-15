@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { User } from './user.model';
+import { UserModel } from './user.model';
 
 const EquipmentSchema = new mongoose.Schema({
     equipmentName: String,
@@ -9,7 +9,7 @@ const EquipmentSchema = new mongoose.Schema({
     powUnit: String,
     descr: String,
     location_id: mongoose.Schema.Types.ObjectId,
-    userList: [User]
+    userList: [UserModel]
 }, { _id: false });
 
 const MotorSchema = new mongoose.Schema({
@@ -142,7 +142,15 @@ const EquipmentSetSchema = new mongoose.Schema({
 }, {
     collection: 'equipment_set', 
     timestamps: true,
-    versionKey: false
+    versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
 });
 
-export const EquipmentSetModel = mongoose.model('EquipmentSet', EquipmentSetSchema);
+export const EquipmentSetModel = mongoose.model('Schema_EquipmentSet', EquipmentSetSchema);

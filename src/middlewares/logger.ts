@@ -1,9 +1,9 @@
 import { NextFunction, Request, Response } from 'express';
-import { UserLog, IUserLog } from '../models/userLogs.model';
+import { UserLogModel } from '../models/userLogs.model';
 import { get, merge, omit } from 'lodash';
 import { IUser } from '../models/user.model';
 
-export const activityLogger = async (req: Request, res: Response, next: NextFunction) => {
+export const activityLogger = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   const startTime = Date.now();
   res.on('finish', async () => {
     try {
@@ -56,7 +56,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
       const module = extractModule(req.originalUrl);
       const description = `${userName} performed ${req.method} method on ${module} from ${headers['origin']} at ${new Date().toISOString()}`;
 
-      const newLog = new UserLog({
+      const newLog = new UserLogModel({
         userId: _id,
         userName,
         accountId: account_id,
@@ -84,8 +84,8 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
         }
       });
       await newLog.save();
-    } catch (err) {
-      console.error('Failed to log activity:', err);
+   } catch (error) {
+      console.error('Failed to log activity:', error);
     }
   });
   next();

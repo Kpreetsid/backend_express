@@ -90,8 +90,8 @@ interface WorkOrder {
     nature_of_work: string;
     account_id: string;
     assigned_to: number;
-    wo_asset_id: string;
-    wo_location_id: string;
+    asset_id: string;
+    location_id: string;
     created_by: string;
     sopForm: any;
     userId: User[];
@@ -116,10 +116,10 @@ export interface IScheduleMaster extends Document {
     monday?: boolean;
     tuesday?: boolean;
     wednesday?: boolean;
-    thursday?: string;
-    friday?: string;
-    saturday?: string;
-    sunday?: string;
+    thursday?: boolean;
+    friday?: boolean;
+    saturday?: boolean;
+    sunday?: boolean;
     location?: Location[];
     asset?: Asset[];
     prev_asset_id?: ObjectId;
@@ -131,37 +131,51 @@ export interface IScheduleMaster extends Document {
 
 const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     {
-        title: { type: String },
-        description: { type: String },
-        start_date: String,
-        days_to_complete: Number,
-        schedule_mode: String,
-        work_order: Object,
-        rescheduleEnabled: Boolean,
-        no_of_time_call: Number,
-        visible: Boolean,
-        account_id: mongoose.Types.ObjectId,
-        rescheduleWeekDays: Number,
-        monday: Boolean,
-        tuesday: Boolean,
-        wednesday: Boolean,
-        thursday: String,
-        friday: String,
-        saturday: String,
-        sunday: String,
-        location: [Object],
-        asset: [Object],
-        prev_asset_id: mongoose.Types.ObjectId,
-        prev_loc_id: mongoose.Types.ObjectId,
-        month: Number,
-        dayOfMonth: String,
-        next_execute_date: String
+        account_id: { type: mongoose.Types.ObjectId, ref: "AccountModel", required: true },
+        title: { type: String, required: true },
+        description: { type: String, required: true },
+        start_date: { type: String, required: true },
+        days_to_complete: { type: Number, required: true },
+        schedule_mode: { type: String, required: true },
+        work_order: { type: Object, required: true },
+        rescheduleEnabled: { type: Boolean, default: false },
+        no_of_time_call: { type: Number, default: 1 },
+        visible: { type: Boolean, default: true },
+        rescheduleWeekDays: { type: Number },
+        monday: { type: Boolean, default: false },
+        tuesday: { type: Boolean, default: false },
+        wednesday: { type: Boolean, default: false },
+        thursday: { type: Boolean, default: false },
+        friday: { type: Boolean, default: false },
+        saturday: { type: Boolean, default: false },
+        sunday: { type: Boolean, default: false },
+        prev_asset_id: { type: mongoose.Types.ObjectId },
+        prev_loc_id: { type: mongoose.Types.ObjectId },
+        month: { type: Number },
+        dayOfMonth: { type: String },
+        next_execute_date: { type: String }
     },
-    { 
+    {
         collection: 'schedule_master',
-        timestamps: true ,
-        versionKey: false
+        timestamps: true,
+        versionKey: false,
+        toJSON: {
+            virtuals: true,
+            transform(doc: any, ret: any) {
+                ret.id = ret._id;
+                delete ret._id;
+                return ret;
+            }
+        },
+        toObject: {
+            virtuals: true,
+            transform: function (doc, ret) {
+                ret.id = ret._id;
+                delete ret._id;
+                return ret;
+            }
+        }
     }
 );
 
-export const ScheduleMasterModel = mongoose.model<IScheduleMaster>("Preventive", ScheduleMasterSchema);
+export const SchedulerModel = mongoose.model<IScheduleMaster>("Schema_Schedule", ScheduleMasterSchema);

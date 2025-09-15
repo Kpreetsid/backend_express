@@ -1,92 +1,55 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
+import { IUpload } from './upload.model';
 
-interface IPhoneNo {
-  number: string;
-  internationalNumber: string;
-  nationalNumber: string;
-  e164Number: string;
-  countryCode: string;
-  dialCode: string;
-}
-
-interface IUser {
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  emailStatus: boolean;
-  user_status: string;
-  user_role: string;
-  createdOn: Date | string;
-  id: string;
-  account_id: string;
-  phone_no: IPhoneNo;
-  isFirstUser: boolean;
-}
-
-interface ILocationItem {
-  location_name: string;
-  id: string;
-  assigned_to: string;
-}
-
-interface IAssetItem {
-  name: string;
-  id: string;
-  locId: string;
-}
+export const WORK_REQUEST_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected'];
+export const WORK_REQUEST_PRIORITIES = ['None', 'Low', 'Medium', 'High'];
 
 export interface IWorkRequest extends Document {
   account_id: ObjectId;
-  title?: string;
+  title: string;
   description: string;
-  userId?: ObjectId;
-  user?: IUser;
-  location?: ILocationItem[];
-  asset?: IAssetItem[];
   problemType: string;
-  postPriority: string;
-  files: string[];
-  status?: string;
-  emailId?: string;
-  tags?: {
-    id: string;
-  };
-  help?: boolean;
-  comments?: any[];
-  likes?: any[];
-  isActive: boolean;
+  priority: string;
+  location_id: ObjectId;
+  asset_id: ObjectId;
+  files: IUpload[];
+  status: string;
+  tags?: string[];
+  remarks?: string;
+  visible: boolean;
+  approvedBy?: ObjectId;
   createdBy: ObjectId;
-  createdOn: Date;
   updatedBy?: ObjectId;
-  updatedOn?: Date;
 }
 
 const WorkRequestSchema = new Schema<IWorkRequest>({
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   title: { type: String },
   description: { type: String, required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  user: { type: Object },
-  location: { type: [Object] },
-  asset: { type: [Object] },
   problemType: { type: String, required: true },
-  postPriority: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Low' },
-  files: { type: [String] },
-  status: { type: String },
-  emailId: { type: String },
-  tags: { type: Object },
-  help: { type: Boolean, default: false },
-  comments: { type: [Schema.Types.Mixed] },
-  likes: { type: [Schema.Types.Mixed] },
-  isActive: { type: Boolean, default: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  createdOn: { type: Date, default: Date.now },
-  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  priority: { type: String, enum: WORK_REQUEST_PRIORITIES, default: 'None' },
+  files: { type: [Object], default: [] },
+  status: { type: String, enum: WORK_REQUEST_STATUSES, default: 'Open' },
+  location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  tags: { type: [String] },
+  remarks: { type: String },
+  visible: { type: Boolean, default: true },
+  approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'help',
+  collection: 'work_request',
   timestamps: true,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
 });
 
-export const WorkRequestModel = mongoose.model<IWorkRequest>('WorkRequest', WorkRequestSchema);
+export const WorkRequestModel = mongoose.model<IWorkRequest>('Schema_WorkRequest', WorkRequestSchema);

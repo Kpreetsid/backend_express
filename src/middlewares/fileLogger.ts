@@ -31,7 +31,7 @@ morgan.token('description', (req: Request) => {
   return `${userName} performed ${action} on ${module}`;
 });
 
-const format = ':userId | :userName | :action | :method | :url | :module | :status | :res[content-length] - :response-time ms | IP: :remote-addr | Device: :device | Time: :date[iso]';
+const format = ':date[iso] | :userId | :userName | :action | :method | :url | :module | :status | :res[content-length] - :response-time ms | IP: :remote-addr | Device: :device';
 export const fileLogger = morgan(format, { stream: accessLogStream });
 
 function mapAction(method: string): string {

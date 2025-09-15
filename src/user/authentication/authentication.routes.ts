@@ -1,10 +1,11 @@
 import express from 'express';
-
-import { authentication, requestResetPassword, resetPassword, userLogOut } from '../authentication/authentication.controller'; 
+import { authentication, resetPassword, userLogOut } from '../authentication/authentication.controller'; 
+import { isAuthenticated } from '../../_config/auth';
 
 export default (router: express.Router) => {
-    router.post('/users/login', authentication);
-    router.post('/users/requestResetPassword', requestResetPassword);
-    router.post('/users/updatePassword', resetPassword);
-    router.get('/users/logout', userLogOut);
+    const userRouter = express.Router();
+    userRouter.post('/login', authentication);
+    userRouter.post('/updatePassword', resetPassword);
+    userRouter.get('/logout', isAuthenticated, userLogOut);
+    router.use('/users', userRouter);
 }

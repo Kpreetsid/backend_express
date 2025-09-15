@@ -63,8 +63,8 @@ const BlogSchema = new Schema<IBlog>({
   title: { type: String },
   description: { type: String, required: true },
   createdOn: { type: Date, default: Date.now },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
   user: { type: Object },
   location: { type: [Object] },
   asset: { type: [Object] },
@@ -81,7 +81,15 @@ const BlogSchema = new Schema<IBlog>({
 }, {
   collection: 'help',
   timestamps: true,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
 });
 
-export const Blog = mongoose.model<IBlog>('Blog', BlogSchema);
+export const BlogModel = mongoose.model<IBlog>('Schema_Blog', BlogSchema);

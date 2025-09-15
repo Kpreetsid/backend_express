@@ -1,14 +1,46 @@
-import express, { NextFunction, Request, Response } from 'express';
-import { insert, emailVerificationCode, verifyOTPCode } from './registration.service';
+import { NextFunction, Request, Response } from 'express';
+import { emailVerificationCode, verifyOTPCode } from './registration.service';
+import { getAllUsers } from '../../masters/user/user.service';
+import { getAllCompanies } from '../../masters/company/company.service';
 
-export const userRegister = async (req: Request, res: Response, next: NextFunction) => {
-    await insert(req, res, next);
+export const userRegister = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+        const { email, username, firstName, lastName, account_name } = req.body;
+        if (!email || !username || !firstName || !lastName) {
+            throw Object.assign(new Error('Email and Username are required'), { status: 400 });
+        }
+        const isEmailExists = await getAllUsers({ email: email });
+        if (isEmailExists.length > 0) {
+            throw Object.assign(new Error('Email already exists'), { status: 403 });
+        }
+        const isUserNameExists = await getAllUsers({ username: username });
+        if (isUserNameExists.length > 0) {
+            throw Object.assign(new Error('Username already exists'), { status: 403 });
+        }
+        const isAccountExists = await getAllCompanies({ account_name: account_name });
+        if (isAccountExists.length > 0) {
+            throw Object.assign(new Error('Account already exists'), { status: 403 });
+        }
+        const match = { email: email, firstName: firstName, lastName: lastName };
+        const data = await emailVerificationCode(match);
+        if(!data) {
+            throw Object.assign(new Error('Failed to send verification email'), { status: 500 });
+        }
+        res.status(200).json({ status: true, message: "Verification email sent successfully" });
+    } catch (error) {
+        next(error);
+    }
 }
 
-export const sendVerificationEmail = async (req: Request, res: Response, next: NextFunction) => {
-    await emailVerificationCode(req, res, next);
-}
-
-export const userOTPVerification = async (req: Request, res: Response, next: NextFunction) => {
-    await verifyOTPCode(req, res, next);
+export const userOTPVerification = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+        const body = req.body;
+        const data = await verifyOTPCode(body);
+        if (!data) {
+            throw Object.assign(new Error('OTP verification failed'), { status: 403 });
+        }
+        res.status(201).json({ status: true, message: "OTP code verified successfully" });
+    } catch (error) {
+        next(error);
+    }
 }
