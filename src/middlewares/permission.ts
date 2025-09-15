@@ -1,12 +1,27 @@
 import { Request, Response, NextFunction } from "express";
 import { get } from 'lodash';
 import { IUser } from "../models/user.model";
+import { IUserRoleMenu } from "../models/userRoleMenu.model";
+
+export const hasRolePermission = (moduleName: string, action: string) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const role = get(req, "role", {}) as IUserRoleMenu;
+      if (!role?.[moduleName]?.[action]) {
+        throw Object.assign(new Error("You do not have permission to access."), { status: 403 });
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+};
 
 export const hasPermission = (role: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const userRole = get(req, 'user.user_role');
     if (userRole !== role) {
-      return next(Object.assign(new Error('Unauthorized access'), { status: 403 }));
+      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     next();
   };
