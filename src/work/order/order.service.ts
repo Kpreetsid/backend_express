@@ -13,9 +13,9 @@ export const getAllOrders = async (match: any): Promise<any> => {
     { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
     { $lookup: { 
       from: "asset_master", 
-      let: { asset_id: '$asset_id' },
+      let: { wo_asset_id: '$wo_asset_id' },
       pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$asset_id'] } } },
+        { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
         { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
         { $addFields: { id: '$_id' } }
       ],
@@ -24,9 +24,9 @@ export const getAllOrders = async (match: any): Promise<any> => {
     { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
     { $lookup: { 
       from: "location_master", 
-      let: { location_id: '$location_id' },
+      let: { wo_location_id: '$wo_location_id' },
       pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$location_id'] } } },
+        { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
         { $project: { _id: 1, location_name: 1, location_type: 1 } },
         { $addFields: { id: '$_id' } }
       ],
@@ -226,9 +226,9 @@ export const pendingOrders = async (match: any): Promise<any> => {
     { $match: match },
     { $lookup: { 
       from: 'asset_master', 
-      let: { asset_id: '$asset_id' },
+      let: { wo_asset_id: '$wo_asset_id' },
       pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$asset_id'] } } },
+        { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
         { $project: { _id: 1, asset_name: 1, asset_type: 1 } }
       ],
       as: 'asset'
@@ -236,9 +236,9 @@ export const pendingOrders = async (match: any): Promise<any> => {
     { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
     { $lookup: { 
       from: 'location_master', 
-      let: { location_id: '$location_id' },
+      let: { wo_location_id: '$wo_location_id' },
       pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$location_id'] } } },
+        { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
         { $project: { _id: 1, location_name: 1, location_type: 1 } }
       ],
       as: 'location'
@@ -274,9 +274,8 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     sop_form_id : body.sop_form_id,
     rescheduleEnabled : false,
     created_by : user._id,
-    asset_id : body.asset_id,
-    location_id : body.location_id,
-    assigned_to : body.assigned_to,
+    wo_asset_id : body.wo_asset_id,
+    wo_location_id : body.wo_location_id,
     end_date : body.end_date,
     start_date : body.start_date,
     sopForm : body.sopForm,
@@ -284,7 +283,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     actualParts : body.actualParts,
     createdFrom : body.createdFrom,
     files : body.files,
-    task : body.task,
+    tasks : body.tasks,
     parts : body.parts,
     work_request_id : body.work_request_id,
     createdBy: user._id

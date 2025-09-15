@@ -14,8 +14,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     if (id) match._id = new mongoose.Types.ObjectId(id);
     if (status) match.status = { $in: status.toString().split(',') };
     if (priority) match.priority = { $in: priority.toString().split(',') };
-    if (asset_id) match.asset_id = { $in: asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-    if (location_id) match.location_id = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    if (asset_id) match.wo_asset_id = { $in: asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    if (location_id) match.wo_location_id = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     const workOrderIds: any = [];
     if(assignedUser) {
       for(let i = 0; i < assignedUser.toString().split(',').length; i++) {

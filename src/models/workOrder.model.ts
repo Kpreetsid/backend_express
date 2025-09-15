@@ -3,19 +3,20 @@ import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
 export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High'];
 
-interface IUsedParts {
+export interface IParts {
   part_id: ObjectId;
-  quantity: number;
-}
-
-interface IParts {
-  estimated: IUsedParts[];
-  actual: IUsedParts[];
+  part_name: string;
+  part_type: string;
+  estimatedQuantity: number;
+  actualQuantity: number;
 }
 
 const PartsSchema = new Schema<IParts>({
-  estimated: [{ part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' }, quantity: { type: Number, required: true } }, { _id: false, versionKey: false }],
-  actual: [{ part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' }, quantity: { type: Number, required: true } }, { _id: false, versionKey: false }]
+  part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' }, 
+  part_name: { type: String, required: true },
+  part_type: { type: String, required: true },
+  estimatedQuantity: { type: Number, required: true },
+  actualQuantity: { type: Number }
 }, { _id: false, versionKey: false });
 
 export interface IWorkOrder extends Document {
@@ -27,16 +28,15 @@ export interface IWorkOrder extends Document {
   priority: string;
   status: string;
   type: string;
-  asset_id: ObjectId;
-  location_id: ObjectId;
+  wo_asset_id: ObjectId;
+  wo_location_id: ObjectId;
   start_date: Date;
   end_date: Date;
   sop_form_id: ObjectId;
   work_instruction: ObjectId;
-  comment_id: ObjectId;
   cron_id: ObjectId;
-  task_id: ObjectId;
-  parts: IParts;
+  tasks: object[];
+  parts: IParts[];
   work_request_id: ObjectId;
   files: object[];
   visible: boolean;
@@ -53,13 +53,14 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   priority: { type: String, enum: WORK_ORDER_PRIORITIES, default: "None" },
   status: { type: String, enum: WORK_ORDER_STATUSES, default: "Open" },
   type: { type: String },
-  asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
-  location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  wo_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  wo_location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   start_date: { type: Date },
   end_date: { type: Date },
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
   work_instruction: { type: Schema.Types.ObjectId, ref: 'WorkInstructionModel' },
-  parts: { type: PartsSchema },
+  parts: { type: [PartsSchema] },
+  tasks: { type: [Object] },
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   files: { type: [Object] },
   visible: { type: Boolean, default: true },

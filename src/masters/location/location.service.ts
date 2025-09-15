@@ -1,8 +1,5 @@
 import { LocationModel, ILocationMaster } from "../../models/location.model";
-import { Request, Response, NextFunction } from 'express';
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
 import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
 import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
@@ -33,66 +30,25 @@ const buildTree = async (parentId: string | null, account_id: any): Promise<any[
   );
 };
 
-export const getTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { location_id, location_floor_map_tree } = req.query;
-    // let match: any = { account_id, visible: true };
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
-    if (location_floor_map_tree) {
-      match.top_level = true;
-      if (location_id) {
-        match._id = location_id;
-      }
-    } else {
-      if (location_id) {
-        match._id = location_id;
-      } else {
-        match.parent_id = { $exists: false };
-      }
-    }
-
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
-      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
-      const allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
-
-      if (allowedLocationIds.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      if (match._id) {
-        const isAllowed = allowedLocationIds.includes(match._id.toString());
-        if (!isAllowed) {
-          throw Object.assign(new Error('No access to this location'), { status: 403 });
-        }
-      } else {
-        match._id = { $in: allowedLocationIds };
-      }
-    }
-
-    const rootLocations: ILocationMaster[] = await getData(LocationModel, { filter: match });
-    if (!rootLocations?.length) {
-      throw Object.assign(new Error("No data found"), { status: 404 });
-    }
-
-    let treeData: any[];
-
-    if (location_id) {
-      const parentNode = rootLocations[0];
-      const children = await buildTree(parentNode.id, account_id);
-      treeData = [{ ...parentNode, childs: children }];
-    } else {
-      treeData = await Promise.all(
-        rootLocations.map(async (node: any) => {
-          const children = await buildTree(node.id, account_id);
-          return { ...node, childs: children };
-        })
-      );
-    }
-
-    res.status(200).json({ status: true, message: "Data fetched successfully", data: treeData });
-  } catch (error) {
-    next(error);
+export const getTree = async (match: any, location_id: any): Promise<any> => {
+  const rootLocations: ILocationMaster[] = await getData(LocationModel, { filter: match });
+  if (!rootLocations?.length) {
+    throw Object.assign(new Error("No data found"), { status: 404 });
   }
+  let treeData: any[];
+  if (location_id) {
+    const parentNode = rootLocations[0];
+    const children = await buildTree(parentNode.id, match.account_id);
+    treeData = [{ ...parentNode, childs: children }];
+  } else {
+    treeData = await Promise.all(
+      rootLocations.map(async (node: any) => {
+        const children = await buildTree(node.id, match.account_id);
+        return { ...node, childs: children };
+      })
+    );
+  }
+  return treeData;
 };
 
 export const kpiFilterLocations = async (account_id: any, user_id: any, userRole: any) => {
@@ -200,16 +156,16 @@ export const updateById = async (id: string, body: any) => {
   return await LocationModel.findById(id);
 };
 
-export const removeById = async (id: string, data: any) => {
+export const removeById = async (id: string, data: any, user_id: any) => {
   const promiseList: any = [];
   const totalIds = [id];
   if (data.top_level) {
     const childIds = await getAllChildLocationsRecursive([id]);
     totalIds.push(...childIds);
-    promiseList.push(LocationModel.updateMany({ _id: { $in: childIds } }, { visible: false }));
+    promiseList.push(LocationModel.updateMany({ _id: { $in: childIds } }, { visible: false, updatedBy: user_id }));
   }
-  promiseList.push(AssetModel.updateMany({ locationId: { $in: totalIds } }, { visible: false }));
-  promiseList.push(LocationModel.updateMany({ _id: { $in: totalIds } }, { visible: false }));
+  promiseList.push(AssetModel.updateMany({ locationId: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
+  promiseList.push(LocationModel.updateMany({ _id: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
   await Promise.all(promiseList);
   return true;
 };

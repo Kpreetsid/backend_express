@@ -10,6 +10,7 @@ import { auth } from "../../configDB";
 import { IAccount } from "../../models/account.model";
 import { getAllCompanies } from "../../masters/company/company.service";
 import { get } from "lodash";
+import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -24,6 +25,13 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     }
     if(!user.isVerified) {
       throw Object.assign(new Error('User is not verified'), { status: 403 });
+    }
+    if(user.user_role !== 'admin') {
+      console.log(user);
+      const locationList = await getLocationsMappedData(user._id);
+      if (!locationList || locationList.length === 0) {
+        throw Object.assign(new Error('User does not have any location'), { status: 401 });
+      }
     }
     const accountMatch = { _id: user.account_id };
     const userAccount: IAccount[] | null = await getAllCompanies(accountMatch);

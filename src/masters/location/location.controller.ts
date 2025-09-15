@@ -37,7 +37,41 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
 
 export const getLocationTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    await getTree(req, res, next);
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { query: { location_id, location_floor_map_tree } } = req;
+    let match: any = { account_id, visible: true };
+    if (location_floor_map_tree) {
+      match.top_level = true;
+      if (location_id) {
+        match._id = location_id;
+      }
+    } else {
+      if (location_id) {
+        match._id = location_id;
+      } else {
+        match.parent_id = { $exists: false };
+      }
+    }
+    if (userRole !== 'admin') {
+      const mapData = await getLocationsMappedData(user_id);
+      const allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
+      if (allowedLocationIds.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      if (match._id) {
+        const isAllowed = allowedLocationIds.includes(match._id.toString());
+        if (!isAllowed) {
+          throw Object.assign(new Error('No access to this location'), { status: 403 });
+        }
+      } else {
+        match._id = { $in: allowedLocationIds };
+      }
+    }
+    const data = await getTree(match, location_id);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
@@ -77,9 +111,8 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
-    // const match: any = { _id: req.params.id, account_id: account_id };
-    if (userRole !== 'admin' && userRole !== 'super_admin') {
+    const match: any = { _id: req.params.id, account_id: account_id };
+    if (userRole !== 'admin') {
       match.userId = user_id;
     }
     const data = await getAll(match);
@@ -147,7 +180,7 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
 
 export const removeLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const role = get(req, "role", {}) as any;
     if (!role[moduleName].delete_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
@@ -160,7 +193,7 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
     if (!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await removeById(req.params.id, location);
+    await removeById(req.params.id, location, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
