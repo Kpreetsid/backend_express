@@ -14,7 +14,7 @@ import reportsRoutes from './reports/reports.routes';
 import transactionRoutes from './transaction/transaction.routes';
 import masterRoutes from './masters/master.routes';
 import { fileLogger, activityLogger, errorMiddleware } from './middlewares';
-// sbc
+
 const app: Express = express();
 
 app.use(helmet());
