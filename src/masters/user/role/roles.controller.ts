@@ -7,7 +7,6 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
-    // const match: any = { account_id: account_id };
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
       match.user_id = user_id;
