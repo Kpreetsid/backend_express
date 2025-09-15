@@ -85,6 +85,10 @@ export const statusUpdateOrder = async (req: Request, res: Response, next: NextF
     if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
       throw Object.assign(new Error('Work order not found'), { status: 404 });
     }
+    if(status === 'Completed' && isWorkOrderExist[0].tasks) {
+      // check task and form data 
+      throw Object.assign(new Error('Task is not completed'), { status: 400 });
+    }
     const body = { status, updatedBy: user_id };
     await orderStatusChange(id, body);
     res.status(200).send({ status: true, message: 'Work order updated successfully' });

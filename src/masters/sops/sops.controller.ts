@@ -16,7 +16,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
       match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
     }
     let data = await getSOPs(match);
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
@@ -37,7 +37,7 @@ export const getSop = async (req: Request, res: Response, next: NextFunction): P
       match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
     }
     let data = await getSOPs(match);
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
@@ -48,7 +48,10 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     console.log({ account_id, user_id, userRole });
     const data = await createSOPs(req.body, account_id, user_id);
-    return res.status(200).json({ status: true, message: "Data created successfully", data });
+    if(!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
     next(error);
   }
@@ -69,7 +72,10 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const data = await updateSOPs(id, body, user_id);
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
+    if(!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
     next(error);
   }
@@ -86,7 +92,10 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await removeSOPs(id, user_id);
+    const data = await removeSOPs(id, user_id);
+    if(!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
     return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
