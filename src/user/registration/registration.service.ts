@@ -22,7 +22,7 @@ export const verifyOTPCode = async (body: any) => {
   body.isFirstUser = true;
   body.user_role = "admin";
   body.isVerified = true;
-  const userDetails = await createNewUser(body);
+  const userDetails = await createNewUser(body, account._id, account._id);
   if (!userDetails) {
     throw Object.assign(new Error('User creation failed'), { status: 500 });
   }
