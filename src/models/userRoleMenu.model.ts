@@ -46,17 +46,21 @@ interface FloorMapPermissions {
 }
 
 export interface IUserRoleMenu extends Document {
+  account_id: ObjectId;
   data: {
     asset: AssetPermissions;
     location: LocationPermissions;
     workOrder: WorkOrderPermissions;
     floorMap: FloorMapPermissions;
   };
+  roleMenu: object;
   user_id: ObjectId;
-  account_id: ObjectId;
+  createdBy: ObjectId;
+  updatedBy?: ObjectId;
 }
 
 const userRoleMenuSchema = new Schema<IUserRoleMenu>({
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   data: {
     asset: {
       add_asset: { type: Boolean, default: false },
@@ -100,8 +104,10 @@ const userRoleMenuSchema = new Schema<IUserRoleMenu>({
       upload_floor_map: { type: Boolean, default: false }
     }
   },
+  roleMenu: { type: Object, required: true },
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'platform-control',
   timestamps: true,

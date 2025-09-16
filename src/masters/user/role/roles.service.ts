@@ -3,6 +3,7 @@ import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model
 import { Request, Response, NextFunction } from 'express';
 import { IUser } from "../../../models/user.model";
 import { platformControlData } from '../../../_config/userRoles';
+import { roleMenuData } from "../../../_config/newUserRoles";
 
 export const getRoles = async (match: any): Promise<any> => {
   return await RoleMenuModel.find(match);
@@ -30,15 +31,22 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
-export const createUserRole = async (userRole: any, userData: IUser) => {
+export const createUserRole = async (userRole: any, userData: IUser, user_id: any) => {
   try {
     var platformControl =  await platformControlData(userRole);
+    var newRoleMenu = await roleMenuData(userRole);
     const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({
       user_id: userData._id,
       account_id: userData.account_id,
-      data: platformControl
+      data: platformControl,
+      roleMenu: newRoleMenu,
+      createdBy: user_id
     });
-    return await newUserRoleMenu.save();
+    const data = await newUserRoleMenu.save();
+    if (!data) {
+      return null;
+    }
+    return data;
   } catch (error) {
     return null;
   }
