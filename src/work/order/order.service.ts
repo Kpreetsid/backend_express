@@ -284,6 +284,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     createdFrom : body.createdFrom,
     files : body.files,
     tasks : body.tasks,
+    task_submitted : body.task_submitted,
     parts : body.parts,
     work_request_id : body.work_request_id,
     createdBy: user._id

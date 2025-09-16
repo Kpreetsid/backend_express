@@ -60,18 +60,6 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    if (!req.params.id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const data = await RoleMenuModel.findById(req.params.id);
-    if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await RoleMenuModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    next(error);
-  }
+export const removeById = async (id: any, user_id: any): Promise<any> => {
+  return await RoleMenuModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
 };

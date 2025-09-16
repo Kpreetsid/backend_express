@@ -62,10 +62,13 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
+    if(!id) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
     if(!body?.userIdList || body.userIdList?.length === 0) {
       throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
     }
-    const isWorkOrderExist: any = await getAllOrders({ _id: id, account_id });
+    const isWorkOrderExist: any = await getAllOrders({ _id: new mongoose.Types.ObjectId(id), account_id });
     if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
       throw Object.assign(new Error('Work order not found'), { status: 404 });
     }
@@ -85,7 +88,7 @@ export const statusUpdateOrder = async (req: Request, res: Response, next: NextF
     if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
       throw Object.assign(new Error('Work order not found'), { status: 404 });
     }
-    if(status === 'Completed' && isWorkOrderExist[0].tasks) {
+    if(status === 'Completed' && isWorkOrderExist[0].tasks_submitted === false) {
       // check task and form data 
       throw Object.assign(new Error('Task is not completed'), { status: 400 });
     }
