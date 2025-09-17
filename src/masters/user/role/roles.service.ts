@@ -31,7 +31,7 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
-export const createUserRole = async (userRole: any, userData: IUser, user_id: any) => {
+export const createUserRole = async (userRole: any, userData: IUser) => {
   try {
     var platformControl =  await platformControlData(userRole);
     var newRoleMenu = await roleMenuData(userRole);
@@ -39,8 +39,7 @@ export const createUserRole = async (userRole: any, userData: IUser, user_id: an
       user_id: userData._id,
       account_id: userData.account_id,
       data: platformControl,
-      roleMenu: newRoleMenu,
-      createdBy: user_id
+      roleMenu: newRoleMenu
     });
     const data = await newUserRoleMenu.save();
     if (!data) {

@@ -67,7 +67,7 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     }
     body.account_id = account_id;
     body.createdBy = user_id;
-    const data: any = await createNewUser(body, account_id, user_id);
+    const data: any = await createNewUser(body, account_id);
     res.status(201).json({ status: true, message: "Data created successfully", data: data.userDetails, roleData: data.roleDetails });
   } catch (error) {
     next(error);
