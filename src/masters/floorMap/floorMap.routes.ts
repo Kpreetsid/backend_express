@@ -1,6 +1,6 @@
 import express from 'express';
 import { getAllFloorMaps, getFloorMapByID, createFloorMap, updateFloorMap, removeFloorMap, removeFloorMapCoordinates, getFloorMapCoordinates, getFloorMapAssetCoordinates, setFloorMapCoordinates } from './floorMap.controller';
-import { hasPermission } from '../../middlewares';
+
 
 export default (router: express.Router) => {
     const floorMapRouter = express.Router();
@@ -12,6 +12,6 @@ export default (router: express.Router) => {
     floorMapRouter.get('/:id', getFloorMapByID);
     floorMapRouter.post('/', createFloorMap);
     floorMapRouter.put('/:id', updateFloorMap);
-    floorMapRouter.delete('/:id', hasPermission('admin'), removeFloorMap);
+    floorMapRouter.delete('/:id', removeFloorMap);
     router.use('/floor-map', floorMapRouter);
 }
