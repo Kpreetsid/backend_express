@@ -1,6 +1,6 @@
 import mongoose, { Schema, ObjectId, Document } from 'mongoose';
 
-export const ASSETS_TYPE = ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'Other'];
+export const ASSETS_TYPE = ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other'];
 
 export interface IAsset extends Document {
   asset_name: string;

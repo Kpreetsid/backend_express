@@ -106,13 +106,38 @@ export const getChildAssetsAgainstLocation = async (req: Request, res: Response,
 
 export const getLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    if (!req.params.id) {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { params: { id }, query: { location_id, location_floor_map_tree } } = req;
+    if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { _id: req.params.id, account_id: account_id };
+    let match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+    if (location_floor_map_tree) {
+      match.top_level = true;
+      if (location_id) {
+        match._id = location_id;
+      }
+    } else {
+      if (location_id) {
+        match._id = location_id;
+      } else {
+        match.parent_id = { $exists: false };
+      }
+    }
     if (userRole !== 'admin') {
-      match.userId = user_id;
+      const mapData = await getLocationsMappedData(user_id);
+      const allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
+      if (allowedLocationIds.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      if (match._id) {
+        const isAllowed = allowedLocationIds.includes(match._id.toString());
+        if (!isAllowed) {
+          throw Object.assign(new Error('No access to this location'), { status: 403 });
+        }
+      } else {
+        match._id = { $in: allowedLocationIds };
+      }
     }
     const data = await getAll(match);
     if (!data || data.length === 0) {

@@ -13,6 +13,9 @@ export interface IObservation extends Document {
   alarmId: number;
   locationId: ObjectId;
   top_level_asset_id: ObjectId;
+  visible: boolean;
+  createdBy: ObjectId;
+  updatedBy?: ObjectId
 }
 
 const ObservationSchema = new Schema<IObservation>({
@@ -27,7 +30,10 @@ const ObservationSchema = new Schema<IObservation>({
   user: { type: Schema.Types.Mixed, required: true },
   alarmId: { type: Number },
   locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
-  top_level_asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true }
+  top_level_asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  visible: { type: Boolean, default: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'observation',
   timestamps: true,
