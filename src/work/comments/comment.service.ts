@@ -18,18 +18,18 @@ export const getAllCommentsForWorkOrder = async (match: any) => {
   if (!comments || comments.length === 0) {
     return [];
   }
-  const replies = await Promise.all(comments.map(comment => getNestedComments(comment._id)));
+  const replies = await Promise.all(comments.map(async (comment: any) => await getNestedComments(comment._id)));
   return comments.map((comment: any, index) => ({ ...comment, id: comment._id, replies: replies[index] }));
 };
 
-const getNestedComments = async (parentId: any) => {
+const getNestedComments: any = async (parentId: any) => {
   const childComments = await CommentsModel.find({ parentCommentId: parentId, visible: true }).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' }]).lean();
-    return await Promise.all(
-      childComments.map(async (comment: any) => ({
-        ...comment,
-        id: comment._id,
-        replies: await getNestedComments(comment._id),
-      })
+  return await Promise.all(
+    childComments.map(async (comment: any) => ({
+      ...comment,
+      id: comment._id,
+      replies: await getNestedComments(comment._id),
+    })
     )
   );
 };
@@ -41,7 +41,7 @@ export const createComment = async (body: any, account_id: any, user_id: any): P
     comments: body.comments,
     parentCommentId: body.parentCommentId || null,
     createdBy: user_id
-   });
+  });
   return await newComment.save();
 };
 

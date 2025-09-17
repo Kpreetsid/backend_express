@@ -1,0 +1,331 @@
+{
+    "data": {
+        "asset": {
+            "add_asset": true,
+            "delete_asset": true,
+            "add_child_asset": true,
+            "edit_asset": true,
+            "create_report": true,
+            "delete_report": true,
+            "download_report": true,
+            "edit_report": true,
+            "config_alarm": true,
+            "add_observation": true,
+            "create_endpoint": true,
+            "edit_endpoint": true,
+            "delete_end_point": true,
+            "attach_sensor": true,
+            "update_config": true
+        },
+        "location": {
+            "add_location": true,
+            "delete_location": true,
+            "add_child_location": true,
+            "edit_location": true,
+            "create_report": true,
+            "delete_report": true,
+            "download_report": true
+        },
+        "workOrder": {
+            "create_work_order": true,
+            "edit_work_order": true,
+            "delete_work_order": true,
+            "update_work_order_status": true,
+            "add_comment_work_order": true,
+            "add_task_work_order": true,
+            "update_parts_work_order": true
+        },
+        "floorMap": {
+            "create_kpi": true,
+            "view_floor_map": true,
+            "delete_kpi": true,
+            "upload_floor_map": true
+        }
+    },
+    "roleMenu": {
+        "asset": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "child_asset": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "report_asset": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "location": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "child_location": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "report_location": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "work_order": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "comment_work_order": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "task_work_order": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "parts_work_order": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "floor_map": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "kpi": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "pdm_dashboard": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "cmms": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "floor_mapping": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "reports": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "asset_sensors": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "endpoint": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "observation": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "config": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "config_alarm": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "attach_sensor": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "preventive": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "form": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "form_category": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "work_request": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "posts": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "inventory": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "devices": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "peripheral_sensors": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "gateways": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "users": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "permission": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        },
+        "asset_mail": {
+            "view": true,
+            "add": true,
+            "edit": true,
+            "delete": true,
+            "import": true,
+            "export": true
+        }
+    },
+    "user_id": {
+        "$oid": "68c3b86bf7a8bc1316d6404b"
+    },
+    "account_id": {
+        "$oid": "68a5a265a9459b990456d842"
+    },
+    "createdAt": {
+        "$date": "2025-09-12T06:06:35.472Z"
+    },
+    "updatedAt": {
+        "$date": "2025-09-12T06:06:35.472Z"
+    }
+}

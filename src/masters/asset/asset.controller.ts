@@ -87,10 +87,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
   var equipmentId: any = '';
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const role = get(req, "role", {}) as any;
-    if (!role?.[moduleName]?.add_asset) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
+
 
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } = req.body;
     if (!Equipment.userList || Equipment.userList.length === 0) {
@@ -173,10 +170,7 @@ export const createOld = async (req: Request, res: Response, next: NextFunction)
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const role = get(req, "role", {}) as any;
-    if (!role?.[moduleName]?.edit_asset) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
+
     const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } } = req;
     if (!Equipment || !Equipment.id) {
       throw Object.assign(new Error("Invalid request: Equipment ID is required"), { status: 400 });
@@ -310,14 +304,13 @@ export const updateAssetImage = async (req: Request, res: Response, next: NextFu
 export const removeAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const role = get(req, "role", {}) as any;
-    if (!role?.[moduleName]?.delete_asset) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
+    // const role = get(req, "role", {}) as any;
+    // if (!role?.[moduleName]?.delete_asset) {
+    //   throw Object.assign(new Error('Unauthorized access'), { status: 403 });
+    // }
     if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-
 
     const match: any = { _id: req.params.id, account_id: account_id, visible: true };
     if (userRole !== 'admin') {

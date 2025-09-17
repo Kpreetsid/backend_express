@@ -125,80 +125,171 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
   }
 }
 
+// export const createLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+//   try {
+//     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+//     const role = get(req, "role", {}) as any;
+//     if (!role[moduleName].add_location) {
+//       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
+//     }
+//     const body = req.body;
+//     if (body.userIdList.length === 0) {
+//       throw Object.assign(new Error('Bad request'), { status: 400 });
+//     }
+//     body.account_id = account_id;
+//     body.createdBy = user_id;
+//     const data: any = await insertLocation(body);
+//     await mapUserLocationData(data._id, body.userIdList, account_id);
+//     res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
+//   } catch (error) {
+//     next(error);
+//   }
+// }
+
+
 export const createLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const role = get(req, "role", {}) as any;
-    if (!role[moduleName].add_location) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
     const body = req.body;
-    if (body.userIdList.length === 0) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
+
+    if (!body.userIdList || body.userIdList.length === 0) {
+      throw Object.assign(new Error("Bad request"), { status: 400 });
     }
+
     body.account_id = account_id;
     body.createdBy = user_id;
+
     const data: any = await insertLocation(body);
     await mapUserLocationData(data._id, body.userIdList, account_id);
-    res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
+
+    res
+      .status(201)
+      .json({ status: true, message: "Data created successfully", data: [data] });
   } catch (error) {
     next(error);
   }
-}
+};
 
 export const updateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const role = get(req, "role", {}) as any;
-    if (!role[moduleName].edit_location) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
-    const { params: { id }, body } = req;
+    const { params: { id }, body, } = req;
+
     if (!id) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
+      throw Object.assign(new Error("Bad request"), { status: 400 });
     }
-    if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
+    if (
+      !body.userIdList ||
+      body.userIdList.length === 0 ||
+      body.userIdList.filter((doc: any) => doc).length === 0
+    ) {
+      throw Object.assign(new Error("Bad request"), { status: 400 });
     }
+
     const match = { _id: id, account_id: account_id, visible: true };
     const location = await getAll(match);
+
     if (!location || location.length === 0 || !location[0].visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error("No data found"), { status: 404 });
     }
+
     body.updatedBy = user_id;
     const data: any = await updateById(id, body);
+
     if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error("No data found"), { status: 404 });
     }
+
     await mapUserLocationData(data._id, body.userIdList, account_id);
     data.id = data._id;
-    res.status(200).json({ status: true, message: "Data updated successfully", data: [data] });
+
+    res
+      .status(200)
+      .json({ status: true, message: "Data updated successfully", data: [data] });
   } catch (error) {
     next(error);
   }
-}
+};
+
+
+
+// export const updateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+//   try {
+//     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+//     const role = get(req, "role", {}) as any;
+//     if (!role[moduleName].edit_location) {
+//       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
+//     }
+//     const { params: { id }, body } = req;
+//     if (!id) {
+//       throw Object.assign(new Error('Bad request'), { status: 400 });
+//     }
+//     if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
+//       throw Object.assign(new Error('Bad request'), { status: 400 });
+//     }
+//     const match = { _id: id, account_id: account_id, visible: true };
+//     const location = await getAll(match);
+//     if (!location || location.length === 0 || !location[0].visible) {
+//       throw Object.assign(new Error('No data found'), { status: 404 });
+//     }
+//     body.updatedBy = user_id;
+//     const data: any = await updateById(id, body);
+//     if (!data || !data.visible) {
+//       throw Object.assign(new Error('No data found'), { status: 404 });
+//     }
+//     await mapUserLocationData(data._id, body.userIdList, account_id);
+//     data.id = data._id;
+//     res.status(200).json({ status: true, message: "Data updated successfully", data: [data] });
+//   } catch (error) {
+//     next(error);
+//   }
+// }
+
 
 export const removeLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const role = get(req, "role", {}) as any;
-    if (!role[moduleName].delete_location) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
+
     if (!req.params.id) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
+      throw Object.assign(new Error("Bad request"), { status: 400 });
     }
+
     const match = { _id: req.params.id, account_id: account_id, visible: true };
     const location = await getAll(match);
+
     if (!location || location.length === 0 || !location[0].visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error("No data found"), { status: 404 });
     }
+
     await removeById(req.params.id, location, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
   }
-}
+};
+
+
+// export const removeLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+//   try {
+//     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+//     const role = get(req, "role", {}) as any;
+//     if (!role[moduleName].delete_location) {
+//       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
+//     }
+//     if (!req.params.id) {
+//       throw Object.assign(new Error('Bad request'), { status: 400 });
+//     }
+//     const match = { _id: req.params.id, account_id: account_id, visible: true };
+//     const location = await getAll(match);
+//     if (!location || location.length === 0 || !location[0].visible) {
+//       throw Object.assign(new Error('No data found'), { status: 404 });
+//     }
+//     await removeById(req.params.id, location, user_id);
+//     res.status(200).json({ status: true, message: "Data deleted successfully" });
+//   } catch (error) {
+//     next(error);
+//   }
+// }
 
 export const updateLocationFloorMapImage = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {

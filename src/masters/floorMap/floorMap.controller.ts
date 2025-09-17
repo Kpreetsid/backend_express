@@ -3,15 +3,22 @@ import { get } from "lodash";
 import { getFloorMaps, insert, updateById, removeById, getCoordinates, floorMapAssetCoordinates, insertCoordinates, deleteCoordinates, getAllChildLocationsRecursive } from './floorMap.service';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
+const moduleName: string = "floorMap";
 
 export const getAllFloorMaps = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+
+
     // const match: any = { account_id: account_id, isActive: true };
     const match: any = userRole === "super_admin" ? {} : { _id: account_id, visible: true };
 
     if (userRole !== 'admin' && userRole !== 'super_admin') {
       match.user_id = user_id;
+    }
+    const role = get(req, "role", {}) as any;
+    if (!role[moduleName].view_floor_map) {
+      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
     const data = await getFloorMaps(match);
     if (!data || data.length === 0) {

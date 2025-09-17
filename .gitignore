@@ -1,11 +1,7 @@
 node_modules
 dist
 uploadFiles
-coverage
 .vscode
-.DS_Store
 *.log
 *.env
-*.local
 package-lock.json
-yarn-error.log
