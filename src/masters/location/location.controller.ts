@@ -120,8 +120,6 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
     } else {
       if (location_id) {
         match._id = location_id;
-      } else {
-        match.parent_id = { $exists: false };
       }
     }
     if (userRole !== 'admin') {
