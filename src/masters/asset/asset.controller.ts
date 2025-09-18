@@ -39,19 +39,12 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
 
 export const getAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
     if (!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), account_id: account_id, visible: true };
-    if (userRole !== 'admin') {
-      const mappedData = await getAssetsMappedData(`${user_id}`);
-      if (!mappedData || mappedData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      match._id = { $in: mappedData.map(doc => doc.assetId) };
-    }
     if (top_level_asset_id) {
       match.top_level_asset_id = top_level_asset_id.toString().split(',');
     }
