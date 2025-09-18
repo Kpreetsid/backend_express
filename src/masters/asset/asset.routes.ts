@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAssets, getAsset, getFilteredAssets, getAssetTree, removeAsset, create, createOld, updateAssetImage, update, getAssetSensorList } from './asset.controller';
+import { getAssets, getAsset, getFilteredAssets, getAssetTree, removeAsset, create, createOld, updateOld, updateAssetImage, update, getAssetSensorList } from './asset.controller';
 import { isOwnerOrAdmin } from '../../middlewares';
 
 export default (router: express.Router) => {
@@ -11,6 +11,7 @@ export default (router: express.Router) => {
     assetRouter.get('/:id', getAsset);
     assetRouter.post('/', create);
     assetRouter.post('/old', createOld);
+    assetRouter.put('/old-edit/:id', updateOld);
     assetRouter.post('/tree', getAssetTree);
     assetRouter.post('/filter', getFilteredAssets);
     assetRouter.put('/:id', isOwnerOrAdmin, update);

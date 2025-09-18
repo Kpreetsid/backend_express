@@ -212,6 +212,20 @@ export const createAssetOld = async (req: Request, res: Response, next: NextFunc
   }
 }
 
+export const updateAssetOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const existingData: any = await getAll({ _id: req.params.id, account_id: account_id, visible: true });
+    if (!existingData || existingData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const data = await AssetModel.findOneAndUpdate({ _id: req.params.id }, { ...req.body, updatedBy: user_id }, { new: true });
+    return res.status(200).json({ status: true, message: "Data updated successfully", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
 const removeExtraFields = (obj: Record<string, any>) => {
   return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null));
 }
