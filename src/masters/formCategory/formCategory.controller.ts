@@ -7,9 +7,8 @@ export const getAllFormCategories = async (req: Request, res: Response, next: Ne
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
-
     if (userRole !== 'admin') {
-      match.user_id = user_id;
+      match.createdBy = user_id;
     }
     const data = await getFormCategories(match);
     if (!data || data.length === 0) {
@@ -29,7 +28,7 @@ export const getFormCategoryByID = async (req: Request, res: Response, next: Nex
     }
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
-      match.user_id = user_id;
+      match.createdBy = user_id;
     }
     const data = await getFormCategories(match);
     if (!data || data.length === 0) {

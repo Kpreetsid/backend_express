@@ -7,8 +7,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
-
-    const { category, location } = req.query;
+    const { query: { category, location }} = req;
     if (category) {
       match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
     }

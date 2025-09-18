@@ -2,7 +2,6 @@ import { CategoryModel, ICategory } from "../../models/formCategory.model";
 import { IUser } from "../../models/user.model";
 
 export const getFormCategories = async (match: any): Promise<ICategory[]> => {
-  match.visible = true;
   return await CategoryModel.find(match);
 };
 

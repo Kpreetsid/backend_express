@@ -32,7 +32,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
       match.updatedBy = rejectedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
     }
     if(userRole !== 'admin') {
-      match.created_by = user_id;
+      match.createdBy = user_id;
     }
     const data = await getAllRequests(match);
     if (!data || data.length === 0) {
@@ -56,7 +56,7 @@ export const getById = async (req: Request, res: Response, next: NextFunction): 
       match = { ...match, ...query };
     }
     if(userRole !== 'admin') {
-      match.created_by = user_id;
+      match.createdBy = user_id;
     }
     const data = await getAllRequests(match);
     if (!data || data.length === 0) {
