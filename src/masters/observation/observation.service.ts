@@ -1,68 +1,40 @@
-import { ObservationModel, IObservation } from "../../models/observation.model";
-import { Request, Response, NextFunction } from 'express';
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
-import mongoose from "mongoose";
+import { ObservationModel } from "../../models/observation.model";
 
-export const getAll = async (match: any): Promise<any> => {
-  return await ObservationModel.find(match);
+export const getAllObservation = async (match: any): Promise<any> => {
+  return await ObservationModel.aggregate([
+    { $match: match },
+    {
+      $lookup: {
+        from: "users",
+        let: { userId: "$userId" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+          { $project: { _id: 1, firstName: 1, lastName: 1, email: 1 } },
+          { $addFields: { id: "$_id" } }
+        ],
+        as: "user"
+      }
+    },
+    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+    { $sort: { createdAt: -1 } },
+    { $addFields: { id: "$_id" } }
+  ]);
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    if (!req.params.id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const match = { accountId: account_id, _id: new mongoose.Types.ObjectId(req.params.id), visible: true };
-    const data: IObservation[] | null = await ObservationModel.find(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
+export const insertObservation = async (body: any, account_id: any, user_id: any): Promise<any> => {
+  const newObservation = new ObservationModel({
+    account_id: account_id,
+    ...body,
+    user_id: user_id,
+    createdBy: user_id
+  });
+  return await newObservation.save();
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const newObservation = new ObservationModel(req.body);
-    const data = await newObservation.save();
-    return res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    next(error);
-  }
+export const updateObservationById = async (id: string, body: any, user_id: any): Promise<any> => {
+  return await ObservationModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { params: { id }, body } = req;
-    if (!id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const data = await ObservationModel.findByIdAndUpdate(id, body, { new: true });
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    if (!req.params.id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const data = await ObservationModel.findById(req.params.id);
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await ObservationModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    next(error);
-  }
+export const removeObservationById = async (id: string, user_id: any): Promise<any> => {
+  return await ObservationModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
 };
