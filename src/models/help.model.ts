@@ -56,7 +56,7 @@ export interface IBlog extends Document {
   help?: boolean;
   comments?: any[];
   likes?: any[];
-  isActive?: boolean;
+  visible?: boolean;
 }
 
 const BlogSchema = new Schema<IBlog>({
@@ -77,7 +77,7 @@ const BlogSchema = new Schema<IBlog>({
   help: { type: Boolean, default: false },
   comments: { type: [Schema.Types.Mixed] },
   likes: { type: [Schema.Types.Mixed] },
-  isActive: { type: Boolean, default: true }
+  visible: { type: Boolean, default: true }
 }, {
   collection: 'help',
   timestamps: true,

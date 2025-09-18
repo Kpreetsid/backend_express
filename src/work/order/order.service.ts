@@ -181,7 +181,7 @@ export const plannedUnplanned = async (match: any): Promise<any> => {
 
 export const summaryData = async (match: any): Promise<any> => {
   match.visible = true;
-  const helpMatch: any = { account_id: match.account_id, isActive: true, status: 'Approved' };
+  const helpMatch: any = { account_id: match.account_id, visible: true, status: 'Approved' };
   const helpData: IBlog[] = await BlogModel.find(helpMatch);
   if (helpData.length === 0) {
     throw Object.assign(new Error('No data found'), { status: 404 });

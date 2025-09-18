@@ -8,7 +8,7 @@ import { IUser } from '../../models/user.model';
 import { getAllUsers } from '../../masters/user/user.service';
 
 export const getAll = async (match: any): Promise<ILocationReport[]> => {
-  match.isActive = true;
+  match.visible = true;
   const populateFilter = [{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }, { path: 'location_id', model: "Schema_Location", select: '' }];
   return await ReportLocationModel.find(match).populate(populateFilter).sort({ _id: -1 });
 };
@@ -52,7 +52,7 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
     if (!location_id) {
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
     }
-    const userDetails = await getAllUsers({ _id: user_id, account_id: account_id, isActive: true });
+    const userDetails = await getAllUsers({ _id: user_id, account_id: account_id, visible: true });
     if (!userDetails || userDetails.length === 0) {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }
@@ -178,5 +178,5 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
 };
 
 export const deleteLocationsReport = async (id: string, accountId: string, user_id: string) => {
-  return await ReportLocationModel.findOneAndUpdate({ _id: id, account_id: accountId, isActive: true }, { isActive: false, updatedBy: user_id }, { new: true });
+  return await ReportLocationModel.findOneAndUpdate({ _id: id, account_id: accountId, visible: true }, { visible: false, updatedBy: user_id }, { new: true });
 };

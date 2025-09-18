@@ -2,7 +2,7 @@ import { PostModel, IPost } from "../../models/post.model";
 import { Request, Response, NextFunction } from 'express';
 
 export const getAllParts = async (match: any): Promise<IPost[]> => {
-  match.isActive = true;
+  match.visible = true;
   return await PostModel.find(match);
 };
 
