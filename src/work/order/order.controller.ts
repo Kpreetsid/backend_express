@@ -30,7 +30,6 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
       }
       match._id = { $in: userWorkOrderIdList };
     }
-    console.log(match);
     const data = await getAllOrders(match);
     if(!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

@@ -10,7 +10,6 @@ export const getFloorMaps = async (match: any) => {
 };
 
 export const getCoordinates = async (match: any, account_id: any): Promise<any> => {
-  console.log(match)
   const floorMaps = await EndpointLocationModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'location_name' }]);
   if (!floorMaps || floorMaps.length === 0) {
     throw Object.assign(new Error('No coordinates found for the given location'), { status: 404 });

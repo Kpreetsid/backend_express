@@ -27,7 +27,6 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('User is not verified'), { status: 403 });
     }
     if(user.user_role !== 'admin') {
-      console.log(user);
       const locationList = await getLocationsMappedData(user._id);
       if (!locationList || locationList.length === 0) {
         throw Object.assign(new Error('User does not have any location'), { status: 401 });
