@@ -19,18 +19,21 @@ export const getAll = async (match: any) => {
   return result;
 };
 
-const buildTree = async (parentId: string | null, account_id: any): Promise<any[]> => {
+const buildTree = async (parentId: string | null, account_id: any, allowedLocationIds: string[], userRole: string): Promise<any[]> => {
   const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false } };
   const nodes = await getData(LocationModel, { filter: match });
   return Promise.all(
     nodes.map(async (node: any) => {
-      const children = await buildTree(node._id.toString(), account_id);
-      return { ...node, childs: children };
+      if (userRole !== "admin" && !allowedLocationIds.includes(node._id.toString())) {
+        return null;
+      }
+      const children = await buildTree(node._id.toString(), account_id, allowedLocationIds, userRole);
+      return { ...node, childs: children.filter(Boolean) };
     })
-  );
+  ).then(results => results.filter(Boolean));
 };
 
-export const getTree = async (match: any, location_id: any): Promise<any> => {
+export const getTree = async (match: any, location_id: any, allowedLocationIds: string[], userRole: string): Promise<any> => {
   const rootLocations: ILocationMaster[] = await getData(LocationModel, { filter: match });
   if (!rootLocations?.length) {
     throw Object.assign(new Error("No data found"), { status: 404 });
@@ -38,15 +41,21 @@ export const getTree = async (match: any, location_id: any): Promise<any> => {
   let treeData: any[];
   if (location_id) {
     const parentNode = rootLocations[0];
-    const children = await buildTree(parentNode.id, match.account_id);
+    if (userRole !== "admin" && !allowedLocationIds.includes(`${parentNode._id}`)) {
+      throw Object.assign(new Error("No access to this location"), { status: 403 });
+    }
+    const children = await buildTree(parentNode.id, match.account_id, allowedLocationIds, userRole);
     treeData = [{ ...parentNode, childs: children }];
   } else {
     treeData = await Promise.all(
       rootLocations.map(async (node: any) => {
-        const children = await buildTree(node.id, match.account_id);
+        if (userRole !== "admin" && !allowedLocationIds.includes(node._id.toString())) {
+          return null;
+        }
+        const children = await buildTree(node.id, match.account_id, allowedLocationIds, userRole);
         return { ...node, childs: children };
       })
-    );
+    ).then(results => results.filter(Boolean));
   }
   return treeData;
 };
