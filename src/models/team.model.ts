@@ -4,7 +4,7 @@ export interface ITeam extends Document {
   account_id: ObjectId;
   team_name: string;
   description?: string;
-  isActive: boolean;
+  visible: boolean;
   createdBy: ObjectId;
   updatedBy?: ObjectId;
 }
@@ -14,7 +14,7 @@ const teamSchema = new Schema<ITeam>(
     account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
     team_name: { type: String, required: true },
     description: { type: String },
-    isActive: { type: Boolean, required: true, default: true },
+    visible: { type: Boolean, required: true, default: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
   },

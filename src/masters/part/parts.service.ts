@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import { PartsModel, IPart } from "../../models/part.model";
 
 export const getAll = async (match: any): Promise<IPart[]> => {
-  match.isActive = true;
+  match.visible = true;
   return await PartsModel.aggregate([
     { $match: match },
     {

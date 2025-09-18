@@ -103,7 +103,7 @@ export interface ILocationReport {
     user: any;
     userId: ObjectId;
     location_id: ObjectId;
-    isActive: boolean;
+    visible: boolean;
     createdBy: ObjectId;
     updatedBy?: ObjectId
 }
@@ -118,7 +118,7 @@ const LocationReportSchema = new Schema<ILocationReport>({
     userId: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
     user: { type: Schema.Types.Mixed },
     location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
-    isActive: { type: Boolean, default: true },
+    visible: { type: Boolean, default: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {

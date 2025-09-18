@@ -35,7 +35,6 @@ export interface IUser extends Document {
   isFirstUser: boolean;
   visible: boolean;
   isVerified: boolean;
-  isActive: boolean;
 }
 
 const phoneNumberSchema = new Schema<IPhoneNumber>({
@@ -61,8 +60,7 @@ const userSchema = new Schema<IUser>({
   phone_no: { type: phoneNumberSchema, required: true },
   isFirstUser: { type: Boolean, default: false },
   visible: { type: Boolean, default: true },
-  isVerified: { type: Boolean, default: false },
-  isActive: { type: Boolean, default: true }
+  isVerified: { type: Boolean, default: false }
 }, {
   collection: 'users',
   timestamps: true,

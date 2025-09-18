@@ -80,7 +80,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: req.params.id, account_id: account_id, isActive: true };
+    const match = { _id: req.params.id, account_id: account_id, visible: true };
     const userData = await getAllUsers(match);
     if (!userData || userData.length === 0) {
       throw Object.assign(new Error('No data found or already deleted'), { status: 404 });
@@ -101,7 +101,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
 export const updatePasswordUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const match = { _id: user_id, account_id: account_id, isActive: true };
+    const match = { _id: user_id, account_id: account_id, visible: true };
     const userData = await getUserDetails(match);
     if (!userData) {
       throw Object.assign(new Error('No user found'), { status: 404 });
@@ -134,7 +134,7 @@ export const changeUserPassword = async (req: Request, res: Response, next: Next
     if (newPassword !== confirmNewPassword) {
       throw Object.assign(new Error('Passwords do not match'), { status: 400 });
     }
-    const userData = await getAllUsers({ email: email, isActive: true });
+    const userData = await getAllUsers({ email: email, visible: true });
     if (!userData || userData.length === 0) {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }
@@ -161,7 +161,7 @@ export const removeUser = async (req: Request, res: Response, next: NextFunction
     if (!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: req.params.id, account_id: account_id, isActive: true };
+    const match: any = { _id: req.params.id, account_id: account_id, visible: true };
     const userData = await getAllUsers(match);
     if (!userData || userData.length === 0) {
       throw Object.assign(new Error('No data found or already deleted'), { status: 404 });

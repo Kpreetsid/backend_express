@@ -18,7 +18,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!username || !password) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { $or: [{ username: username }, { email: username }], user_status: 'active' };
+    const match: any = { $or: [{ username: username }, { email: username }], user_status: 'active', visible: true };
     const user: IUser | null = await UserModel.findOne(match).select('+password');
     if (!user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });

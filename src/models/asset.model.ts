@@ -57,7 +57,6 @@ export interface IAsset extends Document {
   year: string;
   brandMake: string;
   visible: boolean;
-  isActive: boolean;
   assigned_to: number;
   image_path: string;
   noStages: number;
@@ -138,7 +137,6 @@ const assetSchema = new Schema<IAsset>({
   assigned_to: { type: Number, default: 1 },
   image_path: { type: String },
   visible: { type: Boolean, default: true },
-  isActive: { type: Boolean, default: true },
   brandMake: { type: String },
   powerRating: { type: String },
   noStages: { type: Number },

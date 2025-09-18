@@ -145,9 +145,9 @@ export const updateAssetImageById = async (id: string, image_path: string, user_
 export const removeById = async (match: any, userID: any) => {
   const childAssets = await AssetModel.find({ parent_id: match._id });
   if (childAssets && childAssets.length > 0) {
-    await AssetModel.updateMany({ parent_id: match._id }, { visible: false, isActive: false });
+    await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID });
   }
-  return await AssetModel.findOneAndUpdate(match, { visible: false, isActive: false, updatedBy: userID }, { new: true });
+  return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { new: true });
 };
 
 export const deleteAsset = async (id: string): Promise<any> => {
@@ -203,7 +203,7 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
 export const createAssetOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const data: any = new AssetModel({ ...req.body, account_id: account_id, isActive: true, createdBy: user_id, visible: true });
+    const data: any = new AssetModel({ ...req.body, account_id: account_id, createdBy: user_id, visible: true });
     data.top_level_asset_id = data._id;
     await data.save();
     return res.status(200).json({ status: true, message: "Data created successfully", data });

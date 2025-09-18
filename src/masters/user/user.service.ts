@@ -39,7 +39,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
 
 export const createNewUser = async (body: IUser, account_id: any) => {
   body.password = await hashPassword(body.password);
-  const newUser = new UserModel({ ...body, account_id, isActive: true, isFirstUser: false, visible: true, isVerified: true });
+  const newUser = new UserModel({ ...body, account_id, isFirstUser: false, visible: true, isVerified: true });
   const userDetails = await newUser.save();
   const roleDetails = await createUserRole(body.user_role, userDetails);
   return { userDetails, roleDetails };
@@ -55,5 +55,5 @@ export const updateUserDetails = async (id: string, body: IUser) => {
 }
 export const removeById = async (id: string) => {
   await MapUserAssetLocationModel.deleteMany({ userId: id });
-  return await UserModel.findByIdAndUpdate(id, { visible: false, isActive: false, user_status: 'inactive' }, { new: true });
+  return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { new: true });
 };
