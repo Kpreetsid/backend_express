@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { userLocations, userAssets, mapUserLocations, updateMappedUserLocations, updateMappedUserFlags, createMapUserAssets, updateMapUserAssets, checkDuplicateAssetMapping } from './userLocation.service';
+import { userLocations, userAssets, mapUserLocations, updateMappedUserLocations, updateMappedUserFlags, createMapUserAssets, updateMapUserAssets } from './userLocation.service';
 
 export const getUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -20,16 +20,11 @@ export const getUserAssets = async (req: Request, res: Response, next: NextFunct
 export const setUserAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const body = req.body;
-    const assetIdList = body.map((doc: any) => doc.assetId);
-    const userIdList = body.map((doc: any) => doc.userId);
-    if(assetIdList.length !== userIdList.length) {
+    const data = body.filter((doc: any) => doc.assetId && doc.userId);
+    if(data.length === 0) {
       throw Object.assign(new Error('Invalid data'), { status: 400 });
     }
-    const duplicateAssetMapping: any = checkDuplicateAssetMapping(body);
-    if(duplicateAssetMapping.length === 0) {
-      throw Object.assign(new Error('Mapping already exists'), { status: 400 });
-    }
-    await createMapUserAssets(duplicateAssetMapping);
+    await createMapUserAssets(body);
     res.status(201).json({ message: 'Assets mapped successfully' });
   } catch (error) {
     next(error);
@@ -55,9 +50,8 @@ export const updateUserAssets = async (req: Request, res: Response, next: NextFu
 export const setUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const body = req.body;
-    const locationIdList = body.map((doc: any) => doc.locationId);
-    const userIdList = body.map((doc: any) => doc.userId);
-    if(locationIdList.length !== userIdList.length) {
+    const data = body.filter((doc: any) => doc.locationId && doc.userId);
+    if(data.length === 0) {
       throw Object.assign(new Error('Invalid data'), { status: 400 });
     }
     await mapUserLocations(req, res, next);

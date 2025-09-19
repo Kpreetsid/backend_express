@@ -27,13 +27,13 @@ export const insert = async (body: IPart, account_id: any, user_id: any): Promis
   return await new PartsModel(body).save();
 };
 
-export const updatePartById = async (id: string, body: IPart, userID: any) => {
-  body.updatedBy = userID;
+export const updatePartById = async (id: string, body: IPart, user_id: any) => {
+  body.updatedBy = user_id;
   return await PartsModel.findByIdAndUpdate(id, body, { new: true });
 };
 
-export const removeById = async (id: string, userID: any) => {
-  return await PartsModel.findByIdAndUpdate(id, { visible: false, updatedBy: userID }, { new: true });
+export const removeById = async (id: string, user_id: any) => {
+  return await PartsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
 };
 
 export const assignPartToWorkOrder = async (body: any, user: any) => {

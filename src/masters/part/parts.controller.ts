@@ -72,6 +72,9 @@ export const updatePart = async (req: Request, res: Response, next: NextFunction
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const data = await updatePartById(id, body, user_id);
+    if(!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
     res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
     next(error);
@@ -81,10 +84,11 @@ export const updatePart = async (req: Request, res: Response, next: NextFunction
 export const removePart = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if (!req.params.id) {
+    const { params: { id } } = req;
+    if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: req.params.id, account_id: account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
     if (userRole !== 'admin') {
       match.createdBy = user_id;
     }
@@ -92,8 +96,11 @@ export const removePart = async (req: Request, res: Response, next: NextFunction
     if (!isDataExists || isDataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const data = await removeById(req.params.id, user_id);
-    res.status(200).json({ status: true, message: "Data deleted successfully", data });
+    const data = await removeById(id, user_id);
+    if(!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
   }

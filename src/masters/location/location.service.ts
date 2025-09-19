@@ -8,7 +8,7 @@ import { getData } from "../../util/queryBuilder";
 export const getAll = async (match: any) => {
   const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name' }]);
   const locationIds = locationData.map(doc => `${doc._id}`);
-  const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
+  const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName user_role' }]);
   const result: any = locationData.map((doc: any) => {
     const { _id: id, ...obj } = doc.toObject();
     obj.id = id;

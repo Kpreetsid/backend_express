@@ -29,7 +29,7 @@ export const floorMapAssetCoordinates = async (req: Request, res: Response, next
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const location_id = req.params.id || req.query.locationId;
-    const match: any = { account_id, visible: true };
+    const match: any = { account_id };
     if (userRole !== "admin") {
       match.user_id = user_id;
     }

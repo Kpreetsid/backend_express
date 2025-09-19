@@ -43,6 +43,13 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
     }
     if (locationList && locationList.length > 0) {
       match.locationId = { $in: locationList };
+      if(userRole !== "admin") {
+        const mapData = await MapUserAssetLocationModel.find({ userId: user_id, assetId: { $exists: true } });
+        if (!mapData || mapData.length === 0) {
+          throw Object.assign(new Error('No data found'), { status: 404 });
+        }
+        match._id = { $in: mapData.map(doc => doc.assetId) };
+      }
     }
     if (assets && assets.length > 0) {
       match._id = { $in: assets };

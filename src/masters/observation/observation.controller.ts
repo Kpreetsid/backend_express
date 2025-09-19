@@ -113,7 +113,7 @@ export const removeObservation = async (req: Request, res: Response, next: NextF
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }    
-    res.status(200).json({ status: true, message: "Data updated successfully", data });
+    res.status(200).json({ status: true, message: "Data updated successfully" });
   } catch (error) {
     next(error);
   }

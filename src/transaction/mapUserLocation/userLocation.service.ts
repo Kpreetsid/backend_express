@@ -113,16 +113,6 @@ export const mapUserLocationData = async (id: any, userIdList: any, account_id: 
   return await MapUserAssetLocationModel.insertMany(queryArray);
 }
 
-export const checkDuplicateAssetMapping = async (data: any) => {
-  for (let i = 0; i < data.length; i++) {
-    const asset = await MapUserAssetLocationModel.findOne({ assetId: data[i].assetId, userId: data[i].userId });
-    if(asset) {
-      data[i].splice(i, 1);
-    }
-  }
-  return data;
-}
-
 export const createMapUserAssets = async (data: any): Promise<any> => {
   return await MapUserAssetLocationModel.insertMany(data);
 };
