@@ -173,6 +173,10 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
+    let { assetList } = req.query;
+    if (assetList && assetList.toString().split(',').length > 0) {
+      match._id = { $in: assetList.toString().split(',') };
+    }
     if (userRole !== 'admin') {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
       if (mapData && mapData.length > 0) {
