@@ -2,10 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import { getSOPs, createSOPs, updateSOPs, removeSOPs } from './sops.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
+import { getLocationsMappedData } from '../../transaction/mapUserLocation/userLocation.service';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
     const { query: { category, location }} = req;
     if (category) {
@@ -13,6 +14,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     }
     if (location) {
       match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+    }
+    if(userRole !== 'admin') {
+      const mappedUserList = await getLocationsMappedData(user_id);
+      match.locationId = { $in: mappedUserList.map((doc: any) => doc.locationId) };
     }
     let data = await getSOPs(match);
     res.status(200).json({ status: true, message: "Data fetched successfully", data });

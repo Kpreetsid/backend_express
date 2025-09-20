@@ -17,16 +17,6 @@ export const hasRolePermission = (moduleName: string, action: string) => {
   };
 };
 
-export const hasPermission = (role: string) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const userRole = get(req, 'user.user_role');
-    if (userRole !== role) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
-    next();
-  };
-};
-
 export const isOwner = (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = get(req, 'user', {}) as IUser;

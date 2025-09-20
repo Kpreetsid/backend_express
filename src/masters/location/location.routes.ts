@@ -1,5 +1,6 @@
 import express from 'express';
 import { getLocations, getLocation, updateLocation, getLocationTree, removeLocation, createDuplicateLocation, getKpiFilterLocations, getChildAssetsAgainstLocation, createLocation, updateLocationFloorMapImage, getLocationSensorList } from './location.controller';
+import { hasRolePermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const locationRouter = express.Router();
@@ -9,10 +10,10 @@ export default (router: express.Router) => {
     locationRouter.get('/kpi-filter', getKpiFilterLocations);
     locationRouter.get('/make-copy/:id', createDuplicateLocation);
     locationRouter.get('/:id', getLocation);
-    locationRouter.post('/', createLocation);
-    locationRouter.post('/child-assets', getChildAssetsAgainstLocation);
+    locationRouter.post('/', hasRolePermission('location', 'add_location'), createLocation);
+    locationRouter.post('/child-assets', hasRolePermission('location', 'add_child_location'), getChildAssetsAgainstLocation);
     locationRouter.put('/floor-map-image/:id', updateLocationFloorMapImage);
-    locationRouter.put('/:id', updateLocation);
-    locationRouter.delete('/:id', removeLocation);
+    locationRouter.put('/:id', hasRolePermission('location', 'edit_location'), updateLocation);
+    locationRouter.delete('/:id', hasRolePermission('location', 'delete_location'), removeLocation);
     router.use('/locations', locationRouter);
 }

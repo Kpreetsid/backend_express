@@ -1,6 +1,7 @@
 import express from 'express';
 import { getAll, createOrder, updateOrder, remove, getOrderStatus, getOrderPriority, statusUpdateOrder, getMonthlyCount, getPlannedUnplanned, getSummaryData, getPendingOrders } from './order.controller';
 import commentsRoutes from '../comments/comment.routes';
+import { hasRolePermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const orderRouter = express.Router();
@@ -12,10 +13,10 @@ export default (router: express.Router) => {
     orderRouter.get('/monthly-count', getMonthlyCount);
     orderRouter.get('/planned-unplanned', getPlannedUnplanned);
     orderRouter.get('/:id', getAll);
-    orderRouter.post('/', createOrder);
-    orderRouter.put('/status/:id', statusUpdateOrder);
-    orderRouter.put('/:id', updateOrder);
-    orderRouter.delete('/:id', remove);
+    orderRouter.post('/', hasRolePermission('workOrder', 'create_work_order'), createOrder);
+    orderRouter.put('/status/:id', hasRolePermission('workOrder', 'update_work_order_status'), statusUpdateOrder);
+    orderRouter.put('/:id', hasRolePermission('workOrder', 'edit_work_order'), updateOrder);
+    orderRouter.delete('/:id', hasRolePermission('workOrder', 'delete_work_order'), remove);
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));
     router.use('/orders', orderRouter);
