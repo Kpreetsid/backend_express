@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox } from './asset.service';
+import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyById } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { createMapUserAssets, getAssetsMappedData, removeLocationMapping } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
@@ -297,8 +297,6 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
     if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-
-
     const match: any = { _id: req.params.id, account_id: account_id, visible: true };
     if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
@@ -317,4 +315,26 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
 
 export const getAssetSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   await getAssetDataSensorList(req, res, next);
+}
+
+export const makeAssetCopy = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { params: { id }} = req;
+    if (!id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const match: any = { _id: id, account_id: account_id, visible: true };
+    const dataExists: any = await getAll(match);
+    if (!dataExists || dataExists.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const newAsset = await makeAssetCopyById(id, user_id);
+    if (!newAsset) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Asset copied successfully", data: newAsset });
+  } catch (error: any) {
+    next(error);
+  }
 }

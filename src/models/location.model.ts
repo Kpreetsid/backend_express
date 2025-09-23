@@ -5,7 +5,6 @@ export interface ILocationMaster extends Document {
   description: string;
   location_type: string;
   top_level: boolean;
-  assigned_to: string;
   account_id: ObjectId;
   top_level_location_id: ObjectId;
   parent_id?: ObjectId;
@@ -26,7 +25,6 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   description: { type: String },
   location_type: { type: String, required: true },
   top_level: { type: Boolean, required: true },
-  assigned_to: { type: String, required: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   top_level_location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },
   parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },

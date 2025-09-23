@@ -1,12 +1,10 @@
 import { CronJob } from "cron";
+import { scheduledWorkOrder } from "./scheduler.service";
 
 export const startCronJob = async () => {
+  console.log("Cron job started");
   const job = new CronJob("*/5 * * * * *", async () => {
-    console.log(`[${new Date().toISOString()}] Running order data fetch job...`);
-  },
-    null,
-    false,
-    "Asia/Kolkata"
-  );
+    await scheduledWorkOrder();
+  });
   job.start();
 }

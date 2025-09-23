@@ -14,15 +14,12 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
       const mappedUserList = await getLocationsMappedData(user_id);
       match.userIdList = { $in: mappedUserList.map((doc: any) => doc.userId) };
     }
-    const query: any = req.query;
-    if (query?.locationId) {
-      match._id = query.locationId;
+    const { query: { locationId, parent_id }} = req;
+    if (locationId) {
+      match._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
-    if (query?.parent_id) {
-      match.parent_id = query.parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
-    }
-    if (query?._id) {
-      match.parent_id = query._id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+    if (parent_id) {
+      match.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
     let data = await getAll(match);
     if (!data || data.length === 0) {
