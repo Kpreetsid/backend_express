@@ -18,6 +18,10 @@ export const verifyUserLogin = async ({ id, companyID, email, username }: UserLo
   return await UserModel.findOne({ _id: id, account_id: companyID, email, username }).select('-password');
 };
 
+export const userVerified = async (id: string) => {
+  return await UserModel.findOneAndUpdate({ _id: id }, { isVerified: true }, { new: true });
+};
+
 export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { locationID } = req.params;
@@ -39,7 +43,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
 
 export const createNewUser = async (body: IUser, account_id: any) => {
   body.password = await hashPassword(body.password);
-  const newUser = new UserModel({ ...body, account_id, isFirstUser: false, visible: true, isVerified: true });
+  const newUser = new UserModel({ ...body, account_id, isFirstUser: false, visible: true, isVerified: false });
   const userDetails = await newUser.save();
   const roleDetails = await createUserRole(body.user_role, userDetails);
   return { userDetails, roleDetails };

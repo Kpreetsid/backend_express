@@ -18,13 +18,13 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!username || !password) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { $or: [{ username: username }, { email: username }], user_status: 'active', visible: true };
+    const match: any = { $or: [{ username: username }, { email: username }], user_status: 'active' };
     const user: IUser | null = await UserModel.findOne(match).select('+password');
     if (!user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
     if(!user.isVerified) {
-      throw Object.assign(new Error('User is not verified'), { status: 403 });
+      throw Object.assign(new Error('Unverified user'), { status: 403 });
     }
     if(user.user_role !== 'admin') {
       const locationList = await getLocationsMappedData(user._id);
