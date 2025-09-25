@@ -223,17 +223,17 @@ export const createAssetOld = async (req: Request, res: Response, next: NextFunc
   }
 }
 
-export const updateAssetOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const existingData: any = await getAll({ _id: req.params.id, account_id: account_id, visible: true });
-    if (!existingData || existingData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+export const updateAssetOld = async (id: any, body: any, user_id: any): Promise<any> => {
+  return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true });
+}
+
+export const updateAllChildAssetsLocation = async (id: any, location_id: any, user_id: any): Promise<any> => {
+  const childAssets = await AssetModel.find({ parent_id: id });
+  if (childAssets && childAssets.length > 0) {
+    for (const asset of childAssets) {
+      await updateAllChildAssetsLocation(`${asset._id}`, location_id, user_id);
     }
-    const data = await AssetModel.findOneAndUpdate({ _id: req.params.id }, { ...req.body, updatedBy: user_id }, { new: true });
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    next(error);
+    return await AssetModel.updateMany({ parent_id: id }, { location_id: location_id, updatedBy: user_id });
   }
 }
 

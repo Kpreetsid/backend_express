@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyById } from './asset.service';
+import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyById, updateAllChildAssetsLocation } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { createMapUserAssets, getAssetsMappedData, removeLocationMapping } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
@@ -155,7 +155,27 @@ export const createOld = async (req: Request, res: Response, next: NextFunction)
 }
 
 export const updateOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await updateAssetOld(req, res, next);
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { params: { id }, body } = req;
+    if (!id) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    const existingData: any = await getAll({ _id: id, account_id: account_id, visible: true });
+    if (!existingData || existingData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    if(body.location_id !== existingData[0].location_id) {
+      await updateAllChildAssetsLocation(id, body.location_id, user_id);
+    }
+    const data = await updateAssetOld(id, body, user_id);
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: "Data updated successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

@@ -38,7 +38,6 @@ export const getLocationTree = async (req: Request, res: Response, next: NextFun
     let match: any = { account_id, visible: true };
     let allowedLocationIds: any = [];
     if (location_floor_map_tree) {
-      match.top_level = true;
       if (location_id) {
         match._id = location_id;
       }
