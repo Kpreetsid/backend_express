@@ -24,14 +24,13 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    const match: any = { account_id, visible: true };
+    const { params: { id } } = req;
     if (!id) {
       throw Object.assign(new Error("Invalid ID"), { status: 400 });
     }
-    match._id = new mongoose.Types.ObjectId(id);
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
     if (userRole !== "admin") {
-      match.user_id = user_id;
+      match.createdBy = user_id;
     }
     const data = await getSchedules(match);
     if (!data || data.length === 0) {
@@ -43,7 +42,6 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     next(error);
   }
 };
-
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {

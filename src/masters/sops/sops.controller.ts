@@ -33,7 +33,7 @@ export const getSop = async (req: Request, res: Response, next: NextFunction): P
     if (!id) {
       throw Object.assign(new Error('Id is required'), { status: 400 });
     }
-    const match: any = { account_id, visible: true };
+    const match: any = { _id: id, account_id, visible: true };
     if (category) {
       match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
     }

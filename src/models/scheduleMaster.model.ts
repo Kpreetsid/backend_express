@@ -1,147 +1,118 @@
 import mongoose, { Document, ObjectId, Schema } from "mongoose";
 
-interface PhoneNumber {
-    number: string;
-    internationalNumber: string;
-    nationalNumber: string;
-    e164Number: string;
-    countryCode: string;
-    dialCode: string;
+interface TaskOption {
+  key: string;
+  value: string | number | boolean;
 }
 
-interface User {
-    firstName: string;
-    lastName: string;
-    username: string;
-    email: string;
-    emailStatus: boolean;
-    user_status: string;
-    user_role: string;
-    createdOn: Date;
-    id: string;
-    account_id: string;
-    phone_no?: PhoneNumber;
-    isFirstUser?: boolean;
-    address?: string;
-    pincode?: string;
-    user_profile_img?: string;
-    mobileNumber?: PhoneNumber;
-    userrole?: string;
-    userstatus?: string;
+interface Task {
+  title: string;
+  type: "text" | "number" | "multipleChoice" | "checkBox"; // enum
+  fieldValue: string;
+  options: TaskOption[];
 }
 
-interface Location {
-    location_name: string;
-    description: string;
-    location_type: string;
-    top_level: boolean;
-    assigned_to: string;
-    visible: boolean;
-    id: string;
-    account_id: string;
-    userId: string;
-    top_level_location_id: string;
-    teamId?: string | null;
-    userName: string;
-    top_level_location_image: string;
-    image_path: string;
-    location: string;
-    qr_code: string;
+const TaskSchema = new Schema<Task>({
+  title: { type: String, required: true },
+  type: { type: String, required: true },
+  fieldValue: { type: String },
+  options: [{ key: String, value: String }],
+}, { _id: false });
+
+interface IPart {
+  part_id: string;
+  part_name: string;
+  part_type: string;
+  estimatedQuantity: number;
 }
 
-interface AssetLocationData {
-    location_name: string;
-    id: string;
-    assigned_to: string;
-}
-
-interface Asset {
-    asset_name: string;
-    asset_id: string;
-    top_level: boolean;
-    locationId: string;
-    visible: boolean;
-    id: string;
-    account_id: string;
-    top_level_asset_id: string;
-    description: string;
-    model: string;
-    manufacturer: string;
-    asset_type: string;
-    year: string;
-    teamId: string;
-    assigned_to: number;
-    locationData: AssetLocationData[];
-    locationName: string;
-    timestamp: string;
-    childs: any[];
-    location: {
-        location_name: string;
-        id: string;
-    };
-}
+const PartSchema = new Schema<IPart>({
+  part_id: { type: String, required: true },
+  part_name: { type: String, required: true },
+  part_type: { type: String, required: true },
+  estimatedQuantity: { type: Number, required: true },
+}, { _id: false });
 
 interface WorkOrder {
-    title: string;
-    description: string;
-    estimated_time: string;
-    priority: string;
-    status: string;
-    nature_of_work: string;
-    account_id: string;
-    assigned_to: number;
-    asset_id: string;
-    location_id: string;
-    created_by: string;
-    sopForm: any;
-    userId: User[];
-    workInstruction: any;
-    estimatedParts: any[];
-    actualParts: any[];
-    createdFrom?: string;
+  title: string;
+  description: string;
+  type: "Preventive" | "Corrective" | "Predictive"; // enum
+  status: "Open" | "In Progress" | "Completed" | "Closed"; // enum
+  priority: "Low" | "Medium" | "High" | "Critical"; // enum
+  estimated_time: string;
+  start_date: string;
+  end_date: string;
+  wo_location_id: ObjectId;
+  wo_asset_id: ObjectId;
+  sop_form_id: ObjectId;
+  userIdList: string[];
+  tasks: Task[];
+  parts: IPart[];
+  workInstruction: string;
+  createdFrom?: string;
 }
 
-export interface IScheduleMaster extends Document {
-    title: string;
-    description: string;
-    start_date: string;
-    days_to_complete: number;
-    schedule_mode: string;
-    work_order: WorkOrder;
-    rescheduleEnabled: boolean;
-    no_of_time_call: number;
-    visible: boolean;
-    account_id: ObjectId;
-    rescheduleWeekDays?: number;
-    monday?: boolean;
-    tuesday?: boolean;
-    wednesday?: boolean;
-    thursday?: boolean;
-    friday?: boolean;
-    saturday?: boolean;
-    sunday?: boolean;
-    location?: Location[];
-    asset?: Asset[];
-    prev_asset_id?: ObjectId;
-    prev_loc_id?: ObjectId;
-    month?: number;
-    dayOfMonth?: string;
-    next_execute_date?: string;
+const WorkOrderSchema = new Schema<WorkOrder>({
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  type: { type: String, required: true },
+  status: { type: String, required: true },
+  priority: { type: String, required: true },
+  estimated_time: { type: String },
+  start_date: { type: String, required: true },
+  end_date: { type: String },
+  wo_location_id: { type: Schema.Types.ObjectId, required: true },
+  wo_asset_id: { type: Schema.Types.ObjectId, required: true },
+  sop_form_id: { type: Schema.Types.ObjectId },
+  userIdList: { type: [String], required: true },
+  tasks: { type: [TaskSchema] },
+  parts: { type: [PartSchema] },
+  workInstruction: { type: String },
+  createdFrom: { type: String },
+}, { _id: false });
+
+interface ScheduleRepeatWeekly {
+  interval: number | null;
+  days: {
+    monday: boolean;
+    tuesday: boolean;
+    wednesday: boolean;
+    thursday: boolean;
+    friday: boolean;
+    saturday: boolean;
+    sunday: boolean;
+  };
 }
 
-const ScheduleMasterSchema = new Schema<IScheduleMaster>(
-    {
-        account_id: { type: mongoose.Types.ObjectId, ref: "AccountModel", required: true },
-        title: { type: String, required: true },
-        description: { type: String, required: true },
-        start_date: { type: String, required: true },
-        days_to_complete: { type: Number, required: true },
-        schedule_mode: { type: String, required: true },
-        work_order: { type: Object, required: true },
-        rescheduleEnabled: { type: Boolean, default: false },
-        no_of_time_call: { type: Number, default: 1 },
-        visible: { type: Boolean, default: true },
-        rescheduleWeekDays: { type: Number },
+interface ScheduleRepeatMonthly {
+  interval: number | null;
+  dayOfMonth: number | null;
+}
+
+interface Schedule {
+  mode: "daily" | "weekly" | "monthly"; // enum
+  enabled: boolean;
+  days_to_complete: number;
+  no_of_time_call: number;
+  start_date: string;
+  end_date?: string | null;
+  repeat: {
+    weekly: ScheduleRepeatWeekly;
+    monthly: ScheduleRepeatMonthly;
+  };
+}
+
+const ScheduleSchema = new Schema<Schedule>({
+  mode: { type: String, enum: ["none", "daily", "weekly", "monthly"], required: true },
+  enabled: { type: Boolean, default: true },
+  days_to_complete: { type: Number, required: true },
+  no_of_time_call: { type: Number, default: 1 },
+  start_date: { type: String, required: true },
+  end_date: { type: String },
+  repeat: {
+    weekly: {
+      interval: { type: Number, default: 1 },
+      days: {
         monday: { type: Boolean, default: false },
         tuesday: { type: Boolean, default: false },
         wednesday: { type: Boolean, default: false },
@@ -149,33 +120,58 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
         friday: { type: Boolean, default: false },
         saturday: { type: Boolean, default: false },
         sunday: { type: Boolean, default: false },
-        prev_asset_id: { type: mongoose.Types.ObjectId },
-        prev_loc_id: { type: mongoose.Types.ObjectId },
-        month: { type: Number },
-        dayOfMonth: { type: String },
-        next_execute_date: { type: String }
+      },
     },
-    {
-        collection: 'schedule_master',
-        timestamps: true,
-        versionKey: false,
-        toJSON: {
-            virtuals: true,
-            transform(doc: any, ret: any) {
-                ret.id = ret._id;
-                delete ret._id;
-                return ret;
-            }
-        },
-        toObject: {
-            virtuals: true,
-            transform: function (doc, ret) {
-                ret.id = ret._id;
-                delete ret._id;
-                return ret;
-            }
-        }
+    monthly: {
+      interval: { type: Number, default: 1 },
+      dayOfMonth: { type: Number, default: 1 },
+    },
+  },
+}, { _id: false });
+
+export interface IScheduleMaster extends Document {
+  account_id: ObjectId;
+  title: string;
+  description: string;
+  schedule: Schedule;
+  work_order: WorkOrder;
+  visible: boolean;
+  createdBy: ObjectId;
+  updatedBy: ObjectId;
+}
+
+const ScheduleMasterSchema = new Schema<IScheduleMaster>(
+  {
+    account_id: { type: mongoose.Types.ObjectId, ref: "AccountModel", required: true },
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    schedule: { type: ScheduleSchema, required: true },
+    work_order: { type: WorkOrderSchema, required: true },
+    visible: { type: Boolean, required: true, default: true },
+    createdBy: { type: mongoose.Types.ObjectId, ref: "UserModel", required: true },
+    updatedBy: { type: mongoose.Types.ObjectId, ref: "UserModel" },
+  },
+  {
+    collection: "schedule_master",
+    timestamps: true,
+    versionKey: false,
+    toJSON: {
+      virtuals: true,
+      transform(doc: any, ret: any) {
+        ret.id = ret._id;
+        delete ret._id;
+        return ret;
+      }
+    },
+    toObject: {
+      virtuals: true,
+      transform: function (doc, ret) {
+        ret.id = ret._id;
+        delete ret._id;
+        return ret;
+      }
     }
+  }
 );
 
 export const SchedulerModel = mongoose.model<IScheduleMaster>("Schema_Schedule", ScheduleMasterSchema);
