@@ -16,13 +16,13 @@ import masterRoutes from './masters/master.routes';
 import { fileLogger, activityLogger, errorMiddleware } from './middlewares';
 
 const app: Express = express();
-
-app.use(helmet());
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
 app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], origin: true }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(fileLogger);
+app.use(activityLogger);
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/assets')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/asset_report')));
@@ -36,15 +36,12 @@ app.use('/', express.static(path.join(__dirname, '../uploadFiles/posts')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/user_profile_img')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/WO_docs')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_request')));
-app.use(fileLogger);
-app.use(activityLogger);
-
+app.use(helmet());
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 1000,
   message: 'Too many requests, please try again later.'
 }));
-
 app.use(compression({
   level: 9,
   threshold: 0,
@@ -54,14 +51,12 @@ app.use(compression({
 }));
 
 const apiRouter: Router = Router();
-
 apiRouter.use('/', routerIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
 apiRouter.use('/master', isAuthenticated, masterRoutes());
 apiRouter.use('/work', isAuthenticated, workRoutes());
 apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());
-
 app.use('/api', apiRouter);
 
 app.use((req: Request, res: Response, next: NextFunction) => {

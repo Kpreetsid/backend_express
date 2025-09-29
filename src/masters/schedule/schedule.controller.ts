@@ -8,9 +8,14 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
+    const { query: { priority, location_id, assignedUser } } = req;
+    if (priority) match["work_order.priority"] = { $in: priority.toString().split(',') };
+    if (location_id) match["work_order.wo_location_id"] = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    if (assignedUser) match["work_order.userIdList"] = { $in: assignedUser.toString().split(",") };
     if (userRole !== 'admin') {
-      match.user_id = user_id;
+      match.createdBy = user_id;
     }
+    console.log(match);
     const data = await getSchedules(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -64,7 +69,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
-    const existingData = await getSchedules({ _id: id, account_id: account_id, visible: true });
+    const existingData = await getSchedules({ _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
