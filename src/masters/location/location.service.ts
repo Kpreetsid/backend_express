@@ -60,40 +60,37 @@ export const getTree = async (match: any, location_id: any, allowedLocationIds: 
   return treeData;
 };
 
-export const kpiFilterLocations = async (account_id: any, user_id: any, userRole: any) => {
+export const kpiFilterLocations = async (account_id: any, user_id: any, userRole: string) => {
   try {
     const match: any = { account_id, visible: true };
-    if (userRole !== 'admin') {
-      const mapLocationData: IMapUserLocation[] = await getLocationsMappedData(`${user_id}`);
-      if (!mapLocationData.length) {
+    if (userRole !== "admin") {
+      const mapLocationData: IMapUserLocation[] = await getLocationsMappedData(user_id);
+      if (!mapLocationData?.length) {
         throw Object.assign(new Error('No location mapping found for user'), { status: 404 });
       }
-      const locationIds = mapLocationData.map(doc => `${doc.locationId}`).filter(Boolean);
+      const locationIds = mapLocationData.map((doc) => doc.locationId?.toString()).filter(Boolean);
       if (!locationIds.length) {
         throw Object.assign(new Error('No valid location IDs found'), { status: 404 });
       }
-      match._id = { $in: locationIds };
+      match._id = { $in: locationIds.map((id) => new mongoose.Types.ObjectId(id)) };
     }
     const locations: ILocationMaster[] = await LocationModel.find(match).lean();
     if (!locations?.length) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error("No data found"), { status: 404 });
     }
-    // Build tree from flat location list
     const idMap: Record<string, any> = {};
-    locations.forEach((loc: any) => {
+    locations.forEach((loc) => {
       idMap[`${loc._id}`] = { ...loc, children: [] };
     });
     const rootNodes: any[] = [];
-    locations.forEach((loc: any) => {
-      const locId = `${loc._id}`;
-      const parentId = `${loc.parent_id}`;
-      if (parentId !== "undefined" && idMap[parentId]) {
-        idMap[parentId].children.push(idMap[locId]);
+    locations.forEach((loc) => {
+      const parentId = loc.parent_id ? loc.parent_id.toString() : null;
+      if (parentId && idMap[parentId]) {
+        idMap[parentId].children.push(idMap[`${loc._id}`]);
       } else {
-        rootNodes.push(idMap[locId]);
+        rootNodes.push(idMap[`${loc._id}`]);
       }
     });
-    // Group by levels
     const levelOneLocations: any[] = [];
     const levelTwoLocations: any[] = [];
     const levelThreeLocations: any[] = [];
@@ -101,7 +98,7 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
       for (const node of nodes) {
         const formatted = {
           location_name: node.location_name,
-          id: `${node._id}`,
+          id: node._id.toString(),
         };
         if (level === 1) levelOneLocations.push(formatted);
         else if (level === 2) levelTwoLocations.push(formatted);
