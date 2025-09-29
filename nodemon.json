@@ -1,5 +1,7 @@
 {
-    "watch": ["src"],
+    "watch": [
+        "src"
+    ],
     "ext": ".ts,.js",
-    "exec": "npm start"
+    "exec": "ts-node-dev --respawn --transpile-only src/server.ts"
 }

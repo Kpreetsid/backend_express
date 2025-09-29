@@ -7,7 +7,7 @@ export interface IWorkOrderAssignee extends Document {
 
 const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(
   {
-    woId: { type: Schema.Types.ObjectId, ref: 'WorkOrderModel', required: true },
+    woId: { type: Schema.Types.ObjectId, ref: 'Schema_WorkOrder', required: true }, // fixed ref
     userId: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
   },
   {
@@ -16,7 +16,7 @@ const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(
     versionKey: false,
     toJSON: {
       virtuals: true,
-      transform(doc: any, ret: any) {
+      transform(doc, ret) {
         ret.id = ret._id;
         delete ret._id;
         return ret;
@@ -24,7 +24,7 @@ const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(
     },
     toObject: {
       virtuals: true,
-      transform: function (doc, ret) {
+      transform(doc, ret) {
         ret.id = ret._id;
         delete ret._id;
         return ret;
@@ -34,3 +34,4 @@ const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(
 );
 
 export const WorkOrderAssigneeModel = model<IWorkOrderAssignee>('Schema_WorkOrderAssignee', workOrderAssigneeSchema);
+

@@ -10,30 +10,34 @@ export const getAllOrders = async (match: any): Promise<any> => {
   match.visible = true;
   let data = await WorkOrderModel.aggregate([
     { $match: match },
-    { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
-    { $lookup: { 
-      from: "asset_master", 
-      let: { wo_asset_id: '$wo_asset_id' },
-      pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
-        { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
-        { $addFields: { id: '$_id' } }
-      ],
-      as: "asset" 
-    }},
-    { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
-    { $lookup: { 
-      from: "location_master", 
-      let: { wo_location_id: '$wo_location_id' },
-      pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
-        { $project: { _id: 1, location_name: 1, location_type: 1 } },
-        { $addFields: { id: '$_id' } }
-      ],
-      as: "location" 
-    }},
-    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
-    { $addFields: { id: "$_id" }}
+    { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" } },
+    {
+      $lookup: {
+        from: "asset_master",
+        let: { wo_asset_id: '$wo_asset_id' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
+          { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+          { $addFields: { id: '$_id' } }
+        ],
+        as: "asset"
+      }
+    },
+    { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "location_master",
+        let: { wo_location_id: '$wo_location_id' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
+          { $project: { _id: 1, location_name: 1, location_type: 1 } },
+          { $addFields: { id: '$_id' } }
+        ],
+        as: "location"
+      }
+    },
+    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
+    { $addFields: { id: "$_id" } }
   ]);
   if (!data || data.length === 0) {
     throw Object.assign(new Error('No data found'), { status: 404 });
@@ -50,6 +54,7 @@ export const getAllOrders = async (match: any): Promise<any> => {
   }));
   return result;
 };
+
 
 export const orderStatus = async (match: any): Promise<any> => {
   match.visible = true;
@@ -192,7 +197,7 @@ export const summaryData = async (match: any): Promise<any> => {
   }
   const todayDate = new Date().toISOString().split('T')[0];
   let complete_wo_on_time: any = [];
-  let overdue_WO : any= [];
+  let overdue_WO: any = [];
   let planned_WO: any = [];
   let Unplanned_WO: any = [];
   WO_list.map((item: any) => {
@@ -224,31 +229,35 @@ export const pendingOrders = async (match: any): Promise<any> => {
   match.visible = true;
   return await WorkOrderModel.aggregate([
     { $match: match },
-    { $lookup: { 
-      from: 'asset_master', 
-      let: { wo_asset_id: '$wo_asset_id' },
-      pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
-        { $project: { _id: 1, asset_name: 1, asset_type: 1 } }
-      ],
-      as: 'asset'
-    }},
+    {
+      $lookup: {
+        from: 'asset_master',
+        let: { wo_asset_id: '$wo_asset_id' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
+          { $project: { _id: 1, asset_name: 1, asset_type: 1 } }
+        ],
+        as: 'asset'
+      }
+    },
     { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
-    { $lookup: { 
-      from: 'location_master', 
-      let: { wo_location_id: '$wo_location_id' },
-      pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
-        { $project: { _id: 1, location_name: 1, location_type: 1 } }
-      ],
-      as: 'location'
-    }},
+    {
+      $lookup: {
+        from: 'location_master',
+        let: { wo_location_id: '$wo_location_id' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
+          { $project: { _id: 1, location_name: 1, location_type: 1 } }
+        ],
+        as: 'location'
+      }
+    },
     { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } },
     { $addFields: { id: '$_id' } }
   ]);
 }
 
-const generateOrderNo = async (account_id: any): Promise<string> => {
+export const generateOrderNo = async (account_id: any): Promise<string> => {
   const year = new Date().getFullYear();
   const totalCount = await WorkOrderModel.countDocuments({
     account_id,
@@ -263,29 +272,29 @@ const generateOrderNo = async (account_id: any): Promise<string> => {
 
 export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
   const newAsset = new WorkOrderModel({
-    account_id : user.account_id,
-    order_no : await generateOrderNo(user.account_id),
-    title : body.title,
-    description : body.description,
-    estimated_time : body.estimated_time,
-    priority : body.priority,
-    status : body.status,
-    type : body.type,
-    sop_form_id : body.sop_form_id,
-    rescheduleEnabled : false,
-    created_by : user._id,
-    wo_asset_id : body.wo_asset_id,
-    wo_location_id : body.wo_location_id,
-    end_date : body.end_date,
-    start_date : body.start_date,
-    sopForm : body.sopForm,
-    workInstruction : body.workInstruction,
-    actualParts : body.actualParts,
-    createdFrom : body.createdFrom,
-    files : body.files,
-    tasks : body.tasks,
-    parts : body.parts,
-    work_request_id : body.work_request_id,
+    account_id: user.account_id,
+    order_no: await generateOrderNo(user.account_id),
+    title: body.title,
+    description: body.description,
+    estimated_time: body.estimated_time,
+    priority: body.priority,
+    status: body.status,
+    type: body.type,
+    sop_form_id: body.sop_form_id,
+    rescheduleEnabled: false,
+    created_by: user._id,
+    wo_asset_id: body.wo_asset_id,
+    wo_location_id: body.wo_location_id,
+    end_date: body.end_date,
+    start_date: body.start_date,
+    sopForm: body.sopForm,
+    // workInstruction : body.workInstruction,
+    actualParts: body.actualParts,
+    createdFrom: body.createdFrom,
+    files: body.files,
+    tasks: body.tasks,
+    parts: body.parts,
+    work_request_id: body.work_request_id,
     createdBy: user._id
   });
   const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
@@ -301,7 +310,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
   if (!data) {
     throw Object.assign(new Error('Failed to create work order'), { status: 400 });
   }
-  if(body.parts?.estimated?.length > 0) {
+  if (body.parts?.estimated?.length > 0) {
     await assignPartToWorkOrder(body.parts, user);
   }
   userDetails.forEach(async (assignedUsers: IUser) => {

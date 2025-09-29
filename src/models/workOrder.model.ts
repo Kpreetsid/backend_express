@@ -3,6 +3,30 @@ import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
 export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High'];
 
+export interface ITaskOption {
+  key: string;
+  value: string;  // "false" as string in your DB
+}
+
+export interface ITask {
+  title: string;
+  type: string;
+  fieldValue: string;
+  options: ITaskOption[];
+}
+
+const TaskOptionSchema = new Schema<ITaskOption>({
+  key: { type: String },
+  value: { type: String }
+}, { _id: true });
+
+const TaskSchema = new Schema<ITask>({
+  title: { type: String },
+  type: { type: String },
+  fieldValue: { type: String },
+  options: [TaskOptionSchema]
+}, { _id: true, versionKey: false });
+
 export interface IParts {
   part_id: ObjectId;
   part_name: string;
@@ -12,12 +36,15 @@ export interface IParts {
 }
 
 const PartsSchema = new Schema<IParts>({
-  part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' }, 
+  part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' },
   part_name: { type: String, required: true },
   part_type: { type: String, required: true },
   estimatedQuantity: { type: Number, required: true },
   actualQuantity: { type: Number }
-}, { _id: false, versionKey: false });
+}, { _id: true, versionKey: false });
+
+
+
 
 export interface IWorkOrder extends Document {
   account_id: ObjectId;
@@ -27,6 +54,7 @@ export interface IWorkOrder extends Document {
   estimated_time: number;
   priority: string;
   status: string;
+  createdFrom?: string;
   type: string;
   wo_asset_id: ObjectId;
   wo_location_id: ObjectId;
@@ -35,7 +63,7 @@ export interface IWorkOrder extends Document {
   sop_form_id: ObjectId;
   work_instruction: ObjectId;
   cron_id: ObjectId;
-  tasks: object[];
+  tasks: ITask[];
   parts: IParts[];
   work_request_id: ObjectId;
   files: object[];
@@ -50,6 +78,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   title: { type: String, required: true },
   description: { type: String },
   estimated_time: { type: Number },
+  createdFrom: { type: String },
   priority: { type: String, enum: WORK_ORDER_PRIORITIES, default: "None" },
   status: { type: String, enum: WORK_ORDER_STATUSES, default: "Open" },
   type: { type: String },
@@ -59,8 +88,8 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   end_date: { type: Date },
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
   work_instruction: { type: Schema.Types.ObjectId, ref: 'WorkInstructionModel' },
-  parts: { type: [PartsSchema] },
-  tasks: { type: [Object] },
+  tasks: [TaskSchema],
+  parts: [PartsSchema],
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   files: { type: [Object] },
   visible: { type: Boolean, default: true },
