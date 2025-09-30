@@ -135,6 +135,8 @@ export interface IScheduleMaster extends Document {
   description: string;
   schedule: Schedule;
   work_order: WorkOrder;
+  last_execution_date: Date;
+  next_execute_date: Date;
   visible: boolean;
   createdBy: ObjectId;
   updatedBy: ObjectId;
@@ -148,6 +150,8 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     schedule: { type: ScheduleSchema, required: true },
     work_order: { type: WorkOrderSchema, required: true },
     visible: { type: Boolean, required: true, default: true },
+    last_execution_date: { type: Date },
+    next_execute_date: { type: Date },
     createdBy: { type: mongoose.Types.ObjectId, ref: "UserModel", required: true },
     updatedBy: { type: mongoose.Types.ObjectId, ref: "UserModel" },
   },

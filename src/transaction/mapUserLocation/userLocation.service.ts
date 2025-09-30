@@ -57,7 +57,8 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
             from: "location_master",
             let: { locId: "$locationId" },
             pipeline: [
-              { $match: { $expr: { $eq: ["$_id", "$$locId"] } } }
+              { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
+              { $addFields: { id: '$_id' } }
             ],
             as: "location",
           },
@@ -72,7 +73,8 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
             let: { userId: "$userId" },
             pipeline: [
               { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-              { $project: { password: 0 } },
+              { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+              { $addFields: { id: '$_id' } }
             ],
             as: "user",
           },
@@ -100,7 +102,40 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+export const createMapUserAssets = async (data: any): Promise<any> => {
+  return await MapUserAssetLocationModel.insertMany(data);
+};
+
+const updateAssetsForLocationHierarchy = async (locationId: string, userIdList: string[]) => {
+  const assets = await AssetModel.find({ locationId: locationId }).select("_id").lean();
+  for (const asset of assets) {
+    await updateMapUserAssets(asset._id.toString(), userIdList);
+  }
+  const childLocations = await LocationModel.find({ parent_id: locationId }).select("_id").lean();
+  for (const child of childLocations) {
+    await updateAssetsForLocationHierarchy(child._id.toString(), userIdList);
+  }
+};
+
+const getAllChildLocations = async (locationId: string, userIdList: string[]) => {
+  const children = await LocationModel.find({ parent_id: locationId }).select("_id").lean();
+  if (!children?.length) return;
+  const childIds = children.map(c => c._id.toString());
+  const allMappedData = await MapUserAssetLocationModel.find({
+    locationId: { $in: [locationId, ...childIds] },
+    userId: { $in: userIdList }
+  });
+  if (allMappedData?.length > 0) {
+    await MapUserAssetLocationModel.deleteMany({
+      locationId: { $in: childIds },
+      userId: { $nin: userIdList }
+    });
+  }
+  await Promise.all(childIds.map(async (id: string) => await getAllChildLocations(id, userIdList)));
+}
+
 export const mapUserLocationData = async (id: any, userIdList: any, account_id: any) => {
+  await getAllChildLocations(id, userIdList);
   await MapUserAssetLocationModel.deleteMany({ locationId: id });
   const queryArray: any = [];
   userIdList.forEach((doc: any) => {
@@ -110,24 +145,38 @@ export const mapUserLocationData = async (id: any, userIdList: any, account_id: 
       account_id
     }));
   })
+  await updateAssetsForLocationHierarchy(id, userIdList);
   return await MapUserAssetLocationModel.insertMany(queryArray);
 }
 
-export const createMapUserAssets = async (data: any): Promise<any> => {
-  return await MapUserAssetLocationModel.insertMany(data);
+const getAllChildAssets = async (assetId: string, userIdList: string[]) => {
+  const children = await AssetModel.find({ parent_id: assetId }).select("_id").lean();
+  if (!children?.length) return;
+  const childIds = children.map(c => c._id.toString());
+  const allMappedData = await MapUserAssetLocationModel.find({
+    assetId: { $in: [assetId, ...childIds] },
+    userId: { $exists: true }
+  }).lean();
+  if (allMappedData?.length > 0) {
+    await MapUserAssetLocationModel.deleteMany({
+      assetId: { $in: childIds },
+      userId: { $nin: userIdList }
+    });
+  }
+  for (const childId of childIds) {
+    await getAllChildAssets(childId, userIdList);
+  }
 };
 
-export const updateMapUserAssets = async (assetId: string, userIdList: any): Promise<any> => {
-  await MapUserAssetLocationModel.deleteMany({ assetId: assetId, userId: { $exists: true } });
-  const queryArray: any = [];
-  userIdList.forEach((doc: any) => {
-    queryArray.push(new MapUserAssetLocationModel({
-      assetId: assetId,
-      userId: doc
-    }));
-  })
-  return await MapUserAssetLocationModel.insertMany(queryArray);
-}
+export const updateMapUserAssets = async (assetId: string, userIdList: string[]): Promise<any> => {
+  await getAllChildAssets(assetId, userIdList);
+  await MapUserAssetLocationModel.deleteMany({ assetId });
+  if (userIdList.length > 0) {
+    const queryArray = userIdList.map(userId => ({ assetId, userId }));
+    await MapUserAssetLocationModel.insertMany(queryArray);
+  }
+  return assetId;
+};
 
 export const mapUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -135,11 +184,7 @@ export const mapUserLocations = async (req: Request, res: Response, next: NextFu
     const body = req.body;
     const queryArray: any = [];
     body.forEach((doc: any) => {
-      queryArray.push(new MapUserAssetLocationModel({
-        locationId: doc.locationId,
-        userId: doc.userId,
-        account_id
-      }));
+      queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
     })
     await MapUserAssetLocationModel.insertMany(queryArray);
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
@@ -154,11 +199,7 @@ export const updateMappedUserLocations = async (req: Request, res: Response, nex
     const body = req.body;
     const queryArray: any = [];
     body.forEach((doc: any) => {
-      queryArray.push(new MapUserAssetLocationModel({
-        locationId: doc.locationId,
-        userId: doc.userId,
-        account_id
-      }));
+      queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
     })
     await MapUserAssetLocationModel.insertMany(queryArray);
     return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
@@ -195,6 +236,22 @@ export const userAssets = async (req: Request, res: Response, next: NextFunction
     if (query.populate === 'assetId') {
       pipeline.push({ $lookup: { from: 'asset_master', localField: 'assetId', foreignField: '_id', as: 'asset' }}, { $unwind: '$asset' });
     }
+    if (query.populate === 'userId') {
+      pipeline.push({
+        $lookup: {
+          from: "users",
+          let: { userId: "$userId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "user",
+        },
+      },
+      { $unwind: "$user" });
+    }
+    pipeline.push({ $addFields: { id: '$_id' } });
     const data = await MapUserAssetLocationModel.aggregate(pipeline);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No mapping data found'), { status: 404 });

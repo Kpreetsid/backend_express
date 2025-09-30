@@ -18,6 +18,9 @@ export const getAll = async (match: any) => {
     if (obj.locationId) {
       obj.locationId.id = obj.locationId._id;
     }
+    if (obj.parent_id) {
+      obj.parent_id.id = obj.parent_id._id;
+    }
     obj.id = id;
     const mappedUser = mapData.filter(map => `${map.assetId}` === `${id}`);
     obj.userList = mappedUser.length > 0 ? mappedUser.map((a: any) => a.userId).filter((user: any) => user) : [];
@@ -211,29 +214,23 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
   }
 }
 
-export const createAssetOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const data: any = new AssetModel({ ...req.body, account_id: account_id, createdBy: user_id, visible: true });
-    data.top_level_asset_id = data._id;
-    await data.save();
-    return res.status(200).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    next(error);
-  }
+export const createAssetOld = async (body: any, account_id: any, user_id: any): Promise<any> => {
+  const data: any = new AssetModel({ ...body, asset_model: body.model, account_id, createdBy: user_id });
+  data.top_level_asset_id = data._id;
+  return await data.save();
 }
 
 export const updateAssetOld = async (id: any, body: any, user_id: any): Promise<any> => {
   return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true });
 }
 
-export const updateAllChildAssetsLocation = async (id: any, location_id: any, user_id: any): Promise<any> => {
+export const updateAllChildAssetsLocation = async (id: any, locationId: any, user_id: any): Promise<any> => {
   const childAssets = await AssetModel.find({ parent_id: id });
   if (childAssets && childAssets.length > 0) {
     for (const asset of childAssets) {
-      await updateAllChildAssetsLocation(`${asset._id}`, location_id, user_id);
+      await updateAllChildAssetsLocation(`${asset._id}`, locationId, user_id);
     }
-    return await AssetModel.updateMany({ parent_id: id }, { location_id: location_id, updatedBy: user_id });
+    return await AssetModel.updateMany({ parent_id: id }, { locationId: locationId, updatedBy: user_id });
   }
 }
 

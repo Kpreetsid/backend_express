@@ -37,7 +37,7 @@ export const getSchedules = async (match: any): Promise<IScheduleMaster[]> => {
                 let: { userId: "$createdBy" },
                 pipeline: [
                     { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-                    { $project: { _id: 1, firstName: 1, lastName: 1, email: 1, user_profile_img: 1 } },
+                    { $project: { _id: 1, firstName: 1, lastName: 1, email: 1, user_profile_img: 1, user_role: 1  } },
                     { $addFields: { id: "$_id" } }
                 ],
                 as: "createdBy"
@@ -50,7 +50,7 @@ export const getSchedules = async (match: any): Promise<IScheduleMaster[]> => {
                 let: { userId: "$updatedBy" },
                 pipeline: [
                     { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-                    { $project: { _id: 1, firstName: 1, lastName: 1, email: 1, user_profile_img: 1 } },
+                    { $project: { _id: 1, firstName: 1, lastName: 1, email: 1, user_profile_img: 1, user_role: 1  } },
                     { $addFields: { id: "$_id" } }
                 ],
                 as: "updatedBy"

@@ -11,6 +11,7 @@ export interface IAsset extends Document {
   asset_behavior?: string;
   asset_frequency?: string;
   asset_timezone: string;
+  asset_build_type: string;
   isNewFlow: boolean;
   equipment_id: ObjectId;
   loadType: string;
@@ -90,6 +91,7 @@ const assetSchema = new Schema<IAsset>({
   asset_behavior: { type: String },
   asset_frequency: { type: String },
   asset_timezone: { type: String },
+  asset_build_type: { type: String, required: true },
   imageNodeData: { type: Object },
   isNewFlow: { type: Boolean },
   equipment_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel' },

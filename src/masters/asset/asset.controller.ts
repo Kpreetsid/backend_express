@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyById, updateAllChildAssetsLocation } from './asset.service';
 import { IUser } from '../../models/user.model';
-import { createMapUserAssets, getAssetsMappedData, removeLocationMapping } from '../../transaction/mapUserLocation/userLocation.service';
+import { createMapUserAssets, getAssetsMappedData, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 import { deleteBase64Image, uploadBase64Image } from '../../_config/upload';
 
@@ -151,7 +151,28 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
 }
 
 export const createOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await createAssetOld(req, res, next);
+  var data: any;
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { body } = req;
+    if(body.userIdList?.length === 0) {
+      throw Object.assign(new Error('Please select at least one user'), { status: 400 });
+    }
+    data = await createAssetOld(body, account_id, user_id);
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const assetsMapData = body.userIdList.map((user: any) => ({ account_id, userId: user, assetId: data._id }));
+    await createMapUserAssets(assetsMapData);
+    const token: any = req.cookies.token || req.headers.authorization;
+    await createExternalAPICall(assetsMapData, account_id, user_id, token);
+    return res.status(200).json({ status: true, message: "Data created successfully", data });
+  } catch (error) {
+    if (data) {
+      await deleteAssetsById(data._id);
+    }
+    next(error);
+  }
 }
 
 export const updateOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -161,18 +182,23 @@ export const updateOld = async (req: Request, res: Response, next: NextFunction)
     if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
+    if(body.userIdList?.length === 0) {
+      throw Object.assign(new Error('Please select at least one user'), { status: 400 });
+    }
     const existingData: any = await getAll({ _id: id, account_id: account_id, visible: true });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    if(body.location_id !== existingData[0].location_id) {
-      await updateAllChildAssetsLocation(id, body.location_id, user_id);
+    console.log(existingData[0].locationId, body.locationId);
+    if(body.locationId !== existingData[0].locationId) {
+      await updateAllChildAssetsLocation(id, body.locationId, user_id);
     }
     const data = await updateAssetOld(id, body, user_id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
+    await updateMapUserAssets(id, body.userIdList);
+    res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
     next(error);
   }

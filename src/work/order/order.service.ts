@@ -248,7 +248,7 @@ export const pendingOrders = async (match: any): Promise<any> => {
   ]);
 }
 
-const generateOrderNo = async (account_id: any): Promise<string> => {
+export const generateOrderNo = async (account_id: any): Promise<string> => {
   const year = new Date().getFullYear();
   const totalCount = await WorkOrderModel.countDocuments({
     account_id,

@@ -9,7 +9,7 @@ export const getAllObservation = async (match: any): Promise<any> => {
         let: { userId: "$userId" },
         pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-          { $project: { _id: 1, firstName: 1, lastName: 1, email: 1 } },
+          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
           { $addFields: { id: "$_id" } }
         ],
         as: "user"
