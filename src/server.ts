@@ -52,10 +52,6 @@ app.use("/work-orders", workOrderRoutes);
 const server = app.listen(hostDetails.port, async () => {
   await connectDB();
 
-  // Check DB connection
-  const dbName = mongoose.connection.db?.databaseName;
-  console.log("✅ Connected to MongoDB database:", dbName);
-
   // Initialize schedulers
   await initJobScheduler();
 

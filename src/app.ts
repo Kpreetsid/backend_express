@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
+import { rateLimit } from 'express-rate-limit';
 import { isAuthenticated } from './_config/auth';
 import routerIndex from './nonAuthRoutes';
 import workRoutes from './work/work.routes';
