@@ -4,12 +4,11 @@ export interface IObservation extends Document {
   observation: string;
   recommendation: string;
   faults: string[];
-  files: Record<string, any>;
+  files: Array<Object>;
   createdOn: Date;
   assetId: ObjectId;
   accountId: ObjectId;
   status: string;
-  user: any;
   userId: ObjectId;
   alarmId: number;
   locationId: ObjectId;
@@ -23,12 +22,11 @@ const ObservationSchema = new Schema<IObservation>({
   observation: { type: String, required: true },
   recommendation: { type: String, required: true },
   faults: { type: [String] },
-  files: { type: Schema.Types.Mixed, default: {} },
+  files: { type: [Object] },
   createdOn: { type: Date, default: Date.now },
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
   accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   status: { type: String, required: true },
-  user: { type: Schema.Types.Mixed, required: true },
   alarmId: { type: Number },
   locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   top_level_asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },

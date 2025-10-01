@@ -29,6 +29,18 @@ export const getAll = async (match: any) => {
   return result;
 }
 
+export const getAllChildAssetIDs = async (assetId: any) => {
+  const assetsData = await AssetModel.find({ _id: assetId }).select('id parent_id');
+  if (!assetsData || assetsData.length === 0) {
+    return [assetId];
+  }
+  const parent = assetsData[0].parent_id;
+  if (!parent) {
+    return [assetId];
+  }
+  return [assetId, ...await getAllChildAssetIDs(parent)];
+}
+
 export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { locationList = [], assets = [], top_level } = req.body;

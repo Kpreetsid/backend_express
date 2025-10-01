@@ -39,16 +39,16 @@ interface WorkOrder {
   type: "Preventive" | "Corrective" | "Predictive"; // enum
   status: "Open" | "In Progress" | "Completed" | "Closed"; // enum
   priority: "Low" | "Medium" | "High" | "Critical"; // enum
-  estimated_time: string;
+  estimated_time: number;
   start_date: string;
   end_date: string;
   wo_location_id: ObjectId;
   wo_asset_id: ObjectId;
-  sop_form_id: ObjectId;
+  sop_form_id?: ObjectId;
   userIdList: string[];
   tasks: Task[];
   parts: IPart[];
-  workInstruction: string;
+  workInstruction: Array<Object>;
   createdFrom?: string;
 }
 
@@ -58,7 +58,7 @@ const WorkOrderSchema = new Schema<WorkOrder>({
   type: { type: String, required: true },
   status: { type: String, required: true },
   priority: { type: String, required: true },
-  estimated_time: { type: String },
+  estimated_time: { type: Number },
   start_date: { type: String, required: true },
   end_date: { type: String },
   wo_location_id: { type: Schema.Types.ObjectId, required: true },
@@ -67,8 +67,16 @@ const WorkOrderSchema = new Schema<WorkOrder>({
   userIdList: { type: [String], required: true },
   tasks: { type: [TaskSchema] },
   parts: { type: [PartSchema] },
-  workInstruction: { type: String },
+  workInstruction: { type: [Object] },
   createdFrom: { type: String },
+}, { _id: false });
+
+interface ScheduleRepeatDaily {
+  interval: number | null;
+}
+
+const ScheduleRepeatDailySchema = new Schema<ScheduleRepeatDaily>({
+  interval: { type: Number, default: 1 }
 }, { _id: false });
 
 interface ScheduleRepeatWeekly {
@@ -84,49 +92,49 @@ interface ScheduleRepeatWeekly {
   };
 }
 
+const ScheduleRepeatWeeklySchema = new Schema<ScheduleRepeatWeekly>({
+  interval: { type: Number, default: 1 },
+  days: {
+    monday: { type: Boolean, default: false },
+    tuesday: { type: Boolean, default: false },
+    wednesday: { type: Boolean, default: false },
+    thursday: { type: Boolean, default: false },
+    friday: { type: Boolean, default: false },
+    saturday: { type: Boolean, default: false },
+    sunday: { type: Boolean, default: false },
+  },
+}, { _id: false });
+
 interface ScheduleRepeatMonthly {
   interval: number | null;
   dayOfMonth: number | null;
 }
 
+const ScheduleRepeatMonthlySchema = new Schema<ScheduleRepeatMonthly>({
+  interval: { type: Number, default: 1 },
+  dayOfMonth: { type: Number, default: 1 }
+}, { _id: false });
+
 interface Schedule {
-  mode: "daily" | "weekly" | "monthly"; // enum
+  mode: "none" | "daily" | "weekly" | "monthly"; // enum
   enabled: boolean;
-  days_to_complete: number;
-  no_of_time_call: number;
-  start_date: string;
-  end_date?: string | null;
-  repeat: {
-    weekly: ScheduleRepeatWeekly;
-    monthly: ScheduleRepeatMonthly;
-  };
+  start_date: Date;
+  end_date?: Date | null;
+  no_of_repetition: number;
+  daily: ScheduleRepeatDaily;
+  weekly: ScheduleRepeatWeekly;
+  monthly: ScheduleRepeatMonthly;
 }
 
 const ScheduleSchema = new Schema<Schedule>({
   mode: { type: String, enum: ["none", "daily", "weekly", "monthly"], required: true },
   enabled: { type: Boolean, default: true },
-  days_to_complete: { type: Number, required: true },
-  no_of_time_call: { type: Number, default: 1 },
-  start_date: { type: String, required: true },
-  end_date: { type: String },
-  repeat: {
-    weekly: {
-      interval: { type: Number, default: 1 },
-      days: {
-        monday: { type: Boolean, default: false },
-        tuesday: { type: Boolean, default: false },
-        wednesday: { type: Boolean, default: false },
-        thursday: { type: Boolean, default: false },
-        friday: { type: Boolean, default: false },
-        saturday: { type: Boolean, default: false },
-        sunday: { type: Boolean, default: false },
-      },
-    },
-    monthly: {
-      interval: { type: Number, default: 1 },
-      dayOfMonth: { type: Number, default: 1 },
-    },
-  },
+  start_date: { type: Date, required: true },
+  end_date: { type: Date },
+  no_of_repetition: { type: Number },
+  daily: { type: ScheduleRepeatDailySchema },
+  weekly: { type: ScheduleRepeatWeeklySchema },
+  monthly: { type: ScheduleRepeatMonthlySchema },
 }, { _id: false });
 
 export interface IScheduleMaster extends Document {
