@@ -7,7 +7,7 @@ import mongoose from 'mongoose';
 export const getObservations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id, visible: true };
+    const match: any = { accountId: account_id, visible: true };
     if (userRole !== 'admin') {
       match['userId'] = user_id;
     }
@@ -38,7 +38,7 @@ export const getObservation = async (req: Request, res: Response, next: NextFunc
     if (!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), account_id, visible: true };
+    const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id, visible: true };
     if (userRole !== 'admin') {
       match['userId'] = user_id;
     }
@@ -77,13 +77,12 @@ export const createObservation = async (req: Request, res: Response, next: NextF
 
 export const updateObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const existingData = await getAllObservation({ _id: id, account_id, visible: true });
+    const existingData = await getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id, visible: true });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -99,13 +98,12 @@ export const updateObservation = async (req: Request, res: Response, next: NextF
 
 export const removeObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const existingData = await getAllObservation({ _id: id, account_id, visible: true });
+    const existingData = await getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id, visible: true });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
