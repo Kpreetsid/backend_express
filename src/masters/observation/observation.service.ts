@@ -22,12 +22,7 @@ export const getAllObservation = async (match: any): Promise<any> => {
 };
 
 export const insertObservation = async (body: any, account_id: any, user_id: any): Promise<any> => {
-  const newObservation = new ObservationModel({
-    account_id: account_id,
-    ...body,
-    user_id: user_id,
-    createdBy: user_id
-  });
+  const newObservation = new ObservationModel({ accountId: account_id, ...body, userId: user_id, createdBy: user_id });
   return await newObservation.save();
 };
 

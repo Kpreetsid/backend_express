@@ -4,11 +4,8 @@ import { connectDB, disconnectDB } from "./_config/dbConnection";
 // import { initJobScheduler } from "./cron";
 
 const server = app.listen(hostDetails.port, async () => {
-  await connectDB().then(() => {
-    console.log('MongoDB connected');
-  }).finally(async () => {
-    // await initJobScheduler();
-  });
+  await connectDB();
+  // await initJobScheduler();
   console.log(`Server running on port http://${hostDetails.host}:${hostDetails.port}`);
 });
 
