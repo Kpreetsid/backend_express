@@ -166,7 +166,11 @@ export const createOld = async (req: Request, res: Response, next: NextFunction)
     await createMapUserAssets(assetsMapData);
     const token: any = req.cookies.token || req.headers.authorization;
     await createExternalAPICall(assetsMapData, account_id, user_id, token);
-    return res.status(200).json({ status: true, message: "Data created successfully", data });
+    const insertedData: any = await getAll({ _id: data._id });
+    if (!insertedData || insertedData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(201).json({ status: true, message: "Data created successfully", data: insertedData });
   } catch (error) {
     if (data) {
       await deleteAssetsById(data._id);
@@ -198,7 +202,11 @@ export const updateOld = async (req: Request, res: Response, next: NextFunction)
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await updateMapUserAssets(id, body.userIdList);
-    res.status(200).json({ status: true, message: "Data updated successfully", data });
+    const insertedData: any = await getAll({ _id: id });
+    if (!insertedData || insertedData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data created successfully", data: insertedData });
   } catch (error) {
     next(error);
   }

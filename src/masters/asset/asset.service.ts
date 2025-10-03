@@ -81,8 +81,8 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
 
 export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { locations, id } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { locations, id } = req.body;
     const query: any = { account_id: account_id, visible: true, parent_id: { $in: [null, undefined] } };
     if (userRole !== 'admin') {
       const mapData = await MapUserAssetLocationModel.find({ userId: user_id });

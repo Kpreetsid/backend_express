@@ -13,6 +13,7 @@ import sopsRoutes from './sops/sops.routes';
 import teamRoutes from './team/team.routes';
 import floorMapRoutes from './floorMap/floorMap.routes';
 import featuresRoutes from './feature/features.routes';
+import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.routes';
 
 export default (): express.Router => {
     usersRouter(router);
@@ -28,5 +29,6 @@ export default (): express.Router => {
     teamRoutes(router);
     floorMapRoutes(router);
     featuresRoutes(router);
+    troubleshootGuideRoutes(router);
     return router;
 }

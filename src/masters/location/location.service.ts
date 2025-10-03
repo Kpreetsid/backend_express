@@ -74,7 +74,7 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
       }
       match._id = { $in: locationIds.map((id) => new mongoose.Types.ObjectId(id)) };
     }
-    const locations: ILocationMaster[] = await LocationModel.find(match).lean();
+    const locations: any = await LocationModel.find(match).lean();
     if (!locations?.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
     }
