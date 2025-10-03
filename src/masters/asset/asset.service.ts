@@ -228,7 +228,7 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
 
 export const createAssetOld = async (body: any, account_id: any, user_id: any): Promise<any> => {
   const data: any = new AssetModel({ ...body, asset_model: body.model, account_id, createdBy: user_id });
-  data.top_level_asset_id = data._id;
+  data.top_level_asset_id = data.top_level_asset_id ? data.top_level_asset_id : data._id;
   return await data.save();
 }
 

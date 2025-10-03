@@ -7,7 +7,6 @@ import { WorkOrderTemplateEngine } from "./templates/WorkOrderTemplateEngine";
 export const processJobsTick = async () => {
     try {
         const now = new Date();
-        console.log(`[JOB_RUN] Starting job tick at ${now.toISOString()}`);
         const schedules = await SchedulerModel.find({
             visible: true,
             'schedule.enabled': true,

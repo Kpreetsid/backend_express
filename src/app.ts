@@ -50,6 +50,10 @@ app.use(compression({
   }
 }));
 
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });
+});
+
 const apiRouter: Router = Router();
 apiRouter.use('/', routerIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
