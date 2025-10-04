@@ -115,36 +115,38 @@ const ScheduleRepeatMonthlySchema = new Schema<ScheduleRepeatMonthly>({
   dayOfMonth: { type: Number, default: 1 }
 }, { _id: false });
 
-interface Schedule {
+interface ISchedule {
   mode: "none" | "daily" | "weekly" | "monthly"; // enum
   enabled: boolean;
   start_date: Date;
   end_date?: Date | null;
   no_of_repetition: number;
+  no_of_execution: number;
   daily: ScheduleRepeatDaily;
   weekly: ScheduleRepeatWeekly;
   monthly: ScheduleRepeatMonthly;
+  last_execution_date: Date;
 }
 
-const ScheduleSchema = new Schema<Schedule>({
+const ScheduleSchema = new Schema<ISchedule>({
   mode: { type: String, enum: ["none", "daily", "weekly", "monthly"], required: true },
   enabled: { type: Boolean, default: true },
   start_date: { type: Date, required: true },
   end_date: { type: Date },
   no_of_repetition: { type: Number },
+  no_of_execution: { type: Number, default: 0 },
   daily: { type: ScheduleRepeatDailySchema },
   weekly: { type: ScheduleRepeatWeeklySchema },
   monthly: { type: ScheduleRepeatMonthlySchema },
+  last_execution_date: { type: Date },
 }, { _id: false });
 
 export interface IScheduleMaster extends Document {
   account_id: ObjectId;
   title: string;
   description: string;
-  schedule: Schedule;
+  schedule: ISchedule;
   work_order: WorkOrder;
-  last_execution_date: Date;
-  next_execute_date: Date;
   visible: boolean;
   createdBy: ObjectId;
   updatedBy: ObjectId;
@@ -158,8 +160,6 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     schedule: { type: ScheduleSchema, required: true },
     work_order: { type: WorkOrderSchema, required: true },
     visible: { type: Boolean, required: true, default: true },
-    last_execution_date: { type: Date },
-    next_execute_date: { type: Date },
     createdBy: { type: mongoose.Types.ObjectId, ref: "UserModel", required: true },
     updatedBy: { type: mongoose.Types.ObjectId, ref: "UserModel" },
   },
