@@ -83,7 +83,7 @@ export interface IAsset extends Document {
 }
 
 const assetSchema = new Schema<IAsset>({
-  asset_name: { type: String, required: true },
+  asset_name: { type: String, required: true, trim: true },
   asset_id: { type: String },
   asset_type: { type: String, enum: ASSETS_TYPE, required: true },
   asset_model: { type: String },

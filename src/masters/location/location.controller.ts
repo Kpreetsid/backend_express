@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAll, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
+import { getAllLocations, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { getDataByLocationId, getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
@@ -12,7 +12,7 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
       const mappedUserList = await getLocationsMappedData(user_id);
-      match.userIdList = { $in: mappedUserList.map((doc: any) => doc.userId) };
+      match._id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
     }
     const { query: { locationId, parent_id }} = req;
     if (locationId) {
@@ -21,7 +21,7 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
     if (parent_id) {
       match.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
-    let data = await getAll(match);
+    let data = await getAllLocations(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -133,7 +133,7 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
         match._id = { $in: allowedLocationIds };
       }
     }
-    const data = await getAll(match);
+    const data = await getAllLocations(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -179,7 +179,7 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match = { _id: id, account_id: account_id, visible: true };
-    const location = await getAll(match);
+    const location = await getAllLocations(match);
     if (!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -207,7 +207,7 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match = { _id: req.params.id, account_id: account_id, visible: true };
-    const location = await getAll(match);
+    const location = await getAllLocations(match);
     if (!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -260,7 +260,7 @@ export const createDuplicateLocation = async (req: Request, res: Response, next:
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match = { _id: id, account_id: account_id, visible: true };
-    const locationData = await getAll(match);
+    const locationData = await getAllLocations(match);
     if (!locationData || locationData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

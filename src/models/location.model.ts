@@ -21,7 +21,7 @@ export interface ILocationMaster extends Document {
 }
 
 const locationMasterSchema = new Schema<ILocationMaster>({
-  location_name: { type: String, required: true },
+  location_name: { type: String, required: true, trim: true },
   description: { type: String },
   location_type: { type: String, required: true },
   top_level: { type: Boolean, required: true },

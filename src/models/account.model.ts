@@ -14,7 +14,7 @@ export interface IAccount extends Document {
 
 const accountSchema = new Schema<IAccount>(
   {
-    account_name: { type: String, required: true },
+    account_name: { type: String, required: true, unique: true, trim: true },
     type: { type: String, required: true },
     description: { type: String},
     fileName: { type: String },

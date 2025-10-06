@@ -76,7 +76,7 @@ interface ScheduleRepeatDaily {
 }
 
 const ScheduleRepeatDailySchema = new Schema<ScheduleRepeatDaily>({
-  interval: { type: Number, default: 1 }
+  interval: { type: Number, default: 0 }
 }, { _id: false });
 
 interface ScheduleRepeatWeekly {
@@ -93,7 +93,7 @@ interface ScheduleRepeatWeekly {
 }
 
 const ScheduleRepeatWeeklySchema = new Schema<ScheduleRepeatWeekly>({
-  interval: { type: Number, default: 1 },
+  interval: { type: Number, default: 0 },
   days: {
     monday: { type: Boolean, default: false },
     tuesday: { type: Boolean, default: false },
@@ -111,8 +111,8 @@ interface ScheduleRepeatMonthly {
 }
 
 const ScheduleRepeatMonthlySchema = new Schema<ScheduleRepeatMonthly>({
-  interval: { type: Number, default: 1 },
-  dayOfMonth: { type: Number, default: 1 }
+  interval: { type: Number, default: 0 },
+  dayOfMonth: { type: Number }
 }, { _id: false });
 
 interface ISchedule {
@@ -120,6 +120,7 @@ interface ISchedule {
   enabled: boolean;
   start_date: Date;
   end_date?: Date | null;
+  status?: string;
   no_of_repetition: number;
   no_of_execution: number;
   daily: ScheduleRepeatDaily;
@@ -133,6 +134,7 @@ const ScheduleSchema = new Schema<ISchedule>({
   enabled: { type: Boolean, default: true },
   start_date: { type: Date, required: true },
   end_date: { type: Date },
+  status: { type: String },
   no_of_repetition: { type: Number },
   no_of_execution: { type: Number, default: 0 },
   daily: { type: ScheduleRepeatDailySchema },

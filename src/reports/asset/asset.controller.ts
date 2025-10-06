@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAll, getLatest, insertAssetReport, updateAssetReport, deleteAssetReport } from './asset.service';
+import { getAll, getLatest, insertAssetReport, updateAssetReport, deleteAssetReport, removeAssetReportById } from './asset.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
+import { getExternalData } from '../../util/externalAPI';
 
 export const getAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -58,17 +59,30 @@ export const getLatestReport = async (req: Request, res: Response, next: NextFun
 };
 
 export const createAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  var data: any;
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const body = req.body;
-    body.accountId = account_id;
-    body.createdBy = user_id;
-    const data = await insertAssetReport(body);
+    const { body } = req;
+    const token: any = req.cookies.token || req.headers.authorization;
+    data = await insertAssetReport(body, account_id, user_id);
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    await setAssetHealthStatus(body, account_id, user_id, token);
     res.status(201).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
+    if (data) {
+      await deleteAssetReport(data._id);
+    }
     next(error);
   }
 };
+
+export const setAssetHealthStatus = async (body: any, account_id: any, user_id: any, token: any) => {
+  const apiPath = `/asset_health_status/`;
+  const payload: any = { "asset_id": body.assetId, "asset_status": body.assetHealth, "org_id": account_id };
+  await getExternalData(apiPath, 'POST', payload, token, user_id);
+}
 
 export const updateAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -90,7 +104,7 @@ export const updateAssetsReport = async (req: Request, res: Response, next: Next
 
 export const deleteAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
     if(!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
@@ -100,7 +114,7 @@ export const deleteAssetsReport = async (req: Request, res: Response, next: Next
     if (!isDataExists || isDataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const data = await deleteAssetReport(id);
+    const data = await removeAssetReportById(id, user_id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

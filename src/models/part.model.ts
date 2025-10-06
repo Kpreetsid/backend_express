@@ -1,30 +1,32 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 export interface IPart extends Document {
+  account_id: ObjectId;
   part_name: string;
-  description: string;
   part_number: string;
+  part_type: string;
+  unit: string;
+  description: string;
   quantity: number;
   min_quantity: number;
   cost: number;
-  part_type: string;
-  account_id: ObjectId;
-  locationId: ObjectId;
+  location_id: ObjectId;
   visible: boolean;
   createdBy: ObjectId;
   updatedBy?: ObjectId
 }
 
 const partSchema = new Schema<IPart>({
-  part_name: { type: String, required: true },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  part_name: { type: String, required: true, trim: true },
+  part_number: { type: String, required: true, trim: true },
+  part_type: { type: String, required: true },
+  unit: { type: String, required: true },
   description: { type: String },
-  part_number: { type: String, required: true },
   quantity: { type: Number, required: true },
   min_quantity: { type: Number, required: true },
   cost: { type: Number, required: true },
-  part_type: { type: String, required: true },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
-  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   visible: { type: Boolean, required: true, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }

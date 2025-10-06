@@ -5,7 +5,7 @@ import mongoose from "mongoose";
 import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
 import { getData } from "../../util/queryBuilder";
 
-export const getAll = async (match: any) => {
+export const getAllLocations = async (match: any) => {
   const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name' }]);
   const locationIds = locationData.map(doc => `${doc._id}`);
   const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName user_role' }]);
@@ -19,7 +19,7 @@ export const getAll = async (match: any) => {
   return result;
 };
 
-const buildTree = async (parentId: string | null, account_id: any, allowedLocationIds: string[], userRole: string): Promise<any[]> => {
+const buildLocationTree = async (parentId: string | null, account_id: any, allowedLocationIds: string[], userRole: string): Promise<any[]> => {
   const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false } };
   const nodes = await getData(LocationModel, { filter: match });
   return Promise.all(
@@ -27,10 +27,23 @@ const buildTree = async (parentId: string | null, account_id: any, allowedLocati
       if (userRole !== "admin" && !allowedLocationIds.includes(node._id.toString())) {
         return null;
       }
-      const children = await buildTree(node._id.toString(), account_id, allowedLocationIds, userRole);
+      const children = await buildLocationTree(node._id.toString(), account_id, allowedLocationIds, userRole);
       return { ...node, childs: children.filter(Boolean) };
     })
   ).then(results => results.filter(Boolean));
+};
+
+export const getAllChildLocationIds = async (locationId: string): Promise<string[]> => {
+  const children = await LocationModel.find({ parent_id: locationId, visible: true }).select('_id');
+  if (!children || children.length === 0) {
+    return [locationId];
+  }
+  const allChildIds: string[] = [];
+  for (const child of children) {
+    const subChildIds = await getAllChildLocationIds(`${child._id}`);
+    allChildIds.push(...subChildIds);
+  }
+  return [locationId, ...allChildIds];
 };
 
 export const getTree = async (match: any, location_id: any, allowedLocationIds: string[], userRole: string): Promise<any> => {
@@ -44,7 +57,7 @@ export const getTree = async (match: any, location_id: any, allowedLocationIds: 
     if (userRole !== "admin" && !allowedLocationIds.includes(`${parentNode._id}`)) {
       throw Object.assign(new Error("No access to this location"), { status: 403 });
     }
-    const children = await buildTree(parentNode.id, match.account_id, allowedLocationIds, userRole);
+    const children = await buildLocationTree(parentNode.id, match.account_id, allowedLocationIds, userRole);
     treeData = [{ ...parentNode, childs: children }];
   } else {
     treeData = await Promise.all(
@@ -52,7 +65,7 @@ export const getTree = async (match: any, location_id: any, allowedLocationIds: 
         if (userRole !== "admin" && !allowedLocationIds.includes(node._id.toString())) {
           return null;
         }
-        const children = await buildTree(node.id, match.account_id, allowedLocationIds, userRole);
+        const children = await buildLocationTree(node.id, match.account_id, allowedLocationIds, userRole);
         return { ...node, childs: children };
       })
     ).then(results => results.filter(Boolean));

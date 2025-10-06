@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAllObservation, insertObservation, updateObservationById, removeObservationById } from './observation.service';
+import { getAllObservation, insertObservation, updateObservationById, removeObservationById, setAssetHealthStatus, deleteObservationById } from './observation.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
@@ -20,6 +20,7 @@ export const getObservations = async (req: Request, res: Response, next: NextFun
       const childAssetIds = await getAllChildAssetIDs(new mongoose.Types.ObjectId(`${assetId}`));
       match['assetId'] = { $in: childAssetIds };
     }
+    console.log(match);
     const data = await getAllObservation(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -52,10 +53,12 @@ export const getObservation = async (req: Request, res: Response, next: NextFunc
 }
 
 export const createObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  var data: any;
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const body = req.body;
-    const data = await insertObservation(body, account_id, user_id);
+    const { body } = req;
+    const token: any = req.cookies.token || req.headers.authorization;
+    data = await insertObservation(body, account_id, user_id);
     if(!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -64,8 +67,12 @@ export const createObservation = async (req: Request, res: Response, next: NextF
     if (!insertedData || insertedData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
+    await setAssetHealthStatus(body, account_id, user_id, token);
     res.status(201).json({ status: true, message: "Data created successfully", data: insertedData });
   } catch (error) {
+    if (data) {
+      await deleteObservationById(data._id);
+    }
     next(error);
   }
 }

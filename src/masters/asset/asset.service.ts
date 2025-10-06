@@ -29,17 +29,18 @@ export const getAll = async (match: any) => {
   return result;
 }
 
-export const getAllChildAssetIDs = async (assetId: any) => {
-  const assetsData = await AssetModel.find({ _id: assetId }).select('id parent_id');
-  if (!assetsData || assetsData.length === 0) {
+export const getAllChildAssetIDs = async (assetId: any): Promise<string[]> => {
+  const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id');
+  if (!children || children.length === 0) {
     return [assetId];
   }
-  const parent = assetsData[0].parent_id;
-  if (!parent) {
-    return [assetId];
+  const allChildIds: string[] = [];
+  for (const child of children) {
+    const subChildIds = await getAllChildAssetIDs(child._id);
+    allChildIds.push(...subChildIds);
   }
-  return [assetId, ...await getAllChildAssetIDs(parent)];
-}
+  return [assetId, ...allChildIds];
+};
 
 export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -227,7 +228,7 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
 }
 
 export const createAssetOld = async (body: any, account_id: any, user_id: any): Promise<any> => {
-  const data: any = new AssetModel({ ...body, asset_model: body.model, account_id, createdBy: user_id });
+  const data: any = new AssetModel({ ...body, account_id, createdBy: user_id });
   data.top_level_asset_id = data.top_level_asset_id ? data.top_level_asset_id : data._id;
   return await data.save();
 }
@@ -519,7 +520,7 @@ export const createCompressor = async (compressor: any, equipment: any, account_
 export const createExternalAPICall = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {
   const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);
   const match = { org_id: `${account_id}`, asset_status: "Not Defined", asset_id: assetIdList };
-  return await getExternalData(`/asset_health_status/`, match, token, `${user_id}`);
+  return await getExternalData(`/asset_health_status/`, 'POST', match, token, `${user_id}`);
 }
 
 export const deleteAssetsById = async (assetId: any) => {
