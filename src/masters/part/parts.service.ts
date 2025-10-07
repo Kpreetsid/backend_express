@@ -36,9 +36,19 @@ export const getAll = async (match: any): Promise<IPart[]> => {
 };
 
 export const insert = async (body: IPart, account_id: any, user_id: any): Promise<IPart> => {
-  body.createdBy = user_id;
-  body.account_id = account_id;
-  return await new PartsModel(body).save();
+  return await new PartsModel({
+    account_id: account_id,
+    part_name: body.part_name,
+    part_number: body.part_number,
+    part_type: body.part_type,
+    unit: body.unit,
+    description: body.description,
+    quantity: body.quantity,
+    min_quantity: body.min_quantity,
+    cost: body.cost,
+    location_id: body.location_id,
+    createdBy: user_id
+  }).save();
 };
 
 export const updatePartById = async (id: string, body: IPart, user_id: any) => {

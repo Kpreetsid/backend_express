@@ -11,14 +11,18 @@ export const createCompany = async (body: any) => {
   if (existingCompany.length > 0) {
     throw Object.assign(new Error('Company already exists'), { status: 403 });
   }
-  const newCompany = new AccountModel(body);
+  const newCompany = new AccountModel({
+    account_name: body.account_name,
+    type: body.type,
+    description: body.description
+  });
   return await newCompany.save();
 };
 
 export const verifyCompany = async (id: string) => {
   try {
     const data: IAccount | null = await AccountModel.findById(new mongoose.Types.ObjectId(id));
-    if(!data || !data.isActive) {
+    if(!data || !data.visible || data.account_status === 'inactive') {
       return null;
     }
     return data;
@@ -33,9 +37,9 @@ export const updateById = async (id: string, body: any) => {
 
 export const removeById = async (id: string, userId: any): Promise<boolean> => {
   const data: IAccount | null = await AccountModel.findById(id);
-  if (!data || !data.isActive) {
+  if (!data || !data.visible || data.account_status === 'inactive') {
     throw Object.assign(new Error('No data found'), { status: 404 });
   }
-  await AccountModel.findByIdAndUpdate(id, { isActive: false, updated_by: userId }, { new: true });
+  await AccountModel.findByIdAndUpdate(id, { visible: false, account_status: 'inactive', updated_by: userId }, { new: true });
   return true;
 };

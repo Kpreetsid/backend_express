@@ -36,17 +36,15 @@ export const createUserRole = async (userRole: any, userData: IUser) => {
     var platformControl =  await platformControlData(userRole);
     var newRoleMenu = await roleMenuData(userRole);
     const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({
-      user_id: userData._id,
       account_id: userData.account_id,
+      user_id: userData._id,
       data: platformControl,
-      roleMenu: newRoleMenu
+      roleMenu: newRoleMenu,
+      createdBy: userData._id
     });
-    const data = await newUserRoleMenu.save();
-    if (!data) {
-      return null;
-    }
-    return data;
+    return await newUserRoleMenu.save();
   } catch (error) {
+    console.error(error);
     return null;
   }
 }

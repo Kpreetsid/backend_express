@@ -47,11 +47,11 @@ const phoneNumberSchema = new Schema<IPhoneNumber>({
 }, { _id: false });
 
 const userSchema = new Schema<IUser>({
-  firstName: { type: String, required: true },
-  lastName: { type: String, required: true },
-  username: { type: String, required: true, unique: true },
+  firstName: { type: String, required: true, trim: true },
+  lastName: { type: String, required: true, trim: true },
+  username: { type: String, required: true, unique: true , trim: true },
   password: { type: String, required: true, select: false },
-  email: { type: String, required: true, unique: true, lowercase: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   emailStatus: { type: Boolean, default: false },
   user_profile_img: { type: String },
   user_status: { type: String, enum: STATUS, default: 'active' },

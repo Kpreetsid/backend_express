@@ -8,7 +8,6 @@ export interface IAccount extends Document {
   description: string;
   fileName?: string;
   account_status: string;
-  isActive: boolean;
   visible: boolean;
 }
 
@@ -19,7 +18,6 @@ const accountSchema = new Schema<IAccount>(
     description: { type: String},
     fileName: { type: String },
     account_status: { type: String, enum: STATUS, default: 'active' },
-    isActive: { type: Boolean, required: true, default: true },
     visible: { type: Boolean, required: true, default: true }
   },
   {
