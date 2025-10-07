@@ -8,15 +8,29 @@ export const getAll = async (match: any): Promise<IPart[]> => {
     {
       $lookup: {
         from: "location_master",
-        let: { locId: "$locationId" },
+        let: { location_id: "$location_id" },
         pipeline: [
-          { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
-          { $project: { _id: 1, location_name: 1, location_type: 1 } }
+          { $match: { $expr: { $eq: ["$_id", "$$location_id"] } } },
+          { $project: { _id: 1, location_name: 1, location_type: 1 } },
+          { $addFields: { id: "$_id" } }
         ],
         as: "location"
       }
     },
     { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "users",
+        let: { user_id: "$createdBy" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$user_id"] } } },
+          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+          { $addFields: { id: "$_id" } }
+        ],
+        as: "user"
+      }
+    },
+    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
     { $addFields: { id: "$_id" } }
   ]);
 };

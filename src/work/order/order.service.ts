@@ -287,6 +287,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     task_submitted : body.task_submitted,
     parts : body.parts,
     work_request_id : body.work_request_id,
+    asset_report_id : body.asset_report_id,
     createdBy: user._id
   });
   const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
@@ -325,3 +326,8 @@ export const removeOrder = async (id: any, user_id: any): Promise<any> => {
   await removeMappedUsers(id);
   return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
 };
+
+export const deleteWorkOrderById = async (id: any): Promise<any> => {
+  await removeMappedUsers(id);
+  return await WorkOrderModel.findByIdAndDelete(id);
+}

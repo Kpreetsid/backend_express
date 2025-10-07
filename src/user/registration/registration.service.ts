@@ -18,7 +18,6 @@ export const verifyOTPCode = async (body: any) => {
   if (!account) {
     throw Object.assign(new Error('Account creation failed'), { status: 500 });
   }
-  body.account_id = account._id;
   body.isFirstUser = true;
   body.user_role = "admin";
   body.isVerified = true;

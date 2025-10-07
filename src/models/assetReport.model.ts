@@ -45,6 +45,7 @@ export interface IReportAsset extends Document {
   accountId: ObjectId;
   top_level_asset_id: ObjectId;
   assetId: ObjectId;
+  work_order_id: ObjectId;
   Observations: string;
   Recommendations: string;
   CreateWorkRequest: string;
@@ -65,6 +66,7 @@ export interface IReportAsset extends Document {
   assetImage?: string;
   asset_health_history: AssetHealthEntry[];
   endpointRMSData: EndpointRMS[];
+  visible: boolean;
   createdBy: ObjectId;
   updatedBy: ObjectId;
 }
@@ -73,6 +75,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
   accountId: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   top_level_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
   assetId: { type: Schema.Types.ObjectId, ref: 'AssetModel' },
+  work_order_id: { type: Schema.Types.ObjectId, ref: 'WorkOrderModel' },
   Observations: { type: String },
   Recommendations: { type: String },
   CreateWorkRequest: { type: String },
@@ -142,6 +145,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
     },
     asset_name: { type: String }
   }],
+  visible: { type: Boolean, default: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
