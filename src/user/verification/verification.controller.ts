@@ -12,7 +12,7 @@ export const sendVerificationCode = async (req: Request, res: Response, next: Ne
         if(emailCheck.length === 0) {
             throw Object.assign(new Error('Email not found'), { status: 404 });
         }
-        const match = { email: email, firstName: emailCheck[0].firstName, lastName: emailCheck[0].lastName };
+        const match = { email: emailCheck[0].email, firstName: emailCheck[0].firstName, lastName: emailCheck[0].lastName };
         const data = await sendVerificationEmailCode(match);
         if (!data) {
             throw Object.assign(new Error('Failed to send verification email'), { status: 500 });

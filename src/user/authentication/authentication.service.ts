@@ -23,9 +23,6 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
-    if(!user.isVerified) {
-      throw Object.assign(new Error('Unverified user'), { status: 403 });
-    }
     const accountMatch = { _id: user.account_id };
     const userAccount: IAccount[] | null = await getAllCompanies(accountMatch);
     if (!userAccount || userAccount.length === 0) {
@@ -34,6 +31,9 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });
+    }
+    if(!user.isVerified) {
+      throw Object.assign(new Error('Unverified user'), { status: 403 });
     }
     if(user.user_role !== 'admin') {
       const locationList = await getLocationsMappedData(user._id);
