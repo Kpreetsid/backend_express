@@ -69,13 +69,8 @@
                 "isSelected": true
             },
             {
-                "id": "envelope-peak",
-                "name": "Envelope Peak",
-                "isSelected": false
-            },
-            {
-                "id": "Harmonics",
-                "name": "Harmonics",
+                "id": "envelope-peak_to_peak",
+                "name": "Envelope Peak to Peak",
                 "isSelected": false
             },
             {
@@ -104,28 +99,28 @@
                 "isSelected": false
             },
             {
-                "id": "velocity-1x",
-                "name": "Velocity 1x",
+                "id": "Harmonics-one_amp",
+                "name": "Harmonics Velocity 1x",
                 "isSelected": true
             },
             {
-                "id": "velocity-2x",
-                "name": "Velocity 2x",
+                "id": "Harmonics-two_amp",
+                "name": "Harmonics Velocity 2x",
                 "isSelected": false
             },
             {
-                "id": "velocity-3x",
-                "name": "Velocity 3x",
+                "id": "Harmonics-three_amp",
+                "name": "Harmonics Velocity 3x",
                 "isSelected": false
             },
             {
-                "id": "velocity-4x",
-                "name": "Velocity 4x",
+                "id": "Harmonics-four_amp",
+                "name": "Harmonics Velocity 4x",
                 "isSelected": false
             },
             {
-                "id": "velocity-5x",
-                "name": "Velocity 5x",
+                "id": "Harmonics-five_amp",
+                "name": "Harmonics Velocity 5x",
                 "isSelected": false
             }
         ]

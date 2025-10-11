@@ -190,7 +190,8 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
     }
     await mapUserLocationData(data._id, body.userIdList, account_id);
     data.id = data._id;
-    res.status(200).json({ status: true, message: "Data updated successfully", data: [data] });
+    const updatedLocation = await getAllLocations(match);
+    res.status(200).json({ status: true, message: "Data updated successfully", data: updatedLocation });
   } catch (error) {
     next(error);
   }

@@ -6,7 +6,7 @@ import { getAllCompanies } from '../../masters/company/company.service';
 export const userRegister = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const { email, username, firstName, lastName, account_name } = req.body;
-        if (!email || !username || !firstName || !lastName) {
+        if (!email || !username || !firstName) {
             throw Object.assign(new Error('Email and Username are required'), { status: 400 });
         }
         const isEmailExists = await getAllUsers({ email: email });

@@ -36,7 +36,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('Unverified user'), { status: 403 });
     }
     if(user.user_role !== 'admin') {
-      const locationList = await getLocationsMappedData(user._id);
+      const locationList = await getLocationsMappedData(user._id || user.id);
       if (!locationList || locationList.length === 0) {
         throw Object.assign(new Error('User does not have any location'), { status: 401 });
       }

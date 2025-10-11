@@ -3,10 +3,11 @@ import { WorkRequestModel, IWorkRequest } from "../../models/workRequest.model";
 export const getAllRequests = async (match: any): Promise<IWorkRequest[]> => {
   match.visible = true;
   const populateList = [
-    { path: "location_id", model: "Schema_Location", select: "id location_name location_type" }, 
-    { path: "asset_id", model: "Schema_Asset", select: "id asset_name asset_type" }, 
-    { path: "account_id", model: "Schema_Account", select: "id account_name" }, 
-    { path: "createdBy", model: "Schema_User", select: "id firstName lastName" }
+    { path: "location_id", model: "Schema_Location", select: "id location_name location_type" },
+    { path: "asset_id", model: "Schema_Asset", select: "id asset_name asset_type" },
+    { path: "account_id", model: "Schema_Account", select: "id account_name" },
+    { path: "createdBy", model: "Schema_User", select: "id firstName lastName" },
+    { path: "updatedBy", model: "Schema_User", select: "id firstName lastName" }
   ];
   return await WorkRequestModel.find(match).populate(populateList);
 };
