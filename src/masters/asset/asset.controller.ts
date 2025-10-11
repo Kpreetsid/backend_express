@@ -389,7 +389,11 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     if (!newAsset) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    res.status(200).json({ status: true, message: "Asset copied successfully", data: newAsset });
+    const copiedData: any = await getAll({ _id: newAsset._id });
+    if (!copiedData || copiedData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Asset copied successfully", data: copiedData });
   } catch (error: any) {
     next(error);
   }
