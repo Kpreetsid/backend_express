@@ -3,7 +3,7 @@ import { CommentsModel } from "../../models/comment.model";
 export const getAllComments = async (match: any) => {
   match.visible = true;
   match.parentCommentId = match.parentCommentId || null;
-  const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' }]).lean();
+  const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email user_role user_profile_img' }]).lean();
   if (!comments || comments.length === 0) {
     throw Object.assign(new Error('No data found'), { status: 404 });
   }
@@ -14,7 +14,7 @@ export const getAllComments = async (match: any) => {
 export const getAllCommentsForWorkOrder = async (match: any) => {
   match.visible = true;
   match.parentCommentId = null;
-  const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' }]).lean();
+  const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email user_role user_profile_img' }]).lean();
   if (!comments || comments.length === 0) {
     return [];
   }
@@ -23,7 +23,7 @@ export const getAllCommentsForWorkOrder = async (match: any) => {
 };
 
 const getNestedComments = async (parentId: any) => {
-  const childComments = await CommentsModel.find({ parentCommentId: parentId, visible: true }).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' }]).lean();
+  const childComments = await CommentsModel.find({ parentCommentId: parentId, visible: true }).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email user_role user_profile_img' }]).lean();
     return await Promise.all(
       childComments.map(async (comment: any) => ({
         ...comment,

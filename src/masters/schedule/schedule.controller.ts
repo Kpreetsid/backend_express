@@ -87,7 +87,7 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
     if (!id) {
       throw Object.assign(new Error('Id is required'), { status: 400 });
     }
-    const existingData = await getSchedules({ _id: id, account_id: account_id, visible: true });
+    const existingData = await getSchedules({ _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
