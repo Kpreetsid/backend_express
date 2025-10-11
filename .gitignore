@@ -4,4 +4,3 @@ uploadFiles
 .vscode
 *.log
 *.env
-package-lock.json
