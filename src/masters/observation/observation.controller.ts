@@ -8,17 +8,20 @@ import { getAllChildAssetIDs } from '../asset/asset.service';
 export const getObservations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { accountId: account_id, visible: true };
+    const match: any = { accountId: account_id };
     if (userRole !== 'admin') {
       match['userId'] = user_id;
     }
-    const { query: { locationId, assetId }} = req;
+    const { query: { locationId, assetId, alarmId }} = req;
     if (locationId) {
       match['locationId'] = new mongoose.Types.ObjectId(`${locationId}`);
     }
     if (assetId) {
       const childAssetIds = await getAllChildAssetIDs(new mongoose.Types.ObjectId(`${assetId}`));
       match['assetId'] = { $in: childAssetIds };
+    }
+    if (alarmId) {
+      match['alarmId'] = Number(alarmId);
     }
     console.log(match);
     const data = await getAllObservation(match);
@@ -38,7 +41,7 @@ export const getObservation = async (req: Request, res: Response, next: NextFunc
     if (!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id, visible: true };
+    const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id };
     if (userRole !== 'admin') {
       match['userId'] = user_id;
     }
@@ -84,7 +87,7 @@ export const updateObservation = async (req: Request, res: Response, next: NextF
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const existingData = await getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id, visible: true });
+    const existingData = await getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -110,7 +113,7 @@ export const removeObservation = async (req: Request, res: Response, next: NextF
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const existingData = await getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id, visible: true });
+    const existingData = await getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
