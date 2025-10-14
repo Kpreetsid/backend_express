@@ -2,7 +2,7 @@ import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
-import { getLocationsMappedData, removeLocationListMapping } from "../../transaction/mapUserLocation/userLocation.service";
+import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
 import { getData } from "../../util/queryBuilder";
 
 export const getAllLocations = async (match: any) => {
@@ -163,7 +163,7 @@ const getAllChildLocationsRecursive = async (parentIds: string[]): Promise<strin
         childIds = [...childIds, ...grandChildrenIds];
       }
     }
-    return [...new Set([...parentIds, ...allChildIds])];
+    return [...new Set([...parentIds, ...childIds])];
   } catch (error) {
     console.error('Error in getAllChildLocationsRecursive:', error);
     return [];
@@ -184,7 +184,7 @@ export const updateById = async (id: string, body: any) => {
   return await LocationModel.findById(id);
 };
 
-export const removeById = async (id: string, user_id: string) => {
+export const removeLocationById = async (id: any, user_id: any) => {
   const totalIds = [id];
   const childIds = await getAllChildLocationsRecursive([id]);
   totalIds.push(...childIds);

@@ -2,7 +2,6 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllLocations, insertLocation, updateById, removeLocationById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import { LocationModel } from "../../models/location.model";
 import { getDataByLocationId, getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 const moduleName: string = "location";
