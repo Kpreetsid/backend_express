@@ -5,7 +5,7 @@ import { getAllCompanies } from '../../masters/company/company.service';
 
 export const userRegister = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-        const { email, username, firstName, lastName, account_name } = req.body;
+        const { email, username, firstName, account_name } = req.body;
         if (!email || !username || !firstName) {
             throw Object.assign(new Error('Email and Username are required'), { status: 400 });
         }
@@ -21,7 +21,7 @@ export const userRegister = async (req: Request, res: Response, next: NextFuncti
         if (isAccountExists.length > 0) {
             throw Object.assign(new Error('Account already exists'), { status: 403 });
         }
-        const match = { email: email, firstName: firstName, lastName: lastName };
+        const match = { email: email, firstName: firstName };
         const data = await emailVerificationCode(match);
         if(!data) {
             throw Object.assign(new Error('Failed to send verification email'), { status: 500 });

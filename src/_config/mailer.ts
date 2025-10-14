@@ -42,13 +42,17 @@ export const sendVerificationCode = async (match: any): Promise<boolean> => {
     let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
     htmlTemplate = htmlTemplate.replace('{{OTP}}', otp.toString());
     htmlTemplate = htmlTemplate.replace('{{YEAR}}', new Date().getFullYear().toString());
-    htmlTemplate = htmlTemplate.replace('{{NAME}}', match.firstName + ' ' + match.lastName);
+    const fullName = match.firstName;
+    if (match.lastName) {
+      match.fullName = fullName + ' ' + match.lastName;
+    }
+    htmlTemplate = htmlTemplate.replace('{{NAME}}', match.fullName);
     const mailResponse = await sendMail({
       to: match.email,
       subject: 'Verify Your Email Address',
       html: htmlTemplate
     });
-    await new VerificationCodeModel({ email: match.email, firstName: match.firstName, lastName: match.lastName, code: otp.toString() }).save();
+    await new VerificationCodeModel({ email: match.email, firstName: match.firstName, code: otp.toString() }).save();
     console.log(mailResponse);
     return true;
   } catch (error) {

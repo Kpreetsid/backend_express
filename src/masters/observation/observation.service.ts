@@ -43,7 +43,7 @@ export const getAllObservation = async (match: any): Promise<any> => {
       }
     },
     { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-    { $sort: { createdAt: -1 } },
+    { $sort: { _id: -1 } },
     { $addFields: { id: "$_id" } }
   ]);
 };

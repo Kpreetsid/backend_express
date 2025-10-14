@@ -77,22 +77,25 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 export const updateUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    if (!req.params.id) {
+    const { params: { id }, body } = req;
+    if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: req.params.id, account_id: account_id, user_status: 'active' };
+    const match = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, user_status: 'active' };
     const userData = await getAllUsers(match);
     if (!userData || userData.length === 0) {
-      throw Object.assign(new Error('No data found or already deleted'), { status: 404 });
-    }
-    req.body.updatedBy = user_id;
-    await updateUserDetails(req.params.id, req.body);
-    const data = await getAllUsers(match);
-    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    data[0].id = data[0]._id;
-    res.status(200).json({ status: true, message: "User updated successfully", data: data[0] });
+    req.body.updatedBy = user_id;
+    const data: any = await updateUserDetails(id, body);
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const updatedData = await getAllUsers(match);
+    if (!updatedData || updatedData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "User updated successfully", data: updatedData[0] });
   } catch (error) {
     next(error);
   }

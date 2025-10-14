@@ -128,7 +128,7 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
   }
 };
 
-export const childAssetsAgainstLocation = async (lOne: any, lTwo: any, account_id: any) => {
+export const childAssetsAgainstLocation = async (lOne: string[], lTwo: string[], account_id: any) => {
   try {
     const childIds = await getAllChildLocationsRecursive(lTwo);
     const finalList = [...childIds, ...lOne, ...lTwo];
@@ -144,9 +144,10 @@ export const childAssetsAgainstLocation = async (lOne: any, lTwo: any, account_i
     }
     return { assetList: data, locationList: finalList };
   } catch (error) {
+    console.error('Error in childAssetsAgainstLocation:', error);
     return null;
   }
-}
+};
 
 const getAllChildLocationsRecursive = async (parentIds: string[]): Promise<string[]> => {
   try {
@@ -164,6 +165,7 @@ const getAllChildLocationsRecursive = async (parentIds: string[]): Promise<strin
     }
     return childIds;
   } catch (error) {
+    console.error('Error in getAllChildLocationsRecursive:', error);
     return [];
   }
 }
@@ -181,20 +183,6 @@ export const updateById = async (id: string, body: any) => {
   await LocationModel.updateOne({ _id: id }, body);
   return await LocationModel.findById(id);
 };
-
-// export const removeById = async (id: string, data: any, user_id: any) => {
-//   const promiseList: any = [];
-//   const totalIds = [id];
-//   if (data.top_level) {
-//     const childIds = await getAllChildLocationsRecursive([id]);
-//     totalIds.push(...childIds);
-//     promiseList.push(LocationModel.updateMany({ _id: { $in: childIds } }, { visible: false, updatedBy: user_id }));
-//   }
-//   promiseList.push(AssetModel.updateMany({ locationId: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
-//   promiseList.push(LocationModel.updateMany({ _id: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
-//   await Promise.all(promiseList);
-//   return true;
-// };
 
 export const removeById = async (id: string, user_id: string) => {
   const totalIds = [id];

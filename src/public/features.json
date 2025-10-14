@@ -137,12 +137,12 @@
         ]
     },
     {
-        "id": "acoustics",
-        "categoryName": "Acoustics",
+        "id": "acoustic",
+        "categoryName": "Acoustic",
         "subCategory": [
             {
-                "id": "acoustics",
-                "name": "Acoustics Trend",
+                "id": "acoustic",
+                "name": "Acoustic Trend",
                 "isSelected": true
             }
         ]
