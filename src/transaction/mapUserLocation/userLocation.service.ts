@@ -293,3 +293,11 @@ export const removeAssetMapping = async (id: string) => {
 export const removeLocationMapping = async (id: string) => {
   return await MapUserAssetLocationModel.deleteMany({ locationId: id });
 }
+
+export const removeLocationListMapping = async (locationIdList: string[]) => {
+  return await MapUserAssetLocationModel.deleteMany({ locationId: { $in: locationIdList } });
+}
+
+export const removeAssetListMapping = async (assetIdList: string[]) => {
+  return await MapUserAssetLocationModel.deleteMany({ assetId: { $in: assetIdList } });
+}

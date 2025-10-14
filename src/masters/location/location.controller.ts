@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAllLocations, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
+import { getAllLocations, insertLocation, updateById, removeLocationById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { getDataByLocationId, getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
@@ -204,15 +204,16 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
     if (!role[moduleName].delete_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
-    if (!req.params.id) {
+    const { params: { id } } = req;
+    if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: req.params.id, account_id: account_id, visible: true };
+    const match = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
     const location = await getAllLocations(match);
     if (!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await removeById(req.params.id, location, user_id);
+    await removeLocationById(new mongoose.Types.ObjectId(id), user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);

@@ -170,6 +170,7 @@ export const removeById = async (match: any, userID: any) => {
   if (childAssets && childAssets.length > 0) {
     await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID });
   }
+  // await removeLocationMapping(req.params.id);
   return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { new: true });
 };
 
@@ -842,3 +843,9 @@ export const makeAssetCopyById = async (id: any, user_id: any) => {
   await updateMapUserAssets(`${savedAsset?.id}`, getUserMapping.map((doc: any) => doc.userId));
   return savedAsset;
 }
+
+export const removeAssetByLocationList = async (locationIdList: any, user_id: any) => {
+
+  // await removeAssetListMapping(locationIdList);
+  return await AssetModel.updateMany({ locationId: { $in: locationIdList }, visible: true }, { visible: false, updatedBy: user_id });
+};

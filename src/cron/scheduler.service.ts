@@ -2,47 +2,46 @@ import { IScheduleMaster, SchedulerModel } from "../models/scheduleMaster.model"
 import { createWorkOrder } from "../work/order/order.service";
 
 class SchedulerService {
-    private isStartDateValid(startDate: Date): boolean {
+    private hasStarted(startDate: Date): boolean {
         return new Date() >= new Date(startDate);
     }
 
-    private getToday(): string {
+    private getTodayName(): string {
         return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date()).toLowerCase();
     }
 
     private shouldRun(schedule: IScheduleMaster): boolean {
         const today = new Date();
-        if (schedule.schedule?.end_date) {
-            if (today > new Date(schedule.schedule.end_date)) return false;
-        }
-        if (typeof schedule.schedule.no_of_repetition === "number" && schedule.schedule.no_of_repetition > 0 && schedule.schedule.no_of_execution >= schedule.schedule.no_of_repetition) {
-            return false;
-        }
+        const s = schedule.schedule;
+        if (s.end_date && today > new Date(s.end_date)) return false;
+        const exec = s.no_of_execution ?? 0;
+        const rep = s.no_of_repetition ?? 0;
+        if (rep > 0 && exec >= rep) return false;
+        if (!s.enabled) return false;
         return true;
     }
 
     private getNextExecutionDate(schedule: IScheduleMaster): Date | null {
-        const lastExecution = schedule.schedule.last_execution_date ? new Date(schedule.schedule.last_execution_date) : new Date(schedule.schedule.start_date);
-        let interval = 0;
-
-        if (schedule.schedule.mode === "daily") {
-            interval = schedule.schedule.daily?.interval || 0;
-            const next = new Date(lastExecution);
-            next.setDate(next.getDate() + interval + 1); // skip N days, execute next day after interval
+        const s = schedule.schedule;
+        const lastExec = s.last_execution_date ? new Date(s.last_execution_date) : new Date(s.start_date);
+        if (s.mode === "daily") {
+            const next = new Date(lastExec);
+            const interval = s.daily?.interval ?? 0;
+            next.setDate(next.getDate() + interval);
             return next;
         }
 
-        if (schedule.schedule.mode === "weekly") {
-            interval = schedule.schedule.weekly?.interval || 0;
-            const next = new Date(lastExecution);
-            next.setDate(next.getDate() + (interval + 1) * 7); // skip N weeks
+        if (s.mode === "weekly") {
+            const next = new Date(lastExec);
+            const interval = s.weekly?.interval ?? 0;
+            next.setDate(next.getDate() + 7 * interval);
             return next;
         }
 
-        if (schedule.schedule.mode === "monthly") {
-            interval = schedule.schedule.monthly?.interval || 0;
-            const next = new Date(lastExecution);
-            next.setMonth(next.getMonth() + (interval + 1)); // skip N months
+        if (s.mode === "monthly") {
+            const next = new Date(lastExec);
+            const interval = s.monthly?.interval ?? 0;
+            next.setMonth(next.getMonth() + interval);
             return next;
         }
         return null;
@@ -50,6 +49,9 @@ class SchedulerService {
 
     private async createWorkOrderFromSchedule(schedule: IScheduleMaster): Promise<void> {
         try {
+            const s = schedule.schedule;
+            s.no_of_execution ??= 0;
+            s.no_of_repetition ??= 0;
             const body = {
                 title: schedule.work_order.title,
                 description: schedule.work_order.description,
@@ -70,95 +72,74 @@ class SchedulerService {
                 task_submitted: false,
                 userIdList: schedule.work_order.userIdList,
             };
-
             const systemUser: any = {
                 _id: schedule.createdBy,
                 account_id: schedule.account_id,
             };
-
-            console.log(`▶️ Creating WO for schedule: ${schedule.id}, execution #${schedule.schedule.no_of_execution + 1}`);
+            console.log(`▶️ Creating WO for schedule: ${schedule.id}, execution #${s.no_of_execution + 1}`);
             const createdWO = await createWorkOrder(body, systemUser);
-            schedule.schedule.no_of_execution = (schedule.schedule.no_of_execution || 0) + 1;
-            if (schedule.schedule.no_of_repetition && schedule.schedule.no_of_execution === schedule.schedule.no_of_repetition) {
-                schedule.schedule.enabled = false;
-                schedule.schedule.status = "Completed";
-                schedule.schedule.end_date = new Date();
+            s.no_of_execution += 1;
+            s.last_execution_date = new Date();
+            if ((s.no_of_repetition && s.no_of_execution >= s.no_of_repetition) ||
+                (s.end_date && new Date().getTime() >= new Date(s.end_date).getTime())) {
+                s.enabled = false;
+                s.status = "Completed";
+                s.end_date = new Date();
             }
-            if(schedule.schedule.end_date && schedule.schedule.end_date === new Date()) {
-                schedule.schedule.enabled = false;
-                schedule.schedule.status = "Completed";
-            }
-            schedule.schedule.last_execution_date = new Date();
             await schedule.save();
-            console.log(`✅ WO created: ${createdWO._id} (execution ${schedule.schedule.no_of_execution}/${schedule.schedule.no_of_repetition || "∞"})`);
+            console.log(`✅ WO created: ${createdWO._id} (execution ${s.no_of_execution}/${s.no_of_repetition || "∞"})`);
         } catch (error) {
             console.error("❌ Error creating work order:", error);
         }
     }
 
-    // ---------------- Daily ----------------
+    // ---------------- DAILY ----------------
     public async runDailyScheduler(): Promise<void> {
         const today = new Date();
-        const schedules = await SchedulerModel.find({
-            visible: true,
-            "schedule.enabled": true,
-            "schedule.mode": "daily",
-            $or: [{ $and: [{ "schedule.end_date": null }, { $expr: { $lt: ["$schedule.no_of_execution", "$schedule.no_of_repetition"] } }]},
-                { $and: [{ "schedule.end_date": { $ne: null } }, { "schedule.end_date": { $gte: today } }]}
-            ]
-        });
+        const schedules = await SchedulerModel.find({ visible: true, "schedule.enabled": true, "schedule.mode": "daily" });
         console.log(`Found ${schedules.length} daily schedules`);
         for (const schedule of schedules) {
-            if (!this.isStartDateValid(schedule.schedule.start_date)) continue;
+            const s = schedule.schedule;
+            if (!this.hasStarted(s.start_date)) continue;
             if (!this.shouldRun(schedule)) continue;
-
-            const nextExecutionDate = this.getNextExecutionDate(schedule);
-            if (nextExecutionDate && today >= nextExecutionDate) {
-                await this.createWorkOrderFromSchedule(schedule);
-            }
+            const nextExecution = this.getNextExecutionDate(schedule);
+            if (!nextExecution || today < nextExecution) continue;
+            await this.createWorkOrderFromSchedule(schedule);
         }
         console.log("✅ Daily Scheduler executed");
     }
 
-    // ---------------- Weekly ----------------
+    // ---------------- WEEKLY ----------------
     public async runWeeklyScheduler(): Promise<void> {
         const today = new Date();
-        const todayStr = this.getToday();
-
+        const todayStr = this.getTodayName();
         const schedules = await SchedulerModel.find({ visible: true, "schedule.enabled": true, "schedule.mode": "weekly", [`schedule.weekly.days.${todayStr}`]: true });
         console.log(`Found ${schedules.length} weekly schedules`);
         for (const schedule of schedules) {
-            if (!this.isStartDateValid(schedule.schedule.start_date)) continue;
+            const s = schedule.schedule;
+            if (!this.hasStarted(s.start_date)) continue;
             if (!this.shouldRun(schedule)) continue;
-
-            const nextExecutionDate = this.getNextExecutionDate(schedule);
-            if (nextExecutionDate && today >= nextExecutionDate) {
-                await this.createWorkOrderFromSchedule(schedule);
-            }
+            const nextExecution = this.getNextExecutionDate(schedule);
+            if (!nextExecution || today < nextExecution) continue;
+            await this.createWorkOrderFromSchedule(schedule);
         }
         console.log("✅ Weekly Scheduler executed");
     }
 
-    // ---------------- Monthly ----------------
+    // ---------------- MONTHLY ----------------
     public async runMonthlyScheduler(): Promise<void> {
         const today = new Date();
-
-        const schedules = await SchedulerModel.find({
-            visible: true,
-            "schedule.enabled": true,
-            "schedule.mode": "monthly",
-        });
-
+        const schedules = await SchedulerModel.find({ visible: true, "schedule.enabled": true, "schedule.mode": "monthly" });
         console.log(`Found ${schedules.length} monthly schedules`);
         for (const schedule of schedules) {
-            if (!this.isStartDateValid(schedule.schedule.start_date)) continue;
+            const s = schedule.schedule;
+            if (!this.hasStarted(s.start_date)) continue;
             if (!this.shouldRun(schedule)) continue;
-            const nextExecutionDate = this.getNextExecutionDate(schedule);
-            // execute only if today >= nextExecutionDate AND dayOfMonth matches
-            const scheduledDay = schedule.schedule.monthly?.dayOfMonth || 1;
-            if (nextExecutionDate && today >= nextExecutionDate && today.getDate() === scheduledDay) {
-                await this.createWorkOrderFromSchedule(schedule);
-            }
+            const nextExecution = this.getNextExecutionDate(schedule);
+            const scheduledDay = s.monthly?.dayOfMonth ?? 1;
+            if (!nextExecution || today < nextExecution) continue;
+            if (today.getDate() !== scheduledDay) continue;
+            await this.createWorkOrderFromSchedule(schedule);
         }
         console.log("✅ Monthly Scheduler executed");
     }

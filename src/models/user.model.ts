@@ -9,16 +9,6 @@ export interface UserLoginPayload {
   email: string;
   username: string;
 }
-
-export interface IPhoneNumber {
-  number: string;
-  internationalNumber: string;
-  nationalNumber: string;
-  e164Number: string;
-  countryCode: string;
-  dialCode: string;
-}
-
 export interface IUser extends Document {
   firstName: string;
   lastName: string;
@@ -31,36 +21,31 @@ export interface IUser extends Document {
   createdOn: Date;
   user_profile_img: string;
   account_id: ObjectId;
-  phone_no: IPhoneNumber;
+  phone_no: object;
   isFirstUser: boolean;
-  visible: boolean;
   isVerified: boolean;
+  visible: boolean;
+  createdBy?: ObjectId;
+  updatedBy?: ObjectId;
 }
-
-const phoneNumberSchema = new Schema<IPhoneNumber>({
-  number: { type: String, required: true },
-  internationalNumber: { type: String, required: true },
-  nationalNumber: { type: String, required: true },
-  e164Number: { type: String, required: true },
-  countryCode: { type: String, required: true },
-  dialCode: { type: String, required: true }
-}, { _id: false });
 
 const userSchema = new Schema<IUser>({
   firstName: { type: String, required: true, trim: true },
-  lastName: { type: String, required: true, trim: true },
+  lastName: { type: String, trim: true },
   username: { type: String, required: true, unique: true , trim: true },
   password: { type: String, required: true, select: false },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   emailStatus: { type: Boolean, default: false },
   user_profile_img: { type: String },
   user_status: { type: String, enum: STATUS, default: 'active' },
-  user_role: { type: String, required: true, enum: ROLE, default: 'user' },
+  user_role: { type: String, required: true, enum: ROLE, default: 'employee', trim: true, lowercase: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
-  phone_no: { type: phoneNumberSchema, required: true },
+  phone_no: { type: Object, required: true },
   isFirstUser: { type: Boolean, default: false },
+  isVerified: { type: Boolean, default: false },
   visible: { type: Boolean, default: true },
-  isVerified: { type: Boolean, default: false }
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'users',
   timestamps: true,

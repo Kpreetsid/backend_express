@@ -19,7 +19,7 @@ const app: Express = express();
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
-app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'], origin: true }));
+app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(fileLogger);
 app.use(activityLogger);

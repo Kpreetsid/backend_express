@@ -2,7 +2,7 @@ import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
-import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
+import { getLocationsMappedData, removeLocationListMapping } from "../../transaction/mapUserLocation/userLocation.service";
 import { getData } from "../../util/queryBuilder";
 
 export const getAllLocations = async (match: any) => {
@@ -157,7 +157,7 @@ const getAllChildLocationsRecursive = async (parentIds: string[], visited: Set<s
         allChildIds.push(...grandChildren);
       }
     }
-    return allChildIds;
+    return [...new Set([...parentIds, ...allChildIds])];
   } catch (error) {
     console.error('Error in getAllChildLocationsRecursive:', error);
     return [];
@@ -177,19 +177,26 @@ export const updateById = async (id: string, body: any) => {
   return await LocationModel.findById(id);
 };
 
-export const removeById = async (id: string, data: any, user_id: any) => {
-  const promiseList: any = [];
-  const totalIds = [id];
-  if (data.top_level) {
-    const childIds = await getAllChildLocationsRecursive([id]);
-    totalIds.push(...childIds);
-    promiseList.push(LocationModel.updateMany({ _id: { $in: childIds } }, { visible: false, updatedBy: user_id }));
-  }
-  promiseList.push(AssetModel.updateMany({ locationId: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
-  promiseList.push(LocationModel.updateMany({ _id: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
-  await Promise.all(promiseList);
+export const removeLocationById = async (id: any, user_id: any) => {
+  var locationIdList = await getAllChildLocationsRecursive([`${id}`]);
+  await removeLocationListMapping(locationIdList);
+  await LocationModel.updateMany({ _id: { $in: locationIdList } }, { visible: false, updatedBy: user_id });
   return true;
-};
+}
+
+// export const removeLocationById = async (id: any, data: any, user_id: any) => {
+//   const promiseList: any = [];
+//   const totalIds = [id];
+//   if (data.top_level) {
+//     const childIds = await getAllChildLocationsRecursive([id]);
+//     totalIds.push(...childIds);
+//     promiseList.push(LocationModel.updateMany({ _id: { $in: childIds } }, { visible: false, updatedBy: user_id }));
+//   }
+//   promiseList.push(AssetModel.updateMany({ locationId: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
+//   promiseList.push(LocationModel.updateMany({ _id: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
+//   await Promise.all(promiseList);
+//   return true;
+// };
 
 export const updateFloorMapImage = async (id: string, account_id: any, user_id: any, top_level_location_image: string) => {
   return await LocationModel.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id } });
