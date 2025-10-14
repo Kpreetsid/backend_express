@@ -833,11 +833,12 @@ export const makeAssetCopyById = async (id: any, user_id: any) => {
     throw Object.assign(new Error('No asset found'), { status: 404 });
   }
   const { _id, createdAt, updatedAt, ...rest } = asset;
-  const newAsset = new AssetModel({
+  const newAsset: any = new AssetModel({
     ...rest,
     asset_name: `${asset?.asset_name} - Copy`,
     createdBy: user_id
   });
+  newAsset.top_level_asset_id = newAsset._id;
   const savedAsset = await newAsset?.save();
   const getUserMapping = await getDataByAssetId(id);
   await updateMapUserAssets(`${savedAsset?.id}`, getUserMapping.map((doc: any) => doc.userId));
