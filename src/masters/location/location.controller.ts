@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllLocations, insertLocation, updateById, removeById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
+import { LocationModel } from "../../models/location.model";
 import { getDataByLocationId, getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 const moduleName: string = "location";
@@ -14,7 +15,7 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
       const mappedUserList = await getLocationsMappedData(user_id);
       match._id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
     }
-    const { query: { locationId, parent_id }} = req;
+    const { query: { locationId, parent_id } } = req;
     if (locationId) {
       match._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
@@ -201,19 +202,28 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const role = get(req, "role", {}) as any;
+
     if (!role[moduleName].delete_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
-    if (!req.params.id) {
+    if (!req.params.id || !user_id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: req.params.id, account_id: account_id, visible: true };
-    const location = await getAllLocations(match);
-    if (!location || location.length === 0 || !location[0].visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+
+    const locationExists = await LocationModel.findOne({ _id: req.params.id, account_id });
+    if (!locationExists) {
+      throw Object.assign(new Error('Location not found'), { status: 404 });
     }
-    await removeById(req.params.id, location, user_id);
-    res.status(200).json({ status: true, message: "Data deleted successfully" });
+    if (!locationExists.visible) {
+      return res.status(200).json({ status: true, message: "Location is already deleted" });
+    }
+
+    const result = await removeById(req.params.id, String(user_id));
+    res.status(200).json({
+      status: true,
+      message: "Location and its children deleted successfully",
+      data: result
+    });
   } catch (error) {
     next(error);
   }

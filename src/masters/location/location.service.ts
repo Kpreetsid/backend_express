@@ -131,8 +131,14 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
 export const childAssetsAgainstLocation = async (lOne: any, lTwo: any, account_id: any) => {
   try {
     const childIds = await getAllChildLocationsRecursive(lTwo);
-    const finalList = [...childIds, ...lOne, ...lTwo]
-    const data: any = await AssetModel.find({ locationId: { $in: finalList }, top_level: true, account_id, visible: true }).select('id top_level asset_name asset_type asset_build_type');
+    const finalList = [...childIds, ...lOne, ...lTwo];
+    const locationObjectIds = finalList.map(id => new mongoose.Types.ObjectId(id));
+    const data: any = await AssetModel.find({
+      locationId: { $in: locationObjectIds },
+      top_level: true,
+      account_id,
+      visible: true
+    }).select('id top_level asset_name asset_type asset_build_type');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -142,14 +148,15 @@ export const childAssetsAgainstLocation = async (lOne: any, lTwo: any, account_i
   }
 }
 
-const getAllChildLocationsRecursive = async (parentIds: any) => {
+const getAllChildLocationsRecursive = async (parentIds: string[]): Promise<string[]> => {
   try {
-    let childIds: any = [];
-    for (let i = 0; i < parentIds.length; i++) {
-      const parent: any = await LocationModel.findById(parentIds[i]);
-      const children = await LocationModel.find({ where: { parent_id: parent.id, visible: true } });
+    let childIds: string[] = [];
+    for (const parentId of parentIds) {
+      const parent = await LocationModel.findById(parentId);
+      if (!parent) continue;
+      const children: ILocationMaster[] = await LocationModel.find({ parent_id: parent._id, visible: true });
       if (children.length > 0) {
-        const childrenIds = children.map(child => child.id);
+        const childrenIds = children.map(child => (child._id as mongoose.Types.ObjectId).toString());
         childIds = [...childIds, ...childrenIds];
         const grandChildrenIds = await getAllChildLocationsRecursive(childrenIds);
         childIds = [...childIds, ...grandChildrenIds];
@@ -160,6 +167,7 @@ const getAllChildLocationsRecursive = async (parentIds: any) => {
     return [];
   }
 }
+
 
 export const insertLocation = async (body: any) => {
   const newLocation = new LocationModel(body);
@@ -174,19 +182,43 @@ export const updateById = async (id: string, body: any) => {
   return await LocationModel.findById(id);
 };
 
-export const removeById = async (id: string, data: any, user_id: any) => {
-  const promiseList: any = [];
+// export const removeById = async (id: string, data: any, user_id: any) => {
+//   const promiseList: any = [];
+//   const totalIds = [id];
+//   if (data.top_level) {
+//     const childIds = await getAllChildLocationsRecursive([id]);
+//     totalIds.push(...childIds);
+//     promiseList.push(LocationModel.updateMany({ _id: { $in: childIds } }, { visible: false, updatedBy: user_id }));
+//   }
+//   promiseList.push(AssetModel.updateMany({ locationId: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
+//   promiseList.push(LocationModel.updateMany({ _id: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
+//   await Promise.all(promiseList);
+//   return true;
+// };
+
+export const removeById = async (id: string, user_id: string) => {
   const totalIds = [id];
-  if (data.top_level) {
-    const childIds = await getAllChildLocationsRecursive([id]);
-    totalIds.push(...childIds);
-    promiseList.push(LocationModel.updateMany({ _id: { $in: childIds } }, { visible: false, updatedBy: user_id }));
-  }
-  promiseList.push(AssetModel.updateMany({ locationId: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
-  promiseList.push(LocationModel.updateMany({ _id: { $in: totalIds } }, { visible: false, updatedBy: user_id }));
-  await Promise.all(promiseList);
-  return true;
+  const childIds = await getAllChildLocationsRecursive([id]);
+  totalIds.push(...childIds);
+  const objectIds = totalIds.map(id => new mongoose.Types.ObjectId(id));
+
+  const assetUpdate = await AssetModel.updateMany(
+    { locationId: { $in: objectIds } },
+    { $set: { visible: false, updatedBy: new mongoose.Types.ObjectId(user_id), updatedAt: new Date() } }
+  );
+
+  const locationUpdate = await LocationModel.updateMany(
+    { _id: { $in: objectIds } },
+    { $set: { visible: false, updatedBy: new mongoose.Types.ObjectId(user_id), updatedAt: new Date() } }
+  );
+
+  return {
+    success: true,
+    deletedLocations: locationUpdate.modifiedCount,
+    deletedAssets: assetUpdate.modifiedCount
+  };
 };
+
 
 export const updateFloorMapImage = async (id: string, account_id: any, user_id: any, top_level_location_image: string) => {
   return await LocationModel.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id } });
