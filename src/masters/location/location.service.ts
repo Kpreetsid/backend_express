@@ -128,38 +128,41 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
   }
 };
 
-export const childAssetsAgainstLocation = async (lOne: any, lTwo: any, account_id: any) => {
+export const childAssetsAgainstLocation = async (lOne: string[], lTwo: string[], account_id: any) => {
   try {
     const childIds = await getAllChildLocationsRecursive(lTwo);
-    const finalList = [...childIds, ...lOne, ...lTwo]
-    const data: any = await AssetModel.find({ locationId: { $in: finalList }, top_level: true, account_id, visible: true }).select('id top_level asset_name asset_type asset_build_type');
+    const finalList = [...new Set([...childIds, ...lOne, ...lTwo])];
+    const data = await AssetModel.find({ locationId: { $in: finalList }, account_id, visible: true}).select('_id top_level asset_name asset_type asset_build_type');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return { assetList: data, locationList: finalList };
   } catch (error) {
+    console.error('Error in childAssetsAgainstLocation:', error);
     return null;
   }
-}
+};
 
-const getAllChildLocationsRecursive = async (parentIds: any) => {
+const getAllChildLocationsRecursive = async (parentIds: string[], visited: Set<string> = new Set()): Promise<string[]> => {
   try {
-    let childIds: any = [];
-    for (let i = 0; i < parentIds.length; i++) {
-      const parent: any = await LocationModel.findById(parentIds[i]);
-      const children = await LocationModel.find({ where: { parent_id: parent.id, visible: true } });
+    let allChildIds: string[] = [];
+    for (const parentId of parentIds) {
+      if (visited.has(parentId)) continue;
+      visited.add(parentId);
+      const children = await LocationModel.find({ parent_id: parentId, visible: true }).select('_id');
       if (children.length > 0) {
-        const childrenIds = children.map(child => child.id);
-        childIds = [...childIds, ...childrenIds];
-        const grandChildrenIds = await getAllChildLocationsRecursive(childrenIds);
-        childIds = [...childIds, ...grandChildrenIds];
+        const childIds = children.map((c) => `${c._id}`);
+        allChildIds.push(...childIds);
+        const grandChildren = await getAllChildLocationsRecursive(childIds, visited);
+        allChildIds.push(...grandChildren);
       }
     }
-    return childIds;
+    return allChildIds;
   } catch (error) {
+    console.error('Error in getAllChildLocationsRecursive:', error);
     return [];
   }
-}
+};
 
 export const insertLocation = async (body: any) => {
   const newLocation = new LocationModel(body);
