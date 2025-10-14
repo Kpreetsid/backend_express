@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllLocations, insertLocation, updateById, removeLocationById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
+import { LocationModel } from "../../models/location.model";
 import { getDataByLocationId, getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 const moduleName: string = "location";
@@ -14,7 +15,7 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
       const mappedUserList = await getLocationsMappedData(user_id);
       match._id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
     }
-    const { query: { locationId, parent_id }} = req;
+    const { query: { locationId, parent_id } } = req;
     if (locationId) {
       match._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
@@ -201,6 +202,7 @@ export const removeLocation = async (req: Request, res: Response, next: NextFunc
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const role = get(req, "role", {}) as any;
+
     if (!role[moduleName].delete_location) {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
