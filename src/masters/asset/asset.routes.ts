@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAssets, getAsset, getFilteredAssets, getAssetTree, removeAsset, create, createOld, updateOld, updateAssetImage, update, getAssetSensorList, makeAssetCopy } from './asset.controller';
+import { getAssets, getAsset, getFilteredAssets, getChildAsset, getAssetTree, removeAsset, create, createOld, updateOld, updateAssetImage, update, getAssetSensorList, makeAssetCopy } from './asset.controller';
 import { hasRolePermission, isOwnerOrAdmin } from '../../middlewares';
 
 export default (router: express.Router) => {
@@ -8,6 +8,7 @@ export default (router: express.Router) => {
     assetRouter.get('/sensor-list', getAssetSensorList);
     assetRouter.get('/tree', getAssetTree);
     assetRouter.get('/tree/:id', getAssetTree);
+    assetRouter.get('/child/:id', getChildAsset);
     assetRouter.get('/make-copy/:id', hasRolePermission('asset', 'add_asset'), makeAssetCopy);
     assetRouter.get('/:id', getAsset);
     assetRouter.post('/', hasRolePermission('asset', 'add_asset'), create);

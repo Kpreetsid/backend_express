@@ -55,8 +55,8 @@ export const insertObservation = async (body: any, account_id: any, user_id: any
 
 export const setAssetHealthStatus = async (body: any, account_id: any, user_id: any, token: any) => {
   const payload: any = { "asset_id": body.assetId, "asset_status": body.status, "org_id": account_id };
-  if(body.alarm_id) {
-    payload.alarm_id = body.alarm_id;
+  if(body.alarmId) {
+    payload.alarm_id = body.alarmId;
   }
   await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);
 }

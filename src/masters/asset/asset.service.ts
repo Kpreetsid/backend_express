@@ -200,13 +200,11 @@ export const getAssetDataSensorList = async (req: Request, res: Response, next: 
         match._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
     }
-    const data = await AssetModel.find(match).populate(
-      [
-        { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
-        { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
-        { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
-      ]
-    );
+    const data = await AssetModel.find(match).populate([
+      { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
+      { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
+      { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
+    ]);
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

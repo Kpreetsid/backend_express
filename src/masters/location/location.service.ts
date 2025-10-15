@@ -131,11 +131,10 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
 export const childAssetsAgainstLocation = async (lOne: string[], lTwo: string[], account_id: any) => {
   try {
     const childIds = await getAllChildLocationsRecursive(lTwo);
-    const finalList = [...childIds, ...lOne, ...lTwo];
+    const finalList = [...new Set([...childIds, ...lOne, ...lTwo])];
     const locationObjectIds = finalList.map(id => new mongoose.Types.ObjectId(id));
     const data: any = await AssetModel.find({
       locationId: { $in: locationObjectIds },
-      top_level: true,
       account_id,
       visible: true
     }).select('id top_level asset_name asset_type asset_build_type');

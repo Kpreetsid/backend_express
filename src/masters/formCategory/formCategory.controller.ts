@@ -44,6 +44,11 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
   try {
     const user = get(req, "user", {}) as IUser;
     const { body } = req;
+    const match: any = { name: body.name, account_id: user.account_id, visible: true };
+    const existData: any = await getFormCategories(match);
+    if (existData.length !== 0) {
+      throw Object.assign(new Error(`${body.name} Category already exist.`), { status: 400 });
+    }
     const data = await createFormCategory(body, user);
     if (!data) {
       throw Object.assign(new Error('Failed to create category'), { status: 400 });

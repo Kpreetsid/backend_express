@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyById, updateAllChildAssetsLocation } from './asset.service';
+import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyById, updateAllChildAssetsLocation, getAllChildAssetIDs } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { createMapUserAssets, getAssetsMappedData, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
@@ -11,7 +11,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
-    const { query: { top_level_asset_id, top_level, locationId } }: any = req;
+    const { query: { top_level_asset_id, top_level, locationId, parent_id } }: any = req;
     if (userRole !== 'admin') {
       const mappedData = await getAssetsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
@@ -20,7 +20,11 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
       match._id = { $in: mappedData.map(doc => doc.assetId) };
     }
     if (top_level_asset_id && top_level_asset_id.split(',').length > 0) {
-      match.top_level_asset_id = top_level_asset_id.split(',');
+      match.top_level_asset_id = { $in: top_level_asset_id.split(',') };
+    }
+    if (parent_id && parent_id.split(',').length > 0) {
+      match._id = { $in: parent_id.split(',') };
+      match.parent_id = { $in: parent_id.split(',') };
     }
     if (top_level) {
       match.top_level = top_level == 'true' ? true : false;
@@ -56,6 +60,28 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
     if (locationId) {
       match.locationId = new mongoose.Types.ObjectId(`${locationId}`);
     }
+    const data = await getAll(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const getChildAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id } = get(req, "user", {}) as IUser;
+    const { params: { id } } = req;
+    if (!id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const childIds = await getAllChildAssetIDs(new mongoose.Types.ObjectId(`${id}`));
+    if (childIds.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const match: any = { _id: { $in: childIds }, account_id: account_id, visible: true };
     const data = await getAll(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
