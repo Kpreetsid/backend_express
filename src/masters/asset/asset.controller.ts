@@ -376,6 +376,7 @@ export const getAssetSensorList = async (req: Request, res: Response, next: Next
 export const makeAssetCopy = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const token: any = req.cookies.token || req.headers.authorization;
     const { params: { id }} = req;
     if (!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -385,7 +386,7 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const newAsset = await makeAssetCopyById(id, user_id);
+    const newAsset = await makeAssetCopyById(id, user_id, token);
     if (!newAsset) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

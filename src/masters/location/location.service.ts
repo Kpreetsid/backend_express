@@ -2,7 +2,7 @@ import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
-import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
+import { getLocationsMappedData, removeAssetListMapping, removeLocationListMapping } from "../../transaction/mapUserLocation/userLocation.service";
 import { getData } from "../../util/queryBuilder";
 
 export const getAllLocations = async (match: any) => {
@@ -170,7 +170,6 @@ const getAllChildLocationsRecursive = async (parentIds: string[]): Promise<strin
   }
 }
 
-
 export const insertLocation = async (body: any) => {
   const newLocation = new LocationModel(body);
   newLocation.top_level_location_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
@@ -189,24 +188,18 @@ export const removeLocationById = async (id: any, user_id: any) => {
   const childIds = await getAllChildLocationsRecursive([id]);
   totalIds.push(...childIds);
   const objectIds = totalIds.map(id => new mongoose.Types.ObjectId(id));
-
-  const assetUpdate = await AssetModel.updateMany(
-    { locationId: { $in: objectIds } },
-    { $set: { visible: false, updatedBy: new mongoose.Types.ObjectId(user_id), updatedAt: new Date() } }
-  );
-
-  const locationUpdate = await LocationModel.updateMany(
-    { _id: { $in: objectIds } },
-    { $set: { visible: false, updatedBy: new mongoose.Types.ObjectId(user_id), updatedAt: new Date() } }
-  );
-
-  return {
-    success: true,
-    deletedLocations: locationUpdate.modifiedCount,
-    deletedAssets: assetUpdate.modifiedCount
-  };
+  await removeLocationListMapping(totalIds);
+  const getAssetsByLocationId = await AssetModel.find({ locationId: { $in: objectIds } });
+  if (getAssetsByLocationId?.length > 0) {
+    const assetIds: any = getAssetsByLocationId.map(asset => asset._id);
+    await removeAssetListMapping(assetIds);
+  }
+  const assetUpdate = await AssetModel.updateMany({ locationId: { $in: objectIds } }, { $set: { visible: false, updatedBy: user_id } });
+  console.log(assetUpdate);
+  const locationUpdate = await LocationModel.updateMany({ _id: { $in: objectIds } }, { $set: { visible: false, updatedBy: user_id } });
+  console.log(locationUpdate);
+  return true;
 };
-
 
 export const updateFloorMapImage = async (id: string, account_id: any, user_id: any, top_level_location_image: string) => {
   return await LocationModel.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id } });

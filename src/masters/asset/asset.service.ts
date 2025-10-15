@@ -827,7 +827,7 @@ export const updateCompressor = async (compressor: any, equipment: any, account_
   return await AssetModel.updateOne({ _id: compressor.id }, updatedCompressor);
 }
 
-export const makeAssetCopyById = async (id: any, user_id: any) => {
+export const makeAssetCopyById = async (id: any, user_id: any, token: string) => {
   let asset: any = await AssetModel.findById(id).lean();
   if (!asset) {
     throw Object.assign(new Error('No asset found'), { status: 404 });
@@ -838,15 +838,13 @@ export const makeAssetCopyById = async (id: any, user_id: any) => {
     asset_name: `${asset?.asset_name} - Copy`,
     createdBy: user_id
   });
-  newAsset.top_level_asset_id = newAsset._id;
+  newAsset.top_level_asset_id = newAsset.top_level ? newAsset._id : newAsset.top_level_asset_id;
   const savedAsset = await newAsset?.save();
   const getUserMapping = await getDataByAssetId(id);
+  const mappedData = getUserMapping.map((doc: any) => {
+    return { assetId: savedAsset?.id, userId: doc.userId };
+  });
+  await createExternalAPICall(mappedData, savedAsset?.account_id, user_id, token);
   await updateMapUserAssets(`${savedAsset?.id}`, getUserMapping.map((doc: any) => doc.userId));
   return savedAsset;
 }
-
-export const removeAssetByLocationList = async (locationIdList: any, user_id: any) => {
-
-  // await removeAssetListMapping(locationIdList);
-  return await AssetModel.updateMany({ locationId: { $in: locationIdList }, visible: true }, { visible: false, updatedBy: user_id });
-};
