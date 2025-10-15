@@ -28,6 +28,7 @@ export interface IWorkOrder extends Document {
   priority: string;
   status: string;
   type: string;
+  nature_of_work: string;
   wo_asset_id: ObjectId;
   wo_location_id: ObjectId;
   start_date: Date;
@@ -56,6 +57,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   priority: { type: String, enum: WORK_ORDER_PRIORITIES, default: "None" },
   status: { type: String, enum: WORK_ORDER_STATUSES, default: "Open" },
   type: { type: String },
+  nature_of_work: { type: String },
   wo_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
   wo_location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   start_date: { type: Date },

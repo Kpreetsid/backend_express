@@ -250,13 +250,7 @@ export const pendingOrders = async (match: any): Promise<any> => {
 
 export const generateOrderNo = async (account_id: any): Promise<string> => {
   const year = new Date().getFullYear();
-  const totalCount = await WorkOrderModel.countDocuments({
-    account_id,
-    createdAt: {
-      $gte: new Date(`${year}-01-01T00:00:00Z`),
-      $lte: new Date(`${year}-12-31T23:59:59Z`)
-    }
-  });
+  const totalCount = await WorkOrderModel.countDocuments({ account_id, createdAt: { $gte: new Date(`${year}-01-01T00:00:00Z`), $lte: new Date(`${year}-12-31T23:59:59Z`)}});
   const sequence = String(totalCount + 1).padStart(4, "0");
   return `WO-${year}${sequence}`;
 };
@@ -271,6 +265,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     priority : body.priority,
     status : body.status,
     type : body.type,
+    nature_of_work : body.type,
     sop_form_id : body.sop_form_id,
     rescheduleEnabled : false,
     created_by : user._id,

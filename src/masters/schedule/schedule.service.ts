@@ -57,7 +57,8 @@ export const getSchedules = async (match: any): Promise<IScheduleMaster[]> => {
             }
         },
         { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } },
-        { $addFields: { id: "$_id" } }
+        { $addFields: { id: "$_id" } },
+        { $sort: { _id: -1 } }
     ]);
     if (!data || data.length === 0) {
         throw Object.assign(new Error("No data found"), { status: 404 });

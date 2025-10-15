@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 
 export const getAllParts = async (match: any): Promise<IPost[]> => {
   match.visible = true;
-  return await PostModel.find(match);
+  return await PostModel.find(match).sort({ _id: -1 });
 };
 
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

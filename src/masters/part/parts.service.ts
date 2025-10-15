@@ -31,7 +31,8 @@ export const getAll = async (match: any): Promise<IPart[]> => {
       }
     },
     { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-    { $addFields: { id: "$_id" } }
+    { $addFields: { id: "$_id" } },
+    { $sort: { _id: -1 } }
   ]);
 };
 

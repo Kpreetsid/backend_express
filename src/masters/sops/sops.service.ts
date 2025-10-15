@@ -9,7 +9,7 @@ export const getSOPs = async (match: any): Promise<ISopsMaster[]> => {
         { path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' },
         { path: 'updatedBy', model: "Schema_User", select: 'id firstName lastName' }
     ];
-    let data = await SOPsModel.find(match).populate(populateList);
+    let data = await SOPsModel.find(match).populate(populateList).sort({ _id: -1 });
     if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
     }

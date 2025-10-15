@@ -2,7 +2,7 @@ import { CategoryModel, ICategory } from "../../models/formCategory.model";
 import { IUser } from "../../models/user.model";
 
 export const getFormCategories = async (match: any): Promise<ICategory[]> => {
-  return await CategoryModel.find(match);
+  return await CategoryModel.find(match).sort({ _id: -1 });
 };
 
 export const createFormCategory = async (body: any, user: IUser): Promise<ICategory | null> => {
