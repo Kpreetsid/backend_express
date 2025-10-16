@@ -141,7 +141,7 @@ export const changeUserPassword = async (req: Request, res: Response, next: Next
     if (!userData || userData.length === 0) {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }
-    const match = { email: userData[0].email, firstName: userData[0].firstName, lastName: userData[0].lastName };
+    const match = { email: userData[0].email };
     const otpExists = await verifyOTPExists(match);
     if (!otpExists) {
       throw Object.assign(new Error('OTP has expired'), { status: 404 });

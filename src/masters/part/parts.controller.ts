@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
-import { getAll, insert, updatePartById, removeById } from './parts.service';
+import { getAllParts, insert, updatePartById, removeById, updatePartStock } from './parts.service';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
 
@@ -15,7 +15,7 @@ export const getParts = async (req: Request, res: Response, next: NextFunction):
     if (userRole !== 'admin') {
       match.createdBy = user_id;
     }
-    const data = await getAll(match);
+    const data = await getAllParts(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -35,7 +35,7 @@ export const getPart = async (req: Request, res: Response, next: NextFunction): 
     if (userRole !== 'admin') {
       match.createdBy = user_id;
     }
-    const data = await getAll(match);
+    const data = await getAllParts(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -66,7 +66,7 @@ export const updatePart = async (req: Request, res: Response, next: NextFunction
     if (userRole !== 'admin') {
       match.createdBy = user_id;
     }
-    const isDataExists = await getAll(match);
+    const isDataExists = await getAllParts(match);
     if (!isDataExists || isDataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -80,6 +80,31 @@ export const updatePart = async (req: Request, res: Response, next: NextFunction
   }
 }
 
+export const updateStock = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { params: { id }, body: { quantity, part_number } } = req;
+     if (!id) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    const part = await getAllParts({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+    if (!part || part.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    if (part[0].part_number !== part_number) {
+      throw Object.assign(new Error('Part number does not match'), { status: 400 });
+    }
+    part[0].quantity = Number(part[0].quantity) + Number(quantity);
+    const updatedPart = await updatePartStock(id, part[0], user_id);
+    if(!updatedPart) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data updated successfully", data: updatedPart });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const removePart = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
@@ -91,7 +116,7 @@ export const removePart = async (req: Request, res: Response, next: NextFunction
     if (userRole !== 'admin') {
       match.createdBy = user_id;
     }
-    const isDataExists = await getAll(match);
+    const isDataExists = await getAllParts(match);
     if (!isDataExists || isDataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

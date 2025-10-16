@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { PartsModel, IPart } from "../../models/part.model";
 
-export const getAll = async (match: any): Promise<IPart[]> => {
+export const getAllParts = async (match: any): Promise<IPart[]> => {
   match.visible = true;
   return await PartsModel.aggregate([
     { $match: match },
@@ -56,6 +56,11 @@ export const updatePartById = async (id: string, body: IPart, user_id: any) => {
   body.updatedBy = user_id;
   return await PartsModel.findByIdAndUpdate(id, body, { new: true });
 };
+
+export const updatePartStock = async (id: string, body: any, user_id: any) => {
+  body.updatedBy = user_id;
+  return await PartsModel.findByIdAndUpdate(id, body, { new: true });
+}
 
 export const removeById = async (id: string, user_id: any) => {
   return await PartsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
