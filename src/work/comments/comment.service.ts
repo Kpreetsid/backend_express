@@ -37,7 +37,7 @@ const getNestedComments = async (parentId: any) => {
 export const createComment = async (body: any, account_id: any, user_id: any): Promise<any> => {
   const newComment = new CommentsModel({
     account_id: account_id,
-    work_order_id: body.work_order_id,
+    order_id: body.order_id,
     comments: body.comments,
     parentCommentId: body.parentCommentId || null,
     createdBy: user_id
