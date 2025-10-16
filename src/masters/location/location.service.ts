@@ -133,15 +133,19 @@ export const childAssetsAgainstLocation = async (lOne: string[], lTwo: string[],
     const childIds = await getAllChildLocationsRecursive(lTwo);
     const finalList = [...new Set([...childIds, ...lOne, ...lTwo])];
     const locationObjectIds = finalList.map(id => new mongoose.Types.ObjectId(id));
-    const data: any = await AssetModel.find({
-      locationId: { $in: locationObjectIds },
-      account_id,
-      visible: true
-    }).select('id top_level asset_name asset_type asset_build_type');
+    const data: any = await AssetModel.find({ locationId: { $in: locationObjectIds }, account_id, visible: true }).select('id top_level asset_name asset_type asset_build_type');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    return { assetList: data, locationList: finalList };
+    const locationData = await LocationModel.aggregate([
+      { $match: { _id: { $in: locationObjectIds }, visible: true } },
+      { $project: { location_name: 1, _id: 1 } },
+      { $addFields: { id: { $toString: '$_id' }, name: '$location_name' } }
+    ]);
+    if (!locationData || locationData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    return { assetList: data, locationList: locationData };
   } catch (error) {
     console.error('Error in childAssetsAgainstLocation:', error);
     return null;

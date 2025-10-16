@@ -81,12 +81,12 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, user_status: 'active' };
+    const match = { _id: new mongoose.Types.ObjectId(id), account_id, user_status: 'active' };
     const userData = await getAllUsers(match);
     if (!userData || userData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    req.body.updatedBy = user_id;
+    body.updatedBy = user_id;
     const data: any = await updateUserDetails(id, body);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
