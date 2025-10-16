@@ -73,6 +73,50 @@ export const getLocationTree = async (req: Request, res: Response, next: NextFun
   }
 };
 
+export const getChildLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { params: { id } } = req;
+    if (!id) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+    if (userRole !== 'admin') {
+      match.createdBy = user_id;
+    }
+    const isDataExists = await getAllLocations(match);
+    if (!isDataExists || isDataExists.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const getChildLocationIds = await getChildLocationByRecursive(id);
+    const data = await getAllLocations({ _id: { $in: getChildLocationIds }, account_id, visible: true });
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+const getChildLocationByRecursive = async (id: string) => {
+  try {
+    const locationIdList = [id];
+    const data = await getAllLocations({ parent_id: new mongoose.Types.ObjectId(id), visible: true });
+    if (data && data.length > 0) {
+      for(let dataItem of data) {
+        const getChildLocationIds = await getChildLocationByRecursive(dataItem.id.toString());
+        if (getChildLocationIds && getChildLocationIds.length > 0) {
+          locationIdList.push(...getChildLocationIds);
+        }
+      }
+    }
+    return [...locationIdList];
+  } catch (error) {
+    return [];
+  }
+}
+
 export const getKpiFilterLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;

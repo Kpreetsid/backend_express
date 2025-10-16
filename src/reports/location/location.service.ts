@@ -52,7 +52,7 @@ export const createLocationReport = async (req: Request, res: Response, next: Ne
     if (!location_id) {
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
     }
-    const userDetails = await getAllUsers({ _id: user_id, account_id: account_id, visible: true });
+    const userDetails = await getAllUsers({ _id: user_id, account_id: account_id, user_status: 'active' });
     if (!userDetails || userDetails.length === 0) {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }
