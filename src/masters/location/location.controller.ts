@@ -180,7 +180,7 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
     }
     const match = { _id: id, account_id: account_id, visible: true };
     const location = await getAllLocations(match);
-    if (!location || location.length === 0 || !location[0].visible) {
+    if (!location || location.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     body.updatedBy = user_id;

@@ -89,7 +89,7 @@ export const statusUpdateOrder = async (req: Request, res: Response, next: NextF
     }
     if(status === 'Completed') {
       if(isWorkOrderExist[0].tasks?.length > 0) {
-        if(!isWorkOrderExist[0].tasks_submitted) {
+        if(!isWorkOrderExist[0].task_submitted) {
           throw Object.assign(new Error('Task is not completed'), { status: 400 });
         }
       }
