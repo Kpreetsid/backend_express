@@ -14,8 +14,8 @@ export const getUserDetails = async (match: any) => {
   return await UserModel.findOne(match).select('+password');
 };
 
-export const verifyUserLogin = async ({ id, companyID, email, username }: UserLoginPayload) => {
-  return await UserModel.findOne({ _id: id, account_id: companyID, email, username }).select('-password');
+export const verifyUserLogin = async ({ id, companyID, username }: UserLoginPayload) => {
+  return await UserModel.findOne({ _id: id, account_id: companyID, username: username }).select('-password');
 };
 
 export const userVerified = async (id: string) => {

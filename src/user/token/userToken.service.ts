@@ -18,7 +18,7 @@ export const getAllUserTokens = async (req: Request, res: Response, next: NextFu
     if(!userData.id && !userData.username && !userData.email && !userData.companyID) {
       throw Object.assign(new Error('Invalid link'), { status: 401 });
     }
-    const getUserDetails = await verifyUserLogin({ id: userData.id, companyID: userData.companyID, email: userData.email, username: userData.username });
+    const getUserDetails = await verifyUserLogin({ id: userData.id, companyID: userData.companyID, username: userData.username });
     if (!getUserDetails) {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }

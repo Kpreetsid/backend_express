@@ -20,17 +20,17 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
       issuer: auth.issuer,
       audience: auth.audience
     }) as UserLoginPayload;
-    const { id, username, email, companyID } = decoded;
+    const { id, username, companyID } = decoded;
     const accountID = req.headers.accountid as string;
 
-    if (!id || !username || !email || !companyID || cookieAccountID !== accountID) {
+    if (!id || !username || !companyID || cookieAccountID !== accountID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     const companyData = await verifyCompany(accountID);
     if (!companyData) {
       throw Object.assign(new Error('Account ID is invalid'), { status: 401 });
     }
-    const userData: IUser | null = await verifyUserLogin({ id, companyID, email, username });
+    const userData: IUser | null = await verifyUserLogin({ id, companyID, username });
     if (!userData) {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }

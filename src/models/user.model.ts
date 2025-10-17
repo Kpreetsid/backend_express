@@ -6,7 +6,6 @@ export const ROLE = ['super_admin', 'admin', 'manager', 'employee', 'customer', 
 export interface UserLoginPayload {
   id: string;
   companyID: string;
-  email: string;
   username: string;
 }
 export interface IUser extends Document {
