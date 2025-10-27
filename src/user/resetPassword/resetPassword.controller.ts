@@ -4,10 +4,11 @@ import { sendVerificationEmailCode, verifyOTPExists, verifyUserOTP } from './res
 
 export const sendVerificationEmail = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-        if (!req.body.email) {
+        const { email } = req.body;
+        if (!email) {
             throw Object.assign(new Error('Email is required'), { status: 400 });
         }
-        const emailCheck = await getAllUsers({ email: req.body.email });
+        const emailCheck = await getAllUsers({ email: email });
         if(emailCheck.length === 0) {
             throw Object.assign(new Error('Email not found'), { status: 404 });
         }
