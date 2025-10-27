@@ -33,6 +33,17 @@ export const getAllOrders = async (match: any): Promise<any> => {
       as: "location" 
     }},
     { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
+    { $lookup: { 
+      from: "users", 
+      let: { createdBy: '$createdBy' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
+        { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+        { $addFields: { id: '$_id' } }
+      ],
+      as: "user" 
+    }},
+    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true }},
     { $addFields: { id: "$_id" }}
   ]);
   if (!data || data.length === 0) {

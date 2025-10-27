@@ -44,6 +44,8 @@ export interface IWorkOrder extends Document {
   work_request_id: ObjectId;
   files: object[];
   visible: boolean;
+  created_by: ObjectId;
+  updated_by: ObjectId;
   createdBy: ObjectId;
   updatedBy?: ObjectId;
 }
@@ -72,6 +74,8 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   files: { type: [Object] },
   visible: { type: Boolean, default: true },
+  created_by: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updated_by: { type: Schema.Types.ObjectId, ref: 'UserModel' },
   createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
