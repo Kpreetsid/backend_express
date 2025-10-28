@@ -119,12 +119,13 @@ export const monthlyCount = async (match: any): Promise<any> => {
 
 export const plannedUnplanned = async (match: any): Promise<any> => {
   match.visible = true;
-  const data: IWorkOrder[] = await WorkOrderModel.find(match).select("_id createdAt createdFrom");
+  const data: IWorkOrder[] = await WorkOrderModel.find(match).select("_id createdAt createdOn createdFrom");
   if (!data || data.length === 0) {
     throw Object.assign(new Error('No data found'), { status: 404 });
   }
   const groupByCreatedFromAndMonth = data.reduce((acc: any, document: any) => {
-    const monthYear = document.createdAt.toISOString().slice(0, 7);
+    const createdAt = document.createdAt || document.createdOn;
+    const monthYear = new Date(createdAt).toISOString().slice(0, 7);
     const key = `${document.createdFrom}-${monthYear}`;
     acc[key] = acc[key] || {
       createdFrom: document.createdFrom,
