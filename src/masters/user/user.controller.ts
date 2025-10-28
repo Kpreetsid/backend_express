@@ -79,12 +79,15 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 
 export const updateUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
     if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: new mongoose.Types.ObjectId(id), account_id, user_status: 'active' };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, user_status: 'active' };
+    if (userRole === 'admin') {
+      delete match.user_status;
+    }
     const userData = await getAllUsers(match);
     if (!userData || userData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
