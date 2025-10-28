@@ -10,7 +10,10 @@ import { auth } from "../../configDB";
 import { IAccount } from "../../models/account.model";
 import { getAllCompanies } from "../../masters/company/company.service";
 import { get } from "lodash";
+import jwt from 'jsonwebtoken';
 import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
+import { ExternalUserModel } from "../../models/map_user.model";
+import mongoose from "mongoose";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -59,6 +62,56 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     });
     await userTokenData.save();
     res.status(200).json({ status: true, message: 'Login successful', data: {token, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data} });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { params: { token }} = req;
+    if(!token) {
+      throw Object.assign(new Error('Bad request'), { status: 404 });
+    }
+    const decoded = jwt.verify(token, auth.external_secret, {
+      algorithms: [auth.algorithm as jwt.Algorithm],
+      issuer: auth.issuer,
+      audience: auth.audience
+    }) as UserLoginPayload;
+    const { id, username, companyID } = decoded;
+    if (!id || !username || !companyID) {
+      throw Object.assign(new Error('Invalid token'), { status: 401 });
+    }
+    const mappedUser = await ExternalUserModel.findOne({ username, customer_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
+    if (!mappedUser) {
+      throw Object.assign(new Error('User not found'), { status: 404 });
+    }
+    const userDetails = await UserModel.findOne({ _id: mappedUser.user_id, account_id: companyID, user_status: 'active' });
+    if (!userDetails) {
+      throw Object.assign(new Error('User not found'), { status: 404 });
+    }
+    const { password: _, ...safeUser } = userDetails.toObject();
+    safeUser.id = safeUser._id;
+    const accountDetails = await getAllCompanies({ _id: companyID });
+    if (!accountDetails || accountDetails.length === 0) {
+      throw Object.assign(new Error('User account not found'), { status: 404 });
+    }
+    const userRoleMenu = await verifyUserRole(`${userDetails._id}`, `${userDetails.account_id}`);
+    if (!userRoleMenu) {
+      throw Object.assign(new Error('User does not have any permission'), { status: 403 });
+    }
+    const userTokenPayload: UserLoginPayload = { id: `${userDetails._id}`, username: userDetails.username, companyID: `${userDetails.account_id}` };
+    const newToken = generateAccessToken(userTokenPayload);
+    res.cookie('token', newToken, { httpOnly: true, secure: false , sameSite: 'lax'});
+    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
+    const userTokenData = new TokenModel({
+      _id: newToken,
+      userId: userDetails._id,
+      principalType: 'user',
+      ttl: parseInt(auth.expiresIn as string)
+    });
+    await userTokenData.save();
+    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: safeUser, platformControl: userRoleMenu.data} });
   } catch (error) {
     next(error);
   }

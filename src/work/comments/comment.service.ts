@@ -1,7 +1,6 @@
 import { CommentsModel } from "../../models/comment.model";
 
 export const getAllComments = async (match: any) => {
-  match.visible = true;
   match.parentCommentId = match.parentCommentId || null;
   const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email user_role user_profile_img' }]).lean();
   if (!comments || comments.length === 0) {
@@ -9,6 +8,10 @@ export const getAllComments = async (match: any) => {
   }
   const replies = await Promise.all(comments.map(comment => getNestedComments(comment._id)));
   return comments.map((comment: any, index) => ({ ...comment, id: comment._id, replies: replies[index] }));
+};
+
+export const getComments = async (match: any) => {
+  return await CommentsModel.find(match).sort({ _id: -1 });
 };
 
 export const getAllCommentsForWorkOrder = async (match: any) => {

@@ -18,6 +18,7 @@ export const server = {
 
 export const auth = {
   secret: process.env.AUTH_SECRET!,
+  external_secret: process.env.EXTERNAL_AUTH_SECRET!,
   expiresIn: process.env.AUTH_EXPIRES_IN || '1d',
   algorithm: process.env.AUTH_ALGORITHM || 'HS256',
   issuer: process.env.AUTH_ISSUER!,

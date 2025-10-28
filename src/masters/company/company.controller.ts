@@ -6,14 +6,11 @@ import mongoose from "mongoose";
 
 export const getCompanies = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id, visible: true };
+    const { account_id } = get(req, "user", {}) as IUser;
+    const match: any = { _id: account_id, visible: true };
     const { type } = req.query;
     if (type) {
       match.type = type;
-    }
-    if (userRole !== 'admin') {
-      match._id = user_id;
     }
     const data = await getAllCompanies(match);
     if (!data || data.length === 0) {
