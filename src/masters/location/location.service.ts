@@ -174,8 +174,8 @@ const getAllChildLocationsRecursive = async (parentIds: string[]): Promise<strin
 }
 
 export const insertLocation = async (body: any) => {
-  const newLocation = new LocationModel(body);
-  newLocation.top_level_location_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
+  const newLocation: any = new LocationModel(body);
+  newLocation.top_level_location_id = newLocation.top_level ? newLocation._id as mongoose.Types.ObjectId : body.top_level_location_id;
   body.parent_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
   return await newLocation.save();
 };
