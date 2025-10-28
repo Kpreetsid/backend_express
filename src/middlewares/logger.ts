@@ -59,7 +59,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
       const newLog = new UserLogModel({
         userId: _id,
         userName,
-        accountId: account_id,
+        account_id,
         systemInfo,
         browserInfo,
         deviceInfo,

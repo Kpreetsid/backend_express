@@ -27,10 +27,23 @@ export const getAllParts = async (match: any): Promise<IPart[]> => {
           { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
           { $addFields: { id: "$_id" } }
         ],
-        as: "user"
+        as: "createdUser"
       }
     },
-    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+    { $unwind: { path: "$createdUser", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "users",
+        let: { user_id: "$updatedBy" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$user_id"] } } },
+          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+          { $addFields: { id: "$_id" } }
+        ],
+        as: "updatedUser"
+      }
+    },
+    { $unwind: { path: "$updatedUser", preserveNullAndEmptyArrays: true } },
     { $addFields: { id: "$_id" } },
     { $sort: { _id: -1 } }
   ]);

@@ -8,8 +8,11 @@ import mongoose from 'mongoose';
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id, user_status: 'active' };
+    if (userRole === 'admin') {
+      delete match.user_status;
+    }
     const data = await getAllUsers(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
