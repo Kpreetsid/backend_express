@@ -13,14 +13,14 @@ export interface ICategory {
 }
 
 const subCategorySchema = new Schema<ISubCategory>({
-  id: { type: String, required: true },
-  name: { type: String, required: true },
+  id: { type: String, trim: true, required: true },
+  name: { type: String, trim: true, required: true },
   isSelected: { type: Boolean, required: true }
 });
 
 const FeaturesSchema = new Schema<ICategory>({
-  id: { type: String, required: true },
-  categoryName: { type: String, required: true },
+  id: { type: String, trim: true, required: true },
+  categoryName: { type: String, trim: true, required: true },
   subCategory: { type: [subCategorySchema], required: true }
 });
 

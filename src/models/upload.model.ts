@@ -12,13 +12,13 @@ export interface IUpload extends Document {
 }
 
 export const uploadSchema = new Schema<IUpload>({
-  originalName: { type: String, select: false },
-  type: { type: String },
-  destination: { type: String, select: false },
-  folderName: { type: String },
-  fileName: { type: String },
-  filePath: { type: String, select: false },
-  fileURL: { type: String },
+  originalName: { type: String, trim: true, select: false },
+  type: { type: String, trim: true },
+  destination: { type: String, trim: true, select: false },
+  folderName: { type: String, trim: true },
+  fileName: { type: String, trim: true },
+  filePath: { type: String, trim: true, select: false },
+  fileURL: { type: String, trim: true },
   size: { type: Number }
 }, {
   _id: false,

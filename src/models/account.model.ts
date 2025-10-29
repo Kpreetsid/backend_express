@@ -14,10 +14,10 @@ export interface IAccount extends Document {
 const accountSchema = new Schema<IAccount>(
   {
     account_name: { type: String, required: true, unique: true, trim: true },
-    type: { type: String, required: true },
-    description: { type: String},
-    fileName: { type: String },
-    account_status: { type: String, enum: STATUS, default: 'active' },
+    type: { type: String, trim: true, required: true },
+    description: { type: String, trim: true},
+    fileName: { type: String, trim: true },
+    account_status: { type: String, trim: true, enum: STATUS, default: 'active' },
     visible: { type: Boolean, required: true, default: true }
   },
   {

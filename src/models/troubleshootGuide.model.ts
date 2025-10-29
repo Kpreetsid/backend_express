@@ -10,8 +10,8 @@ interface ITroubleshootingSteps {
 }
 
 const TroubleshootingStepsSchema = new Schema<ITroubleshootingSteps>({
-  title: { type: String, required: true },
-  description: { type: String, required: true },
+  title: { type: String, trim: true, required: true },
+  description: { type: String, trim: true, required: true },
   files: { type: [Object], required: true },
   id: { type: Number, required: true },
   Position: { type: Number, required: true }
@@ -34,10 +34,10 @@ export interface ITroubleshootGuide extends Document {
 const troubleshootGuideSchema = new Schema<ITroubleshootGuide>(
   {
     account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
-    title: { type: String, required: true },
-    description: { type: String },
-    tags: { type: String },
-    type: { type: String },
+    title: { type: String, trim: true, required: true },
+    description: { type: String, trim: true },
+    tags: { type: String, trim: true },
+    type: { type: String, trim: true },
     assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel' },
     locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },
     troubleshooting_steps: { type: [TroubleshootingStepsSchema], required: true },

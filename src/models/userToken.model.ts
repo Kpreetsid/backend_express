@@ -9,7 +9,7 @@ export interface IUserToken extends Document {
 }
 
 const userTokenSchema = new Schema<IUserToken>({
-  _id: { type: String, required: true },
+  _id: { type: String, trim: true, required: true },
   ttl: { type: Number, required: true },
   created: {
     type: Date,

@@ -13,48 +13,48 @@ const accelerationVelocitySchema = new Schema({
 
 const RMSDataSchema = new Schema({
     is_linked: Boolean,
-    composite_id: { type: String },
-    point_name: { type: String },
-    mount_location: { type: String },
-    mount_type: { type: String },
-    mount_material: { type: String },
-    mount_direction: { type: String },
+    composite_id: { type: String, trim: true },
+    point_name: { type: String, trim: true },
+    mount_location: { type: String, trim: true },
+    mount_type: { type: String, trim: true },
+    mount_material: { type: String, trim: true },
+    mount_direction: { type: String, trim: true },
     asset_id: Schema.Types.ObjectId,
     org_id: Schema.Types.ObjectId,
-    mac_id: { type: String },
-    image: { type: String },
+    mac_id: { type: String, trim: true },
+    image: { type: String, trim: true },
     acceleration: accelerationVelocitySchema,
     velocity: accelerationVelocitySchema,
     asset_name: String
 }, { _id: false });
 
 const AssetHealthHistorySchema = new Schema({
-    date: { type: String },
+    date: { type: String, trim: true },
     status: String
 }, { _id: false });
 
 const FaultDataSchema = new Schema({
-    name: { type: String },
+    name: { type: String, trim: true },
     value: Number
 }, { _id: false });
 
 const AssetReportSchema = new Schema({
     asset_id: Schema.Types.ObjectId,
-    observations: { type: String },
-    recommendations: { type: String },
+    observations: { type: String, trim: true },
+    recommendations: { type: String, trim: true },
     created_on: { type: Date },
-    asset_name: { type: String },
-    location_name: { type: String },
+    asset_name: { type: String, trim: true },
+    location_name: { type: String, trim: true },
     fault_data: [FaultDataSchema],
     endpointRMSData: [RMSDataSchema],
-    healthFlag: { type: String },
-    locationId: { type: String },
+    healthFlag: { type: String, trim: true },
+    locationId: { type: String, trim: true },
     asset_health_history: [AssetHealthHistorySchema],
     dummyList: { type: Schema.Types.Mixed }
 }, { _id: false });
 
 const SummaryDataSchema = new Schema({
-    key: { type: String },
+    key: { type: String, trim: true },
     value: {
         value: Number,
         itemStyle: {
@@ -64,29 +64,29 @@ const SummaryDataSchema = new Schema({
 }, { _id: false });
 
 const FaultSummarySchema = new Schema({
-    key: { type: String },
+    key: { type: String, trim: true },
     value: Number
 }, { _id: false });
 
 const SubLocationAssetSchema = new Schema({
     asset_id: { type: Schema.Types.ObjectId },
-    observations: { type: String },
-    recommendations: { type: String },
+    observations: { type: String, trim: true },
+    recommendations: { type: String, trim: true },
     created_on: { type: Date },
-    asset_name: { type: String },
-    location_name: { type: String },
+    asset_name: { type: String, trim: true },
+    location_name: { type: String, trim: true },
     fault_data: { type: [FaultDataSchema] },
     endpointRMSData: { type: [RMSDataSchema] },
-    healthFlag: { type: String },
-    locationId: { type: String },
+    healthFlag: { type: String, trim: true },
+    locationId: { type: String, trim: true },
     asset_health_history: { type: [AssetHealthHistorySchema] },
     dummyList: { type: Schema.Types.Mixed }
 }, { _id: false });
 
 const SubLocationSchema = new Schema({
     sub_location: {
-        id: { type: String },
-        name: { type: String }
+        id: { type: String, trim: true },
+        name: { type: String, trim: true }
     },
     asset_data: { type: [SubLocationAssetSchema] },
     sub_location_asset_condition_summary_data: { type: [SummaryDataSchema] },

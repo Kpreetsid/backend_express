@@ -82,7 +82,7 @@ const UserSchema = new Schema<IUser>({
   firstName: String,
   lastName: String,
   username: String,
-  pincode: { type: String },
+  pincode: { type: String, trim: true },
   email: String,
   emailStatus: Boolean,
   user_status: String,
@@ -92,7 +92,7 @@ const UserSchema = new Schema<IUser>({
   account_id: String,
   phone_no: PhoneNumberSchema,
   isFirstUser: Boolean,
-  address: { type: String },
+  address: { type: String, trim: true },
   mobileNumber: PhoneNumberSchema,
   userrole: String,
   userstatus: String,
@@ -109,9 +109,9 @@ const FileSchema = new Schema<IFile>({
 }, { _id: false });
 
 const PostSchema = new Schema<IPost>({
-  postType: { type: String, required: true },
-  relatedTo: { type: String, required: true },
-  description: { type: String, required: true },
+  postType: { type: String, trim: true, required: true },
+  relatedTo: { type: String, trim: true, required: true },
+  description: { type: String, trim: true, required: true },
   files: { type: Map, of: [FileSchema] },
   createdOn: { type: Date, default: Date.now },
   account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },

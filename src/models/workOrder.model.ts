@@ -13,8 +13,8 @@ export interface IParts {
 
 const PartsSchema = new Schema<IParts>({
   part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' }, 
-  part_name: { type: String, required: true },
-  part_type: { type: String, required: true },
+  part_name: { type: String, trim: true, required: true },
+  part_type: { type: String, trim: true, required: true },
   estimatedQuantity: { type: Number, required: true },
   actualQuantity: { type: Number }
 }, { _id: false, versionKey: false });
@@ -53,14 +53,14 @@ export interface IWorkOrder extends Document {
 
 const WorkOrderSchema = new Schema<IWorkOrder>({
   account_id: { type: Schema.Types.ObjectId, required: true },
-  order_no: { type: String, required: true },
-  title: { type: String, required: true },
-  description: { type: String },
+  order_no: { type: String, trim: true, required: true },
+  title: { type: String, trim: true, required: true },
+  description: { type: String, trim: true },
   estimated_time: { type: Number },
-  priority: { type: String, enum: WORK_ORDER_PRIORITIES, default: "None" },
-  status: { type: String, enum: WORK_ORDER_STATUSES, default: "Open" },
-  type: { type: String },
-  nature_of_work: { type: String },
+  priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: "None" },
+  status: { type: String, trim: true, enum: WORK_ORDER_STATUSES, default: "Open" },
+  type: { type: String, trim: true },
+  nature_of_work: { type: String, trim: true },
   wo_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
   wo_location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   start_date: { type: Date },

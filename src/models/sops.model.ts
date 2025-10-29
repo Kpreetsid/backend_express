@@ -14,8 +14,8 @@ export interface ISopsMaster extends Document {
 
 const SopsMasterSchema = new Schema<ISopsMaster>(
     {
-        name: { type: String, required: true },
-        description: { type: String },
+        name: { type: String, trim: true, required: true },
+        description: { type: String, trim: true },
         account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
         locationId: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
         categoryId: { type: Schema.Types.ObjectId, ref: 'CategoryModel', required: true },

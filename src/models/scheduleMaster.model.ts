@@ -13,9 +13,9 @@ interface Task {
 }
 
 const TaskSchema = new Schema<Task>({
-  title: { type: String, required: true },
-  type: { type: String, required: true },
-  fieldValue: { type: String },
+  title: { type: String, trim: true, required: true },
+  type: { type: String, trim: true, required: true },
+  fieldValue: { type: String, trim: true },
   options: [{ key: String, value: String }],
 }, { _id: false });
 
@@ -27,9 +27,9 @@ interface IPart {
 }
 
 const PartSchema = new Schema<IPart>({
-  part_id: { type: String, required: true },
-  part_name: { type: String, required: true },
-  part_type: { type: String, required: true },
+  part_id: { type: String, trim: true, required: true },
+  part_name: { type: String, trim: true, required: true },
+  part_type: { type: String, trim: true, required: true },
   estimatedQuantity: { type: Number, required: true },
 }, { _id: false });
 
@@ -53,14 +53,14 @@ interface WorkOrder {
 }
 
 const WorkOrderSchema = new Schema<WorkOrder>({
-  title: { type: String, required: true },
-  description: { type: String, required: true },
-  type: { type: String, required: true },
-  status: { type: String, required: true },
-  priority: { type: String, required: true },
+  title: { type: String, trim: true, required: true },
+  description: { type: String, trim: true },
+  type: { type: String, trim: true, required: true },
+  status: { type: String, trim: true, required: true },
+  priority: { type: String, trim: true, required: true },
   estimated_time: { type: Number },
-  start_date: { type: String, required: true },
-  end_date: { type: String },
+  start_date: { type: String, trim: true, required: true },
+  end_date: { type: String, trim: true },
   wo_location_id: { type: Schema.Types.ObjectId, required: true },
   wo_asset_id: { type: Schema.Types.ObjectId, required: true },
   sop_form_id: { type: Schema.Types.ObjectId },
@@ -68,7 +68,7 @@ const WorkOrderSchema = new Schema<WorkOrder>({
   tasks: { type: [TaskSchema] },
   parts: { type: [PartSchema] },
   workInstruction: { type: [Object] },
-  createdFrom: { type: String },
+  createdFrom: { type: String, trim: true },
 }, { _id: false });
 
 interface ScheduleRepeatDaily {
@@ -130,11 +130,11 @@ interface ISchedule {
 }
 
 const ScheduleSchema = new Schema<ISchedule>({
-  mode: { type: String, enum: ["none", "daily", "weekly", "monthly"], required: true },
+  mode: { type: String, trim: true, enum: ["none", "daily", "weekly", "monthly"], required: true },
   enabled: { type: Boolean, default: true },
   start_date: { type: Date, required: true },
   end_date: { type: Date },
-  status: { type: String },
+  status: { type: String, trim: true },
   no_of_repetition: { type: Number },
   no_of_execution: { type: Number, default: 0 },
   daily: { type: ScheduleRepeatDailySchema },
@@ -157,8 +157,8 @@ export interface IScheduleMaster extends Document {
 const ScheduleMasterSchema = new Schema<IScheduleMaster>(
   {
     account_id: { type: mongoose.Types.ObjectId, ref: "AccountModel", required: true },
-    title: { type: String, required: true },
-    description: { type: String, required: true },
+    title: { type: String, trim: true, required: true },
+    description: { type: String, trim: true, required: true },
     schedule: { type: ScheduleSchema, required: true },
     work_order: { type: WorkOrderSchema, required: true },
     visible: { type: Boolean, required: true, default: true },

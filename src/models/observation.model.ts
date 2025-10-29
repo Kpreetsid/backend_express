@@ -19,14 +19,14 @@ export interface IObservation extends Document {
 }
 
 const ObservationSchema = new Schema<IObservation>({
-  observation: { type: String, required: true },
-  recommendation: { type: String, required: true },
+  observation: { type: String, trim: true, required: true },
+  recommendation: { type: String, trim: true, required: true },
   faults: { type: [String] },
   files: { type: [Object] },
   createdOn: { type: Date, default: Date.now },
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
   accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
-  status: { type: String, required: true },
+  status: { type: String, trim: true, required: true },
   alarmId: { type: Number },
   locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   top_level_asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },

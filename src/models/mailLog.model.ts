@@ -13,13 +13,13 @@ export interface IMailLog extends Document {
 }
 
 const mailLogSchema = new Schema<IMailLog>({
-  to: { type: String, required: true },
-  subject: { type: String, required: true },
-  html: { type: String, required: true },
-  status: { type: String, enum: MAIL_LOG_STATUSES, required: true },
-  messageId: { type: String },
+  to: { type: String, trim: true, required: true },
+  subject: { type: String, trim: true, required: true },
+  html: { type: String, trim: true, required: true },
+  status: { type: String, trim: true, enum: MAIL_LOG_STATUSES, required: true },
+  messageId: { type: String, trim: true },
   mailInfo: { type: Object },
-  error: { type: String },
+  error: { type: String, trim: true },
 }, {
   collection: 'mail_logs',
   timestamps: true,

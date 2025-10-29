@@ -9,7 +9,7 @@ export interface IUser extends Document {
 
 const userSchema = new Schema<IUser>({
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
-  username: { type: String, required: true },
+  username: { type: String, trim: true, required: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   visible: { type: Boolean, default: true }
 }, {

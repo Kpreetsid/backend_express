@@ -11,7 +11,7 @@ export interface ICategory extends Document {
 
 const categorySchema = new Schema<ICategory>({
   name: { type: String, required: true, trim: true },
-  description: { type: String },
+  description: { type: String, trim: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   visible: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
