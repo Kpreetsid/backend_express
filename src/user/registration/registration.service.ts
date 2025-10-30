@@ -1,5 +1,5 @@
 import { IAccount } from "../../models/account.model";
-import { sendVerificationCode } from '../../_config/mailer'
+import { sendRegistrationConfirmation, sendVerificationCode } from '../../_config/mailer'
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { createNewUser } from "../../masters/user/user.service";
 import { createCompany } from "../../masters/company/company.service";
@@ -25,6 +25,7 @@ export const verifyOTPCode = async (body: any) => {
   if (!userDetails) {
     throw Object.assign(new Error('User creation failed'), { status: 500 });
   }
+  await sendRegistrationConfirmation(userDetails.userDetails);
   await userVerification.deleteOne({ email: body.email, code: body.verificationCode });
   return userDetails;
 };

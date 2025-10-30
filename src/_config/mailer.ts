@@ -19,7 +19,7 @@ interface MailOptions {
   html: string;
 }
 
-export const sendMail = async ({ to, subject, html }: MailOptions): Promise<void> => {
+const sendMail = async ({ to, subject, html }: MailOptions): Promise<void> => {
   const mailLogData: IMailLog = new MailLogModel({ to, subject, html });
   try {
     await transporter.verify();
@@ -54,6 +54,33 @@ export const sendVerificationCode = async (match: any): Promise<boolean> => {
       html: htmlTemplate
     });
     await new VerificationCodeModel({ email: match.email, firstName: match.firstName, code: otp.toString() }).save();
+    console.log(mailResponse);
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+export const sendRegistrationConfirmation = async (match: any): Promise<boolean> => {
+  try {
+    const templatePath = path.join(__dirname, '../public/registration.template.html');
+    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    htmlTemplate = htmlTemplate.replace('{{YEAR}}', new Date().getFullYear().toString());
+    const fullName = match.firstName;
+    if (match.lastName) {
+      match.fullName = fullName + ' ' + match.lastName;
+    }
+    htmlTemplate = htmlTemplate.replace('{{fullName}}', match.fullName);
+    htmlTemplate = htmlTemplate.replace('{{userName}}', match.username);
+    htmlTemplate = htmlTemplate.replace('{{userEmail}}', match.email);
+    htmlTemplate = htmlTemplate.replace('{{registrationDate}}', new Date().toLocaleString());
+    htmlTemplate = htmlTemplate.replace('{{loginLink}}', 'https://presageinsights.ai/login');
+    const mailResponse = await sendMail({
+      to: match.email,
+      subject: `CMMS application registration successfully.`,
+      html: htmlTemplate
+    });
     console.log(mailResponse);
     return true;
   } catch (error) {
