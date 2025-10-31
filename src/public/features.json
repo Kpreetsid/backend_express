@@ -165,7 +165,7 @@
             {
                 "id": "current",
                 "name": "Current Trend",
-                "isSelected": true
+                "isSelected": false
             }
         ]
     }

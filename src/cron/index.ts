@@ -2,27 +2,16 @@ import cron from "node-cron";
 import { schedulerService } from "./scheduler.service";
 
 export async function initJobScheduler() {
-    console.log("---->  Initializing job scheduler...");
+    console.log("----> Initializing unified job scheduler...");
     try {
-        // Daily @ midnight
-        cron.schedule("45 0 * * *", async () => {
-            console.log(`${new Date().toISOString()} Running daily job tick...`);
-            await schedulerService.runDailyScheduler();
+        // Run every day at 6:15 AM
+        cron.schedule("15 6 * * *", async () => {
+            console.log(`${new Date().toISOString()} → Running unified scheduler tick...`);
+            await schedulerService.runUnifiedScheduler();
         });
-
-        // Weekly @ midnight
-        cron.schedule("45 0 * * 0", async () => {
-            console.log(`${new Date().toISOString()} Running weekly job tick...`);
-            await schedulerService.runWeeklyScheduler();
-        });
-
-        // Monthly @ midnight on 1st
-        cron.schedule("0 0 1 * *", async () => {
-            console.log(`${new Date().toISOString()} Running monthly job tick...`);
-            await schedulerService.runMonthlyScheduler();
-        });
+        console.log("✅ Unified Scheduler initialized (daily at 6:15 AM).");
     } catch (error) {
-        console.error("Failed to initialize job scheduler:", error);
+        console.error("❌ Failed to initialize job scheduler:", error);
         throw error;
     }
 }

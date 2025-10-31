@@ -1,11 +1,11 @@
 import app from "./app";
 import { server as hostDetails } from './configDB';
 import { connectDB, disconnectDB } from "./_config/dbConnection";
-// import { initJobScheduler } from "./cron";
+import { initJobScheduler } from "./cron";
 
 const server = app.listen(hostDetails.port, async () => {
   await connectDB();
-  // await initJobScheduler();
+  await initJobScheduler();
   console.log(`Server running on port http://${hostDetails.host}:${hostDetails.port}`);
 });
 
