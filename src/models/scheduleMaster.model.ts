@@ -68,51 +68,35 @@ const WorkOrderSchema = new Schema<WorkOrder>({
   tasks: { type: [TaskSchema] },
   parts: { type: [PartSchema] },
   workInstruction: { type: [Object] },
-  createdFrom: { type: String, trim: true },
+  createdFrom: { type: String, trim: true }
 }, { _id: false });
 
 interface ScheduleRepeatDaily {
-  interval: number | null;
+  everyNDays: number | null;
 }
 
 const ScheduleRepeatDailySchema = new Schema<ScheduleRepeatDaily>({
-  interval: { type: Number, default: 0 }
+  everyNDays: { type: Number, default: 1 }
 }, { _id: false });
 
 interface ScheduleRepeatWeekly {
-  interval: number | null;
-  days: {
-    monday: boolean;
-    tuesday: boolean;
-    wednesday: boolean;
-    thursday: boolean;
-    friday: boolean;
-    saturday: boolean;
-    sunday: boolean;
-  };
+  everyNWeeks: number;
+  days: string[];
 }
 
 const ScheduleRepeatWeeklySchema = new Schema<ScheduleRepeatWeekly>({
-  interval: { type: Number, default: 0 },
-  days: {
-    monday: { type: Boolean, default: false },
-    tuesday: { type: Boolean, default: false },
-    wednesday: { type: Boolean, default: false },
-    thursday: { type: Boolean, default: false },
-    friday: { type: Boolean, default: false },
-    saturday: { type: Boolean, default: false },
-    sunday: { type: Boolean, default: false },
-  },
+  everyNWeeks: { type: Number, default: 1 },
+  days: { type: [String] }
 }, { _id: false });
 
 interface ScheduleRepeatMonthly {
-  interval: number | null;
-  dayOfMonth: number | null;
+  everyNMonths: number;
+  monthDays: number[]
 }
 
 const ScheduleRepeatMonthlySchema = new Schema<ScheduleRepeatMonthly>({
-  interval: { type: Number, default: 0 },
-  dayOfMonth: { type: Number }
+  everyNMonths: { type: Number, default: 1 },
+  monthDays: { type: [Number] }
 }, { _id: false });
 
 interface ISchedule {
@@ -123,6 +107,10 @@ interface ISchedule {
   status?: string;
   no_of_repetition: number;
   no_of_execution: number;
+  skipWeekends: boolean;
+  skipWeekendSaturday: boolean;
+  skipWeekendSunday: boolean;
+  skipDates: Date[];
   daily: ScheduleRepeatDaily;
   weekly: ScheduleRepeatWeekly;
   monthly: ScheduleRepeatMonthly;
@@ -137,10 +125,14 @@ const ScheduleSchema = new Schema<ISchedule>({
   status: { type: String, trim: true },
   no_of_repetition: { type: Number },
   no_of_execution: { type: Number, default: 0 },
+  skipWeekends: { type: Boolean, default: false },
+  skipWeekendSaturday: { type: Boolean, default: false },
+  skipWeekendSunday: { type: Boolean, default: false },
+  skipDates: { type: [Date] },
   daily: { type: ScheduleRepeatDailySchema },
   weekly: { type: ScheduleRepeatWeeklySchema },
   monthly: { type: ScheduleRepeatMonthlySchema },
-  last_execution_date: { type: Date },
+  last_execution_date: { type: Date }
 }, { _id: false });
 
 export interface IScheduleMaster extends Document {
