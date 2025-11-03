@@ -12,7 +12,7 @@ export default (router: express.Router) => {
     locationRouter.get('/make-copy/:id', createDuplicateLocation);
     locationRouter.get('/:id', getLocation);
     locationRouter.post('/', hasRolePermission('location', 'add_location'), createLocation);
-    locationRouter.post('/child-assets', hasRolePermission('location', 'add_child_location'), getChildAssetsAgainstLocation);
+    locationRouter.post('/child-assets', getChildAssetsAgainstLocation);
     locationRouter.put('/floor-map-image/:id', updateLocationFloorMapImage);
     locationRouter.put('/:id', hasRolePermission('location', 'edit_location'), updateLocation);
     locationRouter.delete('/:id', hasRolePermission('location', 'delete_location'), removeLocation);

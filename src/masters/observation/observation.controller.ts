@@ -7,11 +7,8 @@ import { getAllChildAssetIDs } from '../asset/asset.service';
 
 export const getObservations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { accountId: account_id };
-    if (userRole !== 'admin') {
-      match['userId'] = user_id;
-    }
     const { query: { locationId, assetId, alarmId }} = req;
     if (locationId) {
       match['locationId'] = new mongoose.Types.ObjectId(`${locationId}`);
@@ -23,7 +20,6 @@ export const getObservations = async (req: Request, res: Response, next: NextFun
     if (alarmId) {
       match['alarmId'] = Number(alarmId);
     }
-    console.log(match);
     const data = await getAllObservation(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
