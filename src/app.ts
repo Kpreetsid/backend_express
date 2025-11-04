@@ -16,6 +16,7 @@ import masterRoutes from './masters/master.routes';
 import { fileLogger, activityLogger, errorMiddleware } from './middlewares';
 
 const app: Express = express();
+app.set('trust proxy', 1);
 app.use(morgan('dev'));
 app.use(cookieParser());
 app.use(express.json({ limit: '50mb' }));
