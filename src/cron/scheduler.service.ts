@@ -89,7 +89,7 @@ class SchedulerService {
                     continue;
                 }
                 if (mode === "monthly") {
-                    const dayOfMonth = s.monthly?.dayOfMonth ?? 1;
+                    const dayOfMonth = s.monthly?.everyNMonths ?? 1;
                     const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
                     const validDay = Math.min(dayOfMonth, lastDayOfMonth);
                     if (todayDay === validDay) {

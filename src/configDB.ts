@@ -3,6 +3,9 @@ dotenv.config();
 
 export const database = {
   host: process.env.DB_HOST!,
+  // REDIS_URL=redis://localhost:6379
+  redis_host: process.env.REDIS_URL,
+  redis_port: process.env.REDIS_PORT,
   port: parseInt(process.env.DB_PORT!),
   userName: process.env.DB_USERNAME!,
   password: process.env.DB_PASSWORD!,
