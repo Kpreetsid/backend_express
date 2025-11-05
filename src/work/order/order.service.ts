@@ -63,7 +63,7 @@ export const getAllOrders = async (match: any): Promise<any> => {
 };
 
 export const orderStatus = async (match: any): Promise<any> => {
-  match.visible = true;
+  console.log(match);
   const data = await WorkOrderModel.aggregate([
     { $match: match },
     { $group: { _id: '$status', count: { $sum: 1 } } },

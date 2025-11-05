@@ -126,14 +126,14 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
 
 export const getOrderStatus = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id };
-    const { asset_id } = req.query;
-    if (asset_id) {
-      match.asset_id = { $in: asset_id.toString().split(',') };
+    const { account_id } = get(req, "user", {}) as IUser;
+    const match: any = { account_id: account_id, visible: true };
+    const { wo_asset_id, fromDate, toDate } = req.query;
+    if (wo_asset_id) {
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
-    if (userRole !== "admin") {
-      match.user_id = user_id;
+    if (fromDate && toDate) {
+      match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
     }
     const data = await orderStatus(match);
     if (!data || data.length === 0) {
