@@ -9,14 +9,16 @@ export interface IParts {
   part_type: string;
   estimatedQuantity: number;
   actualQuantity: number;
+  unit: string;
 }
 
 const PartsSchema = new Schema<IParts>({
-  part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' }, 
+  part_id: { type: Schema.Types.ObjectId, ref: 'PartModel', required: true }, 
   part_name: { type: String, trim: true, required: true },
   part_type: { type: String, trim: true, required: true },
   estimatedQuantity: { type: Number, required: true },
-  actualQuantity: { type: Number }
+  actualQuantity: { type: Number },
+  unit: { type: String, trim: true },
 }, { _id: false, versionKey: false });
 
 export interface IWorkOrder extends Document {

@@ -74,21 +74,15 @@ export const removeFloorMap = async (req: Request, res: Response, next: NextFunc
 
 export const getFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = {};
+    const { account_id } = get(req, "user", {}) as IUser;
+    const match: any = { account_id };
     const { query: { location_id } } = req;
     if (location_id) {
       const childLocations = await getAllChildLocationsRecursive([location_id]);
       match.locationId = { $in: [location_id, ...childLocations] };
       match.data_type = 'location';
     } else {
-      if (userRole !== "super_admin") {
-        match.account_id = account_id;
-      }
       match.data_type = 'kpi';
-    }
-    if (userRole !== 'admin') {
-      match.createdBy = user_id;
     }
     const data = await getCoordinates(match, account_id);
     if (!data || data.length == 0) {

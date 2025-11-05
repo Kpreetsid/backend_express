@@ -3,7 +3,7 @@ import { IUser, UserModel } from "../../models/user.model";
 import { BlogModel, IBlog } from "../../models/help.model";
 import { sendWorkOrderMail } from "../../_config/mailer";
 import { mapUsersWorkOrder, removeMappedUsers, updateMappedUsers } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
-import { assignPartToWorkOrder } from "../../masters/part/parts.service";
+import { assignPartToWorkOrder, revertPartFromWorkOrder } from "../../masters/part/parts.service";
 import { getAllCommentsForWorkOrder } from "../comments/comment.service";
 
 export const getAllOrders = async (match: any): Promise<any> => {
@@ -287,7 +287,6 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     start_date : body.start_date,
     sopForm : body.sopForm,
     workInstruction : body.workInstruction,
-    actualParts : body.actualParts,
     createdFrom : body.createdFrom,
     files : body.files,
     tasks : body.tasks,
@@ -320,10 +319,27 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
   return data;
 };
 
-export const updateById = async (id: any, body: any): Promise<any> => {
+export const updateById = async (id: string, body: any, user: IUser): Promise<any> => {
+  if (!id) {
+    throw Object.assign(new Error('Work Order ID is required'), { status: 400 });
+  }
+  let existingOrder: any = await WorkOrderModel.findById(id);
+  if (!existingOrder) {
+    throw Object.assign(new Error('Work Order not found'), { status: 404 });
+  }
+  existingOrder = { ...existingOrder, ...body };
+  if(body.parts?.length > 0) {
+    await revertPartFromWorkOrder(body.parts, user);
+  }
+  existingOrder.updatedBy = user._id;
   await updateMappedUsers(id, body.userIdList);
-  return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
+  return await existingOrder.save();
 };
+
+// export const updateById = async (id: any, body: any): Promise<any> => {
+//   await updateMappedUsers(id, body.userIdList);
+//   return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
+// };
 
 export const orderStatusChange = async (id: any, body: any): Promise<any> => {
   return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });

@@ -55,8 +55,8 @@ export const createObservation = async (req: Request, res: Response, next: NextF
   var data: any;
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const userToken = get(req, "userToken", {}) as string;
     const { body } = req;
-    const token: any = req.cookies.token || req.headers.authorization;
     data = await insertObservation(body, account_id, user_id);
     if(!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -66,7 +66,7 @@ export const createObservation = async (req: Request, res: Response, next: NextF
     if (!insertedData || insertedData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await setAssetHealthStatus(body, account_id, user_id, token);
+    await setAssetHealthStatus(body, account_id, user_id, userToken);
     res.status(201).json({ status: true, message: "Data created successfully", data: insertedData });
   } catch (error) {
     if (data) {

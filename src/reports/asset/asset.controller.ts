@@ -61,8 +61,8 @@ export const createAssetsReport = async (req: Request, res: Response, next: Next
   try {
     const user = get(req, "user", {}) as IUser;
     const { body: { workOrder, ...reportBody} } = req;
-    const token: any = req.cookies.token || req.headers.authorization;
-    const data = await createAssetReportWithWorkOrder(reportBody, user, token, reportBody.CreateWorkRequest, workOrder);
+    const userToken = get(req, "userToken", {}) as string;
+    const data = await createAssetReportWithWorkOrder(reportBody, user, userToken, reportBody.CreateWorkRequest, workOrder);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -76,12 +76,12 @@ export const updateAssetsReport = async (req: Request, res: Response, next: Next
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    const token: any = req.cookies.token || req.headers.authorization;
+    const userToken = get(req, "userToken", {}) as string;
     if(!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     body.updatedBy = user_id;
-    const data = await updateAssetReport(id, body, account_id, user_id, token);
+    const data = await updateAssetReport(id, body, account_id, user_id, userToken);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

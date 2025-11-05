@@ -150,7 +150,7 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
   {
     account_id: { type: mongoose.Types.ObjectId, ref: "AccountModel", required: true },
     title: { type: String, trim: true, required: true },
-    description: { type: String, trim: true, required: true },
+    description: { type: String, trim: true },
     schedule: { type: ScheduleSchema, required: true },
     work_order: { type: WorkOrderSchema, required: true },
     visible: { type: Boolean, required: true, default: true },

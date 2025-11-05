@@ -59,7 +59,7 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 
 export const updateOrder = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const user: any = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
     if(!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
@@ -67,12 +67,11 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
     if(!body?.userIdList || body.userIdList?.length === 0) {
       throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
     }
-    const isWorkOrderExist: any = await getAllOrders({ _id: new mongoose.Types.ObjectId(id), account_id });
+    const isWorkOrderExist: any = await getAllOrders({ _id: new mongoose.Types.ObjectId(id), account_id: user.account_id });
     if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
       throw Object.assign(new Error('Work order not found'), { status: 404 });
     }
-    body.updatedBy = user_id;
-    await updateById(id, body);
+    await updateById(id, body, user);
     res.status(200).send({ status: true, message: 'Work order updated successfully', data: body });
   } catch (error) {
     next(error);

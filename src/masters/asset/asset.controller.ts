@@ -104,6 +104,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
   var equipmentId: any = '';
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const userToken = get(req, "userToken", {}) as string;
     const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } = req.body;
     if (!Equipment.userList || Equipment.userList.length === 0) {
       throw Object.assign(new Error('Please select at least one user'), { status: 400 });
@@ -167,8 +168,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
       ));
     });
     await createMapUserAssets(assetsMapData);
-    const token: any = req.cookies.token || req.headers.authorization;
-    await createExternalAPICall(assetsMapData, account_id, user_id, token);
+    await createExternalAPICall(assetsMapData, account_id, user_id, userToken);
     res.status(200).json({ status: true, message: "Data created successfully", data: equipmentData._id });
   } catch (error) {
     if (equipmentId) {
@@ -182,6 +182,7 @@ export const createOld = async (req: Request, res: Response, next: NextFunction)
   var data: any;
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const userToken = get(req, "userToken", {}) as string;
     const { body } = req;
     if(body.userIdList?.length === 0) {
       throw Object.assign(new Error('Please select at least one user'), { status: 400 });
@@ -192,8 +193,7 @@ export const createOld = async (req: Request, res: Response, next: NextFunction)
     }
     const assetsMapData = body.userIdList.map((user: any) => ({ account_id, userId: user, assetId: data._id }));
     await createMapUserAssets(assetsMapData);
-    const token: any = req.cookies.token || req.headers.authorization;
-    await createExternalAPICall(assetsMapData, account_id, user_id, token);
+    await createExternalAPICall(assetsMapData, account_id, user_id, userToken);
     const insertedData: any = await getAll({ _id: data._id });
     if (!insertedData || insertedData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -243,6 +243,7 @@ export const updateOld = async (req: Request, res: Response, next: NextFunction)
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const userToken = get(req, "userToken", {}) as string;
     const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } } = req;
     if (!Equipment || !Equipment.id) {
       throw Object.assign(new Error("Invalid request: Equipment ID is required"), { status: 400 });
@@ -342,8 +343,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     }
     await createMapUserAssets(assetsMapData);
     if (newlyCreatedAssetList.length > 0) {
-      const token: any = req.cookies.token || req.headers.authorization;
-      await createExternalAPICall(newlyCreatedAssetList, account_id, user_id, token);
+      await createExternalAPICall(newlyCreatedAssetList, account_id, user_id, userToken);
     }
     const data = await getAll({ _id: id, account_id: account_id, visible: true });
     res.status(200).json({ status: true, message: "Asset updated successfully", data });
@@ -402,7 +402,7 @@ export const getAssetSensorList = async (req: Request, res: Response, next: Next
 export const makeAssetCopy = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const token: any = req.cookies.token || req.headers.authorization;
+    const userToken = get(req, "userToken", {}) as string;
     const { params: { id }} = req;
     if (!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -412,7 +412,7 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const newAsset = await makeAssetCopyById(id, user_id, token);
+    const newAsset = await makeAssetCopyById(id, user_id, userToken);
     if (!newAsset) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

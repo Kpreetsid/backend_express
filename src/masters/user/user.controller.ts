@@ -92,8 +92,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     if (!userData || userData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    body.updatedBy = user_id;
-    const data: any = await updateUserDetails(id, body);
+    const data: any = await updateUserDetails(id, { ...userData[0], ...body, updatedBy: user_id });
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

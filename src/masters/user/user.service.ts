@@ -57,6 +57,7 @@ export const updateUserPassword = async (user_id: any, body: any) => {
 export const updateUserDetails = async (id: string, body: IUser) => {
   return await UserModel.findByIdAndUpdate(id, body, { new: true });
 }
+
 export const removeById = async (id: string) => {
   await MapUserAssetLocationModel.deleteMany({ userId: id });
   return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { new: true });
