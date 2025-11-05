@@ -327,19 +327,18 @@ export const updateById = async (id: string, body: any, user: IUser): Promise<an
   if (!existingOrder) {
     throw Object.assign(new Error('Work Order not found'), { status: 404 });
   }
-  existingOrder = { ...existingOrder, ...body };
+  existingOrder = { ...existingOrder.toObject(), ...body };
   if(body.parts?.length > 0) {
     await revertPartFromWorkOrder(body.parts, user);
   }
   existingOrder.updatedBy = user._id;
   await updateMappedUsers(id, body.userIdList);
-  return await existingOrder.save();
+  const data = await WorkOrderModel.findByIdAndUpdate(id, existingOrder, { new: true });
+  if (!data) {
+    throw Object.assign(new Error('Failed to update work order'), { status: 400 });
+  }
+  return data;
 };
-
-// export const updateById = async (id: any, body: any): Promise<any> => {
-//   await updateMappedUsers(id, body.userIdList);
-//   return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
-// };
 
 export const orderStatusChange = async (id: any, body: any): Promise<any> => {
   return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
