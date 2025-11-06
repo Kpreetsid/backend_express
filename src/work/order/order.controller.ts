@@ -9,11 +9,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, user_role: userRole, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id };
-    const { status, priority, asset_id, location_id, assignedUser } = req.query;
+    const { status, priority, wo_asset_id, wo_location_id, assignedUser } = req.query;
     if (status) match.status = { $in: status.toString().split(',') };
     if (priority) match.priority = { $in: priority.toString().split(',') };
-    if (asset_id) match.wo_asset_id = { $in: asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-    if (location_id) match.wo_location_id = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    if (wo_location_id) match.wo_location_id = { $in: wo_location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     const workOrderIds: any = [];
     if(assignedUser) {
       for(let i = 0; i < assignedUser.toString().split(',').length; i++) {
@@ -165,9 +165,8 @@ export const getOrderPriority = async (req: Request, res: Response, next: NextFu
     const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id };
     const { wo_asset_id, fromDate, toDate } = req.query;
-    console.log({ wo_asset_id, fromDate, toDate });
     if (wo_asset_id) {
-      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
@@ -188,12 +187,11 @@ export const getMonthlyCount = async (req: Request, res: Response, next: NextFun
     const match: any = { account_id: account_id };
     const { wo_asset_id, fromDate, toDate } = req.query;
     if (wo_asset_id) {
-      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
     }
-    console.log({ match });
     const data = await monthlyCount(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -210,7 +208,7 @@ export const getPlannedUnplanned = async (req: Request, res: Response, next: Nex
     const match: any = { account_id: account_id };
     const { wo_asset_id, fromDate, toDate, order_no } = req.query;
     if (wo_asset_id) {
-      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
     if (order_no) {
       match.order_no = order_no;
@@ -235,7 +233,7 @@ export const getSummaryData = async (req: Request, res: Response, next: NextFunc
     const { wo_asset_id, fromDate, toDate } = req.query;
     const match: any = { account_id: account_id, visible: true };
     if (wo_asset_id) {
-      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
@@ -256,7 +254,7 @@ export const getPendingOrders = async (req: Request, res: Response, next: NextFu
     const { wo_asset_id, fromDate, toDate } = req.query;
     const match: any = { account_id, visible: true };
     if (wo_asset_id) {
-      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };

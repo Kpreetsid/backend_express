@@ -63,7 +63,6 @@ export const getAllOrders = async (match: any): Promise<any> => {
 };
 
 export const orderStatus = async (match: any): Promise<any> => {
-  console.log(match);
   const data = await WorkOrderModel.aggregate([
     { $match: match },
     { $group: { _id: '$status', count: { $sum: 1 } } },
@@ -233,7 +232,6 @@ export const summaryData = async (match: any): Promise<any> => {
 }
 
 export const pendingOrders = async (match: any): Promise<any> => {
-  match.visible = true;
   return await WorkOrderModel.aggregate([
     { $match: match },
     { $lookup: { 
@@ -241,7 +239,8 @@ export const pendingOrders = async (match: any): Promise<any> => {
       let: { wo_asset_id: '$wo_asset_id' },
       pipeline: [
         { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
-        { $project: { _id: 1, asset_name: 1, asset_type: 1 } }
+        { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+        { $addFields: { id: '$_id' } }
       ],
       as: 'asset'
     }},
@@ -251,7 +250,8 @@ export const pendingOrders = async (match: any): Promise<any> => {
       let: { wo_location_id: '$wo_location_id' },
       pipeline: [
         { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
-        { $project: { _id: 1, location_name: 1, location_type: 1 } }
+        { $project: { _id: 1, location_name: 1, location_type: 1 } },
+        { $addFields: { id: '$_id' } }
       ],
       as: 'location'
     }},

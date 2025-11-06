@@ -25,6 +25,23 @@ export const getCoordinates = async (match: any, account_id: any): Promise<any> 
   );
 };
 
+export const getAllChildLocationsRecursive = async (parentIds: any): Promise<any> => {
+  let childIds: string[] = [];
+  for (const parentId of parentIds) {
+    const parent = await LocationModel.findById(parentId);
+    if (!parent) continue;
+    const match = { parent_id: parent._id, visible: true };
+    const children = await LocationModel.find(match);
+    if (children?.length > 0) {
+      const childrenIds = children.map((child: any) => child._id.toString());
+      childIds.push(...childrenIds);
+      const grandChildren = await getAllChildLocationsRecursive(childrenIds);
+      childIds.push(...grandChildren);
+    }
+  }
+  return childIds;
+}
+
 export const floorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
@@ -46,24 +63,6 @@ export const floorMapAssetCoordinates = async (req: Request, res: Response, next
     next(error);
   }
 };
-
-
-export const getAllChildLocationsRecursive = async (parentIds: any): Promise<any> => {
-  let childIds: string[] = [];
-  for (const parentId of parentIds) {
-    const parent = await LocationModel.findById(parentId);
-    if (!parent) continue;
-    const match = { parent_id: parent._id, visible: true };
-    const children = await LocationModel.find(match);
-    if (children?.length > 0) {
-      const childrenIds = children.map((child: any) => child._id.toString());
-      childIds.push(...childrenIds);
-      const grandChildren = await getAllChildLocationsRecursive(childrenIds);
-      childIds.push(...grandChildren);
-    }
-  }
-  return childIds;
-}
 
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
