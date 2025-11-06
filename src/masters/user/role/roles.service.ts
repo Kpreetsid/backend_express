@@ -2,8 +2,8 @@ import mongoose from "mongoose";
 import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model";
 import { Request, Response, NextFunction } from 'express';
 import { IUser } from "../../../models/user.model";
-import { platformControlData } from '../../../_config/userRoles';
-import { roleMenuData } from "../../../_config/newUserRoles";
+import { platformControlData } from '../../../_role/userRoles';
+import { roleMenuData } from "../../../_role/newUserRoles";
 
 export const getRoles = async (match: any): Promise<any> => {
   return await RoleMenuModel.find(match);

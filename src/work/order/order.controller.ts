@@ -9,9 +9,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, user_role: userRole, _id: user_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id };
-    const { params: { id } } = req;
     const { status, priority, asset_id, location_id, assignedUser } = req.query;
-    if (id) match._id = new mongoose.Types.ObjectId(id);
     if (status) match.status = { $in: status.toString().split(',') };
     if (priority) match.priority = { $in: priority.toString().split(',') };
     if (asset_id) match.wo_asset_id = { $in: asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
@@ -32,6 +30,23 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     }
     const data = await getAllOrders(match);
     if(!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const getOrderById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id } = get(req, "user", {}) as IUser;
+    const { params: { id } } = req;
+    if (!id) {
+      throw Object.assign(new Error('Bad request'), { status: 400 });
+    }
+    const data = await getAllOrders({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+    if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -147,14 +162,15 @@ export const getOrderStatus = async (req: Request, res: Response, next: NextFunc
 
 export const getOrderPriority = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id };
-    const { asset_id } = req.query;
-    if (asset_id) {
-      match.asset_id = { $in: asset_id.toString().split(',') };
+    const { wo_asset_id, fromDate, toDate } = req.query;
+    console.log({ wo_asset_id, fromDate, toDate });
+    if (wo_asset_id) {
+      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
-    if (userRole !== "admin") {
-      match.user_id = user_id;
+    if (fromDate && toDate) {
+      match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
     }
     const data = await orderPriority(match);
     if (!data || data.length === 0) {
@@ -168,15 +184,16 @@ export const getOrderPriority = async (req: Request, res: Response, next: NextFu
 
 export const getMonthlyCount = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id };
-    const query = req.query;
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
+    const { wo_asset_id, fromDate, toDate } = req.query;
+    if (wo_asset_id) {
+      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
-    if (query.asset_id) {
-      match.asset_id = { $in: query.asset_id.toString().split(',') };
+    if (fromDate && toDate) {
+      match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
     }
+    console.log({ match });
     const data = await monthlyCount(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -189,17 +206,17 @@ export const getMonthlyCount = async (req: Request, res: Response, next: NextFun
 
 export const getPlannedUnplanned = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id: account_id };
-    const query = req.query;
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
+    const { wo_asset_id, fromDate, toDate, order_no } = req.query;
+    if (wo_asset_id) {
+      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
-    if (query.asset_id) {
-      match.asset_id = { $in: query.asset_id.toString().split(',') };
+    if (order_no) {
+      match.order_no = order_no;
     }
-    if (query.order_no) {
-      match.order_no = query.order_no;
+    if (fromDate && toDate) {
+      match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
     }
     const data = await plannedUnplanned(match);
     if (!data || data.length === 0) {
@@ -215,13 +232,13 @@ export const getSummaryData = async (req: Request, res: Response, next: NextFunc
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     console.log({ account_id, user_id, userRole });
-    const query = req.query;
+    const { wo_asset_id, fromDate, toDate } = req.query;
     const match: any = { account_id: account_id, visible: true };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
+    if (wo_asset_id) {
+      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
-    if (query.asset_id) {
-      match.asset_id = { $in: query.asset_id.toString().split(',') };
+    if (fromDate && toDate) {
+      match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
     }
     const data = await summaryData(match);
     if (!data || data.length === 0) {
@@ -235,19 +252,15 @@ export const getSummaryData = async (req: Request, res: Response, next: NextFunc
 
 export const getPendingOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query: any = req.query;
-    const match: any = { account_id: account_id };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
+    const { account_id } = get(req, "user", {}) as IUser;
+    const { wo_asset_id, fromDate, toDate } = req.query;
+    const match: any = { account_id, visible: true };
+    if (wo_asset_id) {
+      match.asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
-    if (query.asset_id) {
-      match.asset_id = { $in: query.asset_id.toString().split(',') };
+    if (fromDate && toDate) {
+      match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
     }
-    query.no_of_days = query.no_of_days || 30;
-    var today = new Date();
-    var priorDate = new Date(today.setDate(today.getDate() - query.no_of_days)).toISOString();
-    match.createdOn = { $gte: priorDate };
     match.status = { $nin: ['Completed'] };
     const data = await pendingOrders(match);
     if (!data || data.length === 0) {

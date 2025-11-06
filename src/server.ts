@@ -1,6 +1,6 @@
 import app from "./app";
 import { server as hostDetails } from './configDB';
-import { connectDB, disconnectDB } from "./_config";
+import { connectDB, disconnectDB } from "./_db";
 import { initJobScheduler } from "./cron";
 
 const server = app.listen(hostDetails.port, async () => {

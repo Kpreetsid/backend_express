@@ -14,6 +14,8 @@ import reportsRoutes from './reports/reports.routes';
 import transactionRoutes from './transaction/transaction.routes';
 import masterRoutes from './masters/master.routes';
 import { fileLogger, activityLogger, errorMiddleware } from './middlewares';
+import { connectDB } from "./_db";
+import { setRedisClient } from "./_redis/redis.instance";
 
 const app: Express = express();
 app.set('trust proxy', 1);
@@ -54,6 +56,11 @@ app.use(compression({
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });
 });
+
+(async () => {
+  const { redis } = await connectDB();
+  setRedisClient(redis);
+})();
 
 const apiRouter: Router = Router();
 apiRouter.use('/', routerIndex());
