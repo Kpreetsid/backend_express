@@ -38,14 +38,11 @@ export const getAssetsReportById = async (req: Request, res: Response, next: Nex
 
 export const getLatestReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     if(!req.params.id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match: any = { accountId: account_id, top_level_asset_id: req.params.id };
-    if (userRole !== 'admin') {
-      match.createdBy = user_id;
-    }
     const selectedFields = `Observations Recommendations faultData`;
     const data = await getLatest(match, selectedFields);
     if (!data) {

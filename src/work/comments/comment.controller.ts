@@ -6,15 +6,12 @@ import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id: orderId } } = req;
     if (!orderId) {
       throw Object.assign(new Error('Order ID is required'), { status: 400 });
     }
     const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), visible: true };
-    if(userRole !== "admin") {
-      match.createdBy = user_id;
-    }
     const data = await getAllComments(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -27,7 +24,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 
 export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id: orderId, commentId } } = req;
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
       throw Object.assign(new Error('Invalid order ID'), { status: 400 });
@@ -36,9 +33,6 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('Invalid comment ID'), { status: 400 });
     }
     const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), _id: new mongoose.Types.ObjectId(commentId), visible: true };
-    if(userRole !== "admin") {
-      match.createdBy = user_id;
-    }
     const data = await getAllComments(match);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });

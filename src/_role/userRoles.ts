@@ -22,59 +22,22 @@ export const platformControlData = async (role: string) => {
 }
 
 export const adminRoles = {
-    asset: {
-        add_asset: true,
-        delete_asset: true,
-        add_child_asset: true,
-        edit_asset: true,
-        create_report: true,
-        delete_report: true,
-        download_report: true,
-        edit_report: true,
-        config_alarm: true,
-        add_observation: true,
-        create_endpoint: true,
-        edit_endpoint: true,
-        delete_end_point: true,
-        attach_sensor: true,
-        update_config: true
+    asset: { add_asset: true, delete_asset: true, add_child_asset: true, edit_asset: true, create_report: true, delete_report: true, download_report: true, edit_report: true,
+        config_alarm: true, add_observation: true, create_endpoint: true, edit_endpoint: true, delete_end_point: true, attach_sensor: true, update_config: true
     },
-    location: {
-        add_location: true,
-        delete_location: true,
-        add_child_location: true,
-        edit_location: true,
-        create_report: true,
-        delete_report: true,
-        download_report: true
-    },
-    workOrder: {
-        create_work_order: true,
-        edit_work_order: true,
-        delete_work_order: true,
-        update_work_order_status: true,
-        add_comment_work_order: true,
-        add_task_work_order: true,
-        update_parts_work_order: true
-    },
-    floorMap: {
-        create_kpi: true,
-        view_floor_map: true,
-        delete_kpi: true,
-        upload_floor_map: true
-    }
+    location: { add_location: true, delete_location: true, add_child_location: true, edit_location: true, create_report: true, delete_report: true, download_report: true },
+    workOrder: { create_work_order: true, edit_work_order: true, delete_work_order: true, update_work_order_status: true, add_comment_work_order: true, add_task_work_order: true, update_parts_work_order: true },
+    floorMap: { create_kpi: true, view_floor_map: true, delete_kpi: true, upload_floor_map: true },
+    preventive: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form_category: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    work_request: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    posts: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    inventory: { view: true, add: false, edit: false, delete: false, import: false, export: false },
 }
 
 export const managerRoles = {
-    asset: {
-        add_asset: false,
-        delete_asset: false,
-        add_child_asset: false,
-        edit_asset: false,
-        create_report: false,
-        delete_report: false,
-        download_report: false,
-        edit_report: false,
+    asset: { add_asset: false, delete_asset: false, add_child_asset: false, edit_asset: false, create_report: false, delete_report: false, download_report: false, edit_report: false,
         config_alarm: false,
         add_observation: false,
         create_endpoint: false,
@@ -83,42 +46,19 @@ export const managerRoles = {
         attach_sensor: false,
         update_config: false
     },
-    location: {
-        add_location: false,
-        delete_location: false,
-        add_child_location: false,
-        edit_location: false,
-        create_report: false,
-        delete_report: false,
-        download_report: false
-    },
-    workOrder: {
-        create_work_order: false,
-        edit_work_order: false,
-        delete_work_order: false,
-        update_work_order_status: false,
-        add_comment_work_order: false,
-        add_task_work_order: false,
-        update_parts_work_order: false
-    },
-    floorMap: {
-        create_kpi: false,
-        view_floor_map: false,
-        delete_kpi: false,
-        upload_floor_map: false
-    }
+    location: { add_location: false, delete_location: false, add_child_location: false, edit_location: false, create_report: false, delete_report: false, download_report: false },
+    workOrder: { create_work_order: false, edit_work_order: false, delete_work_order: false, update_work_order_status: false, add_comment_work_order: false, add_task_work_order: false, update_parts_work_order: false },
+    floorMap: { create_kpi: false, view_floor_map: false, delete_kpi: false, upload_floor_map: false },
+    preventive: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form_category: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    work_request: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    posts: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    inventory: { view: true, add: false, edit: false, delete: false, import: false, export: false },
 }
 
 export const employeeRoles = {
-    asset: {
-        add_asset: false,
-        delete_asset: false,
-        add_child_asset: false,
-        edit_asset: false,
-        create_report: false,
-        delete_report: false,
-        download_report: false,
-        edit_report: false,
+    asset: { add_asset: false, delete_asset: false, add_child_asset: false, edit_asset: false, create_report: false, delete_report: false, download_report: false, edit_report: false,
         config_alarm: false,
         add_observation: false,
         create_endpoint: false,
@@ -127,42 +67,19 @@ export const employeeRoles = {
         attach_sensor: false,
         update_config: false
     },
-    location: {
-        add_location: false,
-        delete_location: false,
-        add_child_location: false,
-        edit_location: false,
-        create_report: false,
-        delete_report: false,
-        download_report: false
-    },
-    workOrder: {
-        create_work_order: false,
-        edit_work_order: false,
-        delete_work_order: false,
-        update_work_order_status: false,
-        add_comment_work_order: false,
-        add_task_work_order: false,
-        update_parts_work_order: false
-    },
-    floorMap: {
-        create_kpi: false,
-        view_floor_map: false,
-        delete_kpi: false,
-        upload_floor_map: false
-    }
+    location: { add_location: false, delete_location: false, add_child_location: false, edit_location: false, create_report: false, delete_report: false, download_report: false },
+    workOrder: { create_work_order: false, edit_work_order: false, delete_work_order: false, update_work_order_status: false, add_comment_work_order: false, add_task_work_order: false, update_parts_work_order: false },
+    floorMap: { create_kpi: false, view_floor_map: false, delete_kpi: false, upload_floor_map: false },
+    preventive: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form_category: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    work_request: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    posts: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    inventory: { view: true, add: false, edit: false, delete: false, import: false, export: false },
 }
 
 export const customerRoles = {
-    asset: {
-        add_asset: false,
-        delete_asset: false,
-        add_child_asset: false,
-        edit_asset: false,
-        create_report: false,
-        delete_report: false,
-        download_report: false,
-        edit_report: false,
+    asset: { add_asset: false, delete_asset: false, add_child_asset: false, edit_asset: false, create_report: false, delete_report: false, download_report: false, edit_report: false,
         config_alarm: false,
         add_observation: false,
         create_endpoint: false,
@@ -171,28 +88,13 @@ export const customerRoles = {
         attach_sensor: false,
         update_config: false
     },
-    location: {
-        add_location: false,
-        delete_location: false,
-        add_child_location: false,
-        edit_location: false,
-        create_report: false,
-        delete_report: false,
-        download_report: false
-    },
-    workOrder: {
-        create_work_order: false,
-        edit_work_order: false,
-        delete_work_order: false,
-        update_work_order_status: false,
-        add_comment_work_order: false,
-        add_task_work_order: false,
-        update_parts_work_order: false
-    },
-    floorMap: {
-        create_kpi: false,
-        view_floor_map: false,
-        delete_kpi: false,
-        upload_floor_map: false
-    }
+    location: { add_location: false, delete_location: false, add_child_location: false, edit_location: false, create_report: false, delete_report: false, download_report: false },
+    workOrder: { create_work_order: false, edit_work_order: false, delete_work_order: false, update_work_order_status: false, add_comment_work_order: false, add_task_work_order: false, update_parts_work_order: false },
+    floorMap: { create_kpi: false, view_floor_map: false, delete_kpi: false, upload_floor_map: false },
+    preventive: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form_category: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    work_request: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    posts: { view: true, add: false, edit: false, delete: false, import: false, export: false },
+    inventory: { view: true, add: false, edit: false, delete: false, import: false, export: false },
 }
