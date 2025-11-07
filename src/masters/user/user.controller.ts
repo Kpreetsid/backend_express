@@ -85,7 +85,6 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, user_status: "active" };
     const userData = await getAllUsers(match);
     if (!userData.length) throw Object.assign(new Error("No data found"), { status: 404 });
-
     const data = await updateUserDetails(id, { ...userData[0], ...body, updatedBy: user_id });
     if (!data) throw Object.assign(new Error("No data found"), { status: 404 });
     await redisDelete(buildCacheKey("user", id));

@@ -25,7 +25,7 @@ export interface IWorkRequest extends Document {
 const WorkRequestSchema = new Schema<IWorkRequest>({
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   title: { type: String, trim: true },
-  description: { type: String, trim: true, required: true },
+  description: { type: String, trim: true },
   problemType: { type: String, trim: true, required: true },
   priority: { type: String, trim: true, enum: WORK_REQUEST_PRIORITIES, default: 'None' },
   files: { type: [Object], default: [] },

@@ -7,7 +7,7 @@ import { assignPartToWorkOrder, revertPartFromWorkOrder } from "../../masters/pa
 import { getAllCommentsForWorkOrder } from "../comments/comment.service";
 
 export const getAllOrders = async (match: any): Promise<any> => {
-  match.visible = true;
+  console.log('getAllOrders', match);
   let data = await WorkOrderModel.aggregate([
     { $match: match },
     { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
@@ -41,9 +41,20 @@ export const getAllOrders = async (match: any): Promise<any> => {
         { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
         { $addFields: { id: '$_id' } }
       ],
-      as: "user" 
+      as: "createdBy" 
     }},
-    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true }},
+    { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true }},
+    { $lookup: {
+      from: "users",
+      let: { updatedBy: '$updatedBy' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
+        { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+        { $addFields: { id: '$_id' } }
+      ],
+      as: "updatedBy"
+    }},
+    { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true }},
     { $addFields: { id: "$_id" }}
   ]);
   if (!data || data.length === 0) {
@@ -229,35 +240,6 @@ export const summaryData = async (match: any): Promise<any> => {
     "planned_unplanned_ratio": planned_unplanned_ratio || 0
   }
   return final_res;
-}
-
-export const pendingOrders = async (match: any): Promise<any> => {
-  return await WorkOrderModel.aggregate([
-    { $match: match },
-    { $lookup: { 
-      from: 'asset_master', 
-      let: { wo_asset_id: '$wo_asset_id' },
-      pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
-        { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
-        { $addFields: { id: '$_id' } }
-      ],
-      as: 'asset'
-    }},
-    { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
-    { $lookup: { 
-      from: 'location_master', 
-      let: { wo_location_id: '$wo_location_id' },
-      pipeline: [
-        { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
-        { $project: { _id: 1, location_name: 1, location_type: 1 } },
-        { $addFields: { id: '$_id' } }
-      ],
-      as: 'location'
-    }},
-    { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } },
-    { $addFields: { id: '$_id' } }
-  ]);
 }
 
 export const generateOrderNo = async (account_id: any): Promise<string> => {
