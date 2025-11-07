@@ -278,7 +278,7 @@ export const getPlannedUnplanned = async (req: Request, res: Response, next: Nex
 
 export const getSummaryData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const cacheKey = buildCacheKey("orders:summary", `${account_id}`, JSON.stringify(req.query));
     const cached = await redisGet(cacheKey);
     if (cached) {
@@ -293,6 +293,13 @@ export const getSummaryData = async (req: Request, res: Response, next: NextFunc
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
     }
+    if(userRole !== 'admin') {
+      const userWorkOrderIdList = await getMappedWorkOrderIDs(user_id);
+      if(!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });  
+      }
+      match._id = { $in: userWorkOrderIdList };
+    }
     const data = await summaryData(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -306,7 +313,7 @@ export const getSummaryData = async (req: Request, res: Response, next: NextFunc
 
 export const getPendingOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const cacheKey = buildCacheKey("orders:pending", `${account_id}`, JSON.stringify(req.query));
     const cached = await redisGet(cacheKey);
     if (cached) {
@@ -320,6 +327,13 @@ export const getPendingOrders = async (req: Request, res: Response, next: NextFu
     }
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
+    }
+    if(userRole !== 'admin') {
+      const userWorkOrderIdList = await getMappedWorkOrderIDs(user_id);
+      if(!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });  
+      }
+      match._id = { $in: userWorkOrderIdList };
     }
     match.status = { $in: ['Open', 'In-Progress', 'On-Hold'] };
     const data = await getAllOrders(match);
