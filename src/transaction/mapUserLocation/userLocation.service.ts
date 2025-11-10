@@ -208,58 +208,39 @@ export const updateMappedUserLocations = async (req: Request, res: Response, nex
   }
 }
 
-export const userAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
-    const match: any = { assetId: { $exists: true } };
-    if(query?.userId) {
-      match.userId = new mongoose.Types.ObjectId(query.userId as string);
-    }
-    if (userRole === 'admin') {
-      const assetMatch: any = { account_id, visible: true };
-      if (query.assetId) {
-        assetMatch._id = new mongoose.Types.ObjectId(query.assetId as string);
-      }
-      const assetData = await AssetModel.find(assetMatch).select('_id');
-      if (!assetData || assetData.length === 0) {
-        throw Object.assign(new Error('No assets found'), { status: 404 });
-      }
-      match.assetId = { $in: assetData.map(doc => doc._id) };
-    } else {
-      match.userId = user_id;
-      if (query.assetId) {
-        match.assetId = new mongoose.Types.ObjectId(query.assetId as string);
-      }
-    }
-    const pipeline: any[] = [{ $match: match }];
-    if (query.populate === 'assetId') {
-      pipeline.push({ $lookup: { from: 'asset_master', localField: 'assetId', foreignField: '_id', as: 'asset' }}, { $unwind: '$asset' });
-    }
-    if (query.populate === 'userId') {
-      pipeline.push({
-        $lookup: {
-          from: "users",
-          let: { userId: "$userId" },
-          pipeline: [
-            { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-            { $addFields: { id: '$_id' } }
-          ],
-          as: "user",
-        },
+export const userAssets = async (match: any, populate: any): Promise<any> => {
+  const pipeline: any[] = [{ $match: match }];
+  if (populate === 'assetId') {
+    pipeline.push({
+      $lookup: {
+        from: "asset_master",
+        let: { assetId: "$assetId" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$assetId"] } } },
+          { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+          { $addFields: { id: '$_id' } }
+        ],
+        as: "asset",
       },
-      { $unwind: "$user" });
-    }
-    pipeline.push({ $addFields: { id: '$_id' } });
-    const data = await MapUserAssetLocationModel.aggregate(pipeline);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No mapping data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: 'User asset mapping fetched successfully', data });
-  } catch (error) {
-    next(error);
+    })
   }
+  if (populate === 'userId') {
+    pipeline.push({
+      $lookup: {
+        from: "users",
+        let: { userId: "$userId" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+          { $addFields: { id: '$_id' } }
+        ],
+        as: "user",
+      },
+    },
+    { $unwind: "$user" });
+  }
+  pipeline.push({ $addFields: { id: '$_id' } });
+  return await MapUserAssetLocationModel.aggregate(pipeline);
 };
 
 export const updateMappedUserFlags = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

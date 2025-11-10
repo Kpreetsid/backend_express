@@ -80,13 +80,11 @@ export const removeById = async (id: string, user_id: any) => {
 };
 
 export const assignPartToWorkOrder = async (body: any, user: any) => {
-  const { estimated } = body;
   await Promise.all(
-    estimated.map(async (doc: any) => {
-      doc.part_id = new mongoose.Types.ObjectId(doc.part_id);
-      const data = await PartsModel.findOne({ _id: doc.part_id });
+    body.map(async (doc: any) => {
+      const data = await PartsModel.findOne({ _id: new mongoose.Types.ObjectId(doc.part_id) });
       if (!data) return;
-      data.quantity = data.quantity - doc.quantity;
+      data.quantity = data.quantity - doc.estimatedQuantity;
       data.updatedBy = user._id;
       await data.save();
     })
@@ -94,28 +92,39 @@ export const assignPartToWorkOrder = async (body: any, user: any) => {
   return true;
 };
 
-export const revertPartFromWorkOrder = async (body: any, user: any) => {
-  const { estimated = [], actual = [] } = body;
-  const actualMap = new Map();
-  actual.forEach((a: any) => {
-    const id = a.part_id.toString();
-    if (!actualMap.has(id)) {
-      actualMap.set(id, 0);
+export const revertPartFromWorkOrder = async (oldParts: any, newParts: any, user: any) => {
+  const oldMap = new Map();
+  const newMap = new Map();
+  oldParts.forEach((p: any) => oldMap.set(String(p.part_id), Number(p.estimatedQuantity)));
+  newParts.forEach((p: any) => newMap.set(String(p.part_id), Number(p.estimatedQuantity)));
+  const allPartIds = Array.from(new Set([ ...oldMap.keys(), ...newMap.keys() ]));
+  for (const partId of allPartIds) {
+    const oldQty = oldMap.get(partId) || 0;
+    const newQty = newMap.get(partId) || 0;
+    if (oldQty === newQty) continue;
+    const part = await PartsModel.findById(partId);
+    if (!part) continue;
+    if (oldQty > 0 && newQty === 0) {
+      part.quantity += oldQty;
     }
-    actualMap.set(id, actualMap.get(id) + a.quantity);
-  });
-
-  await Promise.all(
-    estimated.map(async (doc: any) => {
-      if (!doc?.part_id || !doc?.quantity) return;
-      const data = await PartsModel.findOne({ _id: new mongoose.Types.ObjectId(doc.part_id) });
-      if (!data) return;
-      const assignedQty = doc.quantity;
-      const actualQty = actualMap.get(doc.part_id.toString()) || 0;
-      data.quantity = data.quantity + assignedQty - actualQty;
-      data.updatedBy = user._id;
-      await data.save();
-    })
-  );
-  return true;
+    if (oldQty === 0 && newQty > 0) {
+      if (part.quantity < newQty) {
+        throw Object.assign(new Error(`Not enough quantity for ${part.part_name}`), { status: 400 });
+      }
+      part.quantity -= newQty;
+    }
+    if (oldQty > newQty) {
+      const diff = oldQty - newQty;
+      part.quantity += diff;
+    }
+    if (newQty > oldQty) {
+      const diff = newQty - oldQty;
+      if (part.quantity < diff) {
+        throw Object.assign(new Error(`Insufficient inventory for ${part.part_name}`), { status: 400 });
+      }
+      part.quantity -= diff;
+    }
+    part.updatedBy = user._id;
+    await part.save();
+  }
 };

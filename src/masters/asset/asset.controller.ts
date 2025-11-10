@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAll, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyById, updateAllChildAssetsLocation, getAllChildAssetIDs } from './asset.service';
+import { getAllAssets, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyById, updateAllChildAssetsLocation, getAllChildAssetIDs } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { createMapUserAssets, getAssetsMappedData, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
@@ -33,7 +33,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
       const childIds = await getAllChildLocationIds(locationId);
       match.locationId = { $in: childIds };
     }
-    let data = await getAll(match);
+    let data = await getAllAssets(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -60,7 +60,7 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
     if (locationId) {
       match.locationId = new mongoose.Types.ObjectId(`${locationId}`);
     }
-    const data = await getAll(match);
+    const data = await getAllAssets(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -82,7 +82,7 @@ export const getChildAsset = async (req: Request, res: Response, next: NextFunct
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { _id: { $in: childIds }, account_id: account_id, visible: true };
-    const data = await getAll(match);
+    const data = await getAllAssets(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -194,7 +194,7 @@ export const createOld = async (req: Request, res: Response, next: NextFunction)
     const assetsMapData = body.userIdList.map((user: any) => ({ account_id, userId: user, assetId: data._id }));
     await createMapUserAssets(assetsMapData);
     await createExternalAPICall(assetsMapData, account_id, user_id, userToken);
-    const insertedData: any = await getAll({ _id: data._id });
+    const insertedData: any = await getAllAssets({ _id: data._id });
     if (!insertedData || insertedData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -217,7 +217,7 @@ export const updateOld = async (req: Request, res: Response, next: NextFunction)
     if(body.userIdList?.length === 0) {
       throw Object.assign(new Error('Please select at least one user'), { status: 400 });
     }
-    const existingData: any = await getAll({ _id: id, account_id: account_id, visible: true });
+    const existingData: any = await getAllAssets({ _id: id, account_id: account_id, visible: true });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -230,7 +230,7 @@ export const updateOld = async (req: Request, res: Response, next: NextFunction)
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await updateMapUserAssets(id, body.userIdList);
-    const insertedData: any = await getAll({ _id: id });
+    const insertedData: any = await getAllAssets({ _id: id });
     if (!insertedData || insertedData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -254,7 +254,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     if (!Equipment.userList || Equipment.userList.length === 0) {
       throw Object.assign(new Error("Please select at least one user"), { status: 400 });
     }
-    const existEquipmentData = await getAll({ _id: id, account_id: account_id, visible: true });
+    const existEquipmentData = await getAllAssets({ _id: id, account_id: account_id, visible: true });
     if (Equipment.image_path && Equipment.image_path.startsWith("data:image")) {
       const image = await uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image.fileName;
@@ -345,7 +345,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     if (newlyCreatedAssetList.length > 0) {
       await createExternalAPICall(newlyCreatedAssetList, account_id, user_id, userToken);
     }
-    const data = await getAll({ _id: id, account_id: account_id, visible: true });
+    const data = await getAllAssets({ _id: id, account_id: account_id, visible: true });
     res.status(200).json({ status: true, message: "Asset updated successfully", data });
   } catch (error) {
     next(error);
@@ -362,7 +362,7 @@ export const updateAssetImage = async (req: Request, res: Response, next: NextFu
     if (!image_path) {
       throw Object.assign(new Error('Image path is required'), { status: 400 });
     }
-    const dataExists: any = await getAll({ _id: req.params.id, account_id: account_id, visible: true });
+    const dataExists: any = await getAllAssets({ _id: req.params.id, account_id: account_id, visible: true });
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -383,7 +383,7 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
     if (userRole !== 'admin') {
       throw Object.assign(new Error('Unauthorized access'), { status: 403 });
     }
-    const dataExists: any = await getAll(match);
+    const dataExists: any = await getAllAssets(match);
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -408,7 +408,7 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { _id: id, account_id: account_id, visible: true };
-    const dataExists: any = await getAll(match);
+    const dataExists: any = await getAllAssets(match);
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -416,7 +416,7 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     if (!newAsset) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const copiedData: any = await getAll({ _id: newAsset._id });
+    const copiedData: any = await getAllAssets({ _id: newAsset._id });
     if (!copiedData || copiedData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

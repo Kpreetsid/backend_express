@@ -9,7 +9,7 @@ import { getData } from "../../util/queryBuilder";
 import { getExternalData } from "../../util/externalAPI";
 import mongoose from "mongoose";
 
-export const getAll = async (match: any) => {
+export const getAllAssets = async (match: any) => {
   const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }]);
   const assetsIds = assetsData.map((asset: any) => `${asset._id}`);
   const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
@@ -70,7 +70,7 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
     if (assets && assets.length > 0) {
       match._id = { $in: assets };
     }
-    const data: IAsset[] = await getAll(match);
+    const data: IAsset[] = await getAllAssets(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

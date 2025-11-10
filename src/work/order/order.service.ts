@@ -291,7 +291,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
   if (!data) {
     throw Object.assign(new Error('Failed to create work order'), { status: 400 });
   }
-  if(body.parts?.estimated?.length > 0) {
+  if(body.parts?.length > 0) {
     await assignPartToWorkOrder(body.parts, user);
   }
   userDetails.forEach(async (assignedUsers: IUser) => {
@@ -311,7 +311,7 @@ export const updateById = async (id: string, body: any, user: IUser): Promise<an
   }
   existingOrder = { ...existingOrder.toObject(), ...body };
   if(body.parts?.length > 0) {
-    await revertPartFromWorkOrder(body.parts, user);
+    await revertPartFromWorkOrder(body.oldParts, body.parts, user);
   }
   existingOrder.updatedBy = user._id;
   await updateMappedUsers(id, body.userIdList);
