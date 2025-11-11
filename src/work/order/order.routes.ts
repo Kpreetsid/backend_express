@@ -15,7 +15,7 @@ export default (router: express.Router) => {
     orderRouter.get('/:id', getOrderById);
     orderRouter.post('/', hasRolePermission('workOrder', 'create_work_order'), createOrder);
     orderRouter.put('/status/:id', hasRolePermission('workOrder', 'update_work_order_status'), statusUpdateOrder);
-    orderRouter.put('/:id', hasRolePermission('workOrder', 'edit_work_order'), updateOrder);
+    orderRouter.put('/:id', updateOrder);
     orderRouter.delete('/:id', hasRolePermission('workOrder', 'delete_work_order'), remove);
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));

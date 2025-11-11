@@ -13,7 +13,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     if (location_id) match["work_order.wo_location_id"] = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     if (assignedUser) match["work_order.userIdList"] = { $in: assignedUser.toString().split(",") };
     if (userRole !== 'admin') {
-      match.createdBy = user_id;
+      match["work_order.userIdList"] = { $in: [`${user_id}`] };
     }
     console.log(match);
     const data = await getSchedules(match);
