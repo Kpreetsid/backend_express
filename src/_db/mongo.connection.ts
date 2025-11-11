@@ -15,9 +15,8 @@ export class MongoConnection {
       await mongoose.connect(mongoUri, {
         autoIndex: true,
         connectTimeoutMS: 10000,
-      });
+      }).then(() => console.log('✅ MongoDB connected'));
       this.instance = mongoose;
-      console.log('✅ MongoDB connected');
       return mongoose;
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);

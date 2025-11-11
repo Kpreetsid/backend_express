@@ -5,11 +5,8 @@ import { IUser } from '../../models/user.model';
 
 export const getAllFormCategories = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
-    if (userRole !== 'admin') {
-      match.createdBy = user_id;
-    }
     const data = await getFormCategories(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -22,14 +19,11 @@ export const getAllFormCategories = async (req: Request, res: Response, next: Ne
 
 export const getFormCategoryByID = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { account_id, visible: true };
-    if (userRole !== 'admin') {
-      match.createdBy = user_id;
-    }
     const data = await getFormCategories(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -82,16 +76,13 @@ export const updateFormCategory = async (req: Request, res: Response, next: Next
 
 export const removeFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const isData = await getFormCategories({ _id: req.params.id, account_id: account_id });
+    const isData = await getFormCategories({ _id: req.params.id, account_id });
     if (!isData || isData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    if (userRole !== 'admin') {
-      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     await removeById(req.params.id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });

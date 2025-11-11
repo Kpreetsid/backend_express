@@ -375,14 +375,11 @@ export const updateAssetImage = async (req: Request, res: Response, next: NextFu
 
 export const removeAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { _id: req.params.id, account_id: account_id, visible: true };
-    if (userRole !== 'admin') {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
     const dataExists: any = await getAllAssets(match);
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

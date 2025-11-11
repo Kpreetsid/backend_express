@@ -1,107 +1,123 @@
+import { getAllUsers } from "../masters/user/user.service";
 import { IScheduleMaster, SchedulerModel } from "../models/scheduleMaster.model";
 import { createWorkOrder } from "../work/order/order.service";
 
 class SchedulerService {
+    private getTodayDateStr(): string {
+        return new Date().toISOString().split("T")[0];
+    }
+
     private getTodayName(): string {
         return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date()).toLowerCase();
     }
 
+    private isSameDate(d1: Date | string, d2: Date | string): boolean {
+        return new Date(d1).toDateString() === new Date(d2).toDateString();
+    }
+
     private shouldRun(schedule: IScheduleMaster): boolean {
-        const today = new Date();
         const s = schedule.schedule;
-        if (s.end_date && today > new Date(s.end_date)) return false;
-        const exec = s.no_of_execution ?? 0;
-        const rep = s.no_of_repetition ?? 0;
-        if (rep > 0 && exec >= rep) return false;
+        const today = new Date();
+        const startDate = new Date(s.start_date);
+        const endDate = s.end_date ? new Date(s.end_date) : null;
+        if (today < startDate) return false;
+        if (endDate && today > endDate) return false;
         if (!s.enabled) return false;
+        if (s.no_of_repetition && s.no_of_execution >= s.no_of_repetition) {
+            return false;
+        }
         return true;
     }
 
-    private async createWorkOrderFromSchedule(schedule: IScheduleMaster): Promise<void> {
-        try {
-            const s = schedule.schedule;
-            s.no_of_execution ??= 0;
-            s.no_of_repetition ??= 0;
-            const body = {
-                title: schedule.work_order.title,
-                description: schedule.work_order.description,
-                estimated_time: schedule.work_order.estimated_time,
-                priority: schedule.work_order.priority,
-                status: schedule.work_order.status,
-                type: schedule.work_order.type,
-                sop_form_id: schedule.work_order.sop_form_id,
-                created_by: schedule.createdBy,
-                wo_asset_id: schedule.work_order.wo_asset_id,
-                wo_location_id: schedule.work_order.wo_location_id,
-                start_date: schedule.work_order.start_date,
-                end_date: schedule.work_order.end_date,
-                workInstruction: schedule.work_order.workInstruction,
-                createdFrom: schedule.work_order.createdFrom,
-                tasks: schedule.work_order.tasks,
-                parts: schedule.work_order.parts,
-                task_submitted: false,
-                userIdList: schedule.work_order.userIdList,
-            };
-            const systemUser: any = { _id: schedule.createdBy, account_id: schedule.account_id };
-            console.log(`▶️ Creating WO for: ${schedule.title}, execution #${s.no_of_execution + 1}`);
-            const createdWO = await createWorkOrder(body, systemUser);
-            s.no_of_execution += 1;
-            s.last_execution_date = new Date();
-            if ((s.no_of_repetition && s.no_of_execution >= s.no_of_repetition) || (s.end_date && new Date() >= new Date(s.end_date))) {
-                s.enabled = false;
-                s.status = "Completed";
-                s.end_date = new Date();
-            }
-            await schedule.save();
-            console.log(`✅ WO created: ${createdWO._id} (${s.mode}, exec ${s.no_of_execution}/${s.no_of_repetition || "∞"})`);
-        } catch (error) {
-            console.error("❌ Error creating work order:", error);
+    private shouldSkipToday(schedule: IScheduleMaster): boolean {
+        const s = schedule.schedule;
+        const today = new Date();
+        const todayStr = this.getTodayDateStr();
+        const dayIndex = today.getDay();
+        if (s.skipDates.includes(todayStr)) return true;
+        if (s.skipWeekends) {
+            if (dayIndex === 6 && s.skipWeekendSaturday) return true; // Saturday
+            if (dayIndex === 0 && s.skipWeekendSunday) return true;   // Sunday
         }
+        return false;
     }
 
-    // ---------------- UNIFIED DAILY JOB ----------------
+    private alreadyExecutedToday(schedule: IScheduleMaster): boolean {
+        const last = schedule.schedule.last_execution_date;
+        if (!last) return false;
+        return this.isSameDate(last, new Date());
+    }
+
+    private async executeSchedule(schedule: IScheduleMaster): Promise<void> {
+        const s = schedule.schedule;
+        const body = {
+            title: schedule.work_order.title,
+            description: schedule.work_order.description,
+            estimated_time: schedule.work_order.estimated_time,
+            priority: schedule.work_order.priority,
+            status: schedule.work_order.status,
+            type: schedule.work_order.type,
+            sop_form_id: schedule.work_order.sop_form_id,
+            created_by: schedule.createdBy,
+            wo_asset_id: schedule.work_order.wo_asset_id,
+            wo_location_id: schedule.work_order.wo_location_id,
+            start_date: schedule.work_order.start_date,
+            end_date: schedule.work_order.end_date,
+            workInstruction: schedule.work_order.workInstruction,
+            createdFrom: schedule.work_order.createdFrom,
+            tasks: schedule.work_order.tasks,
+            parts: schedule.work_order.parts,
+            task_submitted: false,
+            userIdList: schedule.work_order.userIdList
+        };
+        const systemUser: any = await getAllUsers({ _id: schedule.createdBy });
+        console.log(`▶️ Creating Work Order for schedule: ${schedule.title}`);
+        const workOrder = await createWorkOrder(body, systemUser[0]);
+        if (!workOrder) {
+            console.error(`❌ Failed to create work order for schedule: ${schedule.title}`);
+        }
+        console.log(`✅ Work Order created for schedule: ${schedule.title}`);
+        s.no_of_execution = (s.no_of_execution ?? 0) + 1;
+        s.last_execution_date = new Date();
+        if ((s.no_of_repetition && s.no_of_execution >= s.no_of_repetition) || (s.end_date && new Date() >= new Date(s.end_date))) {
+            s.enabled = false;
+            s.end_date = new Date().toISOString().split("T")[0];
+        }
+        await schedule.save();
+    }
+
     public async runUnifiedScheduler(): Promise<void> {
         try {
             const today = new Date();
-            const todayDay = today.getDate();
-            const todayStr = this.getTodayName();
+            const todayName = this.getTodayName();
+            const todayDate = today.getDate();
             const schedules = await SchedulerModel.find({ visible: true, "schedule.enabled": true });
-            console.log(`🗓️ Found ${schedules.length} active schedules`);
+            console.log(`🗓️ Scheduler started | ${schedules.length} active schedules`);
             for (const schedule of schedules) {
                 const s = schedule.schedule;
-                const mode = s.mode;
-                const start = new Date(s.start_date);
-                const end = s.end_date ? new Date(s.end_date) : null;
-                if (today < start || (end && today > end)) continue;
                 if (!this.shouldRun(schedule)) continue;
-                const lastExec = s.last_execution_date ? new Date(s.last_execution_date) : null;
-                if (lastExec && lastExec.toDateString() === today.toDateString()) continue;
-                if (mode === "daily") {
-                    console.log(`🗓️ Daily execution start to create Work Order: ${schedule.title}`);
-                    await this.createWorkOrderFromSchedule(schedule);
+                if (this.shouldSkipToday(schedule)) continue;
+                if (this.alreadyExecutedToday(schedule)) continue;
+                if (s.mode === "daily") {
+                    await this.executeSchedule(schedule);
                     continue;
                 }
-                if (mode === "weekly") {
-                    if (s.weekly?.days?.[todayStr]) {
-                        console.log(`🗓️ Weekly execution start to create Work Order: ${schedule.title}`);
-                        await this.createWorkOrderFromSchedule(schedule);
+                if (s.mode === "weekly") {
+                    if (s.weekly.days.includes(todayName)) {
+                        await this.executeSchedule(schedule);
                     }
                     continue;
                 }
-                if (mode === "monthly") {
-                    const dayOfMonth = s.monthly?.everyNMonths ?? 1;
-                    const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-                    const validDay = Math.min(dayOfMonth, lastDayOfMonth);
-                    if (todayDay === validDay) {
-                        console.log(`🗓️ Monthly execution start to create Work Order: ${schedule.title}`);
-                        await this.createWorkOrderFromSchedule(schedule);
+                if (s.mode === "monthly") {
+                    if (s.monthly.monthDays.includes(todayDate)) {
+                        await this.executeSchedule(schedule);
                     }
                     continue;
                 }
             }
-            console.log("✅ Unified Scheduler executed successfully");
+            console.log("✅ Scheduler completed successfully");
         } catch (error) {
-            console.error("❌ Unified Scheduler error:", error);
+            console.error("❌ Scheduler failed:", error);
         }
     }
 }

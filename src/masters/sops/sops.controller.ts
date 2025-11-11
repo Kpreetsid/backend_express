@@ -63,13 +63,10 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
 
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
     if (!id) {
       throw Object.assign(new Error('Id is required'), { status: 400 });
-    }
-    if (userRole !== 'admin') {
-      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     const existingData = await getSOPs({ _id: id, account_id: account_id, visible: true });
     if (!existingData || existingData.length === 0) {

@@ -6,12 +6,9 @@ import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { query: { user_id: queryUserId } } = req;
     const match: any = { account_id };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
-    }
     if (queryUserId) {
       match.user_id = new mongoose.Types.ObjectId(`${queryUserId}`);
     }
@@ -41,15 +38,12 @@ export const myRoleData = async (req: Request, res: Response, next: NextFunction
 
 export const getDataById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     const match: any = { account_id: account_id, _id: id };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
-    }
     const data = await getRoles(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

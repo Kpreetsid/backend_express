@@ -5,6 +5,7 @@ import { sendWorkOrderMail } from "../../_config/mailer";
 import { mapUsersWorkOrder, removeMappedUsers, updateMappedUsers } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
 import { assignPartToWorkOrder, revertPartFromWorkOrder } from "../../masters/part/parts.service";
 import { getAllCommentsForWorkOrder } from "../comments/comment.service";
+import mongoose from "mongoose";
 
 export const getAllOrders = async (match: any): Promise<any> => {
   console.log('getAllOrders', match);
@@ -279,7 +280,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     createdBy: user._id
   });
   const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
-  const userDetails = await UserModel.find({ _id: { $in: body.userIdList } });
+  const userDetails = await UserModel.find({ _id: { $in: body.userIdList.map((userId: string) => new mongoose.Types.ObjectId(userId)) } });
   if (!userDetails || userDetails.length === 0) {
     throw Object.assign(new Error('No users found'), { status: 404 });
   }

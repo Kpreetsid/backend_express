@@ -4,7 +4,6 @@ import { Request, Response, NextFunction } from 'express';
 import mongoose from "mongoose";
 import { hashPassword } from '../../_config/bcrypt';
 import { createUserRole } from './role/roles.service';
-import { get } from "lodash";
 
 export const getAllUsers = async (match: any) => {
   return await UserModel.find(match).select('-password');
@@ -25,10 +24,6 @@ export const userVerified = async (id: string) => {
 export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { locationID } = req.params;
-    const { user_role: userRole } = get(req, "user", {}) as IUser;
-    if (userRole !== 'admin') {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
     const data = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

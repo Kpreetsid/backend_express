@@ -7,7 +7,7 @@ import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../../models/wor
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { query: { priority, location, status, assignedTo, assignedBy, approvedBy, rejectedBy }} = req;
     let match: any = { account_id: account_id };
     if(priority) {
@@ -31,9 +31,6 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     if(rejectedBy) {
       match.updatedBy = rejectedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
     }
-    if(userRole !== 'admin') {
-      match.createdBy = user_id;
-    }
     const data = await getAllRequests(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -46,7 +43,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
 
 export const getById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id }, query } = req;
     if(!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
@@ -54,9 +51,6 @@ export const getById = async (req: Request, res: Response, next: NextFunction): 
     let match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     if(query) {
       match = { ...match, ...query };
-    }
-    if(userRole !== 'admin') {
-      match.createdBy = user_id;
     }
     const data = await getAllRequests(match);
     if (!data || data.length === 0) {

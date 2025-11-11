@@ -266,10 +266,7 @@ export const updateLocationFloorMapImage = async (req: Request, res: Response, n
     if (!id || !top_level_location_image) {
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
     }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if (userRole !== 'admin') {
-      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
-    }
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     await updateFloorMapImage(id, account_id, user_id, top_level_location_image);
     res.status(200).json({ status: true, message: "Data updated successfully" });
   } catch (error) {

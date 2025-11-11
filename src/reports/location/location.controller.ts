@@ -5,12 +5,9 @@ import { IUser } from '../../models/user.model';
 
 export const getLocationsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id };
     const { locationId } = req.query;
-    if(userRole !== 'admin') {
-      match.user_id = user_id;
-    }
     if(locationId) {
       match.location_id = locationId;
     }
@@ -25,18 +22,29 @@ export const getLocationsReport = async (req: Request, res: Response, next: Next
 };
 
 export const createReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await createLocationReport(req, res, next);
+  try {
+    const user = get(req, "user", {}) as IUser;
+    console.log(user);
+     const { location_id } = req.body;
+    if (!location_id) {
+      throw Object.assign(new Error('Invalid request data'), { status: 400 });
+    }
+    const data = await createLocationReport(location_id, user);
+    if (!data) {
+      throw Object.assign(new Error('Report not found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Report created successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export const deleteReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }} = req;
     if (!id) {
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
-    }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    if (userRole !== 'admin') {
-      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     const result = await deleteLocationsReport(id, `${account_id}`, `${user_id}`);
     if (!result) {

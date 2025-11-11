@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 
 export const getPosts = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
     const { query: { postType, relatedTo }} = req;
     if (postType) {
@@ -14,9 +14,6 @@ export const getPosts = async (req: Request, res: Response, next: NextFunction):
     }
     if (relatedTo) {
       match.relatedTo = relatedTo.toString().split(',');
-    }
-    if (userRole !== 'admin') {
-      match.userId = user_id;
     }
     const data = await getAllParts(match);
     if (!data || data.length === 0) {

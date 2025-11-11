@@ -6,11 +6,8 @@ import mongoose from 'mongoose';
 
 export const getAllFloorMaps = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const match: any = { account_id };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
-    }
     const data = await getFloorMaps(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -24,14 +21,11 @@ export const getAllFloorMaps = async (req: Request, res: Response, next: NextFun
 
 export const getFloorMapByID = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { _id: new mongoose.Types.ObjectId(req.params.id), account_id };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
-    }
     const data = await getFloorMaps(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -97,10 +91,6 @@ export const getFloorMapCoordinates = async (req: Request, res: Response, next: 
 export const getFloorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id, visible: true };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
-    }
     console.log({ account_id, user_id, userRole });
     await floorMapAssetCoordinates(req, res, next);
   } catch (error) {
@@ -120,15 +110,12 @@ export const setFloorMapCoordinates = async (req: Request, res: Response, next: 
 
 export const removeFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
-    }
     const result = await deleteCoordinates(match);
     if (!result) {
       throw Object.assign(new Error('No data found'), { status: 404 });

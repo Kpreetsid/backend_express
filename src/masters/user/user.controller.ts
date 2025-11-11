@@ -5,22 +5,14 @@ import { IUser } from '../../models/user.model';
 import { deleteVerificationCode, verifyOTPExists } from '../../user/resetPassword/resetPassword.service';
 import { comparePassword } from '../../_config/bcrypt';
 import mongoose from 'mongoose';
-import { redisGet, redisSet, redisDelete, redisDeletePattern, buildCacheKey } from "../../_redis/redis.operation";
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, user_role } = get(req, "user", {}) as IUser;
     const match: any = { account_id, user_status: "active" };
     if (user_role === "admin") delete match.user_status;
-    const cacheKey = buildCacheKey("users", `${account_id}`, user_role);
-    const cached = await redisGet(cacheKey);
-    if (cached) {
-      res.status(200).json({ status: true, cached: true, message: "Users fetched successfully (cache)", data: cached });
-      return;
-    }
     const data = await getAllUsers(match);
     if (!data.length) throw Object.assign(new Error("No data found"), { status: 404 });
-    await redisSet(cacheKey, data, 600);
     res.status(200).json({ status: true, message: "Users fetched successfully", data });
   } catch (error) {
     next(error);
@@ -32,16 +24,9 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
     const { account_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
     if (!id) throw Object.assign(new Error("Bad request"), { status: 400 });
-    const cacheKey = buildCacheKey("user", id);
-    const cached = await redisGet(cacheKey);
-    if (cached) {
-      res.status(200).json({ status: true, cached: true, message: "Data fetched successfully (cache)", data: cached });
-      return;
-    }
     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, user_status: "active" };
     const data = await getAllUsers(match);
     if (!data.length) throw Object.assign(new Error("No data found"), { status: 404 });
-    await redisSet(cacheKey, data, 600);
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
@@ -70,7 +55,6 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     body.createdBy = user_id;
 
     const data = await createNewUser(body, account_id);
-    await redisDeletePattern(buildCacheKey("users", `${account_id}`, "*"));
     res.status(201).json({ status: true, message: "Data created successfully", data: data.userDetails, roleData: data.roleDetails });
   } catch (error) {
     next(error);
@@ -85,10 +69,8 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, user_status: "active" };
     const userData = await getAllUsers(match);
     if (!userData.length) throw Object.assign(new Error("No data found"), { status: 404 });
-    const data = await updateUserDetails(id, { ...userData[0], ...body, updatedBy: user_id });
+    const data = await updateUserDetails(id, { ...userData[0].toObject(), ...body, updatedBy: user_id });
     if (!data) throw Object.assign(new Error("No data found"), { status: 404 });
-    await redisDelete(buildCacheKey("user", id));
-    await redisDeletePattern(buildCacheKey("users", `${account_id}`, "*"));
     res.status(200).json({ status: true, message: "User updated successfully", data });
   } catch (error) {
     next(error);
@@ -111,7 +93,6 @@ export const updatePasswordUser = async (req: Request, res: Response, next: Next
     if (!isCorrect) throw Object.assign(new Error("Incorrect current password"), { status: 400 });
     userData.password = newPassword;
     await updateUserPassword(user_id, userData);
-    await redisDelete(buildCacheKey("user", `${user_id}`));
     res.status(200).json({ status: true, message: "User updated successfully" });
   } catch (error) {
     next(error);
@@ -133,7 +114,6 @@ export const changeUserPassword = async (req: Request, res: Response, next: Next
     userData[0].password = newPassword;
     await updateUserPassword(`${userData[0]._id}`, userData[0]);
     await deleteVerificationCode({ email });
-    await redisDelete(buildCacheKey("user", `${userData[0]._id}`));
     res.status(200).json({ status: true, message: "Password updated successfully" });
   } catch (error) {
     next(error);
@@ -150,8 +130,6 @@ export const removeUser = async (req: Request, res: Response, next: NextFunction
     if (!userData.length)
       throw Object.assign(new Error("No data found or already deleted"), { status: 404 });
     await removeById(id);
-    await redisDelete(buildCacheKey("user", id));
-    await redisDeletePattern(buildCacheKey("users", `${account_id}`, "*"));
     res.status(200).json({ status: true, message: "User deleted successfully" });
   } catch (error) {
     next(error);
