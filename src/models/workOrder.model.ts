@@ -38,7 +38,6 @@ export interface IWorkOrder extends Document {
   sop_form_id: ObjectId;
   sop_form_data: object;
   asset_report_id: ObjectId;
-  work_instruction: ObjectId;
   cron_id: ObjectId;
   tasks: object[];
   task_submitted: boolean;
@@ -66,7 +65,6 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   end_date: { type: Date },
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
   sop_form_data: { type: Schema.Types.Mixed },
-  work_instruction: { type: Schema.Types.ObjectId, ref: 'WorkInstructionModel' },
   parts: { type: [PartsSchema] },
   tasks: { type: [Object] },
   task_submitted: { type: Boolean, default: false },

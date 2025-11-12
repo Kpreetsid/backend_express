@@ -50,7 +50,7 @@ class SchedulerService {
 
     private async executeSchedule(schedule: IScheduleMaster): Promise<void> {
         const s = schedule.schedule;
-        const body = {
+        const body: any = {
             title: schedule.work_order.title,
             description: schedule.work_order.description,
             estimated_time: schedule.work_order.estimated_time,
@@ -61,15 +61,26 @@ class SchedulerService {
             created_by: schedule.createdBy,
             wo_asset_id: schedule.work_order.wo_asset_id,
             wo_location_id: schedule.work_order.wo_location_id,
-            start_date: schedule.work_order.start_date,
-            end_date: schedule.work_order.end_date,
-            workInstruction: schedule.work_order.workInstruction,
             createdFrom: schedule.work_order.createdFrom,
             tasks: schedule.work_order.tasks,
             parts: schedule.work_order.parts,
             task_submitted: false,
             userIdList: schedule.work_order.userIdList
         };
+        switch (s.mode) {
+            case "daily":
+                body.start_date = new Date().toISOString().split("T")[0];
+                body.end_date = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split("T")[0];
+                break;
+            case "weekly":
+                body.start_date = new Date().toISOString().split("T")[0];
+                body.end_date = new Date(new Date().setDate(new Date().getDate() + 7)).toISOString().split("T")[0];
+                break;
+            case "monthly":
+                body.start_date = new Date().toISOString().split("T")[0];
+                body.end_date = new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split("T")[0];
+                break;
+        }
         const systemUser: any = await getAllUsers({ _id: schedule.createdBy });
         console.log(`▶️ Creating Work Order for schedule: ${schedule.title}`);
         const workOrder = await createWorkOrder(body, systemUser[0]);
@@ -84,6 +95,7 @@ class SchedulerService {
             s.end_date = new Date().toISOString().split("T")[0];
         }
         await schedule.save();
+        console.log(`✅ Schedule updated for schedule: ${schedule.title}`);
     }
 
     public async runUnifiedScheduler(): Promise<void> {

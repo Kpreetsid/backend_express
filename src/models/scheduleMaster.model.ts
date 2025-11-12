@@ -42,15 +42,12 @@ interface WorkOrder {
   status: string;
   priority: string;
   estimated_time: number;
-  start_date: string;
-  end_date: string | null;
   wo_location_id: ObjectId;
   wo_asset_id: ObjectId;
   sop_form_id?: ObjectId;
   userIdList: string[];
   tasks: Task[];
   parts: IPart[];
-  workInstruction: any[];
   createdFrom?: string;
 }
 
@@ -61,15 +58,12 @@ const WorkOrderSchema = new Schema<WorkOrder>({
   status: { type: String, trim: true, required: true },
   priority: { type: String, trim: true, required: true },
   estimated_time: Number,
-  start_date: { type: String, required: true },
-  end_date: { type: String },
   wo_location_id: { type: Schema.Types.ObjectId, ref: "LocationModel", required: true },
   wo_asset_id: { type: Schema.Types.ObjectId, ref: "AssetModel", required: true },
   sop_form_id: { type: Schema.Types.ObjectId, ref: "SopFormModel" },
   userIdList: { type: [String], required: true },
   tasks: { type: [TaskSchema], default: [] },
   parts: { type: [PartSchema], default: [] },
-  workInstruction: { type: Schema.Types.Mixed, default: [] },
   createdFrom: { type: String, trim: true }
 }, { _id: false });
 

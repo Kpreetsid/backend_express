@@ -269,7 +269,6 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     end_date : body.end_date,
     start_date : body.start_date,
     sopForm : body.sopForm,
-    workInstruction : body.workInstruction,
     createdFrom : body.createdFrom,
     files : body.files,
     tasks : body.tasks,
