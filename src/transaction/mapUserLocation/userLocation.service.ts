@@ -222,7 +222,8 @@ export const userAssets = async (match: any, populate: any): Promise<any> => {
         ],
         as: "asset",
       },
-    })
+    });
+    pipeline.push({ $unwind: "$asset" });
   }
   if (populate === 'userId') {
     pipeline.push({
@@ -236,8 +237,8 @@ export const userAssets = async (match: any, populate: any): Promise<any> => {
         ],
         as: "user",
       },
-    },
-    { $unwind: "$user" });
+    });
+    pipeline.push({ $unwind: "$user" });
   }
   pipeline.push({ $addFields: { id: '$_id' } });
   return await MapUserAssetLocationModel.aggregate(pipeline);
