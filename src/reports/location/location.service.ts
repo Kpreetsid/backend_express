@@ -103,17 +103,17 @@ export const createLocationReport = async (location_id: string, user: any): Prom
       };
     }
     subLocationMap[locationId].asset_data.push({
-      asset_id: report.top_level_asset_id,
-      asset_name: report.assetId.asset_name,
-      observations: report.Observations,
-      recommendations: report.Recommendations,
-      created_on: report.createdOn,
-      location_name: report.locationId.location_name,
-      fault_data: report.faultData,
-      endpointRMSData: report.endpointRMSData,
-      healthFlag: report.EquipmentHealth,
+      asset_id: report?.top_level_asset_id,
+      asset_name: report?.assetId?.asset_name,
+      observations: report?.Observations,
+      recommendations: report?.Recommendations,
+      created_on: report?.createdOn || report?.createdAt,
+      location_name: report?.locationId?.location_name,
+      fault_data: report?.faultData,
+      endpointRMSData: report?.endpointRMSData,
+      healthFlag: report?.EquipmentHealth,
       locationId,
-      asset_health_history: report.asset_health_history || getAssetHealthHistory(),
+      asset_health_history: report?.asset_health_history || getAssetHealthHistory(),
       dummyList: getDummyMonthList().map((month: any) => {
         month.status = '1';
         return month;

@@ -44,15 +44,12 @@ export const getAllChildLocationsRecursive = async (parentIds: any): Promise<any
 
 export const floorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const location_id = req.params.id || req.query.locationId;
     const match: any = { account_id };
-    if (userRole !== "admin") {
-      match.user_id = user_id;
-    }
     if (location_id) {
       match.data_type = "asset";
-      match.locationId = location_id.toString(); // make sure it's string
+      match.locationId = location_id.toString();
     }
     const floorMaps = await EndpointLocationModel.find(match);
     if (!floorMaps || floorMaps.length === 0) {

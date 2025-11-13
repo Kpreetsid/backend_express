@@ -75,15 +75,12 @@ export const getLocationTree = async (req: Request, res: Response, next: NextFun
 
 export const getChildLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
     if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
-    if (userRole !== 'admin') {
-      match.createdBy = user_id;
-    }
     const isDataExists = await getAllLocations(match);
     if (!isDataExists || isDataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

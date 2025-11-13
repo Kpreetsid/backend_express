@@ -311,7 +311,9 @@ export const updateById = async (id: string, body: any, user: IUser): Promise<an
   }
   existingOrder = { ...existingOrder.toObject(), ...body };
   if(body.parts?.length > 0) {
-    await revertPartFromWorkOrder(body.oldParts, body.parts, user);
+    if(body.oldParts?.length > 0) {
+      await revertPartFromWorkOrder(body.oldParts, body.parts, user);
+    }
   }
   existingOrder.updatedBy = user._id;
   await updateMappedUsers(id, body.userIdList);
