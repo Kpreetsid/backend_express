@@ -2,7 +2,7 @@ import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
-import { getLocationsMappedData, removeAssetListMapping, removeLocationListMapping } from "../../transaction/mapUserLocation/userLocation.service";
+import { getDataByLocationId, getLocationsMappedData, mapUserLocationData, removeAssetListMapping, removeLocationListMapping } from "../../transaction/mapUserLocation/userLocation.service";
 import { getData } from "../../util/queryBuilder";
 
 export const getAllLocations = async (match: any) => {
@@ -236,3 +236,49 @@ export const getLocationSensor = async (account_id: any, user_id: any, userRole:
     return null;
   }
 }
+
+export const getLocationById = (id: string, account_id: any) => {
+  return LocationModel.findOne({ _id: id, account_id, visible: true });
+};
+
+export const getAllChildHierarchy = async (parentId: string, account_id: any): Promise<any[]> => {
+  const children = await LocationModel.find({ parent_id: parentId, account_id, visible: true }).lean();
+  const all: any[] = [];
+  for (const child of children) {
+    all.push(child);
+    const subChildren = await getAllChildHierarchy(child._id.toString(), account_id);
+    all.push(...subChildren);
+  }
+  return all;
+};
+
+export const cloneLocationNode = async (source: any, user_id: any, account_id: any, newParentId?: any, idMap?: any): Promise<any> => {
+  const userMappings = await getDataByLocationId(source._id.toString());
+  const userList = userMappings.map((u: any) => u.userId);
+  const newBody: any = {
+    ...source,
+    _id: undefined,
+    id: undefined,
+    createdAt: undefined,
+    updatedAt: undefined,
+    createdBy: user_id,
+    updatedBy: undefined,
+    account_id,
+    visible: true,
+    parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
+  };
+  const baseName = source.location_name.replace(/\s-\s(copy|\(\d+\))$/, "");
+  const existingCount = await LocationModel.countDocuments({
+    parent_id: newParentId || { $exists: false },
+    account_id,
+    location_name: { $regex: `^${baseName} - copy`, $options: "i" },
+    visible: true,
+  });
+  newBody.location_name = existingCount > 0 ? `${baseName} - copy (${existingCount + 1})` : `${baseName} - copy`;
+  const newLoc = new LocationModel(newBody);
+  await newLoc.save();
+  if (userList.length > 0) {
+    await mapUserLocationData(newLoc._id, userList, account_id);
+  }
+  return newLoc._id;
+};

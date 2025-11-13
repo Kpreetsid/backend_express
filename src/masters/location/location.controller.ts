@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAllLocations, insertLocation, updateById, removeLocationById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor } from './location.service';
+import { getAllLocations, insertLocation, updateById, removeLocationById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor, cloneLocationNode, getAllChildHierarchy, getLocationById } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import { getDataByLocationId, getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
+import { getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 const moduleName: string = "location";
 
@@ -287,32 +287,33 @@ export const getLocationSensorList = async (req: Request, res: Response, next: N
 export const createDuplicateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const role = get(req, "role", {}) as any;
-    if (!role[moduleName].add_location) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
     const { id } = req.params;
     if (!id) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
+      throw Object.assign(new Error("Bad request"), { status: 400 });
     }
-    const match = { _id: id, account_id: account_id, visible: true };
-    const locationData = await getAllLocations(match);
-    if (!locationData || locationData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+    let sourceLocation: any = await getLocationById(id, account_id);
+    if (!sourceLocation) {
+      throw Object.assign(new Error("Location not found"), { status: 404 });
     }
-    const body = locationData[0];
-    const userList: any = await getDataByLocationId(id);
-    if (!userList && userList.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+    sourceLocation = sourceLocation.toObject ? sourceLocation.toObject() : sourceLocation;
+    const allChildren: any[] = await getAllChildHierarchy(id, account_id);
+    const idMap: Record<string, mongoose.Types.ObjectId> = {};
+    const parentForCopy = sourceLocation.parent_id ? sourceLocation.parent_id : undefined;
+    const newParentId = await cloneLocationNode(sourceLocation, user_id, account_id, parentForCopy, idMap);
+    idMap[`${sourceLocation._id || sourceLocation.id}`] = newParentId;
+    if (allChildren.length > 0) {
+      for (const child of allChildren) {
+        const newParent = idMap[child.parent_id?.toString()] || newParentId;
+        const newChildId = await cloneLocationNode(child, user_id, account_id, newParent, idMap);
+        idMap[child._id.toString()] = newChildId;
+      }
     }
-    body.location_name = `${body.location_name} - copy`;
-    body.userIdList = userList.map((doc: any) => doc.userId);
-    body.account_id = account_id;
-    body.createdBy = user_id;
-    const data: any = await insertLocation(body);
-    await mapUserLocationData(data._id, body.userIdList, account_id);
-    res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
+    const getData = await getAllLocations({ _id: newParentId, account_id, visible: true });
+    if (!getData || getData.length === 0) {
+      throw Object.assign(new Error("No data found"), { status: 404 });
+    }
+    res.status(201).json({ status: true, message: "Location hierarchy copied successfully", data: getData });
   } catch (error) {
     next(error);
   }
-}
+};
