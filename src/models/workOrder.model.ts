@@ -30,6 +30,7 @@ export interface IWorkOrder extends Document {
   priority: string;
   status: string;
   type: string;
+  createdFrom: string;
   nature_of_work: string;
   wo_asset_id: ObjectId;
   wo_location_id: ObjectId;
@@ -55,6 +56,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   title: { type: String, trim: true, required: true },
   description: { type: String, trim: true },
   estimated_time: { type: Number },
+  createdFrom: { type: String, trim: true, enum: ['Work Request', 'Work Order', 'Preventive'], default: "Work Order" },
   priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: "None" },
   status: { type: String, trim: true, enum: WORK_ORDER_STATUSES, default: "Open" },
   type: { type: String, trim: true },

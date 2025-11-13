@@ -204,27 +204,26 @@ export const getMonthlyCount = async (req: Request, res: Response, next: NextFun
 
 export const getPlannedUnplanned = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id };
+    const { account_id } = get(req, 'user', {}) as IUser;
+    const match: any = { account_id, visible: true };
     const { wo_asset_id, fromDate, toDate, order_no } = req.query;
     if (wo_asset_id) {
-      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      const ids = wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      match.wo_asset_id = { $in: ids };
     }
-    if (order_no) {
-      match.order_no = order_no;
-    }
+    if (order_no) match.order_no = order_no;
     if (fromDate && toDate) {
-      match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
+      match.createdAt = { $gte: new Date(fromDate.toString()), $lte: new Date(toDate.toString()) };
     }
     const data = await plannedUnplanned(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    res.status(200).json({ status: true, message: "Work order planned/unplanned fetched successfully.", data });
+    res.status(200).json({ status: true, message: 'Work order planned/unplanned fetched successfully.', data });
   } catch (error) {
     next(error);
   }
-}
+};
 
 export const getSummaryData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {

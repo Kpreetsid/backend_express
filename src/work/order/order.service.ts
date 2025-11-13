@@ -8,7 +8,6 @@ import { getAllCommentsForWorkOrder } from "../comments/comment.service";
 import mongoose from "mongoose";
 
 export const getAllOrders = async (match: any): Promise<any> => {
-  console.log('getAllOrders', match);
   let data = await WorkOrderModel.aggregate([
     { $match: match },
     { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
@@ -129,78 +128,41 @@ export const monthlyCount = async (match: any): Promise<any> => {
 };
 
 export const plannedUnplanned = async (match: any): Promise<any> => {
-  match.visible = true;
-  const data: IWorkOrder[] = await WorkOrderModel.find(match).select("_id createdAt createdOn createdFrom");
+  const data: any = await WorkOrderModel.find(match).select('_id createdAt createdFrom').lean();
   if (!data || data.length === 0) {
     throw Object.assign(new Error('No data found'), { status: 404 });
   }
-  const groupByCreatedFromAndMonth = data.reduce((acc: any, document: any) => {
-    const createdAt = document.createdAt || document.createdOn;
-    const monthYear = new Date(createdAt).toISOString().slice(0, 7);
-    const key = `${document.createdFrom}-${monthYear}`;
-    acc[key] = acc[key] || {
-      createdFrom: document.createdFrom,
-      monthYear,
-      count: 0
-    };
+  const grouped = data.reduce((acc: Record<string, any>, doc: any) => {
+    const monthYear = new Date(doc.createdAt).toISOString().slice(0, 7);
+    const key = `${doc.createdFrom}-${monthYear}`;
+    if (!acc[key]) acc[key] = { createdFrom: doc.createdFrom || 'Work Order', monthYear, count: 0 };
     acc[key].count++;
     return acc;
   }, {});
-  const aggregatedData = Object.values(groupByCreatedFromAndMonth);
-  const dataByCreatedFromAndMonth: any = {};
-  aggregatedData.forEach((document: any) => {
-    dataByCreatedFromAndMonth[document.createdFrom] = dataByCreatedFromAndMonth[document.createdFrom] || [];
-    dataByCreatedFromAndMonth[document.createdFrom].push({
-      monthYear: document.monthYear,
-      count: document.count
+  const aggregated = Object.values(grouped) as { createdFrom: string; monthYear: string; count: number }[];
+  const groupedByCreatedFrom: Record<string, { monthYear: string; count: number }[]> = {};
+  for (const item of aggregated) {
+    if (!groupedByCreatedFrom[item.createdFrom]) groupedByCreatedFrom[item.createdFrom] = [];
+    groupedByCreatedFrom[item.createdFrom].push({ monthYear: item.monthYear, count: item.count });
+  }
+  const months = [...new Set(aggregated.map(a => a.monthYear))].sort();
+  const categories = ['Work Order', 'Preventive'];
+  const final_result: any = { date: months, 'Work Order': [], 'Preventive': [] };
+  const allCreatedFrom = Object.keys(groupedByCreatedFrom);
+  for (const cf of allCreatedFrom) {
+    const counts = months.map(month => {
+      const found = groupedByCreatedFrom[cf].find(c => c.monthYear === month);
+      return found ? found.count : 0;
     });
-  });
-
-  const months = [...new Set(aggregatedData.map((document: any) => document.monthYear))];
-  const createdFrom = Object.keys(dataByCreatedFromAndMonth);
-  const zeroCounts: any = {};
-  createdFrom.forEach((createdFrom: any) => {
-    zeroCounts[createdFrom] = zeroCounts[createdFrom] || [];
-    months.forEach(month => {
-      const count = (dataByCreatedFromAndMonth[createdFrom].find((c: any) => c.monthYear === month) || {}).count || 0;
-      zeroCounts[createdFrom].push({
-        monthYear: month,
-        count
-      });
-    });
-  });
-  const countsByCreatedFrom = { ...dataByCreatedFromAndMonth, ...zeroCounts };
-  const final_result: any = {
-    date: [],
-    "Work Order": [],
-    Preventive: []
-  };
-  final_result.date = months;
-  createdFrom.forEach((createdFrom: any) => {
-    const counts = countsByCreatedFrom[createdFrom].map((count: any) => count.count);
-    if (!final_result[createdFrom]) {
-      final_result[createdFrom] = counts;
-    } else {
-      final_result[createdFrom] = counts.map((count: any, index: any) => {
-        if (count === 0 && final_result[createdFrom][index] !== 0) {
-          return 0;
-        } else {
-          return final_result[createdFrom][index] || count;
-        }
-      });
+    final_result[cf] = counts;
+  }
+  for (const cat of categories) {
+    if (!final_result[cat]?.length) {
+      final_result[cat] = months.map(() => 0);
     }
-  });
-
-  let categories = ['Work Order', 'Preventive']
-  categories.forEach((element: any) => {
-    if (final_result[element].length == 0) {
-      final_result.date.forEach(() => {
-        final_result[element].push(0)
-      });
-    }
-  });
+  }
   return final_result;
-}
+};
 
 export const summaryData = async (match: any): Promise<any> => {
   match.visible = true;
