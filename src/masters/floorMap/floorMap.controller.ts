@@ -114,10 +114,21 @@ export const setFloorMapCoordinates = async (req: Request, res: Response, next: 
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const body = req.body;
-    if (!body.coordinate && !body.end_point) {
+    if (!body.coordinate) {
       throw Object.assign(new Error('Coordinate is required'), { status: 400 });
     }
-    const existEndPoint = await getFloorMaps({ account_id, end_point_id: body.end_point_id, "end_point.asset_id": body.end_point.asset_id });
+    const match: any = { account_id };
+    if (body.data_type === 'asset' && !body.end_point_id) {
+      throw Object.assign(new Error('End point is required'), { status: 400 });
+    } else {
+      match.end_point_id = body.end_point_id;
+    }
+    if (body.data_type === 'kpi' && !body.locationId) {
+      throw Object.assign(new Error('Location is required'), { status: 400 });
+    } else {
+      match.locationId = body.locationId;
+    }
+    const existEndPoint = await getFloorMaps(match);
     if (existEndPoint && existEndPoint.length > 0) {
       throw Object.assign(new Error('End point already exist'), { status: 400 });
     }
