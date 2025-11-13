@@ -1,7 +1,7 @@
 import { AssetModel, IAsset } from '../../models/asset.model';
 import { NextFunction, Request, Response } from 'express';
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
-import { getDataByAssetId, removeAssetMapping, updateMapUserAssets } from "../../transaction/mapUserLocation/userLocation.service";
+import { createMapUserAssets, getDataByAssetId, removeAssetMapping } from "../../transaction/mapUserLocation/userLocation.service";
 import { IUser, UserModel } from "../../models/user.model";
 import { LocationModel } from "../../models/location.model";
 import { get } from "lodash";
@@ -517,6 +517,7 @@ export const createCompressor = async (compressor: any, equipment: any, account_
 }
 
 export const createExternalAPICall = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {
+  debugger
   const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);
   const match = { org_id: `${account_id}`, asset_status: "Not Defined", asset_id: assetIdList };
   return await getExternalData(`/asset_health_status/`, 'POST', match, token, `${user_id}`);
@@ -825,24 +826,70 @@ export const updateCompressor = async (compressor: any, equipment: any, account_
   return await AssetModel.updateOne({ _id: compressor.id }, updatedCompressor);
 }
 
-export const makeAssetCopyById = async (id: any, user_id: any, token: string) => {
-  let asset: any = await AssetModel.findById(id).lean();
-  if (!asset) {
-    throw Object.assign(new Error('No asset found'), { status: 404 });
+export const getAllChildAssetsRecursive = async (parentId: string, account_id: any): Promise<any[]> => {
+  const children = await AssetModel.find({ parent_id: parentId, account_id, visible: true }).lean();
+  const all: any[] = [];
+  for (const child of children) {
+    if (child._id?.toString() === parentId) continue;
+    all.push(child);
+    const subChildren = await getAllChildAssetsRecursive(child._id.toString(), account_id);
+    all.push(...subChildren);
   }
-  const { _id, createdAt, updatedAt, ...rest } = asset;
-  const newAsset: any = new AssetModel({
-    ...rest,
-    asset_name: `${asset?.asset_name} - Copy`,
-    createdBy: user_id
-  });
-  newAsset.top_level_asset_id = newAsset.top_level ? newAsset._id : newAsset.top_level_asset_id;
-  const savedAsset = await newAsset?.save();
-  const getUserMapping = await getDataByAssetId(id);
-  const mappedData = getUserMapping.map((doc: any) => {
-    return { assetId: savedAsset?.id, userId: doc.userId };
-  });
-  await createExternalAPICall(mappedData, savedAsset?.account_id, user_id, token);
-  await updateMapUserAssets(`${savedAsset?.id}`, getUserMapping.map((doc: any) => doc.userId));
-  return savedAsset;
-}
+  return all;
+};
+
+export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any): Promise<mongoose.Types.ObjectId> => {
+  try {
+    const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
+    const cleanAsset = JSON.parse(JSON.stringify(rest));
+    delete cleanAsset._id;
+    delete cleanAsset.id;
+    delete cleanAsset.createdAt;
+    delete cleanAsset.updatedAt;
+
+    if (!cleanAsset.asset_name) cleanAsset.asset_name = "Unnamed Asset";
+    if (!cleanAsset.account_id) cleanAsset.account_id = account_id;
+    if (!cleanAsset.createdBy) cleanAsset.createdBy = user_id;
+    const baseName = (sourceAsset.asset_name || "Asset").replace(/\s-\s(Copy|\(\d+\))$/, "");
+    const existingCount = await AssetModel.countDocuments({
+      parent_id: newParentId || { $exists: false },
+      account_id,
+      asset_name: { $regex: `^${baseName} - Copy`, $options: "i" },
+      visible: true,
+    });
+    const newName = existingCount > 0 ? `${baseName} - Copy (${existingCount + 1})` : `${baseName} - Copy`;
+    const newAssetData: any = {
+      ...cleanAsset,
+      asset_name: newName,
+      asset_type: sourceAsset.asset_type || "Other",
+      createdBy: user_id,
+      updatedBy: undefined,
+      account_id,
+      visible: true,
+      parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
+    };
+    delete newAssetData._id;
+    delete newAssetData.id;
+    const newAsset = new AssetModel(newAssetData);
+    newAsset.top_level_asset_id = newAsset.top_level ? newAsset._id : cleanAsset.top_level_asset_id || newParentId;
+    const savedAsset: any = await newAsset.save();
+
+    let userList: any[] = [];
+    const userMappings = await getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
+    if (Array.isArray(userMappings) && userMappings.length > 0) {
+      userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
+    }
+    if (userList.length > 0) {
+      const mappedData = userList.map((u: any) => ({
+        assetId: savedAsset._id || savedAsset.id,
+        userId: u,
+      }));
+      await createExternalAPICall(mappedData, savedAsset.account_id, user_id, token);
+      await createMapUserAssets(mappedData);
+    }
+    return savedAsset._id;
+  } catch (error: any) {
+    console.error("Error in makeAssetCopyByIdWithChildren:", error);
+    throw error;
+  }
+};

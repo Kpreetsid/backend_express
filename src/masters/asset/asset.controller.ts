@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAllAssets, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyById, updateAllChildAssetsLocation, getAllChildAssetIDs } from './asset.service';
+import { getAllAssets, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, updateAllChildAssetsLocation, getAllChildAssetIDs, getAllChildAssetsRecursive, makeAssetCopyByIdWithChildren } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { createMapUserAssets, getAssetsMappedData, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
@@ -400,25 +400,33 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const userToken = get(req, "userToken", {}) as string;
-    const { params: { id }} = req;
+    const { params: { id } } = req;
     if (!id) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error("No asset id provided"), { status: 400 });
     }
-    const match: any = { _id: id, account_id: account_id, visible: true };
-    const dataExists: any = await getAllAssets(match);
+    const dataExists: any = await getAllAssets({ _id: id, account_id, visible: true });
     if (!dataExists || dataExists.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error("Asset not found"), { status: 404 });
     }
-    const newAsset = await makeAssetCopyById(id, user_id, userToken);
-    if (!newAsset) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+    const sourceAsset = dataExists[0];
+    const allChildren: any[] = await getAllChildAssetsRecursive(id, account_id);
+    const idMap: Record<string, mongoose.Types.ObjectId> = {};
+    const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;
+    const newParentId = await makeAssetCopyByIdWithChildren(sourceAsset, user_id, userToken, account_id, parentForCopy, idMap);
+    idMap[`${sourceAsset.id}`] = newParentId;
+    if (allChildren.length > 0) {
+      for (const child of allChildren) {
+        const newParent = idMap[`${child.parent_id}`] || newParentId;
+        const newChildId = await makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap);
+        idMap[child._id.toString()] = newChildId;
+      }
     }
-    const copiedData: any = await getAllAssets({ _id: newAsset._id });
+    const copiedData: any = await getAllAssets({ _id: newParentId, account_id, visible: true });
     if (!copiedData || copiedData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error("No data found after copy"), { status: 404 });
     }
-    res.status(200).json({ status: true, message: "Asset copied successfully", data: copiedData });
-  } catch (error: any) {
+    res.status(201).json({ status: true, message: "Asset hierarchy copied successfully", data: copiedData });
+  } catch (error) {
     next(error);
   }
-}
+};

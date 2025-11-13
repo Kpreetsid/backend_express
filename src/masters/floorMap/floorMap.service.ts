@@ -1,7 +1,5 @@
 import { EndpointLocationModel } from "../../models/floorMap.model";
 import { Request, Response, NextFunction } from 'express';
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
 import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
 
@@ -42,25 +40,6 @@ export const getAllChildLocationsRecursive = async (parentIds: any): Promise<any
   return childIds;
 }
 
-export const floorMapAssetCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const location_id = req.params.id || req.query.locationId;
-    const match: any = { account_id };
-    if (location_id) {
-      match.data_type = "asset";
-      match.locationId = location_id.toString();
-    }
-    const floorMaps = await EndpointLocationModel.find(match);
-    if (!floorMaps || floorMaps.length === 0) {
-      throw Object.assign(new Error("No coordinates found for the given location"), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Coordinates Found", data: floorMaps });
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const endpointLocation = new EndpointLocationModel(req.body);
@@ -100,29 +79,19 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const insertCoordinates = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const body = req.body;
-    const newMappedCoordinates = new EndpointLocationModel({
-      "coordinate": body.coordinate,
-      "locationId": body.locationId,
-      "account_id": account_id,
-      "data_type": body.data_type,
-      "createdBy": user_id
-    });
-    if (body.data_type === 'asset') {
-      newMappedCoordinates.end_point_id = body.end_point_id;
-      newMappedCoordinates.end_point = body.end_point;
-    }
-    const data = await newMappedCoordinates.save();
-    if (!data) {
-      throw Object.assign(new Error('Failed to set coordinates'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Coordinates added successfully", data });
-  } catch (error) {
-    next(error);
+export const insertCoordinates = async (body: any, account_id: any, user_id: any): Promise<any> => {
+  const newMappedCoordinates = new EndpointLocationModel({
+    "coordinate": body.coordinate,
+    "locationId": body.locationId,
+    "account_id": account_id,
+    "data_type": body.data_type,
+    "createdBy": user_id
+  });
+  if (body.data_type === 'asset') {
+    newMappedCoordinates.end_point_id = body.end_point_id;
+    newMappedCoordinates.end_point = body.end_point;
   }
+  return await newMappedCoordinates.save();
 };
 
 export const deleteCoordinates = async (match: any) => {

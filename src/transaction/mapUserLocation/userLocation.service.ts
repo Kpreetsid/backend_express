@@ -15,11 +15,11 @@ export const getLocationsMappedData = async (userId: any) => {
 }
 
 export const getDataByLocationId = async (locationId: string) => {
-  return await MapUserAssetLocationModel.find({ locationId: locationId });
+  return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } });
 }
 
 export const getDataByAssetId = async (assetId: string) => {
-  return await MapUserAssetLocationModel.find({ assetId: assetId });
+  return await MapUserAssetLocationModel.find({ assetId: new mongoose.Types.ObjectId(assetId), userId: { $exists: true } });
 }
 
 export const userLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
