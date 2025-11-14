@@ -228,30 +228,34 @@ export const getPlannedUnplanned = async (req: Request, res: Response, next: Nex
 export const getSummaryData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
     const { wo_asset_id, fromDate, toDate } = req.query;
+    const workOrderMatch: any = { account_id, visible: true };
     if (wo_asset_id) {
-      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      const assetIds = wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      workOrderMatch.wo_asset_id = { $in: assetIds };
     }
     if (fromDate && toDate) {
-      match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
+      const start = new Date(fromDate as string);
+      const end = new Date(toDate as string);
+      end.setHours(23, 59, 59, 999);
+      workOrderMatch.createdAt = { $gte: start, $lte: end };
     }
-    if(userRole !== 'admin') {
+    if (userRole !== 'admin') {
       const userWorkOrderIdList = await getMappedWorkOrderIDs(user_id);
-      if(!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });  
+      if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      match._id = { $in: userWorkOrderIdList };
+      workOrderMatch._id = { $in: userWorkOrderIdList };
     }
-    const data = await summaryData(match);
-    if (!data || data.length === 0) {
+    const data = await summaryData(workOrderMatch);
+    if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Work order summary data fetched successfully.", data });
   } catch (error) {
     next(error);
   }
-}
+};
 
 export const getPendingOrders = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {

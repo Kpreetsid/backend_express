@@ -1,6 +1,5 @@
 import { IWorkOrder, WorkOrderModel } from "../../models/workOrder.model";
 import { IUser, UserModel } from "../../models/user.model";
-import { BlogModel, IBlog } from "../../models/help.model";
 import { sendWorkOrderMail } from "../../_config/mailer";
 import { mapUsersWorkOrder, removeMappedUsers, updateMappedUsers } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
 import { assignPartToWorkOrder, revertPartFromWorkOrder } from "../../masters/part/parts.service";
@@ -164,46 +163,44 @@ export const plannedUnplanned = async (match: any): Promise<any> => {
   return final_result;
 };
 
-export const summaryData = async (match: any): Promise<any> => {
-  match.visible = true;
-  const helpMatch: any = { account_id: match.account_id, visible: true, status: 'Approved', asset_id: match.wo_asset_id };
-  const helpData: IBlog[] = await BlogModel.find(helpMatch);
-  if (helpData.length === 0) {
-    throw Object.assign(new Error('No data found'), { status: 404 });
-  }
-  const WO_list: IWorkOrder[] = await WorkOrderModel.find(match);
-  if (WO_list.length === 0) {
-    throw Object.assign(new Error('No data found'), { status: 404 });
-  }
-  const todayDate = new Date().toISOString().split('T')[0];
-  let complete_wo_on_time: any = [];
-  let overdue_WO : any= [];
-  let planned_WO: any = [];
-  let Unplanned_WO: any = [];
-  WO_list.map((item: any) => {
-    if (item.status == 'Completed' && (new Date(item.end_date) >= new Date(item.completed_on))) {
-      complete_wo_on_time.push(item);
+export const summaryData = async (workOrderMatch: any): Promise<any> => {
+  try {
+    const workOrders: any = await WorkOrderModel.find(workOrderMatch).lean();
+    const today = new Date();
+    const completedOnTime: any[] = [];
+    const overdueWO: any[] = [];
+    const plannedWO: any[] = [];
+    const unplannedWO: any[] = [];
+    const workRequests: any[] = [];
+    for (const item of workOrders) {
+      const { status, end_date, updatedAt, createdFrom } = item;
+      const endDate = new Date(end_date);
+      const completedOn = updatedAt ? new Date(updatedAt) : null;
+      if (status === 'Completed' && completedOn && completedOn <= endDate) {
+        completedOnTime.push(item);
+      }
+      if (status !== 'Completed' && endDate < today) {
+        overdueWO.push(item);
+      }
+      const origin = (createdFrom || '').toLowerCase();
+      if (origin === 'preventive') {
+        plannedWO.push(item);
+      } else if (['work order', 'work request'].includes(origin)) {
+        unplannedWO.push(item);
+      }
+      if (item.work_request_id) {
+        workRequests.push(item.work_request_id);
+      }
     }
-    if (item.status != 'Completed' && (new Date(item.end_date) < new Date(todayDate))) {
-      overdue_WO.push(item);
-    }
-    if (item.createdFrom == 'Preventive') {
-      planned_WO.push(item);
-    } else if (item.createdFrom == 'Work Order' || item.createdFrom == 'Work Request') {
-      Unplanned_WO.push(item);
-    }
-  })
-
-  const planned_unplanned_ratio = (planned_WO.length / (planned_WO.length + Unplanned_WO.length)) * 100;
-  const comp_rate = (complete_wo_on_time.length / WO_list.length) * 100;
-  const final_res = {
-    "completion_rate": comp_rate || 0,
-    "overdue_WO": overdue_WO.length || 0,
-    "work_request_count": helpData.length || 0,
-    "planned_unplanned_ratio": planned_unplanned_ratio || 0
+    const totalWO = workOrders.length;
+    const plannedUnplannedRatio = totalWO ? (plannedWO.length / (plannedWO.length + unplannedWO.length)) * 100 : 0;
+    const completionRate = totalWO ? (completedOnTime.length / totalWO) * 100 : 0;
+    return { completion_rate: Number(completionRate.toFixed(2)), overdue_WO: overdueWO.length, work_request_count: workRequests.length, planned_unplanned_ratio: Number(plannedUnplannedRatio.toFixed(2)) };
+  } catch (err) {
+    console.error("summaryData error:", err);
+    throw err;
   }
-  return final_res;
-}
+};
 
 export const generateOrderNo = async (account_id: any): Promise<string> => {
   const year = new Date().getFullYear();
