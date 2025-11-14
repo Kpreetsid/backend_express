@@ -516,13 +516,6 @@ export const createCompressor = async (compressor: any, equipment: any, account_
   }).save();
 }
 
-export const createExternalAPICall = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {
-  debugger
-  const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);
-  const match = { org_id: `${account_id}`, asset_status: "Not Defined", asset_id: assetIdList };
-  return await getExternalData(`/asset_health_status/`, 'POST', match, token, `${user_id}`);
-}
-
 export const deleteAssetsById = async (assetId: any) => {
   const childData = await AssetModel.find({ parent_id: assetId });
   if (childData.length > 0) {
@@ -884,7 +877,25 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
         assetId: savedAsset._id || savedAsset.id,
         userId: u,
       }));
-      await createExternalAPICall(mappedData, savedAsset.account_id, user_id, token);
+      const endPointList: any = await getAssetEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
+      if (endPointList?.data?.length > 0) {
+        endPointList?.data.forEach(async (item: any) => {
+          console.log({ oldAssetId: sourceAsset.id, newAssetId: savedAsset.id });
+          const newEndPointPayload = {
+            org_id: item.org_id,
+            point_name: item.point_name,
+            asset_id: savedAsset._id || savedAsset.id,
+            mount_location: item.mount_location,
+            rpm: "",
+            bsf: "",
+            ftf: "",
+            bpfo: "",
+            bpfi: "",
+            bearing_number: ""
+          };
+          await createEndPointCopy(newEndPointPayload, user_id, token);
+        });
+      }
       await createMapUserAssets(mappedData);
     }
     return savedAsset._id;
@@ -893,3 +904,19 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
     throw error;
   }
 };
+
+const getAssetEndPoints = async (asset_id: string[], token: string, user_id: any) => {
+  const payload: any = { asset_id };
+  return await getExternalData(`/getAllEndPoints/`, 'POST', payload, token, `${user_id}`);
+}
+
+const createEndPointCopy = async (assetsList: any, user_id: any, token: any): Promise<any> => {
+  return await getExternalData(`/endPointApi/`, 'POST', assetsList, token, `${user_id}`);
+}
+
+
+export const createExternalAPICall = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {
+  const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);
+  const match = { org_id: `${account_id}`, asset_status: "Not Defined", asset_id: assetIdList };
+  return await getExternalData(`/asset_health_status/`, 'POST', match, token, `${user_id}`);
+}

@@ -22,7 +22,7 @@ export const getExternalData = async (path: string, method: string, body: any, t
     if(response.status !== 200) {
       throw new Error(`External API returned status code ${response.status}: ${response.statusText}`);
     }
-    console.log({ method, status: response.status, statusText: response.statusText, data: response.data?.data });
+    console.log({ method, status: response.status, statusText: response.statusText, data: response.data });
     console.groupEnd();
     return response.data;
   } catch (err: any) {
