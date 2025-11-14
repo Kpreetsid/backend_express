@@ -414,12 +414,10 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;
     const newParentId = await makeAssetCopyByIdWithChildren(sourceAsset, user_id, userToken, account_id, parentForCopy, idMap);
     idMap[`${sourceAsset.id}`] = newParentId;
-    if (allChildren.length > 0) {
-      for (const child of allChildren) {
-        const newParent = idMap[`${child.parent_id}`] || newParentId;
-        const newChildId = await makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap);
-        idMap[child._id.toString()] = newChildId;
-      }
+    for (const child of allChildren) {
+      const newParent = idMap[`${child.parent_id}`] || newParentId;
+      const newChildId = await makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap);
+      idMap[child._id.toString()] = newChildId;
     }
     const copiedData: any = await getAllAssets({ _id: newParentId, account_id, visible: true });
     if (!copiedData || copiedData.length === 0) {

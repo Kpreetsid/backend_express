@@ -848,7 +848,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
       parent_id: newParentId || { $exists: false },
       account_id,
       asset_name: { $regex: `^${baseName} - Copy`, $options: "i" },
-      visible: true,
+      visible: true
     });
     const newName = existingCount > 0 ? `${baseName} - Copy (${existingCount + 1})` : `${baseName} - Copy`;
     const newAssetData: any = {
@@ -863,39 +863,47 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
     };
     delete newAssetData._id;
     delete newAssetData.id;
+
     const newAsset = new AssetModel(newAssetData);
     newAsset.top_level_asset_id = newAsset.top_level ? newAsset._id : cleanAsset.top_level_asset_id || newParentId;
     const savedAsset: any = await newAsset.save();
 
     let userList: any[] = [];
-    const userMappings = await getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
-    if (Array.isArray(userMappings) && userMappings.length > 0) {
-      userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
+    try {
+      const userMappings = await getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
+      if (Array.isArray(userMappings) && userMappings.length > 0) {
+        userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
+      }
+    } catch {
+      userList = [];
     }
-    if (userList.length > 0) {
-      const mappedData = userList.map((u: any) => ({
-        assetId: savedAsset._id || savedAsset.id,
-        userId: u,
-      }));
+
+    try {
       const endPointList: any = await getAssetEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
       if (endPointList?.data?.length > 0) {
-        endPointList?.data.forEach(async (item: any) => {
-          console.log({ oldAssetId: sourceAsset.id, newAssetId: savedAsset.id });
+        for (const item of endPointList.data) {
           const newEndPointPayload = {
             org_id: item.org_id,
             point_name: item.point_name,
-            asset_id: savedAsset._id || savedAsset.id,
+            asset_id: savedAsset.id,
             mount_location: item.mount_location,
-            rpm: "",
-            bsf: "",
-            ftf: "",
-            bpfo: "",
-            bpfi: "",
-            bearing_number: ""
+            rpm: item.rpm || "",
+            bsf: item.bsf || "",
+            ftf: item.ftf || "",
+            bpfo: item.bpfo || "",
+            bpfi: item.bpfi || "",
+            bearing_number: item.bearing_number || "",
+            parent_asset_id: newParentId || null
           };
           await createEndPointCopy(newEndPointPayload, user_id, token);
-        });
+        }
       }
+    } catch (err) {
+      console.error(`Endpoint copy failed for asset ${sourceAsset._id}:`, err);
+    }
+
+    if (userList.length > 0) {
+      const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id || savedAsset.id, userId: u }));
       await createMapUserAssets(mappedData);
     }
     return savedAsset._id;
@@ -913,7 +921,6 @@ const getAssetEndPoints = async (asset_id: string[], token: string, user_id: any
 const createEndPointCopy = async (assetsList: any, user_id: any, token: any): Promise<any> => {
   return await getExternalData(`/endPointApi/`, 'POST', assetsList, token, `${user_id}`);
 }
-
 
 export const createExternalAPICall = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {
   const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);
