@@ -91,8 +91,8 @@ export const getAssetsTreeData = async (req: Request, res: Response, next: NextF
         query._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
     }
-    if (id) {
-      query._id = id;
+    if (id && Array.isArray(id) && id.length > 0) {
+      query._id = { $in: id };
       query.top_level = true;
     }
     if (locations && Array.isArray(locations) && locations.length > 0) {
