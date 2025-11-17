@@ -57,4 +57,5 @@ jobs:
             --application-name Presage-GithubAction-EC2 \
             --deployment-group-name Presage-Mean-Stack \
             --deployment-config-name CodeDeployDefault.OneAtATime \
+            --file-exists-behavior OVERWRITE \
             --s3-location bucket=presage-codedeploy-artifact,key=cmms_express/express.tar.gz,bundleType=tgz
