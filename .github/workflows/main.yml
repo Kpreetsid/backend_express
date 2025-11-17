@@ -28,7 +28,6 @@ jobs:
           cp -r scripts deployment/
           cp package*.json deployment/
           cp tsconfig.json deployment/
-          cp uploadFiles deployment/
           cp -r src deployment/
           cp -r dist deployment/ 2>/dev/null || echo "No dist folder yet"
           cd deployment
