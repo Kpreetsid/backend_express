@@ -15,6 +15,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies and build
+        run: |
+          npm install
+
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -27,9 +36,8 @@ jobs:
           cp appspec.yml deployment/
           cp -r scripts deployment/
           cp package*.json deployment/
-          cp tsconfig.json deployment/
-          cp -r src deployment/
-          cp -r dist deployment/ 2>/dev/null || echo "No dist folder yet"
+          cp -r dist deployment/
+          cp -r src/public deployment/dist/public 2>/dev/null || echo "No public folder"
           cd deployment
           tar -czf ../express.tar.gz .
 
