@@ -8,8 +8,8 @@ cd /home/ubuntu/express_cmms
 # Set npm cache directory to avoid permission issues
 export npm_config_cache=/home/ubuntu/.npm
 
-# Install dependencies
-npm install --production
+# Install all dependencies (including TypeScript and dev dependencies)
+npm install
 
 echo "NPM packages installed successfully"
 
