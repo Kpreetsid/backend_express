@@ -1,5 +1,4 @@
 import { EndpointLocationModel } from "../../models/floorMap.model";
-import { Request, Response, NextFunction } from 'express';
 import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
 
@@ -40,43 +39,27 @@ export const getAllChildLocationsRecursive = async (parentIds: any): Promise<any
   return childIds;
 }
 
-export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const endpointLocation = new EndpointLocationModel(req.body);
-    await endpointLocation.save();
-    return res.status(201).json({ status: true, message: "Data inserted successfully", data: endpointLocation });
-  } catch (error) {
-    next(error);
+export const insertFloorMap = async (body: any, account_id: any, user_id: any): Promise<any> => {
+  const endpointLocation = new EndpointLocationModel({
+    coordinate: body.coordinate,
+    locationId: body.locationId,
+    account_id,
+    data_type: body.data_type,
+    createdBy: user_id
+  });
+  if (body.data_type === 'asset') {
+    endpointLocation.end_point_id = body.end_point_id;
+    endpointLocation.end_point = body.end_point;
   }
+  return await endpointLocation.save();
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { body: { name, description, location }, params: { id } } = req;
-    const data = await EndpointLocationModel.findByIdAndUpdate(id, { name, description, location }, { new: true });
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    next(error);
-  }
+export const updateById = async (id: any, body: any, user_id: any): Promise<any> => {
+  return await EndpointLocationModel.findByIdAndUpdate(id, { coordinate: body.coordinate, locationId: body.locationId, data_type: body.data_type, updatedBy: user_id }, { new: true });
 }
 
-export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    if (!req.params.id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const data = await EndpointLocationModel.findById(req.params.id);
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await EndpointLocationModel.findByIdAndUpdate(req.params.id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    next(error);
-  }
+export const removeById = async (id: any, user_id: any): Promise<any> => {
+  return await EndpointLocationModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
 };
 
 export const insertCoordinates = async (body: any, account_id: any, user_id: any): Promise<any> => {
