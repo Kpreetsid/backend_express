@@ -1,22 +1,92 @@
-import express, { NextFunction, Request, Response } from 'express';
-import { getAll, getDataById, insert, updateById, removeById } from './formCategory.service';
+import { NextFunction, Request, Response } from 'express';
+import { get } from "lodash";
+import { getFormCategories, createFormCategory, updateById, removeById } from './formCategory.service';
+import { IUser } from '../../models/user.model';
 
-export const getFormCategories = async (req: Request, res: Response, next: NextFunction) => {
-  await getAll(req, res, next);
+export const getAllFormCategories = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id } = get(req, "user", {}) as IUser;
+    const match: any = { account_id, visible: true };
+    const data = await getFormCategories(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export const getFormCategory = async (req: Request, res: Response, next: NextFunction) => {
-  await getDataById(req, res, next);
+export const getFormCategoryByID = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id } = get(req, "user", {}) as IUser;
+    if (!req.params.id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const match: any = { account_id, visible: true };
+    const data = await getFormCategories(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export const createFormCategory = async (req: Request, res: Response, next: NextFunction) => {
-  await insert(req, res, next);
+export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const user = get(req, "user", {}) as IUser;
+    const { body } = req;
+    const match: any = { name: body.name, account_id: user.account_id, visible: true };
+    const existData: any = await getFormCategories(match);
+    if (existData.length !== 0) {
+      throw Object.assign(new Error(`${body.name} Category already exist.`), { status: 400 });
+    }
+    const data = await createFormCategory(body, user);
+    if (!data) {
+      throw Object.assign(new Error('Failed to create category'), { status: 400 });
+    }
+    res.status(201).json({ status: true, message: "Data created successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export const updateFormCategory = async (req: Request, res: Response, next: NextFunction) => {
-  await updateById(req, res, next);
+export const updateFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const user = get(req, "user", {}) as IUser;
+    const { params: { id }, body } = req;
+    if (!id) {
+      throw Object.assign(new Error('No category ID provided'), { status: 400 });
+    }
+    const isData = await getFormCategories({ _id: id, account_id: user.account_id });
+    if (!isData || isData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const data = await updateById(id, body, user);
+    if (!data) {
+      throw Object.assign(new Error('Failed to update form category'), { status: 400 });
+    }
+    res.status(200).json({ status: true, message: "Form category updated successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export const removeFormCategory = async (req: Request, res: Response, next: NextFunction) => {
-  await removeById(req, res, next);
+export const removeFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id } = get(req, "user", {}) as IUser;
+    if (!req.params.id) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const isData = await getFormCategories({ _id: req.params.id, account_id });
+    if (!isData || isData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    await removeById(req.params.id);
+    res.status(200).json({ status: true, message: "Data deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
 }

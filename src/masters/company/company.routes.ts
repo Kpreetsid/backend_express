@@ -1,6 +1,5 @@
 import express from 'express';
-import { getCompanies, getCompany, create, updateCompany, removeCompany } from './company.controller';
-import { hasPermission } from '../../middlewares';
+import { getCompanies, getCompany, create, updateCompany, removeCompany, updateImageCompany } from './company.controller';
 
 export default (router: express.Router) => {
     const companyRouter = express.Router();
@@ -8,6 +7,7 @@ export default (router: express.Router) => {
     companyRouter.get('/:id', getCompany);
     companyRouter.post('/', create);
     companyRouter.put('/:id', updateCompany);
-    companyRouter.delete('/:id', hasPermission('admin'), removeCompany);
+    companyRouter.patch('/:id', updateImageCompany);
+    companyRouter.delete('/:id', removeCompany);
     router.use('/companies', companyRouter);
 }

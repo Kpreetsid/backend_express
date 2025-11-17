@@ -1,20 +1,24 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export const STATUS = ['active', 'inactive'];
+
 export interface IAccount extends Document {
   account_name: string;
   type: string;
   description: string;
+  fileName?: string;
   account_status: string;
-  isActive: boolean;
+  visible: boolean;
 }
 
 const accountSchema = new Schema<IAccount>(
   {
-    account_name: { type: String, required: true },
-    type: { type: String, required: true },
-    description: { type: String},
-    account_status: { type: String, enum: ['active', 'inactive'], default: 'active' },
-    isActive: { type: Boolean, required: true, default: true },
+    account_name: { type: String, required: true, unique: true, trim: true },
+    type: { type: String, trim: true, required: true },
+    description: { type: String, trim: true},
+    fileName: { type: String, trim: true },
+    account_status: { type: String, trim: true, enum: STATUS, default: 'active' },
+    visible: { type: Boolean, required: true, default: true }
   },
   {
     collection: 'account_master',
@@ -23,10 +27,11 @@ const accountSchema = new Schema<IAccount>(
     toJSON: { virtuals: true,
       transform: function (doc, ret) {
         ret.id = ret._id;
+        delete ret._id;
         return ret;
       }
-     }
+    }
   }
 );
 
-export const Account = mongoose.model<IAccount>('Account', accountSchema);
+export const AccountModel = mongoose.model<IAccount>('Schema_Account', accountSchema);

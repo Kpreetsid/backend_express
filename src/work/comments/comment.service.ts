@@ -1,85 +1,70 @@
-import { Comments, IComments } from "../../models/comment.model";
-import { Request, Response, NextFunction } from 'express';
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
-import mongoose from "mongoose";
-import { getData } from "../../util/queryBuilder";
-import { WorkOrder } from "../../models/workOrder.model";
+import { CommentsModel } from "../../models/comment.model";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const data = await Comments.find({});
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
+export const getAllComments = async (match: any) => {
+  match.parentCommentId = match.parentCommentId || null;
+  const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email user_role user_profile_img' }]).lean();
+  if (!comments || comments.length === 0) {
+    throw Object.assign(new Error('No data found'), { status: 404 });
   }
+  const replies = await Promise.all(comments.map(comment => getNestedComments(comment._id)));
+  return comments.map((comment: any, index) => ({ ...comment, id: comment._id, replies: replies[index] }));
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { order_id: new mongoose.Types.ObjectId(id) };
-    const isOrderExist = await getData(WorkOrder, { filter: { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true } });
-    if (!isOrderExist || isOrderExist.length === 0) {
-      throw Object.assign(new Error('Work Order not found'), { status: 404 });
-    }
-    const data = await getData(Comments, { filter: match });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const getComments = async (match: any) => {
+  return await CommentsModel.find(match).sort({ _id: -1 });
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const newComment = new Comments(req.body);
-    const data = await newComment.save();
-    return res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
+export const getAllCommentsForWorkOrder = async (match: any) => {
+  match.visible = true;
+  match.parentCommentId = null;
+  const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email user_role user_profile_img' }]).lean();
+  if (!comments || comments.length === 0) {
+    return [];
   }
+  const replies = await Promise.all(comments.map(comment => getNestedComments(comment._id)));
+  return comments.map((comment: any, index) => ({ ...comment, id: comment._id, replies: replies[index] }));
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const { body } = req;
-    const data = await Comments.findByIdAndUpdate(id, body, { new: true });
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+const getNestedComments = async (parentId: any) => {
+  const childComments = await CommentsModel.find({ parentCommentId: parentId, visible: true }).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email user_role user_profile_img' }]).lean();
+    return await Promise.all(
+      childComments.map(async (comment: any) => ({
+        ...comment,
+        id: comment._id,
+        replies: await getNestedComments(comment._id),
+      })
+    )
+  );
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data = await Comments.findById(id);
-    if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await Comments.findByIdAndUpdate(id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    next(error);
+export const createComment = async (body: any, account_id: any, user_id: any): Promise<any> => {
+  const newComment = new CommentsModel({
+    account_id: account_id,
+    order_id: body.order_id,
+    comments: body.comments,
+    parentCommentId: body.parentCommentId || null,
+    createdBy: user_id
+   });
+  return await newComment.save();
+};
+
+export const updateComment = async (commentId: any, message: any, user_id: any): Promise<any> => {
+  return await CommentsModel.findByIdAndUpdate(commentId, { comments: message, updatedBy: user_id }, { new: true });
+};
+
+export const removeComment = async (commentId: any, user_id: any): Promise<any> => {
+  const deletedComment = await CommentsModel.findByIdAndUpdate(commentId, { visible: false, updatedBy: user_id }, { new: true });
+  if (!deletedComment) {
+    throw Object.assign(new Error('Comment not found'), { status: 404 });
+  }
+  await softDeleteChildComments(commentId, user_id);
+  return deletedComment;
+};
+
+const softDeleteChildComments = async (parentId: any, user_id: any) => {
+  const childComments = await CommentsModel.find({ parentCommentId: parentId, visible: true }).lean();
+  for (const child of childComments) {
+    await CommentsModel.findByIdAndUpdate(child._id, { visible: false, updatedBy: user_id }, { new: true });
+    await softDeleteChildComments(child._id, user_id);
   }
 };

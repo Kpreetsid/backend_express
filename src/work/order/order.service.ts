@@ -1,459 +1,298 @@
-import { WorkOrder, IWorkOrder } from "../../models/workOrder.model";
-import { Request, Response, NextFunction } from 'express';
-import { IUser, User } from "../../models/user.model";
-import { get } from "lodash";
-import { getData } from "../../util/queryBuilder";
-import { Blog } from "../../models/help.model";
-import { WorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
+import { IWorkOrder, WorkOrderModel } from "../../models/workOrder.model";
+import { IUser, UserModel } from "../../models/user.model";
+import { sendWorkOrderMail } from "../../_config/mailer";
+import { mapUsersWorkOrder, removeMappedUsers, updateMappedUsers } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
+import { assignPartToWorkOrder, revertPartFromWorkOrder } from "../../masters/part/parts.service";
+import { getAllCommentsForWorkOrder } from "../comments/comment.service";
 import mongoose from "mongoose";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id, status, priority, order_no, wo_asset_id } = req.query;
-    const match: any = { account_id, visible: true };
-    if (userRole !== 'admin') {
-      const assigneeMappings = await WorkOrderAssignee.find({ user_id }, { woId: 1 });
-      const mappedWoIds = assigneeMappings.map(item => item.woId);
-      match._id = { $in: mappedWoIds };
-    }
-    if (id) match._id = { $in: id.toString().split(',').map(id => new mongoose.Types.ObjectId(id)) };
-    if (status !== "all") match.status = { $nin: ["Completed"] };
-    if (priority) match.priority = { $in: priority.toString().split(',') };
-    if (order_no) match.order_no = { $in: order_no.toString().split(',') };
-    if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',') };
-    let data = await WorkOrder.aggregate([
-      { $match: match },
-      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
-      { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
-      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
-      { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
-      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
-      { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
-      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
-    ]);
-    if (!data.length) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const result = await Promise.all(data.map(async (item: any) => {
-      let createdBy = {
-        firstName: item.createdBy.firstName || "",
-        id: item.createdBy._id,
-        lastName: item.createdBy.lastName || "",
-        user_profile_img: item.createdBy.user_profile_img || ""
-      };
-      item.createdBy = createdBy;
-      item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await getData(User, { filter: { _id: mapItem.userId }, select: '_id firstName lastName user_profile_img' });
-        mapItem.user = user[0];
-        return mapItem;
-      }));
-      item.id = item._id;
-      return item;
+export const getAllOrders = async (match: any): Promise<any> => {
+  let data = await WorkOrderModel.aggregate([
+    { $match: match },
+    { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
+    { $lookup: { 
+      from: "asset_master", 
+      let: { wo_asset_id: '$wo_asset_id' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
+        { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+        { $addFields: { id: '$_id' } }
+      ],
+      as: "asset" 
+    }},
+    { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
+    { $lookup: { 
+      from: "location_master", 
+      let: { wo_location_id: '$wo_location_id' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
+        { $project: { _id: 1, location_name: 1, location_type: 1 } },
+        { $addFields: { id: '$_id' } }
+      ],
+      as: "location" 
+    }},
+    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
+    { $lookup: { 
+      from: "users", 
+      let: { createdBy: '$createdBy' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
+        { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+        { $addFields: { id: '$_id' } }
+      ],
+      as: "createdBy" 
+    }},
+    { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true }},
+    { $lookup: {
+      from: "users",
+      let: { updatedBy: '$updatedBy' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
+        { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+        { $addFields: { id: '$_id' } }
+      ],
+      as: "updatedBy"
+    }},
+    { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true }},
+    { $addFields: { id: "$_id" }}
+  ]);
+  if (!data || data.length === 0) {
+    throw Object.assign(new Error('No data found'), { status: 404 });
+  }
+  const result = await Promise.all(data.map(async (item: any) => {
+    item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
+      const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username user_profile_img');
+      mapItem.user = user.length > 0 ? user[0] : {};
+      mapItem.id = mapItem._id;
+      return mapItem;
     }));
-    if (!result || result.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
+    item.comments = await getAllCommentsForWorkOrder({ work_order_id: item._id });
+    return item;
+  }));
+  return result;
+};
 
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
-  } catch (error) {
-    console.error("getAll error:", error);
-    next(error);
+export const orderStatus = async (match: any): Promise<any> => {
+  const data = await WorkOrderModel.aggregate([
+    { $match: match },
+    { $group: { _id: '$status', count: { $sum: 1 } } },
+    { $project: { _id: 0, key: '$_id', value: '$count' } }
+  ]);
+  if (data.length === 0) {
+    throw Object.assign(new Error('No data found'), { status: 404 });
+  }
+  const statuses = ['Open', 'On-Hold', 'In-Progress', 'Completed'];
+  const result = statuses.map((status) => {
+    const found: any = data.find((d: any) => d.key === status);
+    return { key: status, value: found ? found.value : 0 };
+  });
+  return result;
+};
+
+export const orderPriority = async (match: any): Promise<any> => {
+  match.visible = true;
+  const data: IWorkOrder[] = await WorkOrderModel.aggregate([
+    { $match: match },
+    { $group: { _id: '$priority', count: { $sum: 1 } } },
+    { $project: { _id: 0, key: '$_id', value: '$count' } }
+  ]);
+  if (data.length === 0) {
+    throw Object.assign(new Error('No data found'), { status: 404 });
+  }
+  let priorityLevels = ['High', 'Medium', 'Low', 'None'];
+  let result = priorityLevels.map((level: any) => {
+    const found: any = data.find((d: any) => d.key === level);
+    return { key: level, value: found ? found.value : 0 };
+  });
+  return result;
+};
+
+export const monthlyCount = async (match: any): Promise<any> => {
+  match.visible = true;
+  const data: IWorkOrder[] = await WorkOrderModel.find(match)
+  if (data.length === 0) {
+    throw Object.assign(new Error('No data found'), { status: 404 });
+  }
+  var monthlyCountArray: any = [];
+  const monthlyCounts: any = {}
+  data.forEach((item: any) => {
+    const yearMonth = item._id.getTimestamp().toISOString().substr(0, 7);
+    if (!monthlyCounts[yearMonth]) {
+      monthlyCounts[yearMonth] = 0;
+    }
+    monthlyCounts[yearMonth]++;
+    monthlyCountArray = Object.entries(monthlyCounts).map(([yearMonth, count]) => ({ id: yearMonth, count }));
+  });
+  return monthlyCountArray;
+};
+
+export const plannedUnplanned = async (match: any): Promise<any> => {
+  const data: any = await WorkOrderModel.find(match).select('_id createdAt createdFrom').lean();
+  if (!data || data.length === 0) {
+    throw Object.assign(new Error('No data found'), { status: 404 });
+  }
+  const grouped = data.reduce((acc: Record<string, any>, doc: any) => {
+    const monthYear = new Date(doc.createdAt).toISOString().slice(0, 7);
+    const key = `${doc.createdFrom}-${monthYear}`;
+    if (!acc[key]) acc[key] = { createdFrom: doc.createdFrom || 'Work Order', monthYear, count: 0 };
+    acc[key].count++;
+    return acc;
+  }, {});
+  const aggregated = Object.values(grouped) as { createdFrom: string; monthYear: string; count: number }[];
+  const groupedByCreatedFrom: Record<string, { monthYear: string; count: number }[]> = {};
+  for (const item of aggregated) {
+    if (!groupedByCreatedFrom[item.createdFrom]) groupedByCreatedFrom[item.createdFrom] = [];
+    groupedByCreatedFrom[item.createdFrom].push({ monthYear: item.monthYear, count: item.count });
+  }
+  const months = [...new Set(aggregated.map(a => a.monthYear))].sort();
+  const categories = ['Work Order', 'Preventive'];
+  const final_result: any = { date: months, 'Work Order': [], 'Preventive': [] };
+  const allCreatedFrom = Object.keys(groupedByCreatedFrom);
+  for (const cf of allCreatedFrom) {
+    const counts = months.map(month => {
+      const found = groupedByCreatedFrom[cf].find(c => c.monthYear === month);
+      return found ? found.count : 0;
+    });
+    final_result[cf] = counts;
+  }
+  for (const cat of categories) {
+    if (!final_result[cat]?.length) {
+      final_result[cat] = months.map(() => 0);
+    }
+  }
+  return final_result;
+};
+
+export const summaryData = async (workOrderMatch: any): Promise<any> => {
+  try {
+    const workOrders: any = await WorkOrderModel.find(workOrderMatch).lean();
+    const today = new Date();
+    const completedOnTime: any[] = [];
+    const overdueWO: any[] = [];
+    const plannedWO: any[] = [];
+    const unplannedWO: any[] = [];
+    const workRequests: any[] = [];
+    for (const item of workOrders) {
+      const { status, end_date, updatedAt, createdFrom } = item;
+      const endDate = new Date(end_date);
+      const completedOn = updatedAt ? new Date(updatedAt) : null;
+      if (status === 'Completed' && completedOn && completedOn <= endDate) {
+        completedOnTime.push(item);
+      }
+      if (status !== 'Completed' && endDate < today) {
+        overdueWO.push(item);
+      }
+      const origin = (createdFrom || '').toLowerCase();
+      if (origin === 'preventive') {
+        plannedWO.push(item);
+      } else if (['work order', 'work request'].includes(origin)) {
+        unplannedWO.push(item);
+      }
+      if (item.work_request_id) {
+        workRequests.push(item.work_request_id);
+      }
+    }
+    const totalWO = workOrders.length;
+    const plannedUnplannedRatio = totalWO ? (plannedWO.length / (plannedWO.length + unplannedWO.length)) * 100 : 0;
+    const completionRate = totalWO ? (completedOnTime.length / totalWO) * 100 : 0;
+    return { completion_rate: Number(completionRate.toFixed(2)), overdue_WO: overdueWO.length, work_request_count: workRequests.length, planned_unplanned_ratio: Number(plannedUnplannedRatio.toFixed(2)) };
+  } catch (err) {
+    console.error("summaryData error:", err);
+    throw err;
   }
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    if(!id) {
-      throw Object.assign(new Error('No ID provided'), { status: 400 });
-    }
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
-    }
-    const data = await WorkOrder.aggregate([
-      { $match: match },
-      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
-      { $lookup: { from: "asset_master", localField: "wo_asset_id", foreignField: "_id", as: "asset" }},
-      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
-      { $lookup: { from: "location_master", localField: "wo_location_id", foreignField: "_id", as: "location" }},
-      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
-      { $lookup: { from: "users", localField: "created_by", foreignField: "_id", as: "createdBy" }},
-      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } }
-    ]);
-    console.log(data);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const result = await Promise.all(data.map(async (item: any) => {
-      let createdBy = {
-        firstName: item.createdBy.firstName || "",
-        id: item.createdBy._id,
-        lastName: item.createdBy.lastName || "",
-        user_profile_img: item.createdBy.user_profile_img || ""
-      };
-      item.createdBy = createdBy;
-      item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await getData(User, { filter: { _id: mapItem.userId }, select: '_id firstName lastName user_profile_img' });
-        mapItem.user = user[0];
-        return mapItem;
-      }));
-      const asset = {
-        id: item.asset._id,
-        asset_name: item.asset.asset_name || ""
-      };
-      item.asset = asset;
-      const location = {
-        id: item.location._id,
-        location_name: item.location.location_name || ""
-      };
-      item.location = location;
-      item.id = item._id;
-      return item;
-    }));
-    if (!result || result.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result[0] });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const generateOrderNo = async (account_id: any): Promise<string> => {
+  const year = new Date().getFullYear();
+  const totalCount = await WorkOrderModel.countDocuments({ account_id, createdAt: { $gte: new Date(`${year}-01-01T00:00:00Z`), $lte: new Date(`${year}-12-31T23:59:59Z`)}});
+  const sequence = String(totalCount + 1).padStart(4, "0");
+  return `WO-${year}${sequence}`;
 };
 
-export const orderStatus = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
-    const match: any = { account_id: account_id, visible: true };
-    if (query.wo_asset_id) {
-      match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
-    }
-    if (userRole === 'admin') {
-    } else {
-      match.user_id = user_id;
-    }
-    const data: any = await getData(WorkOrder, { filter: match });
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    let result = [
-      { key: 'Open', value: 0 },
-      { key: 'On-Hold', value: 0 },
-      { key: 'In-Progress', value: 0 },
-      { key: 'Completed', value: 0 }
-    ];
-    data.forEach((item: any) => {
-      if (item.status === 'Open') {
-        result[0].value = result[0].value + 1;
-      } else if (item.status === 'On-Hold') {
-        result[1].value = result[1].value + 1;
-      } else if (item.status === 'In-Progress') {
-        result[2].value = result[2].value + 1;
-      } else if (item.status === 'Completed') {
-        result[3].value = result[3].value + 1;
-      }
-    });
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
-  } catch (error) {
-    console.error(error);
-    next(error);
+export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
+  const newAsset = new WorkOrderModel({
+    account_id : user.account_id,
+    order_no : await generateOrderNo(user.account_id),
+    title : body.title,
+    description : body.description,
+    estimated_time : body.estimated_time,
+    priority : body.priority,
+    status : body.status,
+    type : body.type,
+    nature_of_work : body.type,
+    sop_form_id : body.sop_form_id,
+    rescheduleEnabled : false,
+    created_by : user._id,
+    wo_asset_id : body.wo_asset_id,
+    wo_location_id : body.wo_location_id,
+    end_date : body.end_date,
+    start_date : body.start_date,
+    sopForm : body.sopForm,
+    createdFrom : body.createdFrom,
+    files : body.files,
+    tasks : body.tasks,
+    task_submitted : body.task_submitted,
+    parts : body.parts,
+    work_request_id : body.work_request_id,
+    asset_report_id : body.asset_report_id,
+    createdBy: user._id
+  });
+  const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
+  const userDetails = await UserModel.find({ _id: { $in: body.userIdList.map((userId: string) => new mongoose.Types.ObjectId(userId)) } });
+  if (!userDetails || userDetails.length === 0) {
+    throw Object.assign(new Error('No users found'), { status: 404 });
   }
+  const result = await mapUsersWorkOrder(mappedUsers);
+  if (!result || result.length === 0) {
+    throw Object.assign(new Error('Failed to map users to work order'), { status: 500 });
+  }
+  const data = await newAsset.save();
+  if (!data) {
+    throw Object.assign(new Error('Failed to create work order'), { status: 400 });
+  }
+  if(body.parts?.length > 0) {
+    await assignPartToWorkOrder(body.parts, user);
+  }
+  userDetails.forEach(async (assignedUsers: IUser) => {
+    const orders = await getAllOrders({ _id: data._id });
+    await sendWorkOrderMail(orders[0], assignedUsers, user);
+  });
+  return data;
 };
 
-export const orderPriority = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
-    const match: any = { account_id: account_id, visible: true };
-    if (query.wo_asset_id) {
-      match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
-    }
-    if (userRole === 'admin') {
-    } else {
-      match.user_id = user_id;
-    }
-    const data: any = await getData(WorkOrder, { filter: match });
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    let result = [
-      { key: 'High', value: 0 },
-      { key: 'Medium', value: 0 },
-      { key: 'Low', value: 0 },
-      { key: 'None', value: 0 }
-    ];
-    data.forEach((item: any) => {
-      if (item.priority === 'High') {
-        result[0].value = result[0].value + 1;
-      } else if (item.priority === 'Medium') {
-        result[1].value = result[1].value + 1;
-      } else if (item.priority === 'Low') {
-        result[2].value = result[2].value + 1;
-      } else if (item.priority === 'None') {
-        result[3].value = result[3].value + 1;
-      }
-    });
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
-  } catch (error) {
-    console.error(error);
-    next(error);
+export const updateById = async (id: string, body: any, user: IUser): Promise<any> => {
+  if (!id) {
+    throw Object.assign(new Error('Work Order ID is required'), { status: 400 });
   }
+  let existingOrder: any = await WorkOrderModel.findById(id);
+  if (!existingOrder) {
+    throw Object.assign(new Error('Work Order not found'), { status: 404 });
+  }
+  existingOrder = { ...existingOrder.toObject(), ...body };
+  if(body.parts?.length > 0) {
+    if(body.oldParts?.length > 0) {
+      await revertPartFromWorkOrder(body.oldParts, body.parts, user);
+    }
+  }
+  existingOrder.updatedBy = user._id;
+  await updateMappedUsers(id, body.userIdList);
+  const data = await WorkOrderModel.findByIdAndUpdate(id, existingOrder, { new: true });
+  if (!data) {
+    throw Object.assign(new Error('Failed to update work order'), { status: 400 });
+  }
+  return data;
 };
 
-export const monthlyCount = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
-    const match: any = { account_id: account_id, visible: true };
-    if (userRole === 'admin') {
-    } else {
-      match.user_id = user_id;
-    }
-    if (query.wo_asset_id) {
-      match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
-    }
-    const data: any = await getData(WorkOrder, { filter: match });
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    var monthlyCountArray: any = [];
-    const monthlyCounts: any = {}
-    data.forEach((item: any) => {
-      const yearMonth = item._id.getTimestamp().toISOString().substr(0, 7);
-      if (!monthlyCounts[yearMonth]) {
-        monthlyCounts[yearMonth] = 0;
-      }
-      monthlyCounts[yearMonth]++;
-      monthlyCountArray = Object.entries(monthlyCounts).map(([yearMonth, count]) => ({ _id: yearMonth, count }));
-    });
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: monthlyCountArray });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
-export const plannedUnplanned = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
-    const match: any = { account_id: account_id, visible: true };
-    if (userRole === 'admin') {
-    } else {
-      match.user_id = user_id;
-    }
-    if (query.wo_asset_id) {
-      match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
-    }
-    const data: any = await getData(WorkOrder, { filter: match, select: "_id createdOn createdFrom" });
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const groupByCreatedFromAndMonth = data.reduce((acc: any, document: any) => {
-      const monthYear = document.createdOn.toISOString().slice(0, 7);
-      const key = `${document.createdFrom}-${monthYear}`;
-      acc[key] = acc[key] || {
-        createdFrom: document.createdFrom,
-        monthYear,
-        count: 0
-      };
-      acc[key].count++;
-      return acc;
-    }, {});
-    const aggregatedData = Object.values(groupByCreatedFromAndMonth);
-    const dataByCreatedFromAndMonth: any = {};
-    aggregatedData.forEach((document: any) => {
-      dataByCreatedFromAndMonth[document.createdFrom] = dataByCreatedFromAndMonth[document.createdFrom] || [];
-      dataByCreatedFromAndMonth[document.createdFrom].push({
-        monthYear: document.monthYear,
-        count: document.count
-      });
-    });
-
-    const months = [...new Set(aggregatedData.map((document: any) => document.monthYear))];
-    const createdFrom = Object.keys(dataByCreatedFromAndMonth);
-    const zeroCounts: any = {};
-    createdFrom.forEach((createdFrom: any) => {
-      zeroCounts[createdFrom] = zeroCounts[createdFrom] || [];
-      months.forEach(month => {
-        const count = (dataByCreatedFromAndMonth[createdFrom].find((c: any) => c.monthYear === month) || {}).count || 0;
-        zeroCounts[createdFrom].push({
-          monthYear: month,
-          count
-        });
-      });
-    });
-    const countsByCreatedFrom = { ...dataByCreatedFromAndMonth, ...zeroCounts };
-    const final_result: any = {
-      date: [],
-      "Work Order": [],
-      Preventive: []
-    };
-    final_result.date = months;
-    createdFrom.forEach((createdFrom: any) => {
-      const counts = countsByCreatedFrom[createdFrom].map((count: any) => count.count);
-      if (!final_result[createdFrom]) {
-        final_result[createdFrom] = counts;
-      } else {
-        final_result[createdFrom] = counts.map((count: any, index: any) => {
-          if (count === 0 && final_result[createdFrom][index] !== 0) {
-            return 0;
-          } else {
-            return final_result[createdFrom][index] || count;
-          }
-        });
-      }
-    });
-
-    let categories = ['Work Order', 'Preventive']
-    categories.forEach((element: any) => {
-      if (final_result[element].length == 0) {
-        final_result.date.forEach((item: any) => {
-          final_result[element].push(0)
-        });
-      }
-    });
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: final_result });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const orderStatusChange = async (id: any, body: any): Promise<any> => {
+  return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
 }
 
-export const summaryData = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
-    const match: any = { account_id: account_id, visible: true };
-    if (userRole === 'admin') {
-    } else {
-      match.user_id = user_id;
-    }
-    if (query.wo_asset_id) {
-      match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
-    }
-    const helpMatch: any = { account_id, isActive: true, status: 'Approved' };
-    const helpData = await getData(Blog, { filter: helpMatch });
-    if (helpData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const WO_list: any = await getData(WorkOrder, { filter: match });
-    if (WO_list.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const todayDate = new Date().toISOString().split('T')[0];
-    let complete_wo_on_time = [];
-    let overdue_WO = [];
-    let planned_WO = [];
-    let Unplanned_WO = [];
-    WO_list.map((item: any) => {
-      if (item.status == 'Completed' && (new Date(item.end_date) >= new Date(item.completed_on))) {
-        complete_wo_on_time.push(item);
-      }
-      if (item.status != 'Completed' && (new Date(item.end_date) < new Date(todayDate))) {
-        overdue_WO.push(item);
-      }
-      if (item.createdFrom == 'Preventive') {
-        planned_WO.push(item);
-      } else if (item.createdFrom == 'Work Order' || item.createdFrom == 'Work Request') {
-        Unplanned_WO.push(item);
-      }
-    })
+export const removeOrder = async (id: any, user_id: any): Promise<any> => {
+  await removeMappedUsers(id);
+  return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
+};
 
-    const planned_unplanned_ratio = (planned_WO.length / (planned_WO.length + Unplanned_WO.length)) * 100;
-    const comp_rate = (complete_wo_on_time.length / WO_list.length) * 100;
-    const final_res = {
-      "completion_rate": comp_rate || 0,
-      "overdue_WO": overdue_WO.length || 0,
-      "work_request_count": helpData.length || 0,
-      "planned_unplanned_ratio": planned_unplanned_ratio || 0
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: final_res });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const deleteWorkOrderById = async (id: any): Promise<any> => {
+  await removeMappedUsers(id);
+  return await WorkOrderModel.findByIdAndDelete(id);
 }
-
-export const pendingOrders = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query: any = req.query;
-    const match: any = { account_id: account_id, visible: true };
-    if (userRole === 'admin') {
-    } else {
-      match.user_id = user_id;
-    }
-    if (query.wo_asset_id) {
-      match.wo_asset_id = { $in: query.wo_asset_id.toString().split(',') };
-    }
-    query.no_of_days = query.no_of_days || 30;
-    var today = new Date()
-    var priorDate = new Date(today.setDate(today.getDate() - query.no_of_days)).toISOString();
-    match.createdOn = { $gte: priorDate };
-    match.status = { $nin: ['Completed'] };
-    const populate = [{ path: 'wo_asset_id', select: '_id asset_name' }, { path: 'wo_location_id', select: '_id location_name' }]
-    let data = await getData(WorkOrder, { filter: match, populate: populate });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    data = data.map((item: any) => {
-      item.asset = { id: item.wo_asset_id._id, asset_name: item.wo_asset_id.asset_name };
-      item.wo_asset_id = item.wo_asset_id._id;
-      item.location = { id: item.wo_location_id._id, location_name: item.wo_location_id.location_name };
-      item.wo_location_id = item.wo_location_id._id;
-      return item;
-    })
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-}
-
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    req.body.account_id = account_id;
-    req.body.user_id = user_id;
-    const newAsset = new WorkOrder(req.body);
-    const data = await newAsset.save();
-    return res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const { body } = req;
-    const data = await WorkOrder.findByIdAndUpdate(id, body, { new: true });
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};
-
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data = await WorkOrder.findById(id);
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await WorkOrder.findByIdAndUpdate(id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
-};

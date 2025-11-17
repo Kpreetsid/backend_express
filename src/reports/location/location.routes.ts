@@ -1,6 +1,11 @@
 import express from 'express';
-import { getLocationsReport } from './location.controller';
+import { getLocationsReport, createReport, deleteReport } from './location.controller';
+import { hasRolePermission } from '../../middlewares';
 
 export default (router: express.Router) => {
-    router.get('/locations', getLocationsReport);
+    const locationReportRouter = express.Router();
+    locationReportRouter.get('/', getLocationsReport);
+    locationReportRouter.post('/', hasRolePermission('location', 'create_report'), createReport);
+    locationReportRouter.delete('/:id', hasRolePermission('location', 'delete_report'), deleteReport);
+    router.use('/locations', locationReportRouter);
 }

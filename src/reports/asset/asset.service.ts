@@ -1,50 +1,57 @@
-import { ReportAsset, IReportAsset } from "../../models/assetReport.model";
-import { Request, Response, NextFunction } from 'express';
-import { getData } from "../../util/queryBuilder";
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
+import { ReportAssetModel, IReportAsset } from "../../models/assetReport.model";
+import { getExternalData } from "../../util/externalAPI";
+import { createWorkOrder, deleteWorkOrderById } from "../../work/order/order.service";
+const assetHealthArray = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+export const getAllAssetReports = async (match: any, populateFilter?: any) => {
+  match.$or = [{ visible: true }, { visible: { $exists: false } }];
+  return await ReportAssetModel.find(match).sort({ _id: -1 }).populate(populateFilter);
+};
+
+export const getLatest = async (match: any, selectedFields: any) => {
+  return await ReportAssetModel.findOne(match).select(selectedFields).sort({ _id: -1 }).limit(1);
+};
+
+export const createAssetReportWithWorkOrder = async (body: IReportAsset, user: any, token: any, CreateWorkRequest: number, workOrderBody?: any) => {
+  let assetReport: any = null;
+  let workOrder: any = null;
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id, data_type } = req.params;
-    const match: any = { accountId: account_id };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
+    assetReport = new ReportAssetModel({ ...body, accountId: user.account_id, userId: user._id, createdBy: user._id });
+    await assetReport.save();
+    if (Number(CreateWorkRequest) === 1 && workOrderBody && Object.keys(workOrderBody).length > 0) {
+      workOrder = await createWorkOrder({ asset_report_id: assetReport._id, ...workOrderBody }, user);
+      await workOrder.save();
+      assetReport.work_order_id = workOrder._id;
+      await assetReport.save();
     }
-    if (data_type) {
-      match.data_type = data_type;
-    }
-    if (id) {
-      match.top_level_asset_id = id;
-    }
-    const data = await getData(ReportAsset, { filter: match, sort: { _id: -1 }, limit: 1 });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: data[0] });
+    await setAssetHealthStatus(body, user.account_id, user._id, token);
+    return assetReport;
   } catch (error) {
-    next(error);
+    if (workOrder?._id) {
+      await deleteWorkOrderById(workOrder._id);
+    }
+    if (assetReport?._id) {
+      await deleteAssetReport(assetReport._id);
+    }
+    throw error;
   }
 };
 
-export const getLatest = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    if(!id) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const match: any = { accountId: account_id, top_level_asset_id: id };
-    if (userRole !== 'admin') {
-      match.user_id = user_id;
-    }
-    const data = await getData(ReportAsset, { filter: match, select: 'Observations Recommendations faultData', sort: { _id: -1 }, limit: 1 });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: data[0] });
-  } catch (error) {
-    next(error);
-  }
+const setAssetHealthStatus = async (body: any, account_id: any, user_id: any, token: any) => {
+  const apiPath = `/asset_health_status/`;
+  const payload: any = { "asset_id": body.assetId, "asset_status": assetHealthArray[body.EquipmentHealth], "org_id": account_id };
+  await getExternalData(apiPath, 'PATCH', payload, token, user_id);
+}
+
+export const updateAssetReport = async (id: string, body: IReportAsset, account_id: any, user_id: any, token: any) => {
+  await setAssetHealthStatus(body, account_id, user_id, token);
+  return await ReportAssetModel.findByIdAndUpdate(id, body, { new: true });
+};
+
+export const removeAssetReportById = async (id: string, user_id: any) => {
+  return await ReportAssetModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
+}
+
+const deleteAssetReport = async (id: string) => {
+  return await ReportAssetModel.findByIdAndDelete(id);
 };

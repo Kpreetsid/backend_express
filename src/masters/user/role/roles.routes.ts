@@ -1,14 +1,13 @@
 import express from 'express';
-import { getRoles, getRole, createRole, updateRole, removeRole, myRoleData } from './roles.controller';
-import { hasPermission } from '../../../middlewares';
+import { getAll, getDataById, createRole, updateRole, removeRole, myRoleData } from './roles.controller';
 
 export default (router: express.Router) => {
     const roleRouter = express.Router();
-    roleRouter.get('/', getRoles);
+    roleRouter.get('/', getAll);
     roleRouter.get('/self', myRoleData);
-    roleRouter.get('/:id', getRole);
-    roleRouter.post('/', hasPermission('admin'), createRole);
-    roleRouter.put('/:id', hasPermission('admin'), updateRole);
-    roleRouter.delete('/:id', hasPermission('admin'),removeRole);
+    roleRouter.get('/:id', getDataById);
+    roleRouter.post('/', createRole);
+    roleRouter.put('/:id', updateRole);
+    roleRouter.delete('/:id', removeRole);
     router.use('/roles', roleRouter);
 }

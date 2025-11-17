@@ -1,26 +1,32 @@
-import { Request, Response, NextFunction } from "express";
 import { externalAPI } from "../configDB";
+import axios, { AxiosRequestConfig } from "axios";
 
-export const getExternalData = async (path: string, body: any, token: string, userID: string) => {
+export const getExternalData = async (path: string, method: string, body: any, token: string, userID: string) => {
   try {
-    const apiUrl = `${externalAPI.URL}${path}`; 
-    const response = await fetch(apiUrl, {
-      method: "POST",
+    console.group("External API");
+    const apiUrl = `${externalAPI.URL}${path}`;
+    console.log({ apiUrl, body, token, userID });
+    const config: AxiosRequestConfig = {
+      method: method,
+      url: apiUrl,
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': token,
-        'X-User-Id': `${userID}`
+        "Content-Type": "application/json",
+        "Authorization": token,
+        "X-User-Id": userID,
+        "X-Env": "true"
       },
-      body: JSON.stringify(body)
-    });
-    console.log(response);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      data: body,
+      timeout: 60 * 1000, // 60s timeout
+    };
+    const response = await axios(config);
+    if(response.status !== 200) {
+      throw new Error(`External API returned status code ${response.status}: ${response.statusText}`);
     }
-    const data = await response.json();
-    return data;
+    console.log({ method, status: response.status, statusText: response.statusText, data: response.data });
+    console.groupEnd();
+    return response.data;
   } catch (err: any) {
-    console.error("Fetch error:", err.message);
+    console.error("❌ External API fetch error:", { message: err.message, name: err.name, stack: err.stack, });
     throw err;
   }
 };

@@ -1,13 +1,12 @@
 import express from 'express';
-import { getFormCategories, getFormCategory, createFormCategory, updateFormCategory, removeFormCategory } from './formCategory.controller';
-import { hasPermission } from '../../middlewares';
+import { updateFormCategory, removeFormCategory, getAllFormCategories, getFormCategoryByID, create } from './formCategory.controller';
 
 export default (router: express.Router) => {
     const formCategoryRouter = express.Router();
-    formCategoryRouter.get('/', getFormCategories);
-    formCategoryRouter.get('/:id', getFormCategory);
-    formCategoryRouter.post('/', createFormCategory);
+    formCategoryRouter.get('/', getAllFormCategories);
+    formCategoryRouter.get('/:id', getFormCategoryByID);
+    formCategoryRouter.post('/', create);
     formCategoryRouter.put('/:id', updateFormCategory);
-    formCategoryRouter.delete('/:id', hasPermission('admin'),removeFormCategory);
-    router.use('/formCategories', formCategoryRouter);
+    formCategoryRouter.delete('/:id', removeFormCategory);
+    router.use('/form-categories', formCategoryRouter);
 }

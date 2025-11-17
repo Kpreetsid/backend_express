@@ -1,9 +1,11 @@
 import app from "./app";
 import { server as hostDetails } from './configDB';
-import { connectDB, disconnectDB } from "./_config/dbConnection";
+import { connectDB, disconnectDB } from "./_db";
+import { initJobScheduler } from "./cron";
 
 const server = app.listen(hostDetails.port, async () => {
   await connectDB();
+  await initJobScheduler();
   console.log(`Server running on port http://${hostDetails.host}:${hostDetails.port}`);
 });
 
@@ -18,6 +20,3 @@ const shutdown = async () => {
 
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
-
-
-// test6

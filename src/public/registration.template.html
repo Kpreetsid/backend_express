@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="light only">
+    <title>Welcome to Presage Insights</title>
+    <style>
+      body {
+        background-color: #f9f9f9;
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 16px;
+        margin: 0;
+        padding: 0;
+        -webkit-text-size-adjust: none;
+      }
+
+      .email-container {
+        max-width: 600px;
+        background: #ffffff;
+        margin: 20px auto;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+      }
+
+      .logo {
+        display: block;
+        margin: 0 auto 20px;
+        max-height: 50px;
+      }
+
+      h2 {
+        font-size: 20px;
+        color: #333333;
+        margin-bottom: 15px;
+      }
+
+      p {
+        font-size: 15px;
+        color: #555555;
+        line-height: 1.6;
+        margin: 0 0 10px 0;
+      }
+
+      .btn {
+        display: inline-block;
+        font-size: 14px;
+        font-weight: bold;
+        text-decoration: none;
+        padding: 10px 22px;
+        border-radius: 30px;
+        background-color: #28a745;
+        color: #ffffff !important;
+        text-transform: uppercase;
+        margin-top: 15px;
+      }
+
+      .btn:hover {
+        background-color: #218838;
+      }
+
+      .footer {
+        font-size: 13px;
+        color: #999999;
+        text-align: center;
+        margin-top: 25px;
+        padding-top: 15px;
+        border-top: 1px solid #eeeeee;
+      }
+
+      a {
+        color: #28a745;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="email-container">
+      <img src="https://app.presageinsights.ai/cmms_api/api/uploads/logo/download/5841cb65-825d-427f-ac4d-89f8edc37041.png" alt="Presage Insights Logo" class="logo" />
+      <h2>Hello {{fullName}},</h2>
+      <p>Welcome to <strong>Presage Insights</strong>! 🎉</p>
+      <p>Your registration was successful. Here are your account details:</p>
+      <p><strong>Username:</strong> {{userName}}</p>
+      <p><strong>Email:</strong> {{userEmail}}</p>
+      <p><strong>Registered On:</strong> {{registrationDate}}</p>
+      <p style="margin-top: 20px;">
+        <a href="{{loginLink}}" class="btn" target="_blank">Login to Your Account</a>
+      </p>
+      <p>If you didn’t register for this account, please ignore this message.</p>
+      <p>Best regards,<br><strong>The Presage Insights Team</strong></p>
+      <div class="footer">
+        <p>© {{YEAR}} Presage Insights Pvt Ltd. All rights reserved.</p>
+        <p>Need help? Contact us at <a href="mailto:help@presageinsights.ai">help@presageinsights.ai</a></p>
+      </div>
+    </div>
+  </body>
+</html>

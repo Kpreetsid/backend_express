@@ -1,90 +1,74 @@
-import { Observation, IObservation } from "../../models/observation.model";
-import { Request, Response, NextFunction } from 'express';
-import { getData } from "../../util/queryBuilder";
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
-import mongoose from "mongoose";
+import { ObservationModel } from "../../models/observation.model";
+import { getExternalData } from "../../util/externalAPI";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { accountId: account_id };
-    if (userRole !== 'admin') {
-      match['user.id'] = user_id;
-    }
-    const params: any = req.query;
-    if(params?.locationId) {
-      match['locationId'] = new mongoose.Types.ObjectId(params.locationId);
-    }
-    if(params?.top_level_asset_id) {
-      match['top_level_asset_id'] = new mongoose.Types.ObjectId(params.top_level_asset_id);
-    }
-    if(params?.assetId) {
-      match['assetId'] = new mongoose.Types.ObjectId(params.assetId);
-    }
-    const data: IObservation[] = await getData(Observation, { filter: match });
-    if (!data ||data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const getAllObservation = async (match: any): Promise<any> => {
+  return await ObservationModel.aggregate([
+    { $match: match },
+    {
+      $lookup: {
+        from: "asset_master",
+        let: { assetId: "$assetId" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$assetId"] } } },
+          { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+          { $addFields: { id: "$_id" } }
+        ],
+        as: "asset"
+      }
+    },
+    { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "location_master",
+        let: { locationId: "$locationId" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$locationId"] } } },
+          { $project: { _id: 1, location_name: 1, location_type: 1 } },
+          { $addFields: { id: "$_id" } }
+        ],
+        as: "location"
+      }
+    },
+    { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
+        from: "users",
+        let: { userId: "$userId" },
+        pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+          { $addFields: { id: "$_id" } }
+        ],
+        as: "user"
+      }
+    },
+    { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+    { $sort: { _id: -1 } },
+    { $addFields: { id: "$_id" } }
+  ]);
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match = { accountId: account_id, _id: id };
-    const data: IObservation[] | null = await getData(Observation, { filter: match });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const insertObservation = async (body: any, account_id: any, user_id: any): Promise<any> => {
+  const newObservation = new ObservationModel({ accountId: account_id, ...body, userId: user_id, createdBy: user_id });
+  return await newObservation.save();
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const newObservation = new Observation(req.body);
-    const data = await newObservation.save();
-    return res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
+export const setAssetHealthStatus = async (body: any, account_id: any, user_id: any, token: any) => {
+  const payload: any = { "asset_id": body.assetId, "asset_status": body.status, "org_id": account_id };
+  if(body.alarmId) {
+    payload.alarm_id = body.alarmId;
   }
+  await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);
+}
+
+export const updateObservationById = async (id: string, body: any, user_id: any): Promise<any> => {
+  return await ObservationModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data = await Observation.findByIdAndUpdate(id, req.body, { new: true });
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const removeObservationById = async (id: string, user_id: any): Promise<any> => {
+  return await ObservationModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const data = await Observation.findById(id);
-    if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await Observation.findByIdAndUpdate(id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    console.error(error);
-    next(error);
-  }
+export const deleteObservationById = async (id: string): Promise<any> => {
+  return await ObservationModel.deleteOne({ _id: id });
 };

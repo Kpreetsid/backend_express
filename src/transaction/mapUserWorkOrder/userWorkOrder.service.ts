@@ -1,32 +1,30 @@
-import { WorkOrderAssignee, IWorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
+import { WorkOrderAssigneeModel, IWorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
 import { Request, Response, NextFunction } from 'express';
-import { getData } from "../../util/queryBuilder";
-import { WorkOrder } from "../../models/workOrder.model";
+import { WorkOrderModel } from "../../models/workOrder.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 
-export const mappedData = async (req: Request, res: Response, next: NextFunction) => {
+export const mappedData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { workOrderId } = req.params;
-    const data = await getData(WorkOrderAssignee, { filter: { woId: workOrderId } });
+    const data: IWorkOrderAssignee[] = await WorkOrderAssigneeModel.find({ woId: workOrderId })
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
-    console.error(error);
     next(error);
   }
 };
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const query = req.query;
     const match: any = {};
     if(userRole === 'admin') {
       const workOrderMatch = { account_id: account_id, visible: true };
-      const workOrderData = await getData(WorkOrder, { filter: workOrderMatch });
+      const workOrderData: IWorkOrderAssignee[] = await WorkOrderModel.find(workOrderMatch);
       if (!workOrderData || workOrderData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -37,18 +35,41 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     if(query.workOrderId) {
       match.woId = query.workOrderId;
       const workOrderMatch = { _id: query.workOrderId, account_id : account_id };
-      const workOrderData = await getData(WorkOrder, { filter: workOrderMatch });
+      const workOrderData: IWorkOrderAssignee[] = await WorkOrderModel.find(workOrderMatch);
       if (!workOrderData || workOrderData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
     }
-    const data = await getData(WorkOrderAssignee, { filter: match, populate: 'woId' });
+    const data: IWorkOrderAssignee[] = await WorkOrderAssigneeModel.find(match).populate('woId');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     return res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
-    console.error(error);
     next(error);
   }
+};
+
+export const mapUsersWorkOrder = async (body: any) => {
+  return await WorkOrderAssigneeModel.insertMany(body);
+};
+
+export const getMappedWorkOrderUserIDs = async (workOrderId: any): Promise<any[]> => {
+  const assigneeMappings = await WorkOrderAssigneeModel.find({ woId: workOrderId });
+  return assigneeMappings.map(item => item.userId);
+};
+
+export const getMappedWorkOrderIDs = async (user_id: any): Promise<any[]> => {
+  const assigneeMappings = await WorkOrderAssigneeModel.find({ userId: user_id });
+  return assigneeMappings.map(item => item.woId);
+};
+
+export const updateMappedUsers = async (id: any, userIdList: any[]): Promise<any> => {
+  await WorkOrderAssigneeModel.deleteMany({ woId: id });
+  const newMappings = userIdList.map(userId => ({ userId, woId: id }));
+  return await WorkOrderAssigneeModel.insertMany(newMappings);
+};
+
+export const removeMappedUsers = async (id: any): Promise<any> => {
+  return await WorkOrderAssigneeModel.deleteMany({ woId: id });
 };

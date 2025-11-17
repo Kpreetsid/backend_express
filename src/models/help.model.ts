@@ -56,32 +56,40 @@ export interface IBlog extends Document {
   help?: boolean;
   comments?: any[];
   likes?: any[];
-  isActive?: boolean;
+  visible?: boolean;
 }
 
 const BlogSchema = new Schema<IBlog>({
-  title: { type: String },
-  description: { type: String, required: true },
+  title: { type: String, trim: true },
+  description: { type: String, trim: true, required: true },
   createdOn: { type: Date, default: Date.now },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
   user: { type: Object },
   location: { type: [Object] },
   asset: { type: [Object] },
-  problemType: { type: String, required: true },
-  postPriority: { type: String, required: true },
+  problemType: { type: String, trim: true, required: true },
+  postPriority: { type: String, trim: true, required: true },
   files: { type: [String] },
-  status: { type: String },
-  emailId: { type: String },
+  status: { type: String, trim: true },
+  emailId: { type: String, trim: true },
   tags: { type: Object },
   help: { type: Boolean, default: false },
   comments: { type: [Schema.Types.Mixed] },
   likes: { type: [Schema.Types.Mixed] },
-  isActive: { type: Boolean, default: true }
+  visible: { type: Boolean, default: true }
 }, {
   collection: 'help',
   timestamps: true,
-  versionKey: false
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
 });
 
-export const Blog = mongoose.model<IBlog>('Blog', BlogSchema);
+export const BlogModel = mongoose.model<IBlog>('Schema_Blog', BlogSchema);

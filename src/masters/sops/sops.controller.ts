@@ -1,22 +1,104 @@
-import express, { Request, Response, NextFunction } from 'express';
-import { getAll, getDataById, insert, updateById, removeById } from './sops.service';
+import { Request, Response, NextFunction } from 'express';
+import { getSOPs, createSOPs, updateSOPs, removeSOPs } from './sops.service';
+import { IUser } from '../../models/user.model';
+import { get } from 'lodash';
+import { getLocationsMappedData } from '../../transaction/mapUserLocation/userLocation.service';
 
-export const getSops = async (req: Request, res: Response, next: NextFunction) => {
-  await getAll(req, res, next);
+export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const match: any = { account_id, visible: true };
+    const { query: { category, location }} = req;
+    if (category) {
+      match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
+    }
+    if (location) {
+      match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+    }
+    if(userRole !== 'admin') {
+      const mappedUserList = await getLocationsMappedData(user_id);
+      match.locationId = { $in: mappedUserList.map((doc: any) => doc.locationId) };
+    }
+    let data = await getSOPs(match);
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export const getSop = async (req: Request, res: Response, next: NextFunction) => {
-  await getDataById(req, res, next);
+export const getSop = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id } = get(req, "user", {}) as IUser;
+    const { query: { category, location }, params: { id } } = req;
+    if (!id) {
+      throw Object.assign(new Error('Id is required'), { status: 400 });
+    }
+    const match: any = { _id: id, account_id, visible: true };
+    if (category) {
+      match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
+    }
+    if (location) {
+      match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+    }
+    let data = await getSOPs(match);
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export const createSop = async (req: Request, res: Response, next: NextFunction) => {
-  await insert(req, res, next);
+export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    console.log({ account_id, user_id, userRole });
+    const data = await createSOPs(req.body, account_id, user_id);
+    if(!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data created successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export const updateSop = async (req: Request, res: Response, next: NextFunction) => {
-  await updateById(req, res, next);
+export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { params: { id }, body } = req;
+    if (!id) {
+      throw Object.assign(new Error('Id is required'), { status: 400 });
+    }
+    const existingData = await getSOPs({ _id: id, account_id: account_id, visible: true });
+    if (!existingData || existingData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const data = await updateSOPs(id, body, user_id);
+    if(!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data updated successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export const removeSop = async (req: Request, res: Response, next: NextFunction) => {
-  await removeById(req, res, next);
+export const remove = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { id } = req.params;
+    if (!id) {
+      throw Object.assign(new Error('Id is required'), { status: 400 });
+    }
+    const existingData = await getSOPs({ _id: id, account_id: account_id, visible: true });
+    if (!existingData || existingData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const data = await removeSOPs(id, user_id);
+    if(!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    return res.status(200).json({ status: true, message: "Data deleted successfully" });
+  } catch (error) {
+    next(error);
+  }
 }

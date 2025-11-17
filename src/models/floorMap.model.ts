@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
+export const FLOOR_MAP_DATA_TYPES = ['location', 'asset', 'kpi'];
+
 interface ICoordinate {
   x: number;
   y: number;
@@ -14,6 +16,7 @@ interface IEndPoint {
   mount_material?: string | null;
   mount_direction: string;
   asset_id: ObjectId | string;
+  asset_name: string;
   org_id: ObjectId | string;
   mac_id: string;
   image?: string | null;
@@ -30,42 +33,55 @@ export interface IEndpointLocation extends Document {
   createdOn: Date;
   end_point_id: number;
   end_point: IEndPoint;
+  createdBy: ObjectId;
+  updatedBy?: ObjectId;
 }
 
 const coordinateSchema = new Schema<ICoordinate>({
   x: { type: Number, required: true },
   y: { type: Number, required: true },
-});
+}, { _id: false });
 
 const endPointSchema = new Schema<IEndPoint>({
-  is_linked: { type: Boolean, required: true },
-  composite_id: { type: String, required: true },
-  point_name: { type: String, required: true },
-  mount_location: { type: String, required: true },
-  mount_type: { type: String },
-  mount_material: { type: String },
-  mount_direction: { type: String, required: true },
-  asset_id: { type: mongoose.Schema.Types.Mixed, required: true },
+  is_linked: { type: Boolean },
+  composite_id: { type: String, trim: true },
+  point_name: { type: String, trim: true, required: true },
+  mount_location: { type: String, trim: true },
+  mount_type: { type: String, trim: true },
+  mount_material: { type: String, trim: true },
+  mount_direction: { type: String, trim: true },
+  asset_id: { type: mongoose.Schema.Types.Mixed },
+  asset_name: { type: String, trim: true, required: true },
   org_id: { type: mongoose.Schema.Types.Mixed, required: true },
-  mac_id: { type: String, required: true },
-  image: { type: String },
-  online: { type: String, required: true },
+  mac_id: { type: String, trim: true },
+  image: { type: String, trim: true },
+  online: { type: String, trim: true },
   id: { type: Number, required: true },
-  selected: { type: Boolean, required: true },
-});
+  selected: { type: Boolean }
+}, { _id: false });
 
 const endpointLocationSchema = new Schema<IEndpointLocation>({
   coordinate: { type: coordinateSchema, required: true },
-  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationMaster', required: true },
-  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Account', required: true },
-  data_type: { type: String, required: true },
+  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  data_type: { type: String, trim: true, enum: FLOOR_MAP_DATA_TYPES, required: true },
   createdOn: { type: Date, default: Date.now },
-  end_point_id: { type: Number, required: true },
-  end_point: { type: endPointSchema, required: true },
+  end_point_id: { type: Number },
+  end_point: { type: endPointSchema },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: 'floor_map',
-  timestamps: false ,
-  versionKey: false
+  timestamps: true,
+  versionKey: false,
+  toJSON: {
+    virtuals: true,
+    transform(doc: any, ret: any) {
+      ret.id = ret._id;
+      delete ret._id;
+      return ret;
+    }
+  }
 });
 
-export const EndpointLocation = mongoose.model<IEndpointLocation>('EndpointLocation', endpointLocationSchema);
+export const EndpointLocationModel = mongoose.model<IEndpointLocation>('Schema_EndPoints', endpointLocationSchema);

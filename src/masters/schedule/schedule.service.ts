@@ -1,82 +1,92 @@
-import { ScheduleMasterModel, IScheduleMaster } from "../../models/scheduleMaster.model";
-import { Request, Response, NextFunction } from 'express';
-import { getData } from "../../util/queryBuilder";
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
+import { SchedulerModel, IScheduleMaster } from "../../models/scheduleMaster.model";
+import { UserModel } from "../../models/user.model";
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-        const match: any = { account_id: account_id, visible: true };
-        if (userRole !== 'admin') {
-            match.user_id = user_id;
-        }
-        const data: IScheduleMaster[] = await getData(ScheduleMasterModel, { filter: match });
-        if (!data || data.length === 0) {
-            throw Object.assign(new Error('No data found'), { status: 404 });
-        }
-        return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-    } catch (error) {
-        console.error(error);
-        next(error);
+export const getSchedules = async (match: any): Promise<IScheduleMaster[]> => {
+    match.visible = true;
+    let data = await SchedulerModel.aggregate([
+        { $match: match },
+        {
+            $lookup: {
+                from: "asset_master",
+                let: { assetId: "$work_order.wo_asset_id" },
+                pipeline: [
+                    { $match: { $expr: { $eq: ["$_id", "$$assetId"] } } },
+                    { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+                    { $addFields: { id: "$_id" } }
+                ],
+                as: "work_order.asset"
+            }
+        },
+        { $unwind: { path: "$work_order.asset", preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: {
+                from: "location_master",
+                let: { locId: "$work_order.wo_location_id" },
+                pipeline: [
+                    { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
+                    { $project: { _id: 1, location_name: 1, location_type: 1 } },
+                    { $addFields: { id: "$_id" } }
+                ],
+                as: "work_order.location"
+            }
+        },
+        { $unwind: { path: "$work_order.location", preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: {
+                from: "users",
+                let: { userId: "$createdBy" },
+                pipeline: [
+                    { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+                    { $project: { _id: 1, firstName: 1, lastName: 1, email: 1, user_profile_img: 1, user_role: 1  } },
+                    { $addFields: { id: "$_id" } }
+                ],
+                as: "createdBy"
+            }
+        },
+        { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
+        {
+            $lookup: {
+                from: "users",
+                let: { userId: "$updatedBy" },
+                pipeline: [
+                    { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+                    { $project: { _id: 1, firstName: 1, lastName: 1, email: 1, user_profile_img: 1, user_role: 1  } },
+                    { $addFields: { id: "$_id" } }
+                ],
+                as: "updatedBy"
+            }
+        },
+        { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } },
+        { $addFields: { id: "$_id" } },
+        { $sort: { _id: -1 } }
+    ]);
+    if (!data || data.length === 0) {
+        throw Object.assign(new Error("No data found"), { status: 404 });
     }
+    const result = await Promise.all(
+        data.map(async (item: any) => {
+            if (item.work_order?.userIdList?.length) {
+                const validUserIds = item.work_order.userIdList.filter((id: string) => !!id);
+                const users = await UserModel.find({ _id: { $in: validUserIds } }).select("id firstName lastName username user_profile_img").lean();
+                item.work_order.users = users;
+            } else {
+                item.work_order.users = [];
+            }
+            return item;
+        })
+    );
+    return result;
 };
 
-export const getDataById = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { id } = req.params;
-        if(!id) {
-            throw Object.assign(new Error('No data found'), { status: 404 });
-        }
-         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-        const match = { account_id: account_id, _id: id, visible: true };
-        const data: IScheduleMaster[] = await getData(ScheduleMasterModel, { filter: match });
-        if (!data || data.length === 0) {
-            throw Object.assign(new Error('No data found'), { status: 404 });
-        }
-        return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-    } catch (error) {
-        console.error(error);
-        next(error);
-    }
+export const createSchedules = async (body: any, account_id: any, user_id: any): Promise<IScheduleMaster> => {
+    const newSchedule = new SchedulerModel({ ...body, account_id, createdBy: user_id });
+    return await newSchedule.save();
 };
 
-export const insert = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const newSchedule = new ScheduleMasterModel(req.body);
-        const data = await newSchedule.save();
-        return res.status(201).json({ status: true, message: "Data created successfully", data });
-    } catch (error) {
-        console.error(error);
-        next(error);
-    }
+export const updateSchedules = async (id: any, body: any, user_id: any): Promise<IScheduleMaster | null> => {
+    return await SchedulerModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { id } = req.params;
-        const data = await ScheduleMasterModel.findByIdAndUpdate(id, req.body, { new: true });
-        if (!data || !data.visible) {
-            throw Object.assign(new Error('No data found'), { status: 404 });
-        }
-        return res.status(200).json({ status: true, message: "Data updated successfully", data });
-    } catch (error) {
-        console.error(error);
-        next(error);
-    }
-};
-
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { id } = req.params;
-        const data = await ScheduleMasterModel.findById(id);
-        if (!data || !data.visible) {
-            throw Object.assign(new Error('No data found'), { status: 404 });
-        }
-        await ScheduleMasterModel.findByIdAndUpdate(id, { visible: false }, { new: true });
-        return res.status(200).json({ status: true, message: "Data deleted successfully" });
-    } catch (error) {
-        console.error(error);
-        next(error);
-    }
+export const removeSchedules = async (id: any, user_id: any): Promise<IScheduleMaster | null> => {
+    return await SchedulerModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
 };

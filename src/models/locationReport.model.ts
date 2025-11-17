@@ -1,75 +1,60 @@
-import mongoose, { Schema, Document, ObjectId } from 'mongoose';
+import mongoose, { Schema, ObjectId } from 'mongoose';
+
+const rmsSchema = new Schema({
+    timestamp: { type: Schema.Types.Mixed },
+    rms: { type: Schema.Types.Mixed }
+}, { _id: false });
+
+const accelerationVelocitySchema = new Schema({
+    Axial: { type: rmsSchema },
+    Horizontal: { type: rmsSchema },
+    Vertical: { type: rmsSchema }
+}, { _id: false });
 
 const RMSDataSchema = new Schema({
     is_linked: Boolean,
-    composite_id: String,
-    point_name: String,
-    mount_location: String,
-    mount_type: String,
-    mount_material: String,
-    mount_direction: String,
+    composite_id: { type: String, trim: true },
+    point_name: { type: String, trim: true },
+    mount_location: { type: String, trim: true },
+    mount_type: { type: String, trim: true },
+    mount_material: { type: String, trim: true },
+    mount_direction: { type: String, trim: true },
     asset_id: Schema.Types.ObjectId,
     org_id: Schema.Types.ObjectId,
-    mac_id: String,
-    image: String,
-    acceleration: {
-        Axial: {
-            timestamp: Number,
-            rms: Number
-        },
-        Horizontal: {
-            timestamp: Number,
-            rms: Number
-        },
-        Vertical: {
-            timestamp: Number,
-            rms: Number
-        }
-    },
-    velocity: {
-        Axial: {
-            timestamp: Number,
-            rms: Number
-        },
-        Horizontal: {
-            timestamp: Number,
-            rms: Number
-        },
-        Vertical: {
-            timestamp: Number,
-            rms: Number
-        }
-    },
+    mac_id: { type: String, trim: true },
+    image: { type: String, trim: true },
+    acceleration: accelerationVelocitySchema,
+    velocity: accelerationVelocitySchema,
     asset_name: String
 }, { _id: false });
 
 const AssetHealthHistorySchema = new Schema({
-    date: String,
+    date: { type: String, trim: true },
     status: String
 }, { _id: false });
 
 const FaultDataSchema = new Schema({
-    name: String,
+    name: { type: String, trim: true },
     value: Number
 }, { _id: false });
 
 const AssetReportSchema = new Schema({
     asset_id: Schema.Types.ObjectId,
-    observations: String,
-    recommendations: String,
-    created_on: Date,
-    asset_name: String,
-    location_name: String,
+    observations: { type: String, trim: true },
+    recommendations: { type: String, trim: true },
+    created_on: { type: Date },
+    asset_name: { type: String, trim: true },
+    location_name: { type: String, trim: true },
     fault_data: [FaultDataSchema],
     endpointRMSData: [RMSDataSchema],
-    healthFlag: String,
-    locationId: String,
+    healthFlag: { type: String, trim: true },
+    locationId: { type: String, trim: true },
     asset_health_history: [AssetHealthHistorySchema],
-    dummyList: [AssetHealthHistorySchema]
+    dummyList: { type: Schema.Types.Mixed }
 }, { _id: false });
 
 const SummaryDataSchema = new Schema({
-    key: String,
+    key: { type: String, trim: true },
     value: {
         value: Number,
         itemStyle: {
@@ -79,55 +64,33 @@ const SummaryDataSchema = new Schema({
 }, { _id: false });
 
 const FaultSummarySchema = new Schema({
-    key: String,
+    key: { type: String, trim: true },
     value: Number
 }, { _id: false });
 
 const SubLocationAssetSchema = new Schema({
-    asset_id: Schema.Types.ObjectId,
-    observations: String,
-    recommendations: String,
-    created_on: Date,
-    asset_name: String,
-    location_name: String,
-    fault_data: [FaultDataSchema],
-    endpointRMSData: [RMSDataSchema],
-    healthFlag: String,
-    locationId: String,
-    asset_health_history: [AssetHealthHistorySchema],
-    dummyList: [AssetHealthHistorySchema]
+    asset_id: { type: Schema.Types.ObjectId },
+    observations: { type: String, trim: true },
+    recommendations: { type: String, trim: true },
+    created_on: { type: Date },
+    asset_name: { type: String, trim: true },
+    location_name: { type: String, trim: true },
+    fault_data: { type: [FaultDataSchema] },
+    endpointRMSData: { type: [RMSDataSchema] },
+    healthFlag: { type: String, trim: true },
+    locationId: { type: String, trim: true },
+    asset_health_history: { type: [AssetHealthHistorySchema] },
+    dummyList: { type: Schema.Types.Mixed }
 }, { _id: false });
 
 const SubLocationSchema = new Schema({
     sub_location: {
-        id: String,
-        name: String
+        id: { type: String, trim: true },
+        name: { type: String, trim: true }
     },
-    asset_data: [SubLocationAssetSchema],
-    sub_location_asset_condition_summary_data: [SummaryDataSchema],
-    sub_location_asset_fault_summary_data: [FaultSummarySchema]
-}, { _id: false });
-
-const UserSchema = new Schema({
-    firstName: String,
-    lastName: String,
-    username: String,
-    email: String,
-    emailStatus: Boolean,
-    user_status: String,
-    user_role: String,
-    createdOn: Date,
-    id: String,
-    account_id: String,
-    phone_no: {
-        number: String,
-        internationalNumber: String,
-        nationalNumber: String,
-        e164Number: String,
-        countryCode: String,
-        dialCode: String
-    },
-    isFirstUser: Boolean
+    asset_data: { type: [SubLocationAssetSchema] },
+    sub_location_asset_condition_summary_data: { type: [SummaryDataSchema] },
+    sub_location_asset_fault_summary_data: { type: [FaultSummarySchema] }
 }, { _id: false });
 
 export interface ILocationReport {
@@ -138,27 +101,38 @@ export interface ILocationReport {
     account_id: ObjectId;
     sub_location_data: any;
     user: any;
+    userId: ObjectId;
     location_id: ObjectId;
-    timestamp: Date;
+    visible: boolean;
+    createdBy: ObjectId;
+    updatedBy?: ObjectId
 }
-  
 
-const LocationReportSchema = new Schema({
-    asset_condition_summary_data: [SummaryDataSchema],
-    asset_fault_summary_data: [FaultSummarySchema],
-    asset_report_data: [AssetReportSchema],
-    created_on: Date,
-    account_id: Schema.Types.ObjectId,
-    sub_location_data: [SubLocationSchema],
-    user: UserSchema,
-    timestamp: { type: Date, default: Date.now },
-    location_id: Schema.Types.ObjectId
-},
-    {
-        collection: 'location-report',
-        timestamps: true,
-        versionKey: false
+const LocationReportSchema = new Schema<ILocationReport>({
+    asset_condition_summary_data: { type: [SummaryDataSchema] },
+    asset_fault_summary_data: { type: [FaultSummarySchema] },
+    asset_report_data: { type: [AssetReportSchema] },
+    created_on: { type: Date, default: Date.now },
+    account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+    sub_location_data: { type: [SubLocationSchema] },
+    userId: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+    user: { type: Schema.Types.Mixed },
+    location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+    visible: { type: Boolean, default: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
+}, {
+    collection: 'location-report',
+    timestamps: true,
+    versionKey: false,
+    toJSON: {
+        virtuals: true,
+        transform(doc: any, ret: any) {
+            ret.id = ret._id;
+            delete ret._id;
+            return ret;
+        }
     }
-);
+});
 
-export const LocationReport = mongoose.model('LocationReport', LocationReportSchema);
+export const ReportLocationModel = mongoose.model<ILocationReport>('Schema_ReportLocation', LocationReportSchema);
