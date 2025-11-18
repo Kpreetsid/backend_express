@@ -24,12 +24,14 @@ const PartsSchema = new Schema<IParts>({
 interface IStatusDetails {
   status: string;
   createdBy: ObjectId;
+  createdAt: Date;
 }
 
 const StatusDetailsSchema = new Schema<IStatusDetails>({
   status: { type: String, required: true },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true }
-}, { _id: false, versionKey: false, timestamps: true });
+  createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  createdAt: { type: Date, required: true, default: Date.now }
+}, { _id: false, versionKey: false });
 
 export interface IWorkOrder extends Document {
   account_id: ObjectId;
