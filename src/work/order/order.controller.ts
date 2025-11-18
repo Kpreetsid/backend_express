@@ -113,7 +113,10 @@ export const statusUpdateOrder = async (req: Request, res: Response, next: NextF
         }
       }
     }
-    const body = { status, updatedBy: user_id };
+    const status_details = { status, createdBy: user_id };
+    isWorkOrderExist[0].status_details = isWorkOrderExist[0]?.status_details || [];
+    isWorkOrderExist[0]?.status_details.push(status_details);
+    const body = { status, updatedBy: user_id, status_details: isWorkOrderExist[0].status_details };
     await orderStatusChange(id, body);
     res.status(200).send({ status: true, message: 'Work order updated successfully' });
   } catch (error) {

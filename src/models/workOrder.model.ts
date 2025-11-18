@@ -21,6 +21,16 @@ const PartsSchema = new Schema<IParts>({
   unit: { type: String, trim: true },
 }, { _id: false, versionKey: false });
 
+interface IStatusDetails {
+  status: string;
+  createdBy: ObjectId;
+}
+
+const StatusDetailsSchema = new Schema<IStatusDetails>({
+  status: { type: String, required: true },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true }
+}, { _id: false, versionKey: false, timestamps: true });
+
 export interface IWorkOrder extends Document {
   account_id: ObjectId;
   order_no: string;
@@ -29,6 +39,7 @@ export interface IWorkOrder extends Document {
   estimated_time: number;
   priority: string;
   status: string;
+  status_details: IStatusDetails[];
   type: string;
   createdFrom: string;
   nature_of_work: string;
@@ -59,6 +70,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   createdFrom: { type: String, trim: true, enum: ['Work Request', 'Work Order', 'Preventive'], default: "Work Order" },
   priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: "None" },
   status: { type: String, trim: true, enum: WORK_ORDER_STATUSES, default: "Open" },
+  status_details: { type: [StatusDetailsSchema], default: [] },
   type: { type: String, trim: true },
   nature_of_work: { type: String, trim: true },
   wo_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
@@ -84,7 +96,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
     virtuals: true,
     transform(doc: any, ret: any) {
       ret.id = ret._id;
-      delete ret._id;
+      delete (ret as any)._id;
       return ret;
     }
   }

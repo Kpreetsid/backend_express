@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
-export interface IUserToken extends Document {
-  _id: string;
+export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
+  _id: string | mongoose.Types.ObjectId;
   ttl: number;
   created: Date;
   userId: ObjectId;
@@ -9,7 +9,7 @@ export interface IUserToken extends Document {
 }
 
 const userTokenSchema = new Schema<IUserToken>({
-  _id: { type: String, trim: true, required: true },
+  _id: { type: String , trim: true, required: true },
   ttl: { type: Number, required: true },
   created: {
     type: Date,
@@ -32,7 +32,6 @@ const userTokenSchema = new Schema<IUserToken>({
     virtuals: true,
     transform(doc: any, ret: any) {
       ret.id = ret._id;
-      delete ret._id;
       return ret;
     }
   }

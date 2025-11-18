@@ -1,6 +1,6 @@
 import express from 'express';
 import { getAssets, getAsset, getFilteredAssets, getChildAsset, getAssetTree, removeAsset, create, createOld, updateOld, updateAssetImage, update, getAssetSensorList, makeAssetCopy } from './asset.controller';
-import { hasRolePermission, isOwnerOrAdmin } from '../../middlewares';
+import { hasRolePermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const assetRouter = express.Router();
@@ -16,8 +16,8 @@ export default (router: express.Router) => {
     assetRouter.put('/old-edit/:id', hasRolePermission('asset', 'edit_asset'), updateOld);
     assetRouter.post('/tree', getAssetTree);
     assetRouter.post('/filter', getFilteredAssets);
-    assetRouter.put('/:id', hasRolePermission('asset', 'edit_asset'), isOwnerOrAdmin, update);
-    assetRouter.patch('/:id', hasRolePermission('asset', 'edit_asset'), isOwnerOrAdmin, updateAssetImage);
+    assetRouter.put('/:id', hasRolePermission('asset', 'edit_asset'), update);
+    assetRouter.patch('/:id', hasRolePermission('asset', 'edit_asset'), updateAssetImage);
     assetRouter.delete('/:id', hasRolePermission('asset', 'delete_asset'), removeAsset);
     router.use('/assets', assetRouter);
 }
