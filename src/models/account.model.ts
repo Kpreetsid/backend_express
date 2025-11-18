@@ -25,9 +25,9 @@ const accountSchema = new Schema<IAccount>(
     timestamps: true,
     versionKey: false,
     toJSON: { virtuals: true,
-      transform: function (doc, ret) {
+      transform: function (doc: any, ret: any) {
         ret.id = ret._id;
-        delete ret._id;
+        delete (ret as any)._id;
         return ret;
       }
     }

@@ -1,7 +1,6 @@
 import mongoose, { Schema, Document, ObjectId } from 'mongoose';
 
 export interface IMapUserLocation extends Document {
-  _id: ObjectId;
   account_id?: ObjectId;
   userId: ObjectId;
   locationId?: ObjectId;
@@ -23,7 +22,7 @@ const MapUserLocationSchema = new Schema<IMapUserLocation>({
     virtuals: true,
     transform(doc: any, ret: any) {
       ret.id = ret._id;
-      delete ret._id;
+      delete (ret as any)._id;
       return ret;
     }
   }

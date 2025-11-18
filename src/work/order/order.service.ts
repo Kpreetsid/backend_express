@@ -66,6 +66,13 @@ export const getAllOrders = async (match: any): Promise<any> => {
       mapItem.id = mapItem._id;
       return mapItem;
     }));
+    if (item?.status_details?.length > 0) {
+      item.status_details = await Promise.all(item.status_details.map(async (statusItem: any) => {
+        const user = await UserModel.find({ _id: statusItem.createdBy }).select('id firstName lastName username user_profile_img');
+        statusItem.createdBy = user.length > 0 ? user[0] : {};
+        return statusItem;
+      }));
+    }
     item.comments = await getAllCommentsForWorkOrder({ work_order_id: item._id });
     return item;
   }));
@@ -235,6 +242,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     parts : body.parts,
     work_request_id : body.work_request_id,
     asset_report_id : body.asset_report_id,
+    status_details : [{ status: body.status, createdBy: user._id }],
     createdBy: user._id
   });
   const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));

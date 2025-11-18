@@ -1,6 +1,5 @@
 import express from 'express';
 import { getUsers, getUser, createUser, updateUser, updatePasswordUser, removeUser, getLocationWiseUsers } from './user.controller';
-import { isOwnerOrAdmin } from '../../middlewares';
 import rolesRoutes from './role/roles.routes';
 import userLogRouters from './logs/logs.routes';
 
@@ -14,6 +13,6 @@ export default (router: express.Router) => {
     userRouter.post('/', createUser);
     userRouter.post('/change-password', updatePasswordUser);
     userRouter.put('/:id', updateUser);
-    userRouter.delete('/:id', isOwnerOrAdmin, removeUser);
+    userRouter.delete('/:id', removeUser);
     router.use('/users', userRouter);
 }

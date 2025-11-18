@@ -32,15 +32,15 @@ const SopsMasterSchema = new Schema<ISopsMaster>(
             virtuals: true,
             transform(doc: any, ret: any) {
                 ret.id = ret._id;
-                delete ret._id;
+                delete (ret as any)._id;
                 return ret;
             }
         },
         toObject: {
             virtuals: true,
-            transform: function (doc, ret) {
+            transform: function (doc: any, ret: any) {
                 ret.id = ret._id;
-                delete ret._id;
+                delete (ret as any)._id;
                 return ret;
             }
         }
