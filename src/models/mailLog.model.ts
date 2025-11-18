@@ -28,15 +28,15 @@ const mailLogSchema = new Schema<IMailLog>({
     virtuals: true,
     transform(doc: any, ret: any) {
       ret.id = ret._id;
-      delete (ret as any)._id;
+      delete ret._id;
       return ret;
     }
   },
   toObject: {
     virtuals: true,
-    transform: function (doc: any, ret: any) {
+    transform(doc: any, ret: any) {
       ret.id = ret._id;
-      delete (ret as any)._id;
+      delete ret._id;
       return ret;
     }
   }
