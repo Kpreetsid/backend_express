@@ -2,7 +2,7 @@ name: Express Backend Live Deployment
 
 on:
   push:
-    branches: [new-infra]
+    branches: [main]
 
 jobs:
   continuous-integration:
@@ -30,11 +30,11 @@ jobs:
           cp package*.json deployment/
           cp tsconfig.json deployment/
           cd deployment
-          tar -czf ../express.tar.gz .
+          tar -czf ../express-live.tar.gz .
 
       - name: Upload artifact to S3
         run: |
-          aws s3 cp express.tar.gz s3://presage-codedeploy-artifact/cmms_express/
+          aws s3 cp express-live.tar.gz s3://presage-codedeploy-artifact/cmms_express_live/
 
   continuous-deployment:
     runs-on: ubuntu-latest
@@ -54,7 +54,7 @@ jobs:
         run: |
           aws deploy create-deployment \
             --application-name Presage-GithubAction-EC2 \
-            --deployment-group-name Presage-Mean-Stack \
+            --deployment-group-name Presage-Express-Backend-Live \
             --deployment-config-name CodeDeployDefault.OneAtATime \
             --file-exists-behavior OVERWRITE \
-            --s3-location bucket=presage-codedeploy-artifact,key=cmms_express/express.tar.gz,bundleType=tgz
+            --s3-location bucket=presage-codedeploy-artifact,key=cmms_express_live/express-live.tar.gz,bundleType=tgz

@@ -3,7 +3,7 @@ set -e
 
 echo "Cleaning up old deployment..."
 
-cd /home/ubuntu/express_cmms
+cd /home/ubuntu/services/express
 
 # Remove node_modules and package-lock to ensure fresh install
 rm -rf node_modules

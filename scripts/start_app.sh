@@ -3,7 +3,7 @@ set -e
 
 echo "Starting Express application with PM2..."
 
-cd /home/ubuntu/express_cmms
+cd /home/ubuntu/services/express
 
 # Set Node environment
 export NODE_ENV=production

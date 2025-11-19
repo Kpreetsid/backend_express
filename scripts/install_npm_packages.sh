@@ -3,7 +3,7 @@ set -e
 
 echo "Installing NPM packages..."
 
-cd /home/ubuntu/express_cmms
+cd /home/ubuntu/services/express
 
 # Set npm cache directory to avoid permission issues
 export npm_config_cache=/home/ubuntu/.npm

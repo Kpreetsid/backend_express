@@ -2,17 +2,17 @@ version: 0.0
 os: linux
 files:
   - source: /
-    destination: /home/ubuntu/express_cmms
+    destination: /home/ubuntu/services/express
 
 permissions:
-  - object: /home/ubuntu/express_cmms
+  - object: /home/ubuntu/services/express
     pattern: "**"
     owner: ubuntu
     group: ubuntu
     mode: 755
     type:
       - directory
-  - object: /home/ubuntu/express_cmms
+  - object: /home/ubuntu/services/express
     pattern: "**"
     owner: ubuntu
     group: ubuntu
