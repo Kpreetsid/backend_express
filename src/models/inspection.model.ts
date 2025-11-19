@@ -10,6 +10,7 @@ export interface IInspection extends Document {
   form_id: ObjectId;
   inspection_report: Object;
   location_id: ObjectId;
+  asset_id: ObjectId;
   status: string;
   month: string;
   createdFrom: string;
@@ -28,6 +29,7 @@ const InspectionSchema = new Schema<IInspection>(
     form_id: { type: mongoose.Schema.Types.ObjectId, ref: 'SOPsModel', required: true },
     inspection_report: { type: Object },
     location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+    asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
     status: { type: String, required: true, trim: true },
     month: { type: String, required: true, trim: true },
     createdFrom: { type: String, required: true, trim: true },
@@ -59,6 +61,7 @@ export const createInspectionSchema = Joi.object({
   form_id: objectId.required(),
   inspection_report: Joi.object().allow(null),
   location_id: objectId.required(),
+  asset_id: objectId.required(),
   assignedUser: Joi.array().items(objectId).required().min(1),
   status: Joi.string().required(),
   month: Joi.string(),
@@ -73,6 +76,7 @@ export const updateInspectionSchema = Joi.object({
   form_id: objectId,
   inspection_report: Joi.object(),
   location_id: objectId,
+  asset_id: objectId,
   assignedUser: Joi.array().items(objectId),
   status: Joi.string(),
   month: Joi.string(),

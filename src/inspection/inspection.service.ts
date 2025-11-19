@@ -52,6 +52,15 @@ export const getAllInspection = async (filter: any) => {
     { $unwind: { path: "$location_id", preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
+        from: "asset_master", let: { assetId: "$asset_id" }, pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$assetId"] } } },
+          { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1 } }
+        ],
+        as: "asset_id"
+    }},
+    { $unwind: { path: "$asset_id", preserveNullAndEmptyArrays: true } },
+    {
+      $lookup: {
         from: "users", let: { uId: "$createdBy" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
           { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1 } }
@@ -83,6 +92,7 @@ export const createInspection = async (body: any, account_id: any, user_id: any)
     form_id: body.form_id,
     inspection_report: body.inspection_report,
     location_id: body.location_id,
+    asset_id: body.asset_id,
     assignedUser: body.assignedUser,
     status: body.status,
     month: body.month,
