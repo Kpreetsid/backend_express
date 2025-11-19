@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-
+import Joi from 'joi';
 export const STATUS = ['active', 'inactive'];
 
 export interface IAccount extends Document {
@@ -35,3 +35,15 @@ const accountSchema = new Schema<IAccount>(
 );
 
 export const AccountModel = mongoose.model<IAccount>('Schema_Account', accountSchema);
+
+export const createAccountSchema = Joi.object({
+  account_name: Joi.string().min(2).required(),
+  type: Joi.string().required(),
+  description: Joi.string().allow("", null)
+});
+
+export const updateAccountSchema = Joi.object({
+  account_name: Joi.string().min(2),
+  type: Joi.string(),
+  description: Joi.string().allow("", null)
+});
