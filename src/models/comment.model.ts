@@ -1,4 +1,6 @@
 import mongoose, { Schema, Document, Types } from "mongoose";
+import Joi from "joi";
+const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message("Invalid ObjectId format");
 
 export interface IComments extends Document {
   account_id: Types.ObjectId;
@@ -35,4 +37,14 @@ const CommentsSchema: Schema<IComments> = new Schema(
   }
 );
 
-export const CommentsModel = mongoose.model<IComments>('Schema_Comments', CommentsSchema);
+export const CommentsModel = mongoose.model<IComments>("Schema_Comments", CommentsSchema);
+
+export const createCommentSchema = Joi.object({
+  comments: Joi.string().min(1).required(),
+  parentCommentId: objectId.allow(null)
+}).unknown(false);
+
+export const updateCommentSchema = Joi.object({
+  comments: Joi.string().min(1),
+  parentCommentId: objectId.allow(null)
+}).unknown(false);

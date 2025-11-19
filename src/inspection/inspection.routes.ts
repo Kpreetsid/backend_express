@@ -1,7 +1,7 @@
 import express from 'express';
 import { getAll, create, getById, updateById, removeById } from './inspection.controller';
 import { validateId, validateBody } from "../middlewares/validate";
-import { createInspectionSchema, updateInspectionSchema } from "../validation/inspection.validation";
+import { createInspectionSchema, updateInspectionSchema } from '../models/inspection.model';
 
 export default () => {
   const inspectionRouter = express.Router();
