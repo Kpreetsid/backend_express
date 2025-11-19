@@ -1,103 +1,77 @@
 import { InspectionModel } from "../models/inspection.model";
 import { setInspection, removeInspectionById } from "../transaction/mapUserInspection/userInspection.service";
-import mongoose from "mongoose";
 
-export const getAllInspection = async (filter: any, userRole?: string, user_id?: string) => {
-
-  const match: any = { ...filter };
-
-  // If user is NOT admin → only show inspections mapped to that user
-  if (userRole !== "admin") {
-    match["userMappings.user_id"] = new mongoose.Types.ObjectId(user_id);
-  }
-
-  return await InspectionModel.aggregate([
-    { $match: match },
-
-    // Join user-inspection mapping
+export const getAllInspection = async (filter: any) => {
+  const data = await InspectionModel.aggregate([
+    { $match: filter },
     {
       $lookup: {
-        from: "mapuserinspections",
-        localField: "_id",
-        foreignField: "inspection_id",
-        as: "userMappings"
+        from: "map_user_inspection", let: { inspId: "$_id" }, pipeline: [
+          { $match: { $expr: { $eq: ["$inspection_id", "$$inspId"] } } },
+          {
+            $lookup: {
+              from: "users", let: { uId: "$user_id" }, pipeline: [
+                { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
+                { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1 } }
+              ],
+              as: "assignedUser"
+            }
+          },
+          { $unwind: { path: "$assignedUser", preserveNullAndEmptyArrays: true } }
+        ],
+        as: "assignedUsers"
       }
     },
-
-    // Populate referenced data
     {
       $lookup: {
-        from: "schema_sops",
-        localField: "form_id",
-        foreignField: "_id",
+        from: "sops", let: { formId: "$form_id" }, pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$formId"] } } },
+          {
+            $lookup: {
+              from: "form_category", let: { catId: "$categoryId" }, pipeline: [
+                { $match: { $expr: { $eq: ["$_id", "$$catId"] } } },
+                { $project: { _id: 1, id: "$_id", name: 1 } }
+              ],
+              as: "categoryId"
+            }
+          }
+        ],
         as: "form_id"
       }
     },
     { $unwind: { path: "$form_id", preserveNullAndEmptyArrays: true } },
-
     {
       $lookup: {
-        from: "schema_categories",
-        localField: "form_id.categoryId",
-        foreignField: "_id",
-        as: "form_id.categoryId"
-      }
-    },
-
-    {
-      $lookup: {
-        from: "schema_locations",
-        localField: "location_id",
-        foreignField: "_id",
+        from: "location_master", let: { locId: "$location_id" }, pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
+          { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } }
+        ],
         as: "location_id"
       }
     },
-
+    { $unwind: { path: "$location_id", preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: "schema_account",
-        localField: "account_id",
-        foreignField: "_id",
-        as: "account_id"
-      }
-    },
-
-    {
-      $lookup: {
-        from: "schema_user",
-        localField: "createdBy",
-        foreignField: "_id",
+        from: "users", let: { uId: "$createdBy" }, pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
+          { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1 } }
+        ],
         as: "createdBy"
       }
     },
-
+    { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: "schema_user",
-        localField: "updatedBy",
-        foreignField: "_id",
+        from: "users", let: { uId: "$updatedBy" }, pipeline: [
+          { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
+          { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1 } }
+        ],
         as: "updatedBy"
       }
     },
-
-    // Clean arrays
-    { $unwind: { path: "$location_id", preserveNullAndEmptyArrays: true } },
-    { $unwind: { path: "$account_id", preserveNullAndEmptyArrays: true } },
-    { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
-    { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } },
-
-    { $sort: { createdAt: -1 } }
+    { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } }
   ]);
-};
-
-export const getAllInspectionA = async (filter: any) => {
-  return await InspectionModel.find(filter).populate([
-    { path: 'form_id', model: "Schema_SOPs", populate: { path: 'categoryId', model: "Schema_Category", select: 'id name' } },
-    { path: 'location_id', model: "Schema_Location", select: 'id location_name location_type' },
-    { path: 'account_id', model: "Schema_Account", select: 'id account_name' },
-    { path: 'createdBy', model: "Schema_User", select: 'id firstName lastName user_profile_img' }, 
-    { path: 'updatedBy', model: "Schema_User", select: 'id firstName lastName user_profile_img' },
-  ]);
+  return data;
 };
 
 export const createInspection = async (body: any, account_id: any, user_id: any) => {

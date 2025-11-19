@@ -47,8 +47,15 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
 export const create = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const data = await createInspection(req.body, account_id, user_id);
-    res.status(201).json({ status: true, message: "Inspection created successfully", data });
+    const data: any = await createInspection(req.body, account_id, user_id);
+    if (!data) {
+      throw Object.assign(new Error('Inspection not found'), { status: 404 });
+    }
+    const result = await getAllInspection({ _id: data._id, account_id, visible: true });
+    if (!result.length) {
+      throw Object.assign(new Error('Inspection not found'), { status: 404 });
+    }
+    res.status(201).json({ status: true, message: "Inspection created successfully", data: result });
   } catch (error) {
     next(error);
   }
@@ -62,7 +69,11 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     if (!data) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
-    res.status(200).json({ status: true, message: "Inspection updated successfully", data });
+    const result = await getAllInspection({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+    if (!result.length) {
+      throw Object.assign(new Error('Inspection not found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Inspection updated successfully", data: result });
   } catch (error) {
     next(error);
   }
