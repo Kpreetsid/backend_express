@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllTroubleshootGuide, insertTroubleshootGuide, updateTroubleshootGuideById, removeTroubleshootGuideById } from './troubleshoot-guide.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
 
 export const getAllData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
@@ -22,10 +22,10 @@ export const getDataByID = async (req: Request, res: Response, next: NextFunctio
     try {
         const { account_id } = get(req, "user", {}) as IUser;
         const { params: { id } } = req;
-        if (!id) {
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
             throw Object.assign(new Error('Bad request'), { status: 400 });
         }
-        const match: any = { _id: new ObjectId(id), account_id: account_id, visible: true };
+        const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
         const data = await getAllTroubleshootGuide(match);
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
@@ -53,10 +53,10 @@ export const updateData = async (req: Request, res: Response, next: NextFunction
     try {
         const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
         const { params: { id }, body } = req;
-        if (!id) {
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
             throw Object.assign(new Error('Bad request'), { status: 400 });
         }
-        const match: any = { _id: new ObjectId(id), account_id: account_id, visible: true };
+        const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
         const existingData = await getAllTroubleshootGuide(match);
         if (!existingData || existingData.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
@@ -75,10 +75,10 @@ export const removeData = async (req: Request, res: Response, next: NextFunction
     try {
         const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
         const { params: { id } } = req;
-        if (!id) {
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
             throw Object.assign(new Error('Bad request'), { status: 400 });
         }
-        const match: any = { _id: new ObjectId(id), account_id: account_id, visible: true };
+        const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
         const existingData = await getAllTroubleshootGuide(match);
         if (!existingData || existingData.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });

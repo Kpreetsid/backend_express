@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { userLocations, userAssets, mapUserLocations, updateMappedUserLocations, updateMappedUserFlags, createMapUserAssets, updateMapUserAssets } from './userLocation.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
 import { getAllAssets } from '../../masters/asset/asset.service';
 
 export const getUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -21,12 +21,12 @@ export const getUserAssets = async (req: Request, res: Response, next: NextFunct
     const { userId, assetId, populate } = req.query;
     const match: any = { assetId: { $exists: true } };
     if(userId) {
-      match.userId = new ObjectId(userId as string);
+      match.userId = new mongoose.Types.ObjectId(userId as string);
     }
     if (userRole === 'admin') {
       const assetMatch: any = { account_id, visible: true };
       if (assetId) {
-        assetMatch._id = new ObjectId(assetId as string);
+        assetMatch._id = new mongoose.Types.ObjectId(assetId as string);
       }
       const assetData = await getAllAssets(assetMatch);
       if (!assetData || assetData.length === 0) {
@@ -36,7 +36,7 @@ export const getUserAssets = async (req: Request, res: Response, next: NextFunct
     } else {
       match.userId = user_id;
       if (assetId) {
-        match.assetId = new ObjectId(assetId as string);
+        match.assetId = new mongoose.Types.ObjectId(assetId as string);
       }
     }
     const data = await userAssets(match, populate);

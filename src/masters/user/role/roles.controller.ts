@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getRoles, insert, updateById, removeById } from './roles.service';
 import { IUser } from '../../../models/user.model';
 import { get } from 'lodash';
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -10,7 +10,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     const { query: { user_id: queryUserId } } = req;
     const match: any = { account_id };
     if (queryUserId) {
-      match.user_id = new ObjectId(`${queryUserId}`);
+      match.user_id = new mongoose.Types.ObjectId(`${queryUserId}`);
     }
     const data = await getRoles(match);
     if (!data || data.length === 0) {
@@ -40,7 +40,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     const match: any = { account_id: account_id, _id: id };
@@ -78,10 +78,10 @@ export const removeRole = async (req: Request, res: Response, next: NextFunction
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const match: any = { account_id: account_id, _id: new ObjectId(`${id}`) };
+    const match: any = { account_id: account_id, _id: new mongoose.Types.ObjectId(`${id}`) };
     const existingData = await getRoles(match);
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

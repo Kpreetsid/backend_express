@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllAssetReports, getLatest, updateAssetReport, removeAssetReportById, createAssetReportWithWorkOrder } from './asset.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
+import mongoose from 'mongoose';
 
 export const getAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -74,7 +75,7 @@ export const updateAssetsReport = async (req: Request, res: Response, next: Next
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
     const userToken = get(req, "userToken", {}) as string;
-    if(!id) {
+    if(!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     body.updatedBy = user_id;
@@ -92,7 +93,7 @@ export const deleteAssetsReport = async (req: Request, res: Response, next: Next
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if(!id) {
+    if(!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     const match = { _id: id, accountId: account_id };

@@ -16,35 +16,10 @@ export const insert = async (req: Request, res: Response, next: NextFunction): P
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { params: { id }, body } = req;
-    if (!id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const data = await PostModel.findByIdAndUpdate(id, body, { new: true });
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    next(error);
-  }
+export const updateById = async (id: any, body: any, user_id: any): Promise<any> => {
+  await PostModel.findByIdAndUpdate(id, body, { new: true });
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { params: { id } } = req;
-    if (!id) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const data = await PostModel.findById(id);
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await PostModel.findByIdAndUpdate(id, { visible: false }, { new: true });
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    next(error);
-  }
+export const removeById = async (id: any, user_id: any): Promise<any> => {
+  return await PostModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
 };

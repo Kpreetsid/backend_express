@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getFormCategories, createFormCategory, updateById, removeById } from './formCategory.service';
 import { IUser } from '../../models/user.model';
+import mongoose from 'mongoose';
 
 export const getAllFormCategories = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -57,7 +58,7 @@ export const updateFormCategory = async (req: Request, res: Response, next: Next
   try {
     const user = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('No category ID provided'), { status: 400 });
     }
     const isData = await getFormCategories({ _id: id, account_id: user.account_id });

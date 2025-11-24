@@ -4,7 +4,8 @@ import { sendWorkOrderMail } from "../../_config/mailer";
 import { mapUsersWorkOrder, removeMappedUsers, updateMappedUsers } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
 import { assignPartToWorkOrder, revertPartFromWorkOrder } from "../../masters/part/parts.service";
 import { getAllCommentsForWorkOrder } from "../comments/comment.service";
-import { ObjectId } from "mongodb";
+import { getAllRequests } from "../request/request.service";
+import mongoose from "mongoose";
 
 export const getAllOrders = async (match: any): Promise<any> => {
   let data = await WorkOrderModel.aggregate([
@@ -178,7 +179,6 @@ export const summaryData = async (workOrderMatch: any): Promise<any> => {
     const overdueWO: any[] = [];
     const plannedWO: any[] = [];
     const unplannedWO: any[] = [];
-    const workRequests: any[] = [];
     for (const item of workOrders) {
       const { status, end_date, updatedAt, createdFrom } = item;
       const endDate = new Date(end_date);
@@ -192,16 +192,20 @@ export const summaryData = async (workOrderMatch: any): Promise<any> => {
       const origin = (createdFrom || '').toLowerCase();
       if (origin === 'preventive') {
         plannedWO.push(item);
-      } else if (['work order', 'work request'].includes(origin)) {
+      } else {
         unplannedWO.push(item);
       }
-      if (item.work_request_id) {
-        workRequests.push(item.work_request_id);
-      }
     }
-    const totalWO = workOrders.length;
-    const plannedUnplannedRatio = totalWO ? (plannedWO.length / (plannedWO.length + unplannedWO.length)) * 100 : 0;
-    const completionRate = totalWO ? (completedOnTime.length / totalWO) * 100 : 0;
+    const workRequestMatch: any = { status: { $nin: ['completed']}, asset_id: workOrderMatch.wo_asset_id }
+    if(workOrderMatch.wo_location_id) {
+      workRequestMatch.location_id = workOrderMatch.wo_location_id;
+    }
+    if(workOrderMatch.createdAt) {
+      workRequestMatch.createdAt = workOrderMatch.createdAt;
+    }
+    const workRequests = await getAllRequests(workRequestMatch);
+    const plannedUnplannedRatio = workOrders.length ? (plannedWO.length / (plannedWO.length + unplannedWO.length)) * 100 : 0;
+    const completionRate = workOrders.length ? (completedOnTime.length / workOrders.length) * 100 : 0;
     return { completion_rate: Number(completionRate.toFixed(2)), overdue_WO: overdueWO.length, work_request_count: workRequests.length, planned_unplanned_ratio: Number(plannedUnplannedRatio.toFixed(2)) };
   } catch (err) {
     console.error("summaryData error:", err);
@@ -246,7 +250,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
     createdBy: user._id
   });
   const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
-  const userDetails = await UserModel.find({ _id: { $in: body.userIdList.map((userId: string) => new ObjectId(userId)) } });
+  const userDetails = await UserModel.find({ _id: { $in: body.userIdList.map((userId: string) => new mongoose.Types.ObjectId(userId)) } });
   if (!userDetails || userDetails.length === 0) {
     throw Object.assign(new Error('No users found'), { status: 404 });
   }
@@ -269,7 +273,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
 };
 
 export const updateById = async (id: string, body: any, user: IUser): Promise<any> => {
-  if (!id) {
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     throw Object.assign(new Error('Work Order ID is required'), { status: 400 });
   }
   let existingOrder: any = await WorkOrderModel.findById(id);

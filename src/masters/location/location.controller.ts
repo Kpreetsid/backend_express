@@ -3,8 +3,7 @@ import { getAllLocations, insertLocation, updateById, removeLocationById, getTre
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
-import { ObjectId } from "mongodb";
-const moduleName: string = "location";
+import mongoose from 'mongoose';
 
 export const getLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -16,10 +15,10 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
     }
     const { query: { locationId, parent_id } } = req;
     if (locationId) {
-      match._id = { $in: locationId.toString().split(',').map((id: string) => new ObjectId(id)) };
+      match._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
     if (parent_id) {
-      match.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new ObjectId(id)) };
+      match.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
     let data = await getAllLocations(match);
     if (!data || data.length === 0) {
@@ -77,10 +76,10 @@ export const getChildLocation = async (req: Request, res: Response, next: NextFu
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: new ObjectId(id), account_id, visible: true };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
     const isDataExists = await getAllLocations(match);
     if (!isDataExists || isDataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -99,7 +98,7 @@ export const getChildLocation = async (req: Request, res: Response, next: NextFu
 const getChildLocationByRecursive = async (id: string) => {
   try {
     const locationIdList = [id];
-    const data = await getAllLocations({ parent_id: new ObjectId(id), visible: true });
+    const data = await getAllLocations({ parent_id: new mongoose.Types.ObjectId(id), visible: true });
     if (data && data.length > 0) {
       for(let dataItem of data) {
         const getChildLocationIds = await getChildLocationByRecursive(dataItem.id.toString());
@@ -145,10 +144,10 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { params: { id }, query: { location_id, location_floor_map_tree } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    let match: any = { _id: new ObjectId(id), account_id, visible: true };
+    let match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
     if (location_floor_map_tree) {
       match.top_level = true;
       if (location_id) {
@@ -187,10 +186,6 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
 export const createLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const role = get(req, "role", {}) as any;
-    if (!role[moduleName].add_location) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
     const body = req.body;
     if (body.userIdList.length === 0) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
@@ -209,7 +204,7 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
@@ -236,21 +231,16 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
 export const removeLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const role = get(req, "role", {}) as any;
-
-    if (!role[moduleName].delete_location) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 403 });
-    }
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match = { _id: new ObjectId(id), account_id: account_id, visible: true };
+    const match = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
     const location = await getAllLocations(match);
     if (!location || location.length === 0 || !location[0].visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await removeLocationById(new ObjectId(id), user_id);
+    await removeLocationById(new mongoose.Types.ObjectId(id), user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
@@ -288,7 +278,7 @@ export const createDuplicateLocation = async (req: Request, res: Response, next:
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error("Bad request"), { status: 400 });
     }
     let sourceLocation: any = await getLocationById(id, account_id);
@@ -297,7 +287,7 @@ export const createDuplicateLocation = async (req: Request, res: Response, next:
     }
     sourceLocation = sourceLocation.toObject ? sourceLocation.toObject() : sourceLocation;
     const allChildren: any[] = await getAllChildHierarchy(id, account_id);
-    const idMap: Record<string, ObjectId> = {};
+    const idMap: Record<string, any> = {};
     const parentForCopy = sourceLocation.parent_id ? sourceLocation.parent_id : undefined;
     const newParentId = await cloneLocationNode(sourceLocation, user_id, account_id, parentForCopy, idMap);
     idMap[`${sourceLocation._id || sourceLocation.id}`] = newParentId;

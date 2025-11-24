@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getFloorMaps, insertFloorMap, updateById, removeById, getCoordinates, insertCoordinates, deleteCoordinates, getAllChildLocationsRecursive } from './floorMap.service';
 import { IUser } from '../../models/user.model';
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
 
 export const getAllFloorMaps = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -25,7 +25,7 @@ export const getFloorMapByID = async (req: Request, res: Response, next: NextFun
     if (!req.params.id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new ObjectId(req.params.id), account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(req.params.id), account_id };
     const data = await getFloorMaps(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -53,7 +53,7 @@ export const updateFloorMap = async (req: Request, res: Response, next: NextFunc
   try {
     const { _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     const data = await updateById(id, body, user_id);
@@ -70,10 +70,10 @@ export const removeFloorMap = async (req: Request, res: Response, next: NextFunc
   try {
     const { account_id, _id: user_id} = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const match: any = { _id: new ObjectId(id), account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id };
     const data = await getFloorMaps(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -184,10 +184,10 @@ export const removeFloorMapCoordinates = async (req: Request, res: Response, nex
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const match: any = { _id: new ObjectId(id), account_id: account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     const result = await deleteCoordinates(match);
     if (!result) {
       throw Object.assign(new Error('No data found'), { status: 404 });

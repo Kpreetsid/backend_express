@@ -141,7 +141,7 @@ userLogSchema.methods.isFromMobile = function () {
 
 // Static method
 userLogSchema.statics.findByUserId = function (userId: string) {
-    return this.find({ userId: new ObjectId(userId) });
+    return this.find({ userId: new mongoose.Types.ObjectId(userId) });
 };
 
 export const UserLogModel = mongoose.model<IUserLog>('Schema_UserLog', userLogSchema);
