@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import { ObjectId } from "mongodb";
 import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model";
 import { Request, Response, NextFunction } from 'express';
 import { IUser } from "../../../models/user.model";
@@ -11,7 +11,7 @@ export const getRoles = async (match: any): Promise<any> => {
 
 export const verifyUserRole = async (id: string, companyID: string) => {
   try {
-    const userRole: IUserRoleMenu | null = await RoleMenuModel.findOne({ user_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
+    const userRole: IUserRoleMenu | null = await RoleMenuModel.findOne({ user_id: new ObjectId(id), account_id: new ObjectId(companyID) });
     if (!userRole) {
       return null;
     }

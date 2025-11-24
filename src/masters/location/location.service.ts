@@ -1,7 +1,7 @@
 import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { AssetModel } from "../../models/asset.model";
-import mongoose from "mongoose";
+import { ObjectId } from "mongodb";
 import { getDataByLocationId, getLocationsMappedData, mapUserLocationData, removeAssetListMapping, removeLocationListMapping } from "../../transaction/mapUserLocation/userLocation.service";
 import { getData } from "../../util/queryBuilder";
 
@@ -85,7 +85,7 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
       if (!locationIds.length) {
         throw Object.assign(new Error('No valid location IDs found'), { status: 404 });
       }
-      match._id = { $in: locationIds.map((id) => new mongoose.Types.ObjectId(id)) };
+      match._id = { $in: locationIds.map((id) => new ObjectId(id)) };
     }
     const locations: any = await LocationModel.find(match).lean();
     if (!locations?.length) {
@@ -132,7 +132,7 @@ export const childAssetsAgainstLocation = async (lOne: string[], lTwo: string[],
   try {
     const childIds = await getAllChildLocationsRecursive(lTwo);
     const finalList = [...new Set([...childIds, ...lOne, ...lTwo])];
-    const locationObjectIds = finalList.map(id => new mongoose.Types.ObjectId(id));
+    const locationObjectIds = finalList.map(id => new ObjectId(id));
     const data: any = await AssetModel.find({ locationId: { $in: locationObjectIds }, account_id, visible: true }).select('id top_level asset_name asset_type asset_build_type');
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -160,7 +160,7 @@ const getAllChildLocationsRecursive = async (parentIds: string[]): Promise<strin
       if (!parent) continue;
       const children: ILocationMaster[] = await LocationModel.find({ parent_id: parent._id, visible: true });
       if (children.length > 0) {
-        const childrenIds = children.map(child => (child._id as mongoose.Types.ObjectId).toString());
+        const childrenIds = children.map(child => (child._id as ObjectId).toString());
         childIds = [...childIds, ...childrenIds];
         const grandChildrenIds = await getAllChildLocationsRecursive(childrenIds);
         childIds = [...childIds, ...grandChildrenIds];
@@ -175,8 +175,8 @@ const getAllChildLocationsRecursive = async (parentIds: string[]): Promise<strin
 
 export const insertLocation = async (body: any) => {
   const newLocation: any = new LocationModel(body);
-  newLocation.top_level_location_id = newLocation.top_level ? newLocation._id as mongoose.Types.ObjectId : body.top_level_location_id;
-  body.parent_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
+  newLocation.top_level_location_id = newLocation.top_level ? newLocation._id as ObjectId : body.top_level_location_id;
+  body.parent_id = body.top_level_location_id || newLocation._id as ObjectId;
   return await newLocation.save();
 };
 
@@ -190,7 +190,7 @@ export const removeLocationById = async (id: any, user_id: any) => {
   const totalIds = [id];
   const childIds = await getAllChildLocationsRecursive([id]);
   totalIds.push(...childIds);
-  const objectIds = totalIds.map(id => new mongoose.Types.ObjectId(id));
+  const objectIds = totalIds.map(id => new ObjectId(id));
   await removeLocationListMapping(totalIds);
   const getAssetsByLocationId = await AssetModel.find({ locationId: { $in: objectIds } });
   if (getAssetsByLocationId?.length > 0) {
@@ -265,7 +265,7 @@ export const cloneLocationNode = async (source: any, user_id: any, account_id: a
     updatedBy: undefined,
     account_id,
     visible: true,
-    parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
+    parent_id: newParentId ? new ObjectId(newParentId) : undefined,
   };
   const baseName = source.location_name.replace(/\s-\s(copy|\(\d+\))$/, "");
   const existingCount = await LocationModel.countDocuments({

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllRequests, createRequest, updateRequest, deleteRequestById } from './request.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import mongoose from 'mongoose';
+import { ObjectId } from "mongodb";
 import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../../models/workRequest.model';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -48,7 +48,7 @@ export const getById = async (req: Request, res: Response, next: NextFunction): 
     if(!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    let match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
+    let match: any = { _id: new ObjectId(id), account_id: account_id };
     if(query) {
       match = { ...match, ...query };
     }
@@ -97,7 +97,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
         throw Object.assign(new Error('Invalid priority value'), { status: 400 });
       }
     }
-    const existingRequest = await getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
+    const existingRequest = await getAllRequests({ _id: new ObjectId(id), account_id });
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -128,7 +128,7 @@ export const approve = async (req: Request, res: Response, next: NextFunction): 
     if(!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const existingRequest = await getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
+    const existingRequest = await getAllRequests({ _id: new ObjectId(id), account_id });
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -155,7 +155,7 @@ export const reject = async (req: Request, res: Response, next: NextFunction): P
     if(!remarks) {
       throw Object.assign(new Error('Remarks is required'), { status: 400 });
     }
-    const existingRequest = await getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
+    const existingRequest = await getAllRequests({ _id: new ObjectId(id), account_id });
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -182,7 +182,7 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
     if(!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
+    const match: any = { _id: new ObjectId(id), account_id: account_id };
     const existingRequest = await getAllRequests(match);
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

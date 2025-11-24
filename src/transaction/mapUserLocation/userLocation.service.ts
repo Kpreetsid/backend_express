@@ -4,7 +4,6 @@ import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import mongoose from "mongoose";
 import { ObjectId } from "mongodb";
 
 export const getAssetsMappedData = async (userId: string) => {
@@ -40,7 +39,7 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
       match.userId = user_id;
     }
     if (query.locationId) {
-      const locationId = new mongoose.Types.ObjectId(query.locationId as string);
+      const locationId = new ObjectId(query.locationId as string);
       match.locationId = locationId;
       const locationData = await LocationModel.findOne({ _id: locationId, account_id });
       if (!locationData) {
@@ -257,7 +256,7 @@ export const updateMappedUserFlags = async (req: Request, res: Response, next: N
       }
       return {
         updateOne: {
-          filter: { _id: new mongoose.Types.ObjectId(doc._id) },
+          filter: { _id: new ObjectId(doc._id) },
           update: { $set: { sendMail: doc.sendMail } }
         }
       };

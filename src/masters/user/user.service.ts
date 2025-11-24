@@ -1,7 +1,7 @@
 import { UserModel, IUser, UserLoginPayload } from "../../models/user.model";
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
-import mongoose from "mongoose";
+import { ObjectId } from "mongodb";
 import { hashPassword } from '../../_config/bcrypt';
 import { createUserRole } from './role/roles.service';
 
@@ -24,7 +24,7 @@ export const userVerified = async (id: string) => {
 export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { locationID } = req.params;
-    const data = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
+    const data = await MapUserAssetLocationModel.find({ locationId: new ObjectId(locationID) }).select('userId -_id');
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

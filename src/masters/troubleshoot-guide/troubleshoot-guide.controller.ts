@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllTroubleshootGuide, insertTroubleshootGuide, updateTroubleshootGuideById, removeTroubleshootGuideById } from './troubleshoot-guide.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import mongoose from 'mongoose';
+import { ObjectId } from "mongodb";
 
 export const getAllData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
@@ -25,7 +25,7 @@ export const getDataByID = async (req: Request, res: Response, next: NextFunctio
         if (!id) {
             throw Object.assign(new Error('Bad request'), { status: 400 });
         }
-        const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+        const match: any = { _id: new ObjectId(id), account_id: account_id, visible: true };
         const data = await getAllTroubleshootGuide(match);
         if (!data || data.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
@@ -56,7 +56,7 @@ export const updateData = async (req: Request, res: Response, next: NextFunction
         if (!id) {
             throw Object.assign(new Error('Bad request'), { status: 400 });
         }
-        const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+        const match: any = { _id: new ObjectId(id), account_id: account_id, visible: true };
         const existingData = await getAllTroubleshootGuide(match);
         if (!existingData || existingData.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });
@@ -78,7 +78,7 @@ export const removeData = async (req: Request, res: Response, next: NextFunction
         if (!id) {
             throw Object.assign(new Error('Bad request'), { status: 400 });
         }
-        const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+        const match: any = { _id: new ObjectId(id), account_id: account_id, visible: true };
         const existingData = await getAllTroubleshootGuide(match);
         if (!existingData || existingData.length === 0) {
             throw Object.assign(new Error('No data found'), { status: 404 });

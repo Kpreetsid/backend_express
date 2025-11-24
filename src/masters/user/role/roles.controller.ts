@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getRoles, insert, updateById, removeById } from './roles.service';
 import { IUser } from '../../../models/user.model';
 import { get } from 'lodash';
-import mongoose from 'mongoose';
+import { ObjectId } from "mongodb";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -10,7 +10,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     const { query: { user_id: queryUserId } } = req;
     const match: any = { account_id };
     if (queryUserId) {
-      match.user_id = new mongoose.Types.ObjectId(`${queryUserId}`);
+      match.user_id = new ObjectId(`${queryUserId}`);
     }
     const data = await getRoles(match);
     if (!data || data.length === 0) {
@@ -81,7 +81,7 @@ export const removeRole = async (req: Request, res: Response, next: NextFunction
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const match: any = { account_id: account_id, _id: new mongoose.Types.ObjectId(`${id}`) };
+    const match: any = { account_id: account_id, _id: new ObjectId(`${id}`) };
     const existingData = await getRoles(match);
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

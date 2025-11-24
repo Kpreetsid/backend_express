@@ -4,7 +4,7 @@ import { getAllUsers, createNewUser, updateUserDetails, removeById, getLocationW
 import { IUser } from '../../models/user.model';
 import { deleteVerificationCode, verifyOTPExists } from '../../user/resetPassword/resetPassword.service';
 import { comparePassword } from '../../_config/bcrypt';
-import mongoose from 'mongoose';
+import { ObjectId } from "mongodb";
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -24,7 +24,7 @@ export const getUser = async (req: Request, res: Response, next: NextFunction) =
     const { account_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
     if (!id) throw Object.assign(new Error("Bad request"), { status: 400 });
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, user_status: "active" };
+    const match: any = { _id: new ObjectId(id), account_id, user_status: "active" };
     const data = await getAllUsers(match);
     if (!data.length) throw Object.assign(new Error("No data found"), { status: 404 });
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
@@ -66,7 +66,7 @@ export const updateUser = async (req: Request, res: Response, next: NextFunction
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
     if (!id) throw Object.assign(new Error("Bad request"), { status: 400 });
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, user_status: "active" };
+    const match: any = { _id: new ObjectId(id), account_id };
     const userData = await getAllUsers(match);
     if (!userData.length) throw Object.assign(new Error("No data found"), { status: 404 });
     const data = await updateUserDetails(id, { ...userData[0].toObject(), ...body, updatedBy: user_id });
