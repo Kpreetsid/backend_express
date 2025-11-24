@@ -29,6 +29,16 @@ export const getAllAssets = async (match: any) => {
   return result;
 }
 
+export const buzzerAssetList = async (match: any): Promise<any> => {
+  return await AssetModel.find(match).select('id asset_name isBuzzerActive');
+}
+
+export const updateBuzzerAssetList = async (body: any) => {
+  await body.forEach(async (item: any) => {
+    await AssetModel.updateOne({ _id: item.id }, { isBuzzerActive: item.isBuzzerActive });
+  })
+}
+
 export const getAllChildAssetIDs = async (assetId: any): Promise<string[]> => {
   const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id');
   if (!children || children.length === 0) {

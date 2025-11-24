@@ -19,7 +19,7 @@ export const createAssetReportWithWorkOrder = async (body: IReportAsset, user: a
     assetReport = new ReportAssetModel({ ...body, accountId: user.account_id, userId: user._id, createdBy: user._id });
     await assetReport.save();
     if (Number(CreateWorkRequest) === 1 && workOrderBody && Object.keys(workOrderBody).length > 0) {
-      workOrder = await createWorkOrder({ asset_report_id: assetReport._id, ...workOrderBody }, user);
+      workOrder = await createWorkOrder({ asset_report_id: assetReport._id, ...workOrderBody, createdFrom: "Asset Report" }, user);
       await workOrder.save();
       assetReport.work_order_id = workOrder._id;
       await assetReport.save();

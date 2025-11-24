@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAllAssets, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, updateAllChildAssetsLocation, getAllChildAssetIDs, getAllChildAssetsRecursive, makeAssetCopyByIdWithChildren } from './asset.service';
+import { getAllAssets, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, updateAllChildAssetsLocation, getAllChildAssetIDs, getAllChildAssetsRecursive, makeAssetCopyByIdWithChildren, buzzerAssetList, updateBuzzerAssetList } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { createMapUserAssets, getAssetsMappedData, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
@@ -65,6 +65,46 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const getBuzzerAssetList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id } = get(req, "user", {}) as IUser;
+    const match: any = { account_id: account_id, visible: true };
+    const { query: { location_id } } = req;
+    if(location_id) {
+      match.locationId = new mongoose.Types.ObjectId(`${location_id}`);
+    }
+    const data = await buzzerAssetList(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const setBuzzerAssetList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id } = get(req, "user", {}) as IUser;
+    const match: any = { account_id, visible: true }
+    const { params: { location_id }, body } = req;
+    if(location_id) {
+      match.locationId = new mongoose.Types.ObjectId(`${location_id}`);
+    }
+    const data = await buzzerAssetList(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    if (data.length !== body.length) {    
+      throw Object.assign(new Error('Bad Request'), { status: 400 });
+    }
+    await updateBuzzerAssetList(body);
+    res.status(200).json({ status: true, message: "Data fetched successfully" });
   } catch (error) {
     next(error);
   }
