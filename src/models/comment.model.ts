@@ -1,15 +1,16 @@
-import mongoose, { Schema, Document, Types } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
+import { ObjectId } from "mongodb";
 import Joi from "joi";
 const objectId = Joi.string().pattern(/^[0-9a-fA-F]{24}$/).message("Invalid ObjectId format");
 
 export interface IComments extends Document {
-  account_id: Types.ObjectId;
-  order_id: Types.ObjectId;
+  account_id: ObjectId;
+  order_id: ObjectId;
   comments: string;
-  parentCommentId?: Types.ObjectId | null;
+  parentCommentId?: ObjectId | null;
   visible: boolean;
-  createdBy: Types.ObjectId;
-  updatedBy?: Types.ObjectId;
+  createdBy: ObjectId;
+  updatedBy?: ObjectId;
 }
 
 const CommentsSchema: Schema<IComments> = new Schema(

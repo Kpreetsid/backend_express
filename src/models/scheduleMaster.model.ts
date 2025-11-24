@@ -1,4 +1,5 @@
-import mongoose, { Document, ObjectId, Schema } from "mongoose";
+import mongoose, { Document, Schema } from "mongoose";
+import { ObjectId } from 'mongodb';
 
 interface TaskOption {
   key: string;

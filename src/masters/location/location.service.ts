@@ -53,7 +53,7 @@ export const getTree = async (match: any, location_id: any, allowedLocationIds: 
   }
   let treeData: any[];
   if (location_id) {
-    const parentNode = rootLocations[0];
+    const parentNode: any = rootLocations[0];
     if (userRole !== "admin" && !allowedLocationIds.includes(`${parentNode._id}`)) {
       throw Object.assign(new Error("No access to this location"), { status: 403 });
     }

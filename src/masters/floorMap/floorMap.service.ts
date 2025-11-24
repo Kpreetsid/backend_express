@@ -27,7 +27,7 @@ export const getAllChildLocationsRecursive = async (parentIds: any): Promise<any
   for (const parentId of parentIds) {
     const parent = await LocationModel.findById(parentId);
     if (!parent) continue;
-    const match = { parent_id: parent._id, visible: true };
+    const match: any = { parent_id: parent._id, visible: true };
     const children = await LocationModel.find(match);
     if (children?.length > 0) {
       const childrenIds = children.map((child: any) => child._id.toString());
