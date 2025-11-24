@@ -5,9 +5,10 @@ import { AssetModel } from "../../models/asset.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import mongoose from "mongoose";
+import { ObjectId } from "mongodb";
 
 export const getAssetsMappedData = async (userId: string) => {
-  return await MapUserAssetLocationModel.find({ userId: userId, assetId: { $exists: true } });
+  return await MapUserAssetLocationModel.find({ userId: new ObjectId(userId), assetId: { $exists: true } });
 }
 
 export const getLocationsMappedData = async (userId: any) => {
@@ -15,11 +16,11 @@ export const getLocationsMappedData = async (userId: any) => {
 }
 
 export const getDataByLocationId = async (locationId: string) => {
-  return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } });
+  return await MapUserAssetLocationModel.find({ locationId: new ObjectId(locationId), userId: { $exists: true } });
 }
 
 export const getDataByAssetId = async (assetId: string) => {
-  return await MapUserAssetLocationModel.find({ assetId: new mongoose.Types.ObjectId(assetId), userId: { $exists: true } });
+  return await MapUserAssetLocationModel.find({ assetId: new ObjectId(assetId), userId: { $exists: true } });
 }
 
 export const userLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

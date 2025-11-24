@@ -39,7 +39,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('Unverified user'), { status: 403 });
     }
     if(user.user_role !== 'admin') {
-      const locationList = await getLocationsMappedData(user._id || user.id);
+      const locationList = await getLocationsMappedData(user._id);
       if (!locationList || locationList.length === 0) {
         throw Object.assign(new Error('User does not have any location'), { status: 401 });
       }
@@ -91,7 +91,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       throw Object.assign(new Error('User not found'), { status: 404 });
     }
     const { password: _, ...safeUser } = userDetails.toObject();
-    safeUser.id = safeUser._id;
+    const newSafeUserValue: any = { id: safeUser._id, ...safeUser }
     const accountDetails = await getAllCompanies({ _id: companyID });
     if (!accountDetails || accountDetails.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
@@ -111,7 +111,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: safeUser, platformControl: userRoleMenu.data} });
+    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data} });
   } catch (error) {
     next(error);
   }

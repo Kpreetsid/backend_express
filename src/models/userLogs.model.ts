@@ -1,4 +1,5 @@
-import mongoose, { Document, ObjectId, Schema } from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
+import { ObjectId } from 'mongodb';
 
 export interface IUserLog extends Document {
     userId: ObjectId;
@@ -140,7 +141,7 @@ userLogSchema.methods.isFromMobile = function () {
 
 // Static method
 userLogSchema.statics.findByUserId = function (userId: string) {
-    return this.find({ userId: new mongoose.Types.ObjectId(userId) });
+    return this.find({ userId: new ObjectId(userId) });
 };
 
 export const UserLogModel = mongoose.model<IUserLog>('Schema_UserLog', userLogSchema);

@@ -1,4 +1,5 @@
-import mongoose, { Schema, Document, ObjectId } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
+import { ObjectId } from 'mongodb';
 
 interface IPhoneNo {
   number: string;

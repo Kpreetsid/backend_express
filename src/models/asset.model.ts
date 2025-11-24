@@ -1,4 +1,5 @@
-import mongoose, { Schema, ObjectId, Document } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
+import { ObjectId } from 'mongodb';
 
 export const ASSETS_TYPE = ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other'];
 

@@ -1,4 +1,5 @@
-import { Schema, model, Document, ObjectId } from 'mongoose';
+import { Schema, model, Document } from 'mongoose';
+import { ObjectId } from "mongodb";
 
 export interface IWorkOrderAssignee extends Document {
   woId: ObjectId;
