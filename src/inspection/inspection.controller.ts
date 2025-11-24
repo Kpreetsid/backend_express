@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../models/user.model';
 import { getAllInspection, createInspection, updateInspection, removeInspection } from './inspection.service';
-import mongoose from 'mongoose';
+import { ObjectId } from "mongodb";
 import { getInspectionByUserId } from '../transaction/mapUserInspection/userInspection.service';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction) => {
@@ -11,10 +11,10 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
     const match: any = { account_id, visible: true };
     const { query: { location_id, asset_id } } = req;
     if (location_id) {
-      match.location_id = location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      match.location_id = location_id.toString().split(',').map((id: string) => new ObjectId(id));
     }
     if (asset_id) {
-      match.asset_id = asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      match.asset_id = asset_id.toString().split(',').map((id: string) => new ObjectId(id));
     }
     if (userRole !== 'admin') {
       const inspectionMappedData: any = await getInspectionByUserId(account_id, user_id);
@@ -69,7 +69,7 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
     if (!data) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
-    const result = await getAllInspection({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+    const result = await getAllInspection({ _id: new ObjectId(id), account_id, visible: true });
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }

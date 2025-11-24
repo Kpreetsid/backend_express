@@ -3,7 +3,7 @@ import { getAllOrders, createWorkOrder, updateById, orderStatus, orderPriority, 
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { getMappedWorkOrderIDs } from '../../transaction/mapUserWorkOrder/userWorkOrder.service';
-import mongoose from 'mongoose';
+import { ObjectId } from "mongodb";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -12,8 +12,8 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     const { status, priority, wo_asset_id, wo_location_id, assignedUser } = req.query;
     if (status) match.status = { $in: status.toString().split(',') };
     if (priority) match.priority = { $in: priority.toString().split(',') };
-    if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-    if (wo_location_id) match.wo_location_id = { $in: wo_location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new ObjectId(id)) };
+    if (wo_location_id) match.wo_location_id = { $in: wo_location_id.toString().split(',').map((id: string) => new ObjectId(id)) };
     const workOrderIds: any = [];
     if(assignedUser) {
       for(let i = 0; i < assignedUser.toString().split(',').length; i++) {
@@ -45,7 +45,7 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
     if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const data = await getAllOrders({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+    const data = await getAllOrders({ _id: new ObjectId(id), account_id, visible: true });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -82,7 +82,7 @@ export const updateOrder = async (req: Request, res: Response, next: NextFunctio
     if(!body?.userIdList || body.userIdList?.length === 0) {
       throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
     }
-    const isWorkOrderExist: any = await getAllOrders({ _id: new mongoose.Types.ObjectId(id), account_id: user.account_id, visible: true });
+    const isWorkOrderExist: any = await getAllOrders({ _id: new ObjectId(id), account_id: user.account_id, visible: true });
     if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
       throw Object.assign(new Error('Work order not found'), { status: 404 });
     }
@@ -97,7 +97,7 @@ export const statusUpdateOrder = async (req: Request, res: Response, next: NextF
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body: { status } } = req;
-    const isWorkOrderExist: any = await getAllOrders({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+    const isWorkOrderExist: any = await getAllOrders({ _id: new ObjectId(id), account_id, visible: true });
     if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
       throw Object.assign(new Error('Work order not found'), { status: 404 });
     }
@@ -131,7 +131,7 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
     if (!id) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const data = await getAllOrders({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+    const data = await getAllOrders({ _id: new ObjectId(id), account_id, visible: true });
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -148,7 +148,7 @@ export const getOrderStatus = async (req: Request, res: Response, next: NextFunc
     const match: any = { account_id: account_id, visible: true };
     const { wo_asset_id, fromDate, toDate } = req.query;
     if (wo_asset_id) {
-      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new ObjectId(id)) };
     }
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
@@ -169,7 +169,7 @@ export const getOrderPriority = async (req: Request, res: Response, next: NextFu
     const match: any = { account_id: account_id };
     const { wo_asset_id, fromDate, toDate } = req.query;
     if (wo_asset_id) {
-      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new ObjectId(id)) };
     }
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
@@ -190,7 +190,7 @@ export const getMonthlyCount = async (req: Request, res: Response, next: NextFun
     const match: any = { account_id: account_id };
     const { wo_asset_id, fromDate, toDate } = req.query;
     if (wo_asset_id) {
-      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new ObjectId(id)) };
     }
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
@@ -211,7 +211,7 @@ export const getPlannedUnplanned = async (req: Request, res: Response, next: Nex
     const match: any = { account_id, visible: true };
     const { wo_asset_id, fromDate, toDate, order_no } = req.query;
     if (wo_asset_id) {
-      const ids = wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      const ids = wo_asset_id.toString().split(',').map((id: string) => new ObjectId(id));
       match.wo_asset_id = { $in: ids };
     }
     if (order_no) match.order_no = order_no;
@@ -234,7 +234,7 @@ export const getSummaryData = async (req: Request, res: Response, next: NextFunc
     const { wo_asset_id, fromDate, toDate } = req.query;
     const workOrderMatch: any = { account_id, visible: true };
     if (wo_asset_id) {
-      const assetIds = wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      const assetIds = wo_asset_id.toString().split(',').map((id: string) => new ObjectId(id));
       workOrderMatch.wo_asset_id = { $in: assetIds };
     }
     if (fromDate && toDate) {
@@ -266,7 +266,7 @@ export const getPendingOrders = async (req: Request, res: Response, next: NextFu
     const match: any = { account_id, visible: true };
     const { wo_asset_id, fromDate, toDate } = req.query;
     if (wo_asset_id) {
-      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new ObjectId(id)) };
     }
     if (fromDate && toDate) {
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };

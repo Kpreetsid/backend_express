@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllComments, updateComment, removeComment, createComment, getComments } from './comment.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
+import { ObjectId } from "mongodb";
 import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -11,7 +12,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     if (!orderId) {
       throw Object.assign(new Error('Order ID is required'), { status: 400 });
     }
-    const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), visible: true };
+    const match : any = { account_id: account_id, order_id: new ObjectId(orderId), visible: true };
     const data = await getAllComments(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -32,7 +33,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if (!mongoose.Types.ObjectId.isValid(commentId)) {
       throw Object.assign(new Error('Invalid comment ID'), { status: 400 });
     }
-    const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), _id: new mongoose.Types.ObjectId(commentId), visible: true };
+    const match : any = { account_id: account_id, order_id: new ObjectId(orderId), _id: new ObjectId(commentId), visible: true };
     const data = await getAllComments(match);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -51,14 +52,14 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
       throw Object.assign(new Error('Order ID is required'), { status: 400 });
     }
     if (body.parentCommentId) {
-      body.parentCommentId = new mongoose.Types.ObjectId(body.parentCommentId);
+      body.parentCommentId = new ObjectId(body.parentCommentId);
     }
     body.order_id = orderId;
     const data = await createComment(body, account_id, user_id);
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const result = await getAllComments({ _id: data._id, parentCommentId: data.parentCommentId, account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId) });
+    const result = await getAllComments({ _id: data._id, parentCommentId: data.parentCommentId, account_id: account_id, order_id: new ObjectId(orderId) });
     res.status(201).json({ status: true, message: "Data created successfully", data: result[0] });
   } catch (error) {
     next(error);
@@ -75,7 +76,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     if (!commentId) {
       throw Object.assign(new Error('Comment ID is required'), { status: 400 });
     }
-    const existingComment = await getAllComments({ _id: commentId, account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), visible: true });
+    const existingComment = await getAllComments({ _id: commentId, account_id: account_id, order_id: new ObjectId(orderId), visible: true });
     if (!existingComment) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -100,7 +101,7 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
     if (!commentId) {
       throw Object.assign(new Error('Comment ID is required'), { status: 400 });
     }
-    const existingComment = await getComments({ _id: new mongoose.Types.ObjectId(commentId), account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), visible: true });
+    const existingComment = await getComments({ _id: new ObjectId(commentId), account_id: account_id, order_id: new ObjectId(orderId), visible: true });
     if (!existingComment) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { createInstructions, deleteInstructionsById, getInstructions, updateInstructions } from './instruction.service';
-import mongoose from 'mongoose';
+import { ObjectId } from "mongodb";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -25,7 +25,7 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
     if (!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+    const match: any = { _id: new ObjectId(id), account_id: account_id, visible: true };
     const data = await getInstructions(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -57,7 +57,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     if (!id) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+    const match: any = { _id: new ObjectId(id), account_id: account_id, visible: true };
     const existingRequest = await getInstructions(match);
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -79,7 +79,7 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
     if (!id) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+    const match: any = { _id: new ObjectId(id), account_id: account_id, visible: true };
     const existingRequest = await getInstructions(match);
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

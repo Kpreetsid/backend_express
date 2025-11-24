@@ -7,7 +7,7 @@ import { LocationModel } from "../../models/location.model";
 import { get } from "lodash";
 import { getData } from "../../util/queryBuilder";
 import { getExternalData } from "../../util/externalAPI";
-import mongoose from "mongoose";
+import { ObjectId } from "mongodb";
 
 export const getAllAssets = async (match: any) => {
   const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }]);
@@ -292,7 +292,7 @@ export const createEquipment = async (equipment: any, account_id: any, user_id: 
 export const createMotor = async (motor: any, equipment: any, account_id: any, user_id: any) => {
   motor = removeExtraFields(motor);
   return new AssetModel({
-    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    parent_id: equipment._id ? new ObjectId(equipment._id) : new ObjectId(equipment.id),
     asset_name: motor.asset_name,
     asset_id: motor.asset_id || equipment.asset_id,
     asset_type: motor.asset_type || "Motor",
@@ -320,7 +320,7 @@ export const createMotor = async (motor: any, equipment: any, account_id: any, u
 export const createFlexible = async (flexible: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   flexible = removeExtraFields(flexible);
   return new AssetModel({
-    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    parent_id: equipment._id ? new ObjectId(equipment._id) : new ObjectId(equipment.id),
     asset_name: flexible.asset_name,
     element: flexible.element,
     asset_id: flexible.asset_id || equipment.asset_id,
@@ -343,7 +343,7 @@ export const createFlexible = async (flexible: any, equipment: any, account_id: 
 export const createRigid = async (rigid: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   rigid = removeExtraFields(rigid);
   return new AssetModel({
-    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    parent_id: equipment._id ? new ObjectId(equipment._id) : new ObjectId(equipment.id),
     asset_name: rigid.asset_name,
     asset_id: rigid.asset_id || equipment.asset_id,
     asset_type: rigid.asset_type || "Rigid",
@@ -367,7 +367,7 @@ export const createRigid = async (rigid: any, equipment: any, account_id: any, u
 export const createBeltPulley = async (beltPulley: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   beltPulley = removeExtraFields(beltPulley);
   return new AssetModel({
-    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    parent_id: equipment._id ? new ObjectId(equipment._id) : new ObjectId(equipment.id),
     asset_name: beltPulley.asset_name,
     asset_id: beltPulley.asset_id || equipment.asset_id,
     asset_type: beltPulley.asset_type || "Belt_Pulley",
@@ -393,7 +393,7 @@ export const createBeltPulley = async (beltPulley: any, equipment: any, account_
 export const createGearbox = async (gearbox: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   gearbox = removeExtraFields(gearbox);
   return new AssetModel({
-    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    parent_id: equipment._id ? new ObjectId(equipment._id) : new ObjectId(equipment.id),
     asset_name: gearbox.asset_name,
     asset_id: gearbox.asset_id || equipment.asset_id,
     asset_type: gearbox.asset_type || "Gearbox",
@@ -438,7 +438,7 @@ export const createGearbox = async (gearbox: any, equipment: any, account_id: an
 export const createFanBlower = async (fanBlower: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   fanBlower = removeExtraFields(fanBlower);
   return new AssetModel({
-    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    parent_id: equipment._id ? new ObjectId(equipment._id) : new ObjectId(equipment.id),
     asset_name: fanBlower.asset_name,
     asset_id: fanBlower.asset_id || equipment.asset_id,
     asset_type: fanBlower.asset_type || "Fan_Blower",
@@ -469,7 +469,7 @@ export const createFanBlower = async (fanBlower: any, equipment: any, account_id
 export const createPumps = async (pumps: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   pumps = removeExtraFields(pumps);
   return new AssetModel({
-    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    parent_id: equipment._id ? new ObjectId(equipment._id) : new ObjectId(equipment.id),
     asset_name: pumps.asset_name,
     brand: pumps.brand,
     asset_id: pumps.asset_id || equipment.asset_id,
@@ -499,7 +499,7 @@ export const createPumps = async (pumps: any, equipment: any, account_id: any, u
 export const createCompressor = async (compressor: any, equipment: any, account_id: any, user_id: any): Promise<any> => {
   compressor = removeExtraFields(compressor);
   return new AssetModel({
-    parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+    parent_id: equipment._id ? new ObjectId(equipment._id) : new ObjectId(equipment.id),
     asset_name: compressor.asset_name,
     asset_id: compressor.asset_id || equipment.asset_id,
     asset_type: compressor.asset_type || "Compressor",
@@ -841,7 +841,7 @@ export const getAllChildAssetsRecursive = async (parentId: string, account_id: a
   return all;
 };
 
-export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any): Promise<mongoose.Types.ObjectId> => {
+export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any): Promise<ObjectId> => {
   try {
     const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
     const cleanAsset = JSON.parse(JSON.stringify(rest));
@@ -869,7 +869,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
       updatedBy: undefined,
       account_id,
       visible: true,
-      parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
+      parent_id: newParentId ? new ObjectId(newParentId) : undefined,
     };
     delete newAssetData._id;
     delete newAssetData.id;

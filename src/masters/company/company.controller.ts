@@ -2,7 +2,7 @@ import { get } from "lodash";
 import { IUser } from '../../models/user.model';
 import { NextFunction, Request, Response } from 'express';
 import { getAllCompanies, createCompany, updateById } from './company.service';
-import mongoose from "mongoose";
+import { ObjectId } from "mongodb";
 
 export const getCompanies = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -26,7 +26,7 @@ export const getCompany = async (req: Request, res: Response, next: NextFunction
     const { id } = req.params;
     if (!id) throw Object.assign(new Error("Invalid ID"), { status: 400 });
     if (`${account_id}` !== id) throw Object.assign(new Error("Invalid ID"), { status: 400 });
-    const match = { visible: true, _id: new mongoose.Types.ObjectId(id)};
+    const match = { visible: true, _id: new ObjectId(id)};
     const data = await getAllCompanies(match);
     if (!data.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
