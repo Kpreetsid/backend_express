@@ -1,8 +1,8 @@
 import { get } from "lodash";
 import { IUser } from '../../models/user.model';
 import { NextFunction, Request, Response } from 'express';
-import { getAllCompanies, createCompany, updateById } from './company.service';
-import { ObjectId } from "mongodb";
+import { getAllCompanies, createCompany, updateById, removeById } from './company.service';
+import mongoose from "mongoose";
 
 export const getCompanies = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -24,9 +24,9 @@ export const getCompany = async (req: Request, res: Response, next: NextFunction
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    if (!id) throw Object.assign(new Error("Invalid ID"), { status: 400 });
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) throw Object.assign(new Error("Invalid ID"), { status: 400 });
     if (`${account_id}` !== id) throw Object.assign(new Error("Invalid ID"), { status: 400 });
-    const match = { visible: true, _id: new ObjectId(id)};
+    const match = { visible: true, _id: new mongoose.Types.ObjectId(id)};
     const data = await getAllCompanies(match);
     if (!data.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
@@ -56,7 +56,7 @@ export const updateCompany = async (req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
     const { account_name, type, description } = req.body;
-    if (!id) throw Object.assign(new Error("No data found"), { status: 404 });
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) throw Object.assign(new Error("No data found"), { status: 404 });
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     if (`${account_id}` !== id) throw Object.assign(new Error("Invalid ID"), { status: 400 });
     const updatedObj = {
@@ -77,7 +77,7 @@ export const updateImageCompany = async (req: Request, res: Response, next: Next
   try {
     const { params: { id }, body: { fileName }} = req;
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    if (!id) throw Object.assign(new Error("No data found"), { status: 404 });
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) throw Object.assign(new Error("No data found"), { status: 404 });
     if (!fileName) throw Object.assign(new Error("File name is required"), { status: 400 });
     if (`${account_id}` !== id) throw Object.assign(new Error("Invalid ID"), { status: 400 });
     const updatedObj = { fileName, updatedBy: user_id };
@@ -92,9 +92,16 @@ export const updateImageCompany = async (req: Request, res: Response, next: Next
 export const removeCompany = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    if (!id) throw Object.assign(new Error("No data found"), { status: 404 });
-    res.status(200).json({ status: true, message: "Data deleted successfully" });
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return next(Object.assign(new Error("Invalid ID"), { status: 400 }));
+    }
+    const { _id: userId } = get(req, "user", {}) as IUser;
+    const deleted = await removeById(id, userId);
+    if (!deleted) {
+      return next(Object.assign(new Error("No data found"), { status: 404 }));
+    }
+    return res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllObservation, insertObservation, updateObservationById, removeObservationById, setAssetHealthStatus, deleteObservationById } from './observation.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
 import { getAllChildAssetIDs } from '../asset/asset.service';
 
 export const getObservations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -11,10 +11,10 @@ export const getObservations = async (req: Request, res: Response, next: NextFun
     const match: any = { accountId: account_id };
     const { query: { locationId, assetId, alarmId }} = req;
     if (locationId) {
-      match['locationId'] = new ObjectId(`${locationId}`);
+      match['locationId'] = new mongoose.Types.ObjectId(`${locationId}`);
     }
     if (assetId) {
-      const childAssetIds = await getAllChildAssetIDs(new ObjectId(`${assetId}`));
+      const childAssetIds = await getAllChildAssetIDs(new mongoose.Types.ObjectId(`${assetId}`));
       match['assetId'] = { $in: childAssetIds };
     }
     if (alarmId) {
@@ -34,10 +34,10 @@ export const getObservation = async (req: Request, res: Response, next: NextFunc
    try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { params: { id }} = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new ObjectId(`${id}`), accountId: account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id };
     if (userRole !== 'admin') {
       match['userId'] = user_id;
     }
@@ -80,10 +80,10 @@ export const updateObservation = async (req: Request, res: Response, next: NextF
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const existingData = await getAllObservation({ _id: new ObjectId(`${id}`), accountId: account_id });
+    const existingData = await getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -91,7 +91,7 @@ export const updateObservation = async (req: Request, res: Response, next: NextF
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new ObjectId(`${id}`) };
+    const match: any = { _id: new mongoose.Types.ObjectId(`${id}`) };
     const insertedData = await getAllObservation(match);
     if (!insertedData || insertedData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -106,10 +106,10 @@ export const removeObservation = async (req: Request, res: Response, next: NextF
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const existingData = await getAllObservation({ _id: new ObjectId(`${id}`), accountId: account_id });
+    const existingData = await getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

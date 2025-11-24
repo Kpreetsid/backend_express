@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllRequests, createRequest, updateRequest, deleteRequestById } from './request.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import { ObjectId } from "mongodb";
 import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../../models/workRequest.model';
+import mongoose from "mongoose";
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -45,10 +45,10 @@ export const getById = async (req: Request, res: Response, next: NextFunction): 
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id }, query } = req;
-    if(!id) {
+    if(!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    let match: any = { _id: new ObjectId(id), account_id: account_id };
+    let match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     if(query) {
       match = { ...match, ...query };
     }
@@ -80,7 +80,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
     const { params: { id, status }, body } = req;
-    if(!id) {
+    if(!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 404 });
     }
     if(status) {
@@ -97,7 +97,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
         throw Object.assign(new Error('Invalid priority value'), { status: 400 });
       }
     }
-    const existingRequest = await getAllRequests({ _id: new ObjectId(id), account_id });
+    const existingRequest = await getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -125,10 +125,10 @@ export const approve = async (req: Request, res: Response, next: NextFunction): 
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if(!id) {
+    if(!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
-    const existingRequest = await getAllRequests({ _id: new ObjectId(id), account_id });
+    const existingRequest = await getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -149,13 +149,13 @@ export const reject = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
     const { params: { id }, body: { remarks } } = req;
-    if(!id) {
+    if(!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     if(!remarks) {
       throw Object.assign(new Error('Remarks is required'), { status: 400 });
     }
-    const existingRequest = await getAllRequests({ _id: new ObjectId(id), account_id });
+    const existingRequest = await getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -176,13 +176,12 @@ export const reject = async (req: Request, res: Response, next: NextFunction): P
 
 export const remove = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if(!id) {
+    if(!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new ObjectId(id), account_id: account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     const existingRequest = await getAllRequests(match);
     if (!existingRequest || existingRequest.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });

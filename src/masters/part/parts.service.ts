@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import mongoose from "mongoose";
 import { PartsModel, IPart } from "../../models/part.model";
 
 export const getAllParts = async (match: any): Promise<IPart[]> => {
@@ -82,7 +82,7 @@ export const removeById = async (id: string, user_id: any) => {
 export const assignPartToWorkOrder = async (body: any, user: any) => {
   await Promise.all(
     body.map(async (doc: any) => {
-      const data = await PartsModel.findOne({ _id: new ObjectId(doc.part_id) });
+      const data = await PartsModel.findOne({ _id: new mongoose.Types.ObjectId(doc.part_id) });
       if (!data) return;
       data.quantity = data.quantity - doc.estimatedQuantity;
       data.updatedBy = user._id;

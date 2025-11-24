@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { getAllParts, insert, updateById, removeById } from './posts.service';
 import { IUser } from '../../models/user.model';
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
 
 export const getPosts = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -29,10 +29,10 @@ export const getPost = async (req: Request, res: Response, next: NextFunction): 
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: new ObjectId(id), account_id: account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     const { postType, relatedTo } = req.query;
     if (postType) {
       match.postType = postType.toString().split(',');
@@ -67,17 +67,19 @@ export const updatePost = async (req: Request, res: Response, next: NextFunction
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: new ObjectId(id), account_id: account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     const data = await getAllParts(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    body.updatedBy = user_id;
-    console.log({ id, body });
-    await updateById(req, res, next);
+    const result = await updateById(id, body, user_id);
+    if (!result) {
+      throw Object.assign(new Error('No data updated'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data updated successfully" });
   } catch (error) {
     next(error);
   }
@@ -85,17 +87,21 @@ export const updatePost = async (req: Request, res: Response, next: NextFunction
 
 export const removePost = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: new ObjectId(id), account_id: account_id };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
     const data = await getAllParts(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await removeById(req, res, next);
+    const result = await removeById(id, user_id);
+    if (!result) {
+      throw Object.assign(new Error('No data deleted'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
   }

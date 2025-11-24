@@ -3,9 +3,9 @@ import { get } from "lodash";
 import { getAllAssets, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, updateAllChildAssetsLocation, getAllChildAssetIDs, getAllChildAssetsRecursive, makeAssetCopyByIdWithChildren, buzzerAssetList, updateBuzzerAssetList } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { createMapUserAssets, getAssetsMappedData, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
-import { ObjectId } from "mongodb";
 import { deleteBase64Image, uploadBase64Image } from '../../_config/upload';
 import { getAllChildLocationIds } from '../location/location.service';
+import mongoose from 'mongoose';
 
 export const getAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -47,10 +47,10 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const match: any = { _id: new ObjectId(`${id}`), account_id: account_id, visible: true };
+    const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), account_id: account_id, visible: true };
     if (top_level_asset_id) {
       match.top_level_asset_id = top_level_asset_id.toString().split(',');
     }
@@ -58,7 +58,7 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
       match.top_level = top_level == 'true' ? true : false;
     }
     if (locationId) {
-      match.locationId = new ObjectId(`${locationId}`);
+      match.locationId = new mongoose.Types.ObjectId(`${locationId}`);
     }
     const data = await getAllAssets(match);
     if (!data || data.length === 0) {
@@ -76,7 +76,7 @@ export const getBuzzerAssetList = async (req: Request, res: Response, next: Next
     const match: any = { account_id: account_id, visible: true };
     const { query: { location_id } } = req;
     if(location_id) {
-      match.locationId = new ObjectId(`${location_id}`);
+      match.locationId = new mongoose.Types.ObjectId(`${location_id}`);
     }
     const data = await buzzerAssetList(match);
     if (!data || data.length === 0) {
@@ -94,7 +94,7 @@ export const setBuzzerAssetList = async (req: Request, res: Response, next: Next
     const match: any = { account_id, visible: true }
     const { params: { location_id }, body } = req;
     if(location_id) {
-      match.locationId = new ObjectId(`${location_id}`);
+      match.locationId = new mongoose.Types.ObjectId(`${location_id}`);
     }
     const data = await buzzerAssetList(match);
     if (!data || data.length === 0) {
@@ -114,10 +114,10 @@ export const getChildAsset = async (req: Request, res: Response, next: NextFunct
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const childIds = await getAllChildAssetIDs(new ObjectId(`${id}`));
+    const childIds = await getAllChildAssetIDs(new mongoose.Types.ObjectId(`${id}`));
     if (childIds.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -251,7 +251,7 @@ export const updateOld = async (req: Request, res: Response, next: NextFunction)
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
     if(body.userIdList?.length === 0) {
@@ -441,7 +441,7 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const userToken = get(req, "userToken", {}) as string;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error("No asset id provided"), { status: 400 });
     }
     const dataExists: any = await getAllAssets({ _id: id, account_id, visible: true });
@@ -450,7 +450,7 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     }
     const sourceAsset = dataExists[0];
     const allChildren: any[] = await getAllChildAssetsRecursive(id, account_id);
-    const idMap: Record<string, ObjectId> = {};
+    const idMap: Record<string, any> = {};
     const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;
     const newParentId = await makeAssetCopyByIdWithChildren(sourceAsset, user_id, userToken, account_id, parentForCopy, idMap);
     idMap[`${sourceAsset.id}`] = newParentId;

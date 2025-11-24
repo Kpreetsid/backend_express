@@ -3,12 +3,12 @@ import { Request, Response, NextFunction } from 'express';
 import { WorkOrderModel } from "../../models/workOrder.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
 
 export const mappedData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { workOrderId } = req.params;
-    const data: IWorkOrderAssignee[] = await WorkOrderAssigneeModel.find({ woId: new ObjectId(workOrderId) })
+    const data: IWorkOrderAssignee[] = await WorkOrderAssigneeModel.find({ woId: new mongoose.Types.ObjectId(workOrderId) })
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

@@ -1,9 +1,9 @@
-import { ObjectId } from "mongodb";
 import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model";
 import { Request, Response, NextFunction } from 'express';
 import { IUser } from "../../../models/user.model";
 import { platformControlData } from '../../../_role/userRoles';
 import { roleMenuData } from "../../../_role/newUserRoles";
+import mongoose from "mongoose";
 
 export const getRoles = async (match: any): Promise<any> => {
   return await RoleMenuModel.find(match);
@@ -11,7 +11,7 @@ export const getRoles = async (match: any): Promise<any> => {
 
 export const verifyUserRole = async (id: string, companyID: string) => {
   try {
-    const userRole: IUserRoleMenu | null = await RoleMenuModel.findOne({ user_id: new ObjectId(id), account_id: new ObjectId(companyID) });
+    const userRole: IUserRoleMenu | null = await RoleMenuModel.findOne({ user_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
     if (!userRole) {
       return null;
     }
@@ -52,7 +52,7 @@ export const createUserRole = async (userRole: any, userData: IUser) => {
 export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { params: { id }, body } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('ID is required'), { status: 400 });
     }
     const updatedUserRoleMenu = await RoleMenuModel.findByIdAndUpdate(id, body, { new: true });

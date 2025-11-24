@@ -3,6 +3,7 @@ import { getSOPs, createSOPs, updateSOPs, removeSOPs } from './sops.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
 import { getLocationsMappedData } from '../../transaction/mapUserLocation/userLocation.service';
+import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -30,7 +31,7 @@ export const getSop = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { query: { category, location }, params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Id is required'), { status: 400 });
     }
     const match: any = { _id: id, account_id, visible: true };
@@ -65,7 +66,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Id is required'), { status: 400 });
     }
     const existingData = await getSOPs({ _id: id, account_id: account_id, visible: true });
@@ -86,7 +87,7 @@ export const remove = async (req: Request, res: Response, next: NextFunction): P
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Id is required'), { status: 400 });
     }
     const existingData = await getSOPs({ _id: id, account_id: account_id, visible: true });

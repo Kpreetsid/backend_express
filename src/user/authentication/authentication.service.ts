@@ -13,7 +13,7 @@ import { get } from "lodash";
 import jwt from 'jsonwebtoken';
 import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
 import { ExternalUserModel } from "../../models/map_user.model";
-import { ObjectId } from "mongodb";
+import mongoose from "mongoose";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -82,7 +82,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     if (!id || !username || !companyID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
-    const mappedUser = await ExternalUserModel.findOne({ username, customer_id: new ObjectId(id), account_id: new ObjectId(companyID) });
+    const mappedUser = await ExternalUserModel.findOne({ username, customer_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
     if (!mappedUser) {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }

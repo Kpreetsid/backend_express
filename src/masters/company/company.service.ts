@@ -1,4 +1,4 @@
-import { ObjectId } from "mongodb";
+import mongoose from "mongoose";
 import { AccountModel, IAccount } from "../../models/account.model";
 
 export const getAllCompanies = async (filter: any) => {
@@ -21,7 +21,7 @@ export const createCompany = async (body: any) => {
 
 export const verifyCompany = async (id: string) => {
   try {
-    const data: IAccount | null = await AccountModel.findById(new ObjectId(id));
+    const data: IAccount | null = await AccountModel.findById(new mongoose.Types.ObjectId(id));
     if(!data || !data.visible || data.account_status === 'inactive') {
       return null;
     }

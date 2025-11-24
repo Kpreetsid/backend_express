@@ -34,7 +34,6 @@ export const userOTPVerification = async (req: Request, res: Response, next: Nex
             throw Object.assign(new Error('Email not found'), { status: 404 });
         }
         const match: any = { email: emailCheck[0].email };
-        console.log(match);
         const otpExists = await verifyOTPExists(match);
         if (!otpExists) {
             throw Object.assign(new Error('OTP has expired'), { status: 404 });

@@ -4,10 +4,10 @@ import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import { ObjectId } from "mongodb";
+import mongoose from "mongoose";
 
 export const getAssetsMappedData = async (userId: string) => {
-  return await MapUserAssetLocationModel.find({ userId: new ObjectId(userId), assetId: { $exists: true } });
+  return await MapUserAssetLocationModel.find({ userId: new mongoose.Types.ObjectId(userId), assetId: { $exists: true } });
 }
 
 export const getLocationsMappedData = async (userId: any) => {
@@ -15,11 +15,11 @@ export const getLocationsMappedData = async (userId: any) => {
 }
 
 export const getDataByLocationId = async (locationId: string) => {
-  return await MapUserAssetLocationModel.find({ locationId: new ObjectId(locationId), userId: { $exists: true } });
+  return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } });
 }
 
 export const getDataByAssetId = async (assetId: string) => {
-  return await MapUserAssetLocationModel.find({ assetId: new ObjectId(assetId), userId: { $exists: true } });
+  return await MapUserAssetLocationModel.find({ assetId: new mongoose.Types.ObjectId(assetId), userId: { $exists: true } });
 }
 
 export const userLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -39,7 +39,7 @@ export const userLocations = async (req: Request, res: Response, next: NextFunct
       match.userId = user_id;
     }
     if (query.locationId) {
-      const locationId = new ObjectId(query.locationId as string);
+      const locationId = new mongoose.Types.ObjectId(query.locationId as string);
       match.locationId = locationId;
       const locationData = await LocationModel.findOne({ _id: locationId, account_id });
       if (!locationData) {
@@ -256,7 +256,7 @@ export const updateMappedUserFlags = async (req: Request, res: Response, next: N
       }
       return {
         updateOne: {
-          filter: { _id: new ObjectId(doc._id) },
+          filter: { _id: new mongoose.Types.ObjectId(doc._id) },
           update: { $set: { sendMail: doc.sendMail } }
         }
       };

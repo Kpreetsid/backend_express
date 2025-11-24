@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAll, createLocationReport, deleteLocationsReport } from './location.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
+import mongoose from 'mongoose';
 
 export const getLocationsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -24,7 +25,6 @@ export const getLocationsReport = async (req: Request, res: Response, next: Next
 export const createReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const user = get(req, "user", {}) as IUser;
-    console.log(user);
      const { location_id } = req.body;
     if (!location_id) {
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
@@ -43,7 +43,7 @@ export const deleteReport = async (req: Request, res: Response, next: NextFuncti
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }} = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Invalid request data'), { status: 400 });
     }
     const result = await deleteLocationsReport(id, `${account_id}`, `${user_id}`);

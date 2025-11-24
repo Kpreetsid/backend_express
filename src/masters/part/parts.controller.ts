@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { getAllParts, insert, updatePartById, removeById, updatePartStock } from './parts.service';
 import { IUser } from '../../models/user.model';
-import { ObjectId } from "mongodb";
+import mongoose from 'mongoose';
 
 export const getParts = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -10,7 +10,7 @@ export const getParts = async (req: Request, res: Response, next: NextFunction):
     const match: any = { account_id, visible: true };
     const { query: { id } } = req;
     if (id) {
-      match._id = { $in: id.toString().split(',').map((id: string) => new ObjectId(id)) };
+      match._id = { $in: id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
     }
     const data = await getAllParts(match);
     if (!data || data.length === 0) {
@@ -26,10 +26,10 @@ export const getPart = async (req: Request, res: Response, next: NextFunction): 
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: new ObjectId(id), account_id, visible: true };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
     const data = await getAllParts(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -54,10 +54,10 @@ export const updatePart = async (req: Request, res: Response, next: NextFunction
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: new ObjectId(id), account_id, visible: true };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
     const isDataExists = await getAllParts(match);
     if (!isDataExists || isDataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -76,10 +76,10 @@ export const updateStock = async (req: Request, res: Response, next: NextFunctio
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id }, body: { quantity, part_number } } = req;
-     if (!id) {
+     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const part = await getAllParts({ _id: new ObjectId(id), account_id, visible: true });
+    const part = await getAllParts({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
     if (!part || part.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -101,10 +101,10 @@ export const removePart = async (req: Request, res: Response, next: NextFunction
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { params: { id } } = req;
-    if (!id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: new ObjectId(id), account_id, visible: true };
+    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
     const isDataExists = await getAllParts(match);
     if (!isDataExists || isDataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
