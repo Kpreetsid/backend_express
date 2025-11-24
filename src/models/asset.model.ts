@@ -78,6 +78,7 @@ export interface IAsset extends Document {
   stage_7th_driven_teeth?: number,
   stage_8th_driving_teeth?: number,
   stage_8th_driven_teeth?: number,
+  isBuzzerActive: boolean,
   createdBy: ObjectId;
   updatedBy: ObjectId;
 }
@@ -158,6 +159,7 @@ const assetSchema = new Schema<IAsset>({
   stage_7th_driven_teeth: { type: Number },
   stage_8th_driving_teeth: { type: Number },
   stage_8th_driven_teeth: { type: Number },
+  isBuzzerActive: { type: Boolean, default: false },
   createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {

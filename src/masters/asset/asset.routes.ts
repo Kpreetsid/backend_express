@@ -1,9 +1,11 @@
 import express from 'express';
-import { getAssets, getAsset, getFilteredAssets, getChildAsset, getAssetTree, removeAsset, create, createOld, updateOld, updateAssetImage, update, getAssetSensorList, makeAssetCopy } from './asset.controller';
+import { getAssets, getAsset, getFilteredAssets, getChildAsset, getAssetTree, removeAsset, create, createOld, updateOld, updateAssetImage, update, getAssetSensorList, makeAssetCopy, getBuzzerAssetList, setBuzzerAssetList } from './asset.controller';
 import { hasRolePermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const assetRouter = express.Router();
+    assetRouter.get('/buzzer', getBuzzerAssetList);
+    assetRouter.patch('/buzzer/:location_id', setBuzzerAssetList);
     assetRouter.get('/', getAssets);
     assetRouter.get('/sensor-list', getAssetSensorList);
     assetRouter.get('/tree', getAssetTree);
