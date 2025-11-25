@@ -5,6 +5,10 @@ import mongoose from "mongoose";
 import { getDataByLocationId, getLocationsMappedData, mapUserLocationData, removeAssetListMapping, removeLocationListMapping } from "../../transaction/mapUserLocation/userLocation.service";
 import { getData } from "../../util/queryBuilder";
 
+export const getLocationsList = async (match: any) => {
+  return await LocationModel.find(match).lean();
+};
+
 export const getAllLocations = async (match: any) => {
   const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name' }]);
   const locationIds = locationData.map(doc => `${doc._id}`);
