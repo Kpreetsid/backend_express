@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getAllAssets, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, updateAllChildAssetsLocation, getAllChildAssetIDs, getAllChildAssetsRecursive, makeAssetCopyByIdWithChildren, buzzerAssetList, updateBuzzerAssetList } from './asset.service';
 import { IUser } from '../../models/user.model';
-import { createMapUserAssets, getAssetsMappedData, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
+import { createMapUserAssets, getAssetsMappedData, getDataByLocationIds, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
 import { deleteBase64Image, uploadBase64Image } from '../../_config/upload';
 import { getAllChildLocationIds } from '../location/location.service';
 import mongoose from 'mongoose';
@@ -31,7 +31,8 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
     }
     if (locationId) {
       const childIds = await getAllChildLocationIds(locationId);
-      match.locationId = { $in: childIds };
+      const mappedData = await getDataByLocationIds([locationId, ...childIds]);
+      match.locationId = { $in: mappedData.map(doc => doc.locationId) };
     }
     let data = await getAllAssets(match);
     if (!data || data.length === 0) {

@@ -18,88 +18,63 @@ export const getDataByLocationId = async (locationId: string) => {
   return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } });
 }
 
+export const getDataByLocationIds = async (locationIds: string[]) => {
+  return await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } });
+}
+
 export const getDataByAssetId = async (assetId: string) => {
   return await MapUserAssetLocationModel.find({ assetId: new mongoose.Types.ObjectId(assetId), userId: { $exists: true } });
 }
 
-export const userLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
-    const match: any = { locationId: { $exists: true } };
-    const filter: any = { populate: "userId" };
-    if (userRole === "admin") {
-      const locationMatch = { account_id, visible: true };
-      const locationData = await LocationModel.find(locationMatch);
-      if (!locationData?.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
-      }
-      match.locationId = { $in: locationData.map((doc) => doc._id) };
-    } else {
-      match.userId = user_id;
-    }
-    if (query.locationId) {
-      const locationId = new mongoose.Types.ObjectId(query.locationId as string);
-      match.locationId = locationId;
-      const locationData = await LocationModel.findOne({ _id: locationId, account_id });
-      if (!locationData) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
-      }
-    }
-    if (query?.populate) {
-      filter.populate = query.populate;
-    }
-    const pipeline: any[] = [{ $match: match }];
-    if (filter.populate === "locationId") {
-      pipeline.push(
-        {
-          $lookup: {
-            from: "location_master",
-            let: { locId: "$locationId" },
-            pipeline: [
-              { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
-              { $addFields: { id: '$_id' } }
-            ],
-            as: "location",
-          },
+export const userLocations = async (match: any, filter: any): Promise<any> => {
+  const pipeline: any[] = [{ $match: match }];
+  if (filter.populate === "locationId") {
+    pipeline.push(
+      {
+        $lookup: {
+          from: "location_master",
+          let: { locId: "$locationId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "location",
         },
-        { $unwind: "$location" }
-      );
-    } else if (filter.populate === "userId") {
-      pipeline.push(
-        {
-          $lookup: {
-            from: "users",
-            let: { userId: "$userId" },
-            pipeline: [
-              { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-              { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-              { $addFields: { id: '$_id' } }
-            ],
-            as: "user",
-          },
+      },
+      { $unwind: "$location" }
+    );
+  } else if (filter.populate === "userId") {
+    pipeline.push(
+      {
+        $lookup: {
+          from: "users",
+          let: { userId: "$userId" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "user",
         },
-        { $unwind: "$user" }
-      );
-    }
-    pipeline.push({ $addFields: { id: "$_id" } });
-    let data = await MapUserAssetLocationModel.aggregate(pipeline);
-    if (!data?.length) {
-      throw Object.assign(new Error("No data found"), { status: 404 });
-    }
-    data = data.map((doc: any) => {
-      if (doc.location) {
-        doc.location.id = doc.location._id;
-      }
-      if (doc.user) {
-        doc.user.id = doc.user._id;
-      }
-      return doc;
-    });
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
+      },
+      { $unwind: "$user" }
+    );
   }
+  pipeline.push({ $addFields: { id: "$_id" } });
+  let data = await MapUserAssetLocationModel.aggregate(pipeline);
+  if (!data?.length) {
+    throw Object.assign(new Error("No data found"), { status: 404 });
+  }
+  data = data.map((doc: any) => {
+    if (doc.location) {
+      doc.location.id = doc.location._id;
+    }
+    if (doc.user) {
+      doc.user.id = doc.user._id;
+    }
+    return doc;
+  });
+  return data;
 };
 
 export const createMapUserAssets = async (data: any): Promise<any> => {
@@ -193,19 +168,12 @@ export const mapUserLocations = async (req: Request, res: Response, next: NextFu
   }
 };
 
-export const updateMappedUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const body = req.body;
-    const queryArray: any = [];
-    body.forEach((doc: any) => {
-      queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
-    })
-    await MapUserAssetLocationModel.insertMany(queryArray);
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
-  } catch (error) {
-    next(error);
-  }
+export const updateMappedUserLocations = async (body: any, account_id: any): Promise<any> => {
+  const queryArray: any = [];
+  body.forEach((doc: any) => {
+    queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
+  })
+  return await MapUserAssetLocationModel.insertMany(queryArray);
 }
 
 export const userAssets = async (match: any, populate: any): Promise<any> => {
