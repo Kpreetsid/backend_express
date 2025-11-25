@@ -6,8 +6,15 @@ import { IUser } from '../../../models/user.model';
 export const userLogs = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
         const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-        console.log({ account_id, user_id, userRole });
-        await getAllUserLogs(req, res, next);
+        const match: any = { account_id };
+        if (userRole !== 'admin') {
+            match.userId = user_id
+        }
+        const data = await getAllUserLogs(match);
+        if (!data || data.length === 0) {
+            throw Object.assign(new Error('No data found'), { status: 404 });
+        }
+        res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
         next(error);
     }

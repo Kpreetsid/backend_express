@@ -2,9 +2,9 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
 export interface IUserLog extends Document {
+    account_id: ObjectId;
     userId: ObjectId;
     userName: string;
-    account_id: ObjectId;
     method: string;
     module: string;
     description: string;
@@ -60,9 +60,9 @@ export interface IUserLog extends Document {
 }
 
 const userLogSchema = new Schema<IUserLog>({
+    account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel' },
     userId: { type: Schema.Types.ObjectId, ref: 'UserModel' },
     userName: { type: String, trim: true, required: true },
-    account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel' },
     method: { type: String, trim: true, required: true },
     module: { type: String, trim: true, required: true },
     description: { type: String, trim: true, required: true },
