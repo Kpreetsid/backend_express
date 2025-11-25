@@ -9,6 +9,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
     try {
       const headers: any = req.headers;
       const { account_id, _id, username } = get(req, 'user', {}) as IUser;
+      const accountID = req.headers.accountid as string || req.cookies.accountID as string || account_id;
       const systemInfo = {
         platform: headers['sec-ch-ua-platform']?.replace(/"/g, '') || 'Unknown',
         os: extractOS(headers['user-agent']),
@@ -59,7 +60,7 @@ export const activityLogger = async (req: Request, res: Response, next: NextFunc
       const newLog = new UserLogModel({
         userId: _id,
         userName,
-        account_id,
+        account_id: accountID,
         systemInfo,
         browserInfo,
         deviceInfo,

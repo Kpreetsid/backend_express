@@ -1,5 +1,4 @@
 import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model";
-import { Request, Response, NextFunction } from 'express';
 import { IUser } from "../../../models/user.model";
 import { platformControlData } from '../../../_role/userRoles';
 import { roleMenuData } from "../../../_role/newUserRoles";
@@ -21,14 +20,9 @@ export const verifyUserRole = async (id: string, companyID: string) => {
   }
 }
 
-export const insert = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel(req.body);
-    await newUserRoleMenu.save();
-    return res.status(201).json({ status: true, message: "Data inserted successfully", data: newUserRoleMenu });
-  } catch (error) {
-    next(error);
-  }
+export const insertRole = async (body: any, account_id: any, user_id: any): Promise<any> => {
+  const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({ ...body, account_id, user_id, createdBy: user_id });
+  return await newUserRoleMenu.save();
 };
 
 export const createUserRole = async (userRole: any, userData: IUser) => {
@@ -49,20 +43,8 @@ export const createUserRole = async (userRole: any, userData: IUser) => {
   }
 }
 
-export const updateById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { params: { id }, body } = req;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('ID is required'), { status: 400 });
-    }
-    const updatedUserRoleMenu = await RoleMenuModel.findByIdAndUpdate(id, body, { new: true });
-    if (!updatedUserRoleMenu) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data updated successfully", data: updatedUserRoleMenu });
-  } catch (error) {
-    next(error);
-  }
+export const updateById = async (id: any, body: any, user_id: any): Promise<any> => {
+  return await RoleMenuModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
 };
 
 export const removeById = async (id: any, user_id: any): Promise<any> => {

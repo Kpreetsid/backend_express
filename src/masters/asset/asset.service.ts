@@ -1,11 +1,10 @@
 import { AssetModel, IAsset } from '../../models/asset.model';
 import { NextFunction, Request, Response } from 'express';
-import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
-import { createMapUserAssets, getDataByAssetId, removeAssetMapping } from "../../transaction/mapUserLocation/userLocation.service";
+import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
+import { createMapUserAssets, getAssetsMappedData, getDataByAssetId, removeAssetMapping } from "../../transaction/mapUserLocation/userLocation.service";
 import { IUser, UserModel } from "../../models/user.model";
 import { LocationModel } from "../../models/location.model";
 import { get } from "lodash";
-import { getData } from "../../util/queryBuilder";
 import { getExternalData } from "../../util/externalAPI";
 import mongoose from 'mongoose';
 
@@ -54,11 +53,11 @@ export const getAllChildAssetIDs = async (assetId: any): Promise<string[]> => {
 
 export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { locationList = [], assets = [], top_level } = req.body;
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { locationList = [], assets = [], top_level } = req.body;
     const match: any = { account_id, visible: true };
     if(userRole !== "admin") {
-      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
+      const mapData = await getAssetsMappedData(user_id);
       if (!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -93,83 +92,76 @@ export const getAssetsFilteredData = async (req: Request, res: Response, next: N
 export const getAssetsTreeData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { locations, id } = req.body;
-    const query: any = { account_id: account_id, visible: true, parent_id: { $in: [null, undefined] } };
-    if (userRole !== 'admin') {
-      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
-      if (mapData && mapData.length > 0) {
-        query._id = { $in: mapData.map((doc: any) => doc.assetId) };
-      }
+    let { locations, id } = req.body;
+    const cleanArray = (arr: any) => Array.isArray(arr) ? arr.filter((x) => x && x !== "undefined" && x !== "null") : [];
+    id = cleanArray(id);
+    locations = cleanArray(locations);
+    const query: any = { account_id, visible: true, parent_id: null };
+    let mappedAssetIds: any = [];
+    if (userRole !== "admin") {
+      const mapData = await MapUserAssetLocationModel.find({ userId: user_id }).lean();
+      mappedAssetIds = mapData.map((m) => (m.assetId ? String(m.assetId) : null)).filter((x) => x && x !== "undefined" && x !== "null");
+      query._id = { $in: mappedAssetIds };
     }
-    if (id && Array.isArray(id) && id.length > 0) {
+    if (id.length > 0) {
       query._id = { $in: id };
       query.top_level = true;
     }
-    if (locations && Array.isArray(locations) && locations.length > 0) {
+    if (locations.length > 0) {
       query.locationId = { $in: locations };
     }
-    const rootAssets: IAsset[] = await getData(AssetModel, { filter: query });
-    let data = await Promise.all(rootAssets.map(async (asset) => {
-      return {
+    const rootAssets = await AssetModel.find(query).lean();
+    const data = await Promise.all(
+      rootAssets.map(async (asset) => ({
         ...asset,
-        childs: await getRecursiveAssets(asset, id),
+        id: String(asset._id),
+        childs: await getRecursiveAssets(asset, userRole, mappedAssetIds, id),
         userList: await getRecursiveUsers(asset),
         locationData: await getRecursiveLocations(asset)
-      };
-    }));
-    data = data.map((asset: any) => {
-      asset.childs = asset.childs.filter((child: any) => child);
-      return asset;
-    });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      }))
+    );
+    if (!data.length) {
+      throw Object.assign(new Error("No data found"), { status: 404 });
     }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
   } catch (error) {
     next(error);
   }
 };
 
-const getRecursiveAssets = async (asset: any, id: string): Promise<any[]> => {
-  let ignoreAssets: any = ['Flexible', 'Rigid', 'Belt_Pulley'];
-  if (id) {
+const getRecursiveAssets = async (asset: any, userRole: any, mappedAssetIds: any, idFilter: any) => {
+  let ignoreAssets = ["Flexible", "Rigid", "Belt_Pulley"];
+  if (idFilter?.length > 0) {
     ignoreAssets = [];
   }
-  const match = { parent_id: asset._id, visible: true };
-  const children: IAsset[] = await getData(AssetModel, { filter: match });
-  const withChildren = await Promise.all(
-    children.map(async (child): Promise<any> => {
-      if (child.asset_type) {
-        if (!ignoreAssets.includes(child.asset_type)) {
-          const childs = await getRecursiveAssets(child, id);
-          const locationData = await getRecursiveLocations(child);
-          return { ...child, childs, locationData };
-        }
-      } else {
-        const childs = await getRecursiveAssets(child, id);
-        const locationData = await getRecursiveLocations(child);
-        return { ...child, childs, locationData };
-      }
+  let children = await AssetModel.find({parent_id: asset._id, visible: true}).lean();
+  if (userRole === "admin") {
+    children = children.filter((child: any) => !ignoreAssets.includes(child.asset_type));
+  }
+  if (userRole !== "admin") {
+    children = children.filter((child: any) => mappedAssetIds.includes(String(child._id)));
+  }
+  const finalChildren = await Promise.all(
+    children.map(async (child: any) => {
+      const childs = await getRecursiveAssets(child, userRole, mappedAssetIds, idFilter);
+      const locationData = await getRecursiveLocations(child);
+      return { ...child, id: String(child._id), childs, locationData };
     })
   );
-  return withChildren;
-}
+  return finalChildren;
+};
 
 const getRecursiveUsers = async (asset: any) => {
-  const match = { assetId: asset._id };
-  const mapUsersAssets: IMapUserLocation[] = await MapUserAssetLocationModel.find(match);
-  const userIds = mapUsersAssets.map((user: any) => user.userId);
-  const fields = 'firstName lastName user_role';
-  const data: IUser[] = await UserModel.find({ _id: { $in: userIds } }).select(fields);
-  return data.map((user: any) => user._id).filter((user: any) => user);
-}
+  const mapUsers = await MapUserAssetLocationModel.find({ assetId: asset._id }).lean();
+  const userIds = mapUsers.map((u) => u.userId);
+  const users = await UserModel.find({ _id: { $in: userIds } }).select("firstName lastName user_role user_profile_img").lean();
+  return users.map((u) => ({ ...u, id: String(u._id) }));
+};
 
 const getRecursiveLocations = async (asset: any) => {
-  const match = { _id: asset.locationId };
-  const fields = 'location_name';
-  const locationData = await LocationModel.find(match).select(fields);
-  return locationData[0];
-}
+  const location = await LocationModel.findById(asset.locationId).select("location_name location_type").lean();
+  return location ? { ...location, id: String(location._id) } : null;
+};
 
 export const updateAssetImageById = async (id: string, image_path: string, user_id: string) => {
   return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });

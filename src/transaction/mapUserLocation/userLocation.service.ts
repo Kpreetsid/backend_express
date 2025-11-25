@@ -6,7 +6,7 @@ import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import mongoose from "mongoose";
 
-export const getAssetsMappedData = async (userId: string) => {
+export const getAssetsMappedData = async (userId: any) => {
   return await MapUserAssetLocationModel.find({ userId: new mongoose.Types.ObjectId(userId), assetId: { $exists: true } });
 }
 

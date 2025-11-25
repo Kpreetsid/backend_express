@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { getRoles, insert, updateById, removeById } from './roles.service';
+import { getRoles, insertRole, updateById, removeById } from './roles.service';
 import { IUser } from '../../../models/user.model';
 import { get } from 'lodash';
 import mongoose from 'mongoose';
@@ -56,9 +56,12 @@ export const getDataById = async (req: Request, res: Response, next: NextFunctio
 
 export const createRole = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await insert(req, res, next);
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const data = await insertRole(req.body, account_id, user_id);
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data created successfully", data });
   } catch (error) {
     next(error);
   }
@@ -66,9 +69,21 @@ export const createRole = async (req: Request, res: Response, next: NextFunction
 
 export const updateRole = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    await updateById(req, res, next);
+    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { params: { id } } = req;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      throw Object.assign(new Error('ID is required'), { status: 400 });
+    }
+    const match: any = { account_id: account_id, _id: new mongoose.Types.ObjectId(`${id}`) };
+    const existingData = await getRoles(match);
+    if (!existingData || existingData.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const data = await updateById(id, req.body, user_id);
+    if (!data) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data updated successfully", data });
   } catch (error) {
     next(error);
   }
