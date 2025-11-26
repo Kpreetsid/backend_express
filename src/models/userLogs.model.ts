@@ -5,6 +5,8 @@ export interface IUserLog extends Document {
     account_id: ObjectId;
     userId: ObjectId;
     userName: string;
+    pageUrl: string;
+    moduleName: string;
     method: string;
     module: string;
     description: string;
@@ -62,6 +64,8 @@ export interface IUserLog extends Document {
 const userLogSchema = new Schema<IUserLog>({
     account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel' },
     userId: { type: Schema.Types.ObjectId, ref: 'UserModel' },
+    pageUrl: { type: String, trim: true, required: true },
+    moduleName: { type: String, trim: true, required: true },
     userName: { type: String, trim: true, required: true },
     method: { type: String, trim: true, required: true },
     module: { type: String, trim: true, required: true },

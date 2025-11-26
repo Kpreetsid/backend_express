@@ -29,7 +29,7 @@ export const userLogs = async (req: Request, res: Response, next: NextFunction):
     if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
       throw Object.assign(new Error("Invalid date format"), { status: 400 });
     }
-    match.createdAt = { $gte: startDate, $lte: endDate };
+    match.createdAt = { $gte: startDate, $lte: `${new Date(endDate).toISOString().split('T')[0]}T23:59:59.999Z` };
     const data = await getAllUserLogs(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error("No data found"), { status: 404 });
