@@ -112,11 +112,17 @@ export const statusUpdateOrder = async (req: Request, res: Response, next: NextF
           throw Object.assign(new Error('Form is not completed'), { status: 400 });
         }
       }
+      if(isWorkOrderExist[0].parts?.length > 0) {
+        isWorkOrderExist[0].parts = isWorkOrderExist[0].parts.map((part: any) => {
+          part.actualQuantity = part.estimatedQuantity;
+          return part;
+        });
+      }
     }
     const status_details = { status, createdBy: user_id };
     isWorkOrderExist[0].status_details = isWorkOrderExist[0]?.status_details || [];
     isWorkOrderExist[0]?.status_details.push(status_details);
-    const body = { status, updatedBy: user_id, status_details: isWorkOrderExist[0].status_details };
+    const body = { status, updatedBy: user_id, status_details: isWorkOrderExist[0].status_details, parts: isWorkOrderExist[0].parts };
     await orderStatusChange(id, body);
     res.status(200).send({ status: true, message: 'Work order updated successfully' });
   } catch (error) {
