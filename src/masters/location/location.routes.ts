@@ -3,18 +3,18 @@ import { getLocations, getLocation, updateLocation, getChildLocation, getLocatio
 import { hasRolePermission } from '../../middlewares';
 
 export default (router: express.Router) => {
-    const locationRouter = express.Router();
-    locationRouter.get('/', getLocations);
-    locationRouter.get('/tree', getLocationTree);
-    locationRouter.get('/sensor-list', getLocationSensorList);
-    locationRouter.get('/kpi-filter', getKpiFilterLocations);
-    locationRouter.get('/child/:id', getChildLocation);
-    locationRouter.get('/make-copy/:id', createDuplicateLocation);
-    locationRouter.get('/:id', getLocation);
-    locationRouter.post('/', hasRolePermission('location', 'add_location'), createLocation);
-    locationRouter.post('/child-assets', getChildAssetsAgainstLocation);
-    locationRouter.put('/floor-map-image/:id', updateLocationFloorMapImage);
-    locationRouter.put('/:id', hasRolePermission('location', 'edit_location'), updateLocation);
-    locationRouter.delete('/:id', hasRolePermission('location', 'delete_location'), removeLocation);
-    router.use('/locations', locationRouter);
-}
+  const locationRouter = express.Router();
+  locationRouter.get('/', getLocations);
+  locationRouter.get('/tree', getLocationTree);
+  locationRouter.get('/sensor-list', getLocationSensorList);
+  locationRouter.get('/kpi-filter', getKpiFilterLocations);
+  locationRouter.get('/child/:id', getChildLocation);
+  locationRouter.get('/make-copy/:id', createDuplicateLocation);
+  locationRouter.get('/:id', getLocation);
+  locationRouter.post('/', hasRolePermission('location', 'add_location'), createLocation);
+  locationRouter.post('/child-assets', getChildAssetsAgainstLocation); // body-driven
+  locationRouter.put('/floor-map-image/:id', updateLocationFloorMapImage);
+  locationRouter.put('/:id', hasRolePermission('location', 'edit_location'), updateLocation);
+  locationRouter.delete('/:id', hasRolePermission('location', 'delete_location'), removeLocation);
+  router.use('/locations', locationRouter);
+};
