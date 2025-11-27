@@ -64,7 +64,7 @@ export interface IUserLog extends Document {
 const userLogSchema = new Schema<IUserLog>({
     account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel' },
     userId: { type: Schema.Types.ObjectId, ref: 'UserModel' },
-    pageUrl: { type: String, trim: true, required: true },
+    pageUrl: { type: String, trim: true },
     moduleName: { type: String, trim: true },
     userName: { type: String, trim: true },
     method: { type: String, trim: true, required: true },
