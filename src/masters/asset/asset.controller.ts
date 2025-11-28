@@ -452,19 +452,18 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     const sourceAsset = dataExists[0];
     const allChildren: any[] = await getAllChildAssetsRecursive(id, account_id);
     const idMap: Record<string, any> = {};
+    const originalTopLevelId = sourceAsset.top_level ? sourceAsset.id : sourceAsset.top_level_asset_id;
     const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;
-    const newParentId = await makeAssetCopyByIdWithChildren(sourceAsset, user_id, userToken, account_id, parentForCopy, idMap);
+    const newParentId = await makeAssetCopyByIdWithChildren(sourceAsset, user_id, userToken, account_id, parentForCopy, idMap, null );
+    const newTopLevelId = sourceAsset.top_level ? newParentId : originalTopLevelId;
     idMap[`${sourceAsset.id}`] = newParentId;
     for (const child of allChildren) {
-      const newParent = idMap[`${child.parent_id}`] || newParentId;
-      const newChildId = await makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap);
+      const newParent = idMap[child.parent_id?.toString()] || newParentId;
+      const newChildId = await makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap, newTopLevelId );
       idMap[child._id.toString()] = newChildId;
     }
     const copiedData: any = await getAllAssets({ _id: newParentId, account_id, visible: true });
-    if (!copiedData || copiedData.length === 0) {
-      throw Object.assign(new Error("No data found after copy"), { status: 404 });
-    }
-    res.status(201).json({ status: true, message: "Asset hierarchy copied successfully", data: copiedData });
+    res.status(201).json({ status: true, message: "Asset hierarchy copied successfully", data: copiedData});
   } catch (error) {
     next(error);
   }

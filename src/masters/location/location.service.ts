@@ -256,31 +256,46 @@ export const getAllChildHierarchy = async (parentId: string, account_id: any): P
   return all;
 };
 
-export const cloneLocationNode = async (source: any, user_id: any, account_id: any, newParentId?: any, idMap?: any): Promise<any> => {
+export const cloneLocationNode = async (source: any, user_id: any, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any ): Promise<any> => {
   const userMappings = await getDataByLocationId(source._id.toString());
   const userList = userMappings.map((u: any) => u.userId);
-  const newBody: any = {
-    ...source,
-    _id: undefined,
-    id: undefined,
-    createdAt: undefined,
-    updatedAt: undefined,
-    createdBy: user_id,
-    updatedBy: undefined,
-    account_id,
-    visible: true,
-    parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
-  };
-  const baseName = source.location_name.replace(/\s-\s(copy|\(\d+\))$/, "");
+  const { _id, id, createdAt, updatedAt, ...rest } = source;
+  const cleanSource = JSON.parse(JSON.stringify(rest));
+  delete cleanSource._id;
+  delete cleanSource.id;
+  const baseName = (source.location_name || "Location").replace(/\s-\s(copy|\(\d+\))$/i, "");
   const existingCount = await LocationModel.countDocuments({
     parent_id: newParentId || { $exists: false },
     account_id,
     location_name: { $regex: `^${baseName} - copy`, $options: "i" },
     visible: true,
   });
-  newBody.location_name = existingCount > 0 ? `${baseName} - copy (${existingCount + 1})` : `${baseName} - copy`;
+  const newName = existingCount > 0 ? `${baseName} - copy (${existingCount + 1})` : `${baseName} - copy`;
+  let topLevelRef: any = null;
+  if (source.top_level) {
+    topLevelRef = undefined;
+  } else if (newTopLevelId) {
+    topLevelRef = newTopLevelId;
+  } else if (source.top_level_location_id) {
+    topLevelRef = source.top_level_location_id;
+  }
+  const newBody: any = {
+    ...cleanSource,
+    location_name: newName,
+    parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
+    account_id,
+    createdBy: user_id,
+    updatedBy: undefined,
+    visible: true,
+    top_level: source.top_level,
+    top_level_location_id: topLevelRef,
+  };
   const newLoc = new LocationModel(newBody);
   await newLoc.save();
+  if (source.top_level) {
+    newLoc.top_level_location_id = newLoc._id;
+    await newLoc.save();
+  }
   if (userList.length > 0) {
     await mapUserLocationData(newLoc._id, userList, account_id);
   }

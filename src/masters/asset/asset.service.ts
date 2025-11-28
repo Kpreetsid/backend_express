@@ -833,7 +833,7 @@ export const getAllChildAssetsRecursive = async (parentId: string, account_id: a
   return all;
 };
 
-export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any): Promise<any> => {
+export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any): Promise<any> => {
   try {
     const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
     const cleanAsset = JSON.parse(JSON.stringify(rest));
@@ -841,10 +841,8 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
     delete cleanAsset.id;
     delete cleanAsset.createdAt;
     delete cleanAsset.updatedAt;
-
     if (!cleanAsset.asset_name) cleanAsset.asset_name = "Unnamed Asset";
     if (!cleanAsset.account_id) cleanAsset.account_id = account_id;
-    if (!cleanAsset.createdBy) cleanAsset.createdBy = user_id;
     const baseName = (sourceAsset.asset_name || "Asset").replace(/\s-\s(Copy|\(\d+\))$/, "");
     const existingCount = await AssetModel.countDocuments({
       parent_id: newParentId || { $exists: false },
@@ -853,6 +851,14 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
       visible: true
     });
     const newName = existingCount > 0 ? `${baseName} - Copy (${existingCount + 1})` : `${baseName} - Copy`;
+    let topLevelRef: any = null;
+    if (sourceAsset.top_level) {
+      topLevelRef = undefined;
+    } else if (newTopLevelId) {
+      topLevelRef = newTopLevelId;
+    } else {
+      topLevelRef = sourceAsset.top_level_asset_id;
+    }
     const newAssetData: any = {
       ...cleanAsset,
       asset_name: newName,
@@ -862,24 +868,19 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
       account_id,
       visible: true,
       parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
+      top_level_asset_id: topLevelRef
     };
-    delete newAssetData._id;
-    delete newAssetData.id;
-
     const newAsset = new AssetModel(newAssetData);
-    newAsset.top_level_asset_id = newAsset.top_level ? newAsset._id : cleanAsset.top_level_asset_id || newParentId;
     const savedAsset: any = await newAsset.save();
-
+    if (sourceAsset.top_level) {
+      savedAsset.top_level_asset_id = savedAsset._id;
+      await savedAsset.save();
+    }
     let userList: any[] = [];
     try {
       const userMappings = await getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
-      if (Array.isArray(userMappings) && userMappings.length > 0) {
-        userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
-      }
-    } catch {
-      userList = [];
-    }
-
+      userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
+    } catch {}
     try {
       const endPointList: any = await getAssetEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
       if (endPointList?.data?.length > 0) {
@@ -887,7 +888,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
           const newEndPointPayload = {
             org_id: item.org_id,
             point_name: item.point_name,
-            asset_id: savedAsset.id,
+            asset_id: savedAsset._id.toString(),
             mount_location: item.mount_location,
             rpm: item.rpm || "",
             bsf: item.bsf || "",
@@ -901,16 +902,15 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
         }
       }
     } catch (err) {
-      console.error(`Endpoint copy failed for asset ${sourceAsset._id}:`, err);
+      console.error("Endpoint copy failed:", err);
     }
-
     if (userList.length > 0) {
-      const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id || savedAsset.id, userId: u }));
+      const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
       await createMapUserAssets(mappedData);
     }
     return savedAsset._id;
-  } catch (error: any) {
-    console.error("Error in makeAssetCopyByIdWithChildren:", error);
+  } catch (error) {
+    console.error("Error in make Asset Copy:", error);
     throw error;
   }
 };

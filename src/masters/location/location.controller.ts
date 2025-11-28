@@ -289,12 +289,13 @@ export const createDuplicateLocation = async (req: Request, res: Response, next:
     const allChildren: any[] = await getAllChildHierarchy(id, account_id);
     const idMap: Record<string, any> = {};
     const parentForCopy = sourceLocation.parent_id ? sourceLocation.parent_id : undefined;
-    const newParentId = await cloneLocationNode(sourceLocation, user_id, account_id, parentForCopy, idMap);
+    const newParentId = await cloneLocationNode( sourceLocation, user_id, account_id, parentForCopy, idMap, null );
+    const newTopLevelId = sourceLocation.parent_id ? sourceLocation.top_level_location_id : newParentId;
     idMap[`${sourceLocation._id || sourceLocation.id}`] = newParentId;
     if (allChildren.length > 0) {
       for (const child of allChildren) {
         const newParent = idMap[child.parent_id?.toString()] || newParentId;
-        const newChildId = await cloneLocationNode(child, user_id, account_id, newParent, idMap);
+        const newChildId = await cloneLocationNode( child, user_id, account_id, newParent, idMap, newTopLevelId );
         idMap[child._id.toString()] = newChildId;
       }
     }
