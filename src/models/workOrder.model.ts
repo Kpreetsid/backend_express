@@ -70,7 +70,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   title: { type: String, trim: true, required: true },
   description: { type: String, trim: true },
   estimated_time: { type: Number },
-  createdFrom: { type: String, trim: true, enum: ['Work Request', 'Work Order', 'Preventive'], default: "Work Order" },
+  createdFrom: { type: String, trim: true, enum: [ 'Asset Report', 'Work Request', 'Work Order', 'Preventive'], default: "Work Order" },
   priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: "None" },
   status: { type: String, trim: true, enum: WORK_ORDER_STATUSES, default: "Open" },
   status_details: { type: [StatusDetailsSchema], default: [] },
