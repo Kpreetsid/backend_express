@@ -10,12 +10,8 @@ export interface ILocationMaster extends Document {
   top_level_location_id: ObjectId;
   parent_id?: ObjectId;
   parent_name?: string;
-  equipment_id?: string;
-  teamId?: string | null;
   top_level_location_image?: string;
   image_path?: string;
-  location?: string;
-  qr_code?: string;
   visible: boolean;
   createdBy: ObjectId;
   updatedBy?: ObjectId;
@@ -30,12 +26,8 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   top_level_location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },
   parent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },
   parent_name: { type: String, trim: true },
-  equipment_id: { type: String, trim: true },
-  teamId: { type: String, trim: true },
   image_path: { type: String, trim: true },
   top_level_location_image: { type: String, trim: true },
-  location: { type: String, trim: true },
-  qr_code: { type: String, trim: true },
   visible: { type: Boolean, required: true, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
