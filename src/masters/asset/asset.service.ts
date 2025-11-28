@@ -898,7 +898,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
             bearing_number: item.bearing_number || "",
             parent_asset_id: newParentId || null
           };
-          await createExternalAPICall(newEndPointPayload, account_id, user_id, token);
+          await createEndPointCopy(newEndPointPayload, user_id, token);
         }
       }
     } catch (err) {
@@ -918,6 +918,10 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
 const getAssetEndPoints = async (asset_id: string[], token: string, user_id: any) => {
   const payload: any = { asset_id };
   return await getExternalData(`/getAllEndPoints/`, 'POST', payload, token, `${user_id}`);
+}
+
+const createEndPointCopy = async (assetsList: any, user_id: any, token: any): Promise<any> => {
+  return await getExternalData(`/endPointApi/`, 'POST', assetsList, token, `${user_id}`);
 }
 
 export const createExternalAPICall = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {

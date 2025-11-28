@@ -462,6 +462,7 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
       const newChildId = await makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap, newTopLevelId );
       idMap[child._id.toString()] = newChildId;
     }
+    await createExternalAPICall([{ assetId: newParentId }, ...allChildren.map(c => ({ assetId: idMap[c._id.toString()] }))], account_id, user_id, userToken);
     const copiedData: any = await getAllAssets({ _id: newParentId, account_id, visible: true });
     res.status(201).json({ status: true, message: "Asset hierarchy copied successfully", data: copiedData});
   } catch (error) {
