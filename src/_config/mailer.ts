@@ -75,7 +75,7 @@ export const sendRegistrationConfirmation = async (match: any): Promise<boolean>
     htmlTemplate = htmlTemplate.replace('{{userName}}', match.username);
     htmlTemplate = htmlTemplate.replace('{{userEmail}}', match.email);
     htmlTemplate = htmlTemplate.replace('{{registrationDate}}', new Date().toLocaleString());
-    htmlTemplate = htmlTemplate.replace('{{loginLink}}', 'https://presageinsights.ai/login');
+    htmlTemplate = htmlTemplate.replace('{{loginLink}}', 'https://app.presageinsights.ai/cmms');
     const mailResponse = await sendMail({
       to: match.email,
       subject: `CMMS application registration successfully.`,

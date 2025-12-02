@@ -301,6 +301,10 @@ export const orderStatusChange = async (id: any, body: any): Promise<any> => {
 
 export const removeOrder = async (id: any, user_id: any): Promise<any> => {
   await removeMappedUsers(id);
+  const partsWorkOrder = await WorkOrderModel.find({ _id: id, parts: { $exists: true, $ne: [] } });
+  if(partsWorkOrder?.length > 0) {
+    await revertPartFromWorkOrder(partsWorkOrder[0].parts, [], user_id);
+  }
   return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
 };
 
