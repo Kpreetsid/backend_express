@@ -3,14 +3,22 @@ import { get } from "lodash";
 import { getAllParts, insert, updatePartById, removeById, updatePartStock } from './parts.service';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
+import { getLocationsMappedData } from '../../transaction/mapUserLocation/userLocation.service';
 
 export const getParts = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
-    const { query: { id } } = req;
+    const { query: { id, location_id } } = req;
     if (id) {
       match._id = { $in: id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    }
+    if (location_id) {
+      match.location_id = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+    }
+    if (userRole !== 'admin') {
+      const mappedUserList = await getLocationsMappedData(user_id);
+      match.location_id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
     }
     const data = await getAllParts(match);
     if (!data || data.length === 0) {
@@ -24,12 +32,17 @@ export const getParts = async (req: Request, res: Response, next: NextFunction):
 
 export const getPart = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const match: any = { account_id, visible: true };
     const { params: { id } } = req;
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+    match._id = new mongoose.Types.ObjectId(id);
+    if (userRole !== 'admin') {
+      const mappedUserList = await getLocationsMappedData(user_id);
+      match.location_id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
+    }
     const data = await getAllParts(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
