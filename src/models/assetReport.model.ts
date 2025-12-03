@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
-import { IUpload, uploadSchema } from './upload.model';
 
 interface FaultData {
   value: number;
@@ -56,7 +55,7 @@ export interface IReportAsset extends Document {
   ISO: boolean | string;
   TrendOfAlarm?: string;
   EquipmentHealth: string;
-  files: [IUpload];
+  files: object[];
   user: any;
   userId: ObjectId;
   createdOn: Date;
@@ -86,7 +85,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
   ISO: { type: Schema.Types.Mixed },
   TrendOfAlarm: { type: String, trim: true },
   EquipmentHealth: { type: String, trim: true },
-  files: { type: [uploadSchema], default: [] },
+  files: { type: [Object], required: true },
   user: { type: Schema.Types.Mixed },
   userId: { type: Schema.Types.ObjectId, ref: 'UserModel' },
   createdOn: { type: Date, default: Date.now },

@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAllAssets, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, updateAllChildAssetsLocation, getAllChildAssetIDs, getAllChildAssetsRecursive, makeAssetCopyByIdWithChildren, buzzerAssetList, updateBuzzerAssetList } from './asset.service';
+import { getAllAssets, removeById, getAssetsTreeData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, updateAllChildAssetsLocation, getAllChildAssetIDs, getAllChildAssetsRecursive, makeAssetCopyByIdWithChildren, buzzerAssetList, updateBuzzerAssetList } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { createMapUserAssets, getAssetsMappedData, getDataByLocationIds, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
 import { deleteBase64Image, uploadBase64Image } from '../../_config/upload';
@@ -134,11 +134,63 @@ export const getChildAsset = async (req: Request, res: Response, next: NextFunct
 }
 
 export const getAssetTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await getAssetsTreeData(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    let { location_id, id } = req.query;
+    let assetQuery: any = { account_id, visible: true };
+    if (userRole !== "admin") {
+      const mapData = await getAssetsMappedData(user_id);
+      assetQuery._id = mapData.map(doc => doc?.assetId ? new mongoose.Types.ObjectId(`${doc?.assetId}`) : null).filter((x) => x);
+    }
+    if (id) {
+      assetQuery._id = { $in: id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
+    }
+    if (location_id) {
+      assetQuery.locationId = { $in: location_id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
+    }
+    const data = await getAssetsTreeData(assetQuery);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export const getFilteredAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await getAssetsFilteredData(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const { locationList = [], assets = [], top_level } = req.body;
+    const match: any = { account_id, visible: true };
+    if(userRole !== "admin") {
+      const mapData = await getAssetsMappedData(user_id);
+      if (!mapData || mapData.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      match._id = { $in: mapData.map(doc => doc.assetId) };
+    }
+    if (top_level) {
+      match.top_level = top_level;
+    }
+    if (locationList && locationList.length > 0) {
+      match.locationId = { $in: locationList };
+      if(userRole !== "admin") {
+        const mapData = await getAssetsMappedData(user_id);
+        match._id = { $in: mapData.map(doc => doc.assetId) };
+      }
+    }
+    if (assets && assets.length > 0) {
+      match._id = { $in: assets };
+    }
+    const data = await getAllAssets(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
