@@ -1,13 +1,10 @@
-import { AssetModel, IAsset } from '../../models/asset.model';
-import { NextFunction, Request, Response } from 'express';
+import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
-import { createMapUserAssets, getAssetsMappedData, getDataByAssetId, removeAssetMapping } from "../../transaction/mapUserLocation/userLocation.service";
-import { IUser } from "../../models/user.model";
-import { get } from "lodash";
+import { createMapUserAssets, getDataByAssetId, removeAssetMapping, removeLocationMapping } from "../../transaction/mapUserLocation/userLocation.service";
 import { getExternalData } from "../../util/externalAPI";
 import mongoose from 'mongoose';
 
-export const getAllAssets = async (match: any) => {
+export const getAllEquipment = async (match: any) => {
   const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }]);
   const assetsIds = assetsData.map((asset: any) => `${asset._id}`);
   const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
@@ -27,72 +24,24 @@ export const getAllAssets = async (match: any) => {
   return result;
 }
 
-export const checkAssets = async (match: any) => {
+export const checkEquipment = async (match: any) => {
   return await AssetModel.find(match).lean();
 }
 
-export const buzzerAssetList = async (match: any): Promise<any> => {
-  return await AssetModel.find(match).select('id asset_name isBuzzerActive');
-}
-
-export const updateBuzzerAssetList = async (body: any) => {
-  await body.forEach(async (item: any) => {
-    await AssetModel.updateOne({ _id: item.id }, { isBuzzerActive: item.isBuzzerActive });
-  })
-}
-
-export const getAllChildAssetIDs = async (assetId: any): Promise<string[]> => {
+export const getAllChildEquipmentIDs = async (assetId: any): Promise<string[]> => {
   const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id');
   if (!children || children.length === 0) {
     return [assetId];
   }
   const allChildIds: string[] = [];
   for (const child of children) {
-    const subChildIds = await getAllChildAssetIDs(child._id);
+    const subChildIds = await getAllChildEquipmentIDs(child._id);
     allChildIds.push(...subChildIds);
   }
   return [assetId, ...allChildIds];
 };
 
-export const getAssetsFilteredData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { locationList = [], assets = [], top_level } = req.body;
-    const match: any = { account_id, visible: true };
-    if(userRole !== "admin") {
-      const mapData = await getAssetsMappedData(user_id);
-      if (!mapData || mapData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      match._id = { $in: mapData.map(doc => doc.assetId) };
-    }
-    if (top_level) {
-      match.top_level = top_level;
-    }
-    if (locationList && locationList.length > 0) {
-      match.locationId = { $in: locationList };
-      if(userRole !== "admin") {
-        const mapData = await MapUserAssetLocationModel.find({ userId: user_id, assetId: { $exists: true } });
-        if (!mapData || mapData.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
-        }
-        match._id = { $in: mapData.map(doc => doc.assetId) };
-      }
-    }
-    if (assets && assets.length > 0) {
-      match._id = { $in: assets };
-    }
-    const data: IAsset[] = await getAllAssets(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getAssetsTreeData = async (match: any): Promise<any> => {
+export const getEquipmentTreeData = async (match: any): Promise<any> => {
   const allAssets = await AssetModel.find(match).lean();
   if (!allAssets.length) {
     throw Object.assign(new Error("No data found"), { status: 404 });
@@ -124,20 +73,20 @@ export const getAssetsTreeData = async (match: any): Promise<any> => {
   return data;
 };
 
-export const updateAssetImageById = async (id: string, image_path: string, user_id: string) => {
+export const updateEquipmentImageById = async (id: string, image_path: string, user_id: string) => {
   return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
 }
 
-export const removeById = async (match: any, userID: any) => {
+export const removeEquipmentById = async (match: any, userID: any) => {
   const childAssets = await AssetModel.find({ parent_id: match._id });
   if (childAssets && childAssets.length > 0) {
     await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID });
   }
-  // await removeLocationMapping(req.params.id);
+  await removeLocationMapping(match._id);
   return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { new: true });
 };
 
-export const deleteAsset = async (id: string): Promise<any> => {
+export const deleteEquipment = async (id: string): Promise<any> => {
   const childAssets = await AssetModel.find({ parent_id: id });
   if (childAssets && childAssets.length > 0) {
     for (const asset of childAssets) {
@@ -147,66 +96,6 @@ export const deleteAsset = async (id: string): Promise<any> => {
   }
   await removeAssetMapping(id);
   return await AssetModel.deleteOne({ _id: id });
-}
-
-export const getAssetDataSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id, visible: true };
-    let { assetList } = req.query;
-    if (assetList && assetList.toString().split(',').length > 0) {
-      match._id = { $in: assetList.toString().split(',') };
-    }
-    if (userRole !== 'admin') {
-      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
-      if (mapData && mapData.length > 0) {
-        match._id = { $in: mapData.map((doc: any) => doc.assetId) };
-      }
-    }
-    const data = await AssetModel.find(match).populate([
-      { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
-      { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
-      { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
-    ]);
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const result = data.map((doc: any) => {
-      doc = doc.toObject();
-      return {
-        "asset_id": doc._id,
-        "asset_name": doc.asset_name,
-        "top_level_asset_id": doc.top_level_asset_id ? doc.top_level_asset_id._id : "",
-        "top_level_asset_name": doc.top_level_asset_id ? doc.top_level_asset_id?.asset_name : "NA",
-        "location_id": doc.locationId ? doc.locationId._id : "",
-        "location_name": doc.locationId ? doc.locationId.location_name : "NA",
-        "company_name": doc.account_id ? doc.account_id.account_name : "NA"
-      };
-    })
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const createAssetOld = async (body: any, account_id: any, user_id: any): Promise<any> => {
-  const data: any = new AssetModel({ ...body, account_id, createdBy: user_id });
-  data.top_level_asset_id = data.top_level_asset_id ? data.top_level_asset_id : data._id;
-  return await data.save();
-}
-
-export const updateAssetOld = async (id: any, body: any, user_id: any): Promise<any> => {
-  return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true });
-}
-
-export const updateAllChildAssetsLocation = async (id: any, locationId: any, user_id: any): Promise<any> => {
-  const childAssets = await AssetModel.find({ parent_id: id });
-  if (childAssets && childAssets.length > 0) {
-    for (const asset of childAssets) {
-      await updateAllChildAssetsLocation(`${asset._id}`, locationId, user_id);
-    }
-    return await AssetModel.updateMany({ parent_id: id }, { locationId: locationId, updatedBy: user_id });
-  }
 }
 
 const removeExtraFields = (obj: Record<string, any>) => {
@@ -782,13 +671,13 @@ export const updateCompressor = async (compressor: any, equipment: any, account_
   return await AssetModel.updateOne({ _id: compressor.id }, updatedCompressor);
 }
 
-export const getAllChildAssetsRecursive = async (parentId: string, account_id: any): Promise<any[]> => {
+export const getAllChildEquipmentRecursive = async (parentId: string, account_id: any): Promise<any[]> => {
   const children = await AssetModel.find({ parent_id: parentId, account_id, visible: true }).lean();
   const all: any[] = [];
   for (const child of children) {
     if (child._id?.toString() === parentId) continue;
     all.push(child);
-    const subChildren = await getAllChildAssetsRecursive(child._id.toString(), account_id);
+    const subChildren = await getAllChildEquipmentRecursive(child._id.toString(), account_id);
     all.push(...subChildren);
   }
   return all;
@@ -843,7 +732,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
       userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
     } catch {}
     try {
-      const endPointList: any = await getAssetEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
+      const endPointList: any = await getEquipmentEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
       if (endPointList?.data?.length > 0) {
         for (const item of endPointList.data) {
           const newEndPointPayload = {
@@ -876,7 +765,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
   }
 };
 
-const getAssetEndPoints = async (asset_id: string[], token: string, user_id: any) => {
+const getEquipmentEndPoints = async (asset_id: string[], token: string, user_id: any) => {
   const payload: any = { asset_id };
   return await getExternalData(`/getAllEndPoints/`, 'POST', payload, token, `${user_id}`);
 }

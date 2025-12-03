@@ -15,11 +15,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     if (!cookieToken || !cookieAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
-    const decoded = jwt.verify(cookieToken, auth.secret, {
-      algorithms: [auth.algorithm as jwt.Algorithm],
-      issuer: auth.issuer,
-      audience: auth.audience
-    }) as UserLoginPayload;
+    const decoded = verifyAccessToken(cookieToken);
     const { id, username, companyID } = decoded;
     const accountID = req.headers.accountid as string;
 
@@ -59,4 +55,29 @@ export const generateAccessToken = (payload: UserLoginPayload): string => {
     issuer: auth.issuer,
     audience: auth.audience
   } as jwt.SignOptions); 
+};
+
+const verifyAccessToken = (token: string): JwtPayload => {
+  return jwt.verify(token, auth.secret, {
+    algorithms: [auth.algorithm as jwt.Algorithm],
+    issuer: auth.issuer,
+    audience: auth.audience
+  }) as JwtPayload;
+};
+
+export const generateExternalAccessToken = (payload: any): string => {
+  return jwt.sign(payload, auth.external_secret, {
+    expiresIn: parseInt(auth.expiresIn as string),
+    algorithm: auth.algorithm as jwt.Algorithm,
+    issuer: auth.issuer,
+    audience: auth.audience
+  } as jwt.SignOptions); 
+};
+
+export const verifyExternalAccessToken = (token: string): JwtPayload => {
+  return jwt.verify(token, auth.external_secret, {
+    algorithms: [auth.algorithm as jwt.Algorithm],
+    issuer: auth.issuer,
+    audience: auth.audience
+  }) as JwtPayload;
 };

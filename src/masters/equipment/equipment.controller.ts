@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getAllAssets, removeById, getAssetsTreeData, getAssetsFilteredData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, updateAllChildAssetsLocation, getAllChildAssetIDs, getAllChildAssetsRecursive, makeAssetCopyByIdWithChildren, buzzerAssetList, updateBuzzerAssetList, checkAssets } from './equipment.service';
+import { createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyByIdWithChildren, getAllEquipment, getEquipmentTreeData, updateEquipmentImageById, removeEquipmentById, getAllChildEquipmentIDs, checkEquipment, getAllChildEquipmentRecursive } from './equipment.service';
 import { IUser } from '../../models/user.model';
-import { createMapUserAssets, getAssetsMappedData, getDataByLocationIds, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
+import { createMapUserAssets, getAssetsMappedData, getDataByLocationIds, removeLocationMapping } from '../../transaction/mapUserLocation/userLocation.service';
 import { deleteBase64Image, uploadBase64Image } from '../../_config/upload';
 import { getAllChildLocationIds } from '../location/location.service';
 import mongoose from 'mongoose';
@@ -34,7 +34,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
       const mappedData = await getDataByLocationIds([locationId, ...childIds]);
       match.locationId = { $in: mappedData.map(doc => doc.locationId) };
     }
-    let data = await getAllAssets(match);
+    let data = await getAllEquipment(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -61,51 +61,11 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
     if (locationId) {
       match.locationId = new mongoose.Types.ObjectId(`${locationId}`);
     }
-    const data = await getAllAssets(match);
+    const data = await getAllEquipment(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const getBuzzerAssetList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const match: any = { account_id: account_id, visible: true };
-    const { query: { location_id } } = req;
-    if(location_id) {
-      match.locationId = new mongoose.Types.ObjectId(`${location_id}`);
-    }
-    const data = await buzzerAssetList(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const setBuzzerAssetList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const match: any = { account_id, visible: true }
-    const { params: { location_id }, body } = req;
-    if(location_id) {
-      match.locationId = new mongoose.Types.ObjectId(`${location_id}`);
-    }
-    const data = await buzzerAssetList(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    if (data.length !== body.length) {    
-      throw Object.assign(new Error('Bad Request'), { status: 400 });
-    }
-    await updateBuzzerAssetList(body);
-    res.status(200).json({ status: true, message: "Data fetched successfully" });
   } catch (error) {
     next(error);
   }
@@ -118,12 +78,12 @@ export const getChildAsset = async (req: Request, res: Response, next: NextFunct
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const childIds = await getAllChildAssetIDs(new mongoose.Types.ObjectId(`${id}`));
+    const childIds = await getAllChildEquipmentIDs(new mongoose.Types.ObjectId(`${id}`));
     if (childIds.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { _id: { $in: childIds }, account_id: account_id, visible: true };
-    const data = await getAllAssets(match);
+    const data = await getAllEquipment(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -142,7 +102,7 @@ export const getAssetTree = async (req: Request, res: Response, next: NextFuncti
       const mapData = await getAssetsMappedData(user_id);
       assetQuery._id = mapData.map(doc => doc?.assetId ? new mongoose.Types.ObjectId(`${doc?.assetId}`) : null).filter((x) => x);
     }
-    const isAssetExists = await checkAssets(assetQuery);
+    const isAssetExists = await checkEquipment(assetQuery);
     if (!isAssetExists || isAssetExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -152,7 +112,7 @@ export const getAssetTree = async (req: Request, res: Response, next: NextFuncti
     if (location_id) {
       assetQuery.locationId = { $in: location_id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
     }
-    const data = await getAssetsTreeData(assetQuery);
+    const data = await getEquipmentTreeData(assetQuery);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -160,10 +120,6 @@ export const getAssetTree = async (req: Request, res: Response, next: NextFuncti
   } catch (error) {
     next(error);
   }
-}
-
-export const getFilteredAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await getAssetsFilteredData(req, res, next);
 }
 
 export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -244,68 +200,6 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
   }
 }
 
-export const createOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  var data: any;
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const userToken = get(req, "userToken", {}) as string;
-    const { body } = req;
-    if(body.userIdList?.length === 0) {
-      throw Object.assign(new Error('Please select at least one user'), { status: 400 });
-    }
-    data = await createAssetOld(body, account_id, user_id);
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const assetsMapData = body.userIdList.map((user: any) => ({ account_id, userId: user, assetId: data._id }));
-    await createMapUserAssets(assetsMapData);
-    await createExternalAPICall(assetsMapData, account_id, user_id, userToken);
-    const insertedData: any = await getAllAssets({ _id: data._id });
-    if (!insertedData || insertedData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(201).json({ status: true, message: "Data created successfully", data: insertedData });
-  } catch (error) {
-    if (data) {
-      await deleteAssetsById(data._id);
-    }
-    next(error);
-  }
-}
-
-export const updateOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const { params: { id }, body } = req;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
-    }
-    if(body.userIdList?.length === 0) {
-      throw Object.assign(new Error('Please select at least one user'), { status: 400 });
-    }
-    const existingData: any = await getAllAssets({ _id: id, account_id: account_id, visible: true });
-    if (!existingData || existingData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    console.log(existingData[0].locationId, body.locationId);
-    if(body.locationId !== existingData[0].locationId) {
-      await updateAllChildAssetsLocation(id, body.locationId, user_id);
-    }
-    const data = await updateAssetOld(id, body, user_id);
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await updateMapUserAssets(id, body.userIdList);
-    const insertedData: any = await getAllAssets({ _id: id });
-    if (!insertedData || insertedData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data created successfully", data: insertedData });
-  } catch (error) {
-    next(error);
-  }
-}
-
 export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
@@ -320,7 +214,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     if (!Equipment.userList || Equipment.userList.length === 0) {
       throw Object.assign(new Error("Please select at least one user"), { status: 400 });
     }
-    const existEquipmentData = await getAllAssets({ _id: id, account_id: account_id, visible: true });
+    const existEquipmentData = await getAllEquipment({ _id: id, account_id: account_id, visible: true });
     if (Equipment.image_path && Equipment.image_path.startsWith("data:image")) {
       const image = await uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image.fileName;
@@ -411,7 +305,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     if (newlyCreatedAssetList.length > 0) {
       await createExternalAPICall(newlyCreatedAssetList, account_id, user_id, userToken);
     }
-    const data = await getAllAssets({ _id: id, account_id: account_id, visible: true });
+    const data = await getAllEquipment({ _id: id, account_id: account_id, visible: true });
     res.status(200).json({ status: true, message: "Asset updated successfully", data });
   } catch (error) {
     next(error);
@@ -428,11 +322,11 @@ export const updateAssetImage = async (req: Request, res: Response, next: NextFu
     if (!image_path) {
       throw Object.assign(new Error('Image path is required'), { status: 400 });
     }
-    const dataExists: any = await getAllAssets({ _id: req.params.id, account_id: account_id, visible: true });
+    const dataExists: any = await getAllEquipment({ _id: req.params.id, account_id: account_id, visible: true });
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await updateAssetImageById(req.params.id, image_path, `${user_id}`);
+    await updateEquipmentImageById(req.params.id, image_path, `${user_id}`);
     res.status(200).json({ status: true, message: "Data updated successfully" });
   } catch (error) {
     next(error);
@@ -446,20 +340,16 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { _id: req.params.id, account_id: account_id, visible: true };
-    const dataExists: any = await getAllAssets(match);
+    const dataExists: any = await getAllEquipment(match);
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await removeLocationMapping(req.params.id);
-    await removeById(match, user_id);
+    await removeEquipmentById(match, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
   }
-}
-
-export const getAssetSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await getAssetDataSensorList(req, res, next);
 }
 
 export const makeAssetCopy = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -470,12 +360,12 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error("No asset id provided"), { status: 400 });
     }
-    const dataExists: any = await getAllAssets({ _id: id, account_id, visible: true });
+    const dataExists: any = await getAllEquipment({ _id: id, account_id, visible: true });
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error("Asset not found"), { status: 404 });
     }
     const sourceAsset = dataExists[0];
-    const allChildren: any[] = await getAllChildAssetsRecursive(id, account_id);
+    const allChildren: any[] = await getAllChildEquipmentRecursive(id, account_id);
     const idMap: Record<string, any> = {};
     const originalTopLevelId = sourceAsset.top_level ? sourceAsset.id : sourceAsset.top_level_asset_id;
     const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;
@@ -488,7 +378,7 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
       idMap[child._id.toString()] = newChildId;
     }
     await createExternalAPICall([{ assetId: newParentId }, ...allChildren.map(c => ({ assetId: idMap[c._id.toString()] }))], account_id, user_id, userToken);
-    const copiedData: any = await getAllAssets({ _id: newParentId, account_id, visible: true });
+    const copiedData: any = await getAllEquipment({ _id: newParentId, account_id, visible: true });
     res.status(201).json({ status: true, message: "Asset hierarchy copied successfully", data: copiedData});
   } catch (error) {
     next(error);

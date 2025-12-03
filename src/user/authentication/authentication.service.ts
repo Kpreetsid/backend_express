@@ -1,7 +1,7 @@
 import { IUser, UserModel, UserLoginPayload } from "../../models/user.model";
 import { Request, Response, NextFunction } from 'express';
 import { comparePassword, hashPassword } from '../../_config/bcrypt';
-import { generateAccessToken } from '../../_config/auth';
+import { generateAccessToken, generateExternalAccessToken, verifyExternalAccessToken } from '../../_config/auth';
 import { TokenModel } from "../../models/userToken.model";
 import { verifyUserRole } from "../../masters/user/role/roles.service";
 import { sendPasswordChangeConfirmation } from "../../_config/mailer";
@@ -10,10 +10,8 @@ import { auth } from "../../configDB";
 import { IAccount } from "../../models/account.model";
 import { getAllCompanies } from "../../masters/company/company.service";
 import { get } from "lodash";
-import jwt from 'jsonwebtoken';
 import { getLocationsMappedData } from "../../transaction/mapUserLocation/userLocation.service";
 import { ExternalUserModel } from "../../models/map_user.model";
-import mongoose from "mongoose";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -67,32 +65,46 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
   }
 };
 
-export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { params: { token }} = req;
-    if(!token) {
+    const { params: { email }} = req;
+    if(!email) {
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
-    const decoded = jwt.verify(token, auth.external_secret, {
-      algorithms: [auth.algorithm as jwt.Algorithm],
-      issuer: auth.issuer,
-      audience: auth.audience
-    }) as UserLoginPayload;
-    const { id, username, companyID } = decoded;
-    if (!id || !username || !companyID) {
+    const external_user = await ExternalUserModel.findOne({ username: email });
+    if (!external_user) {
+      throw Object.assign(new Error('User data not found'), { status: 404 });
+    }
+    const external_token = generateExternalAccessToken({ email });
+    res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { body: { external_token }} = req;
+    console.log('external_token', external_token);
+    if(!external_token) {
+      throw Object.assign(new Error('Bad request'), { status: 404 });
+    }
+    const decoded = verifyExternalAccessToken(external_token);
+    const { email } = decoded;
+    if (!email) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
-    const mappedUser = await ExternalUserModel.findOne({ username, customer_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
+    const mappedUser = await ExternalUserModel.findOne({ username: email });
     if (!mappedUser) {
-      throw Object.assign(new Error('User not found'), { status: 404 });
+      throw Object.assign(new Error('User is not mapped with external account'), { status: 404 });
     }
-    const userDetails = await UserModel.findOne({ _id: mappedUser.user_id, account_id: companyID, user_status: 'active' });
+    const userDetails = await UserModel.findOne({ _id: mappedUser.user_id, account_id: mappedUser.account_id, user_status: 'active' });
     if (!userDetails) {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }
     const { password: _, ...safeUser } = userDetails.toObject();
     const newSafeUserValue: any = { id: safeUser._id, ...safeUser }
-    const accountDetails = await getAllCompanies({ _id: companyID });
+    const accountDetails = await getAllCompanies({ _id: mappedUser.account_id });
     if (!accountDetails || accountDetails.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
@@ -111,7 +123,9 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data} });
+    console.log({token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data});
+    // res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data} });
+    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken } });
   } catch (error) {
     next(error);
   }
