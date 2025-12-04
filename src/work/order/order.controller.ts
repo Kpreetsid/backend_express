@@ -118,6 +118,9 @@ export const statusUpdateOrder = async (req: Request, res: Response, next: NextF
           return part;
         });
       }
+    } else if(status === 'Open') {
+      isWorkOrderExist[0].task_submitted = false;
+      isWorkOrderExist[0].sop_form_submitted = false;
     }
     const status_details = { status, createdBy: user_id };
     isWorkOrderExist[0].status_details = isWorkOrderExist[0]?.status_details || [];
