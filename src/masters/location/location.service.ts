@@ -2,7 +2,7 @@ import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
-import { getDataByLocationId, getLocationsMappedData, mapUserLocationData, removeAssetListMapping, removeLocationListMapping } from "../../transaction/mapUserLocation/userLocation.service";
+import { mapUserToLocationService, mapUserToAssetService } from '../../transaction/mapUserLocation/userLocation.service';
 import { getData } from "../../util/queryBuilder";
 
 export const getLocationsList = async (match: any) => {
@@ -81,7 +81,7 @@ export const kpiFilterLocations = async (account_id: any, user_id: any, userRole
   try {
     const match: any = { account_id, visible: true };
     if (userRole !== "admin") {
-      const mapLocationData: IMapUserLocation[] = await getLocationsMappedData(user_id);
+      const mapLocationData: IMapUserLocation[] = await mapUserToLocationService.getLocationsMappedData(user_id);
       if (!mapLocationData?.length) {
         throw Object.assign(new Error('No location mapping found for user'), { status: 404 });
       }
@@ -195,11 +195,11 @@ export const removeLocationById = async (id: any, user_id: any) => {
   const childIds = await getAllChildLocationsRecursive([id]);
   totalIds.push(...childIds);
   const objectIds = totalIds.map(id => new mongoose.Types.ObjectId(id));
-  await removeLocationListMapping(totalIds);
+  await mapUserToLocationService.removeLocationListMapping(totalIds);
   const getAssetsByLocationId = await AssetModel.find({ locationId: { $in: objectIds } });
   if (getAssetsByLocationId?.length > 0) {
     const assetIds: any = getAssetsByLocationId.map(asset => asset._id);
-    await removeAssetListMapping(assetIds);
+    await mapUserToAssetService.removeAssetListMapping(assetIds);
   }
   const assetUpdate = await AssetModel.updateMany({ locationId: { $in: objectIds } }, { $set: { visible: false, updatedBy: user_id } });
   console.log(assetUpdate);
@@ -216,7 +216,7 @@ export const getLocationSensor = async (account_id: any, user_id: any, userRole:
   try {
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
-      const mappedData = await getLocationsMappedData(`${user_id}`);
+      const mappedData = await mapUserToLocationService.getLocationsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -257,7 +257,7 @@ export const getAllChildHierarchy = async (parentId: string, account_id: any): P
 };
 
 export const cloneLocationNode = async (source: any, user_id: any, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any ): Promise<any> => {
-  const userMappings = await getDataByLocationId(source._id.toString());
+  const userMappings = await mapUserToLocationService.getDataByLocationId(source._id.toString());
   const userList = userMappings.map((u: any) => u.userId);
   const { _id, id, createdAt, updatedAt, ...rest } = source;
   const cleanSource = JSON.parse(JSON.stringify(rest));
@@ -297,7 +297,7 @@ export const cloneLocationNode = async (source: any, user_id: any, account_id: a
     await newLoc.save();
   }
   if (userList.length > 0) {
-    await mapUserLocationData(newLoc._id, userList, account_id);
+    await mapUserToLocationService.mapUserLocationData(newLoc._id, userList, account_id);
   }
   return newLoc._id;
 };

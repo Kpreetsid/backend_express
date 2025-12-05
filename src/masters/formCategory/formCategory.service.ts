@@ -38,4 +38,4 @@ class FormCategoryService {
   }
 }
 
-export default new FormCategoryService();
+export const formCategoryService = new FormCategoryService();

@@ -1,8 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
-import { createAuthenticationByToken, userAuthentication, userAuthenticationByToken, userLogOutService, userResetPassword } from './authentication.service';
+import { createAuthenticationByToken, userAuthentication, userAuthenticationByToken, userAuthenticationToken, userLogOutService, userResetPassword } from './authentication.service';
 
 export const authentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     await userAuthentication(req, res, next);
+}
+
+export const authenticationToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    await userAuthenticationToken(req, res, next);
 }
 
 export const externalToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

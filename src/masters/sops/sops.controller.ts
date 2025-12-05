@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getSOPs, createSOPs, updateSOPs, removeSOPs } from './sops.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
-import { getLocationsMappedData } from '../../transaction/mapUserLocation/userLocation.service';
+import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -17,7 +17,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
       match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
     }
     if(userRole !== 'admin') {
-      const mappedUserList = await getLocationsMappedData(user_id);
+      const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
       match.locationId = { $in: mappedUserList.map((doc: any) => doc.locationId) };
     }
     let data = await getSOPs(match);

@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { getAllAssets, removeById, getAssetsTreeData, createAssetOld, updateAssetOld, updateAssetImageById, getAssetDataSensorList, createExternalAPICall, deleteAssetsById, updateAllChildAssetsLocation, getAllChildAssetIDs, getAllChildAssetsRecursive, makeAssetCopyByIdWithChildren, buzzerAssetList, updateBuzzerAssetList } from './asset.service';
 import { IUser } from '../../models/user.model';
-import { createMapUserAssets, getAssetsMappedData, getDataByLocationIds, removeLocationMapping, updateMapUserAssets } from '../../transaction/mapUserLocation/userLocation.service';
+import { mapUserToAssetService, mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { getAllChildLocationIds } from '../location/location.service';
 import mongoose from 'mongoose';
 
@@ -12,7 +12,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
     const match: any = { account_id, visible: true };
     const { query: { top_level_asset_id, top_level, locationId, parent_id } }: any = req;
     if (userRole !== 'admin') {
-      const mappedData = await getAssetsMappedData(`${user_id}`);
+      const mappedData = await mapUserToAssetService.getAssetsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -30,7 +30,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
     }
     if (locationId) {
       const childIds = await getAllChildLocationIds(locationId);
-      const mappedData = await getDataByLocationIds([locationId, ...childIds]);
+      const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
       match.locationId = { $in: mappedData.map(doc => doc.locationId) };
     }
     let data = await getAllAssets(match);
@@ -138,7 +138,7 @@ export const getAssetTree = async (req: Request, res: Response, next: NextFuncti
     let { location_id, id } = req.query;
     let assetQuery: any = { account_id, visible: true };
     if (userRole !== "admin") {
-      const mapData = await getAssetsMappedData(user_id);
+      const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
       assetQuery._id = mapData.map(doc => doc?.assetId ? new mongoose.Types.ObjectId(`${doc?.assetId}`) : null).filter((x) => x);
     }
     if (id) {
@@ -163,7 +163,7 @@ export const getFilteredAssets = async (req: Request, res: Response, next: NextF
     const { locationList = [], assets = [], top_level } = req.body;
     const match: any = { account_id, visible: true };
     if(userRole !== "admin") {
-      const mapData = await getAssetsMappedData(user_id);
+      const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
       if (!mapData || mapData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -175,7 +175,7 @@ export const getFilteredAssets = async (req: Request, res: Response, next: NextF
     if (locationList && locationList.length > 0) {
       match.locationId = { $in: locationList };
       if(userRole !== "admin") {
-        const mapData = await getAssetsMappedData(user_id);
+        const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
         match._id = { $in: mapData.map(doc => doc.assetId) };
       }
     }
@@ -206,7 +206,7 @@ export const createOld = async (req: Request, res: Response, next: NextFunction)
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const assetsMapData = body.userIdList.map((user: any) => ({ account_id, userId: user, assetId: data._id }));
-    await createMapUserAssets(assetsMapData);
+    await mapUserToAssetService.createMapUserAssets(assetsMapData);
     await createExternalAPICall(assetsMapData, account_id, user_id, userToken);
     const insertedData: any = await getAllAssets({ _id: data._id });
     if (!insertedData || insertedData.length === 0) {
@@ -243,7 +243,7 @@ export const updateOld = async (req: Request, res: Response, next: NextFunction)
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await updateMapUserAssets(id, body.userIdList);
+    await mapUserToAssetService.updateMapUserAssets(id, body.userIdList);
     const insertedData: any = await getAllAssets({ _id: id });
     if (!insertedData || insertedData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -286,7 +286,7 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await removeLocationMapping(req.params.id);
+    await mapUserToLocationService.removeLocationMapping(req.params.id);
     await removeById(match, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
@@ -303,7 +303,7 @@ export const getAssetSensorList = async (req: Request, res: Response, next: Next
       match._id = { $in: assetList.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
     }
     if (userRole !== 'admin') {
-      const mapData = await getAssetsMappedData(user_id);
+      const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
       if (mapData && mapData.length > 0) {
         match._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }
@@ -327,7 +327,7 @@ export const getFilteredAssetSensorList = async (req: Request, res: Response, ne
       match._id = { $in: assetList.map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
     }
     if (userRole !== 'admin') {
-      const mapData = await getAssetsMappedData(user_id);
+      const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
       if (mapData && mapData.length > 0) {
         match._id = { $in: mapData.map((doc: any) => doc.assetId) };
       }

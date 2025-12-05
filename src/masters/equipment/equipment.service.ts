@@ -1,6 +1,6 @@
 import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
-import { createMapUserAssets, getDataByAssetId, removeAssetMapping, removeLocationMapping } from "../../transaction/mapUserLocation/userLocation.service";
+import { mapUserToAssetService, mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
 import { getExternalData } from "../../util/externalAPI";
 import mongoose from 'mongoose';
 
@@ -82,7 +82,7 @@ export const removeEquipmentById = async (match: any, userID: any) => {
   if (childAssets && childAssets.length > 0) {
     await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID });
   }
-  await removeLocationMapping(match._id);
+  await mapUserToLocationService.removeLocationMapping(match._id);
   return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { new: true });
 };
 
@@ -90,11 +90,11 @@ export const deleteEquipment = async (id: string): Promise<any> => {
   const childAssets = await AssetModel.find({ parent_id: id });
   if (childAssets && childAssets.length > 0) {
     for (const asset of childAssets) {
-      await removeAssetMapping(`${asset._id}`);
+      await mapUserToAssetService.removeAssetMapping(`${asset._id}`);
     }
     await AssetModel.deleteMany({ parent_id: id });
   }
-  await removeAssetMapping(id);
+  await mapUserToAssetService.removeAssetMapping(id);
   return await AssetModel.deleteOne({ _id: id });
 }
 
@@ -372,12 +372,12 @@ export const deleteAssetsById = async (assetId: any) => {
   const childData = await AssetModel.find({ parent_id: assetId });
   if (childData.length > 0) {
     for (const asset of childData) {
-      await removeAssetMapping(`${asset._id}`);
+      await mapUserToAssetService.removeAssetMapping(`${asset._id}`);
     }
     await AssetModel.deleteMany({ _id: { $in: childData.map(doc => doc._id) } });
   }
   await AssetModel.deleteMany({ _id: assetId });
-  await removeAssetMapping(assetId);
+  await mapUserToAssetService.removeAssetMapping(assetId);
 }
 
 export const updateEquipment = async (equipment: any, account_id: any, user_id: any) => {
@@ -406,7 +406,7 @@ export const updateEquipment = async (equipment: any, account_id: any, user_id: 
     imageNodeData: equipment.imageNodeData,
     updatedBy: user_id
   });
-  await removeAssetMapping(equipment.id);
+  await mapUserToAssetService.removeAssetMapping(equipment.id);
   return await AssetModel.updateOne({ _id: equipment.id }, updatedEquipment);
 }
 
@@ -437,7 +437,7 @@ export const updateMotor = async (motor: any, equipment: any, account_id: any, u
     year: motor.year,
     updatedBy: user_id
   })
-  await removeAssetMapping(motor.id);
+  await mapUserToAssetService.removeAssetMapping(motor.id);
   return await AssetModel.updateOne({ _id: motor.id }, updatedMotor);
 }
 
@@ -463,7 +463,7 @@ export const updateFlexible = async (flexible: any, equipment: any, account_id: 
     image_path: flexible.image_path,
     updatedBy: user_id
   })
-  await removeAssetMapping(flexible.id);
+  await mapUserToAssetService.removeAssetMapping(flexible.id);
   return await AssetModel.updateOne({ _id: flexible.id }, updatedFlexible);
 }
 
@@ -490,7 +490,7 @@ export const updateRigid = async (rigid: any, equipment: any, account_id: any, u
     image_path: rigid.image_path,
     updatedBy: user_id
   });
-  await removeAssetMapping(rigid.id);
+  await mapUserToAssetService.removeAssetMapping(rigid.id);
   return await AssetModel.updateOne({ _id: rigid.id }, updatedRigid);
 }
 
@@ -519,7 +519,7 @@ export const updateBeltPulley = async (beltPulley: any, equipment: any, account_
     drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
     updatedBy: user_id
   })
-  await removeAssetMapping(beltPulley.id);
+  await mapUserToAssetService.removeAssetMapping(beltPulley.id);
   return await AssetModel.updateOne({ _id: beltPulley.id }, updatedBeltPulley);
 }
 
@@ -567,7 +567,7 @@ export const updateGearbox = async (gearbox: any, equipment: any, account_id: an
     image_path: gearbox.image_path,
     updatedBy: user_id
   })
-  await removeAssetMapping(gearbox.id);
+  await mapUserToAssetService.removeAssetMapping(gearbox.id);
   return await AssetModel.updateOne({ _id: gearbox.id }, updatedGearbox);
 }
 
@@ -601,7 +601,7 @@ export const updateFanBlower = async (fanBlower: any, equipment: any, account_id
     image_path: fanBlower.image_path,
     updatedBy: user_id
   })
-  await removeAssetMapping(fanBlower.id);
+  await mapUserToAssetService.removeAssetMapping(fanBlower.id);
   return await AssetModel.updateOne({ _id: fanBlower.id }, updatedFanBlower);
 }
 
@@ -634,7 +634,7 @@ export const updatePumps = async (pumps: any, equipment: any, account_id: any, u
     image_path: pumps.image_path,
     updatedBy: user_id
   })
-  await removeAssetMapping(pumps.id);
+  await mapUserToAssetService.removeAssetMapping(pumps.id);
   return await AssetModel.updateOne({ _id: pumps.id }, updatedPumps);
 }
 
@@ -667,7 +667,7 @@ export const updateCompressor = async (compressor: any, equipment: any, account_
     image_path: compressor.image_path,
     updatedBy: user_id
   })
-  await removeAssetMapping(compressor.id);
+  await mapUserToAssetService.removeAssetMapping(compressor.id);
   return await AssetModel.updateOne({ _id: compressor.id }, updatedCompressor);
 }
 
@@ -728,7 +728,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
     }
     let userList: any[] = [];
     try {
-      const userMappings = await getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
+      const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
       userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
     } catch {}
     try {
@@ -756,7 +756,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
     }
     if (userList.length > 0) {
       const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
-      await createMapUserAssets(mappedData);
+      await mapUserToAssetService.createMapUserAssets(mappedData);
     }
     return savedAsset._id;
   } catch (error) {

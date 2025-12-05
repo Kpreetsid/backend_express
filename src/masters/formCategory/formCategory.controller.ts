@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import formCategoryService from './formCategory.service';
+import { formCategoryService } from './formCategory.service';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
 

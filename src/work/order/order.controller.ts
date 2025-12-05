@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllOrders, createWorkOrder, updateById, orderStatus, orderPriority, monthlyCount, plannedUnplanned, summaryData, removeOrder, orderStatusChange } from './order.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import { getMappedWorkOrderIDs } from '../../transaction/mapUserWorkOrder/userWorkOrder.service';
+import { userWorkOrderService } from '../../transaction/mapUserWorkOrder/userWorkOrder.service';
 import mongoose from 'mongoose';
 
 export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -17,12 +17,12 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
     const workOrderIds: any = [];
     if(assignedUser) {
       for(let i = 0; i < assignedUser.toString().split(',').length; i++) {
-        workOrderIds.push(await getMappedWorkOrderIDs(assignedUser.toString().split(',')[i]));
+        workOrderIds.push(await userWorkOrderService.getMappedWorkOrderIDs(assignedUser.toString().split(',')[i]));
       }
       match._id = { $in: workOrderIds.flat() };
     }
     if(userRole !== 'admin') {
-      const userWorkOrderIdList = await getMappedWorkOrderIDs(user_id);
+      const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
       if(!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });  
       }
@@ -253,7 +253,7 @@ export const getSummaryData = async (req: Request, res: Response, next: NextFunc
       workOrderMatch.createdAt = { $gte: start, $lte: end };
     }
     if (userRole !== 'admin') {
-      const userWorkOrderIdList = await getMappedWorkOrderIDs(user_id);
+      const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
       if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -281,7 +281,7 @@ export const getPendingOrders = async (req: Request, res: Response, next: NextFu
       match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
     }
     if(userRole !== 'admin') {
-      const userWorkOrderIdList = await getMappedWorkOrderIDs(user_id);
+      const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
       if(!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });  
       }

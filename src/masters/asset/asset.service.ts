@@ -1,6 +1,6 @@
 import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
-import { createMapUserAssets, getDataByAssetId, removeAssetMapping } from "../../transaction/mapUserLocation/userLocation.service";
+import { mapUserToAssetService } from "../../transaction/mapUserLocation/userLocation.service";
 import { getExternalData } from "../../util/externalAPI";
 import mongoose from 'mongoose';
 
@@ -99,11 +99,11 @@ export const deleteAsset = async (id: string): Promise<any> => {
   const childAssets = await AssetModel.find({ parent_id: id });
   if (childAssets && childAssets.length > 0) {
     for (const asset of childAssets) {
-      await removeAssetMapping(`${asset._id}`);
+      await mapUserToAssetService.removeAssetMapping(`${asset._id}`);
     }
     await AssetModel.deleteMany({ parent_id: id });
   }
-  await removeAssetMapping(id);
+  await mapUserToAssetService.removeAssetMapping(id);
   return await AssetModel.deleteOne({ _id: id });
 }
 
@@ -155,12 +155,12 @@ export const deleteAssetsById = async (assetId: any) => {
   const childData = await AssetModel.find({ parent_id: assetId });
   if (childData.length > 0) {
     for (const asset of childData) {
-      await removeAssetMapping(`${asset._id}`);
+      await mapUserToAssetService.removeAssetMapping(`${asset._id}`);
     }
     await AssetModel.deleteMany({ _id: { $in: childData.map(doc => doc._id) } });
   }
   await AssetModel.deleteMany({ _id: assetId });
-  await removeAssetMapping(assetId);
+  await mapUserToAssetService.removeAssetMapping(assetId);
 }
 
 export const getAllChildAssetsRecursive = async (parentId: string, account_id: any): Promise<any[]> => {
@@ -220,7 +220,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
     }
     let userList: any[] = [];
     try {
-      const userMappings = await getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
+      const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
       userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
     } catch {}
     try {
@@ -248,7 +248,7 @@ export const makeAssetCopyByIdWithChildren = async (sourceAsset: any, user_id: a
     }
     if (userList.length > 0) {
       const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
-      await createMapUserAssets(mappedData);
+      await mapUserToAssetService.createMapUserAssets(mappedData);
     }
     return savedAsset._id;
   } catch (error) {

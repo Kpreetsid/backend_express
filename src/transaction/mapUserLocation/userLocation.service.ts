@@ -1,51 +1,40 @@
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
-import { Request, Response, NextFunction } from 'express';
 import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
 import mongoose from "mongoose";
 
-export const getAssetsMappedData = async (userId: any) => {
-  return await MapUserAssetLocationModel.find({ userId: new mongoose.Types.ObjectId(userId), assetId: { $exists: true } });
-}
+class MapUserToAssetService {
+  async getAssetsMappedData (userId: any) {
+    return await MapUserAssetLocationModel.find({ userId: new mongoose.Types.ObjectId(userId), assetId: { $exists: true } });
+  }
 
-export const getLocationsMappedData = async (userId: any) => {
-  return await MapUserAssetLocationModel.find({ userId: userId, locationId: { $exists: true } });
-}
+  async getDataByAssetId (assetId: string) {
+    return await MapUserAssetLocationModel.find({ assetId: new mongoose.Types.ObjectId(assetId), userId: { $exists: true } });
+  }
 
-export const getDataByLocationId = async (locationId: string) => {
-  return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } });
-}
+  async createMapUserAssets (data: any): Promise<any> {
+    return await MapUserAssetLocationModel.insertMany(data);
+  };
 
-export const getDataByLocationIds = async (locationIds: string[]) => {
-  return await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } });
-}
-
-export const getDataByAssetId = async (assetId: string) => {
-  return await MapUserAssetLocationModel.find({ assetId: new mongoose.Types.ObjectId(assetId), userId: { $exists: true } });
-}
-
-export const userLocations = async (match: any, filter: any): Promise<any> => {
-  const pipeline: any[] = [{ $match: match }];
-  if (filter.populate === "locationId") {
-    pipeline.push(
-      {
+  async userAssets (match: any, populate: any): Promise<any> {
+    const pipeline: any[] = [{ $match: match }];
+    if (populate === 'assetId') {
+      pipeline.push({
         $lookup: {
-          from: "location_master",
-          let: { locId: "$locationId" },
+          from: "asset_master",
+          let: { assetId: "$assetId" },
           pipeline: [
-            { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
+            { $match: { $expr: { $eq: ["$_id", "$$assetId"] } } },
+            { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
             { $addFields: { id: '$_id' } }
           ],
-          as: "location",
+          as: "asset",
         },
-      },
-      { $unwind: "$location" }
-    );
-  } else if (filter.populate === "userId") {
-    pipeline.push(
-      {
+      });
+      pipeline.push({ $unwind: "$asset" });
+    }
+    if (populate === 'userId') {
+      pipeline.push({
         $lookup: {
           from: "users",
           let: { userId: "$userId" },
@@ -56,169 +45,44 @@ export const userLocations = async (match: any, filter: any): Promise<any> => {
           ],
           as: "user",
         },
-      },
-      { $unwind: "$user" }
-    );
-  }
-  pipeline.push({ $addFields: { id: "$_id" } });
-  let data = await MapUserAssetLocationModel.aggregate(pipeline);
-  if (!data?.length) {
-    throw Object.assign(new Error("No data found"), { status: 404 });
-  }
-  data = data.map((doc: any) => {
-    if (doc.location) {
-      doc.location.id = doc.location._id;
+      });
+      pipeline.push({ $unwind: "$user" });
     }
-    if (doc.user) {
-      doc.user.id = doc.user._id;
+    pipeline.push({ $addFields: { id: '$_id' } });
+    return await MapUserAssetLocationModel.aggregate(pipeline);
+  };
+
+  async getAllChildAssets (assetId: string, userIdList: string[]) {
+    const children = await AssetModel.find({ parent_id: assetId, visible: true }).select("_id").lean();
+    if (!children?.length) return;
+    const childIds = children.map(c => c._id.toString());
+    const allMappedData = await MapUserAssetLocationModel.find({
+      assetId: { $in: [assetId, ...childIds] },
+      userId: { $exists: true }
+    }).lean();
+    if (allMappedData?.length > 0) {
+      await MapUserAssetLocationModel.deleteMany({
+        assetId: { $in: childIds },
+        userId: { $nin: userIdList }
+      });
     }
-    return doc;
-  });
-  return data;
-};
-
-export const createMapUserAssets = async (data: any): Promise<any> => {
-  return await MapUserAssetLocationModel.insertMany(data);
-};
-
-const updateAssetsForLocationHierarchy = async (locationId: string, userIdList: string[]) => {
-  const assets = await AssetModel.find({ locationId: locationId, visible: true }).select("_id").lean();
-  for (const asset of assets) {
-    await updateMapUserAssets(asset._id.toString(), userIdList);
-  }
-  const childLocations = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean();
-  for (const child of childLocations) {
-    await updateAssetsForLocationHierarchy(child._id.toString(), userIdList);
-  }
-};
-
-const getAllChildLocations = async (locationId: string, userIdList: string[]) => {
-  const children = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean();
-  if (!children?.length) return;
-  const childIds = children.map(c => c._id.toString());
-  const allMappedData = await MapUserAssetLocationModel.find({
-    locationId: { $in: [locationId, ...childIds] },
-    userId: { $in: userIdList }
-  });
-  if (allMappedData?.length > 0) {
-    await MapUserAssetLocationModel.deleteMany({
-      locationId: { $in: childIds },
-      userId: { $nin: userIdList }
-    });
-  }
-  await Promise.all(childIds.map(async (id: string) => await getAllChildLocations(id, userIdList)));
-}
-
-export const mapUserLocationData = async (id: any, userIdList: any, account_id: any) => {
-  await getAllChildLocations(id, userIdList);
-  await MapUserAssetLocationModel.deleteMany({ locationId: id });
-  const queryArray: any = [];
-  userIdList.forEach((doc: any) => {
-    queryArray.push(new MapUserAssetLocationModel({
-      locationId: id,
-      userId: doc,
-      account_id
-    }));
-  })
-  await updateAssetsForLocationHierarchy(id, userIdList);
-  return await MapUserAssetLocationModel.insertMany(queryArray);
-}
-
-const getAllChildAssets = async (assetId: string, userIdList: string[]) => {
-  const children = await AssetModel.find({ parent_id: assetId, visible: true }).select("_id").lean();
-  if (!children?.length) return;
-  const childIds = children.map(c => c._id.toString());
-  const allMappedData = await MapUserAssetLocationModel.find({
-    assetId: { $in: [assetId, ...childIds] },
-    userId: { $exists: true }
-  }).lean();
-  if (allMappedData?.length > 0) {
-    await MapUserAssetLocationModel.deleteMany({
-      assetId: { $in: childIds },
-      userId: { $nin: userIdList }
-    });
-  }
-  for (const childId of childIds) {
-    await getAllChildAssets(childId, userIdList);
-  }
-};
-
-export const updateMapUserAssets = async (assetId: string, userIdList: string[]): Promise<any> => {
-  await getAllChildAssets(assetId, userIdList);
-  await MapUserAssetLocationModel.deleteMany({ assetId });
-  if (userIdList.length > 0) {
-    const queryArray = userIdList.map(userId => ({ assetId, userId }));
-    await MapUserAssetLocationModel.insertMany(queryArray);
-  }
-  return assetId;
-};
-
-export const mapUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const body = req.body;
-    const queryArray: any = [];
-    body.forEach((doc: any) => {
-      queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
-    })
-    await MapUserAssetLocationModel.insertMany(queryArray);
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: queryArray });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const updateMappedUserLocations = async (body: any, account_id: any): Promise<any> => {
-  const queryArray: any = [];
-  body.forEach((doc: any) => {
-    queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
-  })
-  return await MapUserAssetLocationModel.insertMany(queryArray);
-}
-
-export const userAssets = async (match: any, populate: any): Promise<any> => {
-  const pipeline: any[] = [{ $match: match }];
-  if (populate === 'assetId') {
-    pipeline.push({
-      $lookup: {
-        from: "asset_master",
-        let: { assetId: "$assetId" },
-        pipeline: [
-          { $match: { $expr: { $eq: ["$_id", "$$assetId"] } } },
-          { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "asset",
-      },
-    });
-    pipeline.push({ $unwind: "$asset" });
-  }
-  if (populate === 'userId') {
-    pipeline.push({
-      $lookup: {
-        from: "users",
-        let: { userId: "$userId" },
-        pipeline: [
-          { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "user",
-      },
-    });
-    pipeline.push({ $unwind: "$user" });
-  }
-  pipeline.push({ $addFields: { id: '$_id' } });
-  return await MapUserAssetLocationModel.aggregate(pipeline);
-};
-
-export const updateMappedUserFlags = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const body: { _id: string; sendMail: boolean }[] = req.body;
-    if (!Array.isArray(body) || body.length === 0) {
-      throw Object.assign(new Error('Invalid input: body must be a non-empty array'), { status: 400 });
+    for (const childId of childIds) {
+      await this.getAllChildAssets(childId, userIdList);
     }
-    const bulkOps = body.map(doc => {
+  };
+
+  async updateMapUserAssets (assetId: string, userIdList: string[]): Promise<any> {
+    await this.getAllChildAssets(assetId, userIdList);
+    await MapUserAssetLocationModel.deleteMany({ assetId });
+    if (userIdList.length > 0) {
+      const queryArray = userIdList.map(userId => ({ assetId, userId }));
+      await MapUserAssetLocationModel.insertMany(queryArray);
+    }
+    return assetId;
+  };
+
+  async updateMappedUserFlags (body: any): Promise<any> {
+    const bulkOps = body.map((doc: any) => {
       if (!doc._id || typeof doc.sendMail !== 'boolean') {
         throw Object.assign(new Error('Each item must have _id and sendMail (boolean)'), { status: 400 });
       }
@@ -229,25 +93,151 @@ export const updateMappedUserFlags = async (req: Request, res: Response, next: N
         }
       };
     });
-    await MapUserAssetLocationModel.bulkWrite(bulkOps);
-    return res.status(200).json({ status: true, message: 'Asset mail notification settings updated successfully' });
-  } catch (error) {
-    next(error);
+    return await MapUserAssetLocationModel.bulkWrite(bulkOps);
+  };
+
+  async removeAssetMapping (id: string) {
+    return await MapUserAssetLocationModel.deleteMany({ assetId: id });
   }
-};
 
-export const removeAssetMapping = async (id: string) => {
-  return await MapUserAssetLocationModel.deleteMany({ assetId: id });
+  async removeAssetListMapping (assetIdList: string[]) {
+    return await MapUserAssetLocationModel.deleteMany({ assetId: { $in: assetIdList } });
+  }
+
 }
 
-export const removeLocationMapping = async (id: string) => {
-  return await MapUserAssetLocationModel.deleteMany({ locationId: id });
+export const mapUserToAssetService = new MapUserToAssetService();
+
+class MapUserToLocationService {
+  async getLocationsMappedData (userId: any) {
+    return await MapUserAssetLocationModel.find({ userId: new mongoose.Types.ObjectId(userId), locationId: { $exists: true } });
+  }
+
+  async getDataByLocationId (locationId: string) {
+    return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } });
+  }
+  
+  async getDataByLocationIds (locationIds: string[]) {
+    return await MapUserAssetLocationModel.find({ locationId: { $in: locationIds.map(id => new mongoose.Types.ObjectId(id)) }, userId: { $exists: true } });
+  }
+
+  async mapUserLocationData (id: any, userIdList: any, account_id: any) {
+    await this.getAllChildLocations(id, userIdList);
+    await MapUserAssetLocationModel.deleteMany({ locationId: id });
+    const queryArray: any = [];
+    userIdList.forEach((doc: any) => {
+      queryArray.push(new MapUserAssetLocationModel({
+        locationId: id,
+        userId: doc,
+        account_id
+      }));
+    })
+    await this.updateAssetsForLocationHierarchy(id, userIdList);
+    return await MapUserAssetLocationModel.insertMany(queryArray);
+  }
+
+  async userLocations (match: any, filter: any): Promise<any> {
+    const pipeline: any[] = [{ $match: match }];
+    if (filter.populate === "locationId") {
+      pipeline.push(
+        {
+          $lookup: {
+            from: "location_master",
+            let: { locId: "$locationId" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
+              { $addFields: { id: '$_id' } }
+            ],
+            as: "location",
+          },
+        },
+        { $unwind: "$location" }
+      );
+    } else if (filter.populate === "userId") {
+      pipeline.push(
+        {
+          $lookup: {
+            from: "users",
+            let: { userId: "$userId" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+              { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+              { $addFields: { id: '$_id' } }
+            ],
+            as: "user",
+          },
+        },
+        { $unwind: "$user" }
+      );
+    }
+    pipeline.push({ $addFields: { id: "$_id" } });
+    let data = await MapUserAssetLocationModel.aggregate(pipeline);
+    if (!data?.length) {
+      throw Object.assign(new Error("No data found"), { status: 404 });
+    }
+    data = data.map((doc: any) => {
+      if (doc.location) {
+        doc.location.id = doc.location._id;
+      }
+      if (doc.user) {
+        doc.user.id = doc.user._id;
+      }
+      return doc;
+    });
+    return data;
+  };
+
+  async getAllChildLocations (locationId: string, userIdList: string[]) {
+    const children = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean();
+    if (!children?.length) return;
+    const childIds = children.map(c => c._id.toString());
+    const allMappedData = await MapUserAssetLocationModel.find({
+      locationId: { $in: [locationId, ...childIds] },
+      userId: { $in: userIdList }
+    });
+    if (allMappedData?.length > 0) {
+      await MapUserAssetLocationModel.deleteMany({
+        locationId: { $in: childIds },
+        userId: { $nin: userIdList }
+      });
+    }
+    await Promise.all(childIds.map(async (id: string) => await this.getAllChildLocations(id, userIdList)));
+  }
+
+  async updateAssetsForLocationHierarchy (locationId: string, userIdList: string[]) {
+    const assets = await AssetModel.find({ locationId: locationId, visible: true }).select("_id").lean();
+    for (const asset of assets) {
+      await mapUserToAssetService.updateMapUserAssets(asset._id.toString(), userIdList);
+    }
+    const childLocations = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean();
+    for (const child of childLocations) {
+      await this.updateAssetsForLocationHierarchy(child._id.toString(), userIdList);
+    }
+  };
+
+  async updateMappedUserLocations (body: any, account_id: any): Promise<any> {
+    const queryArray: any = [];
+    body.forEach((doc: any) => {
+      queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
+    })
+    return await MapUserAssetLocationModel.insertMany(queryArray);
+  }
+
+  async mapUserLocations (body: any, account_id: any): Promise<any> {
+    const queryArray: any = [];
+    body.forEach((doc: any) => {
+      queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
+    })
+    return await MapUserAssetLocationModel.insertMany(queryArray);
+  };
+
+  async removeLocationMapping (id: string) {
+    return await MapUserAssetLocationModel.deleteMany({ locationId: id });
+  }
+  
+  async removeLocationListMapping (locationIdList: string[]) {
+    return await MapUserAssetLocationModel.deleteMany({ locationId: { $in: locationIdList } });
+  }
 }
 
-export const removeLocationListMapping = async (locationIdList: string[]) => {
-  return await MapUserAssetLocationModel.deleteMany({ locationId: { $in: locationIdList } });
-}
-
-export const removeAssetListMapping = async (assetIdList: string[]) => {
-  return await MapUserAssetLocationModel.deleteMany({ assetId: { $in: assetIdList } });
-}
+export const mapUserToLocationService = new MapUserToLocationService();
