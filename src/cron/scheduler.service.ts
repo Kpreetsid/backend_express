@@ -1,6 +1,6 @@
 import { getAllUsers } from "../masters/user/user.service";
 import { IScheduleMaster, SchedulerModel } from "../models/scheduleMaster.model";
-import { createWorkOrder } from "../work/order/order.service";
+import { orderService } from "../work/order/order.service";
 
 class SchedulerService {
     private getTodayDateStr(): string {
@@ -83,7 +83,7 @@ class SchedulerService {
         }
         const systemUser: any = await getAllUsers({ _id: schedule.createdBy });
         console.log(`▶️ Creating Work Order for schedule: ${schedule.title}`);
-        const workOrder = await createWorkOrder(body, systemUser[0]);
+        const workOrder = await orderService.createWorkOrder(body, systemUser[0]);
         if (!workOrder) {
             console.error(`❌ Failed to create work order for schedule: ${schedule.title}`);
         }
