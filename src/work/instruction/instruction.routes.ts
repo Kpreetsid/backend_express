@@ -1,12 +1,12 @@
 import express from 'express';
-import { getAll, getDataById, create, update, remove } from './instruction.controller';
+import { instructionController } from './instruction.controller';
 
 export default (router: express.Router) => {
     const instructionRouter = express.Router();
-    instructionRouter.get('/', getAll);
-    instructionRouter.get('/:id', getDataById);
-    instructionRouter.post('/', create);
-    instructionRouter.put('/:id', update);
-    instructionRouter.delete('/:id', remove);
+    instructionRouter.get('/', instructionController.getAll);
+    instructionRouter.get('/:id', instructionController.getDataById);
+    instructionRouter.post('/', instructionController.create);
+    instructionRouter.put('/:id', instructionController.update);
+    instructionRouter.delete('/:id', instructionController.remove);
     router.use('/instructions', instructionRouter);
 }
