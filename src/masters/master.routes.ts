@@ -12,7 +12,6 @@ import postsRoutes from './post/posts.routes';
 import scheduleRoutes from './schedule/schedule.routes';
 import sopsRoutes from './sops/sops.routes';
 import floorMapRoutes from './floorMap/floorMap.routes';
-import featuresRoutes from './feature/features.routes';
 import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.routes';
 
 export default (): express.Router => {
@@ -28,7 +27,6 @@ export default (): express.Router => {
     formCategoryRoutes(router);
     observationRoutes(router);
     floorMapRoutes(router);
-    featuresRoutes(router);
     troubleshootGuideRoutes(router);
     return router;
 }

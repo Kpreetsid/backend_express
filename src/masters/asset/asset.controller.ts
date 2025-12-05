@@ -295,7 +295,51 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
 }
 
 export const getAssetSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await getAssetDataSensorList(req, res, next);
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const match: any = { account_id, visible: true };
+    let { assetList } = req.query;
+    if (assetList && assetList.toString().split(',').length > 0) {
+      match._id = { $in: assetList.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
+    }
+    if (userRole !== 'admin') {
+      const mapData = await getAssetsMappedData(user_id);
+      if (mapData && mapData.length > 0) {
+        match._id = { $in: mapData.map((doc: any) => doc.assetId) };
+      }
+    }
+    const data = await getAssetDataSensorList(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export const getFilteredAssetSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+    const match: any = { account_id, visible: true };
+    let { assetList } = req.body;
+    if (assetList && assetList.length > 0) {
+      match._id = { $in: assetList.map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
+    }
+    if (userRole !== 'admin') {
+      const mapData = await getAssetsMappedData(user_id);
+      if (mapData && mapData.length > 0) {
+        match._id = { $in: mapData.map((doc: any) => doc.assetId) };
+      }
+    }
+    const data = await getAssetDataSensorList(match);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    res.status(200).json({ status: true, message: "Data fetched successfully", data });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export const makeAssetCopy = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

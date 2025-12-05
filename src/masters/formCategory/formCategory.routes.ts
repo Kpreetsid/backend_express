@@ -1,12 +1,12 @@
 import express from 'express';
-import { updateFormCategory, removeFormCategory, getAllFormCategories, getFormCategoryByID, create } from './formCategory.controller';
+import formCategoryController from './formCategory.controller';
 
 export default (router: express.Router) => {
     const formCategoryRouter = express.Router();
-    formCategoryRouter.get('/', getAllFormCategories);
-    formCategoryRouter.get('/:id', getFormCategoryByID);
-    formCategoryRouter.post('/', create);
-    formCategoryRouter.put('/:id', updateFormCategory);
-    formCategoryRouter.delete('/:id', removeFormCategory);
+    formCategoryRouter.get('/', formCategoryController.getAllFormCategories);
+    formCategoryRouter.get('/:id', formCategoryController.getFormCategoryByID);
+    formCategoryRouter.post('/', formCategoryController.create);
+    formCategoryRouter.put('/:id', formCategoryController.update);
+    formCategoryRouter.delete('/:id', formCategoryController.remove);
     router.use('/form-categories', formCategoryRouter);
 }

@@ -1,9 +1,6 @@
 import { AssetModel } from '../../models/asset.model';
-import { NextFunction, Request, Response } from 'express';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { createMapUserAssets, getDataByAssetId, removeAssetMapping } from "../../transaction/mapUserLocation/userLocation.service";
-import { IUser } from "../../models/user.model";
-import { get } from "lodash";
 import { getExternalData } from "../../util/externalAPI";
 import mongoose from 'mongoose';
 
@@ -110,44 +107,28 @@ export const deleteAsset = async (id: string): Promise<any> => {
   return await AssetModel.deleteOne({ _id: id });
 }
 
-export const getAssetDataSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id, visible: true };
-    let { assetList } = req.query;
-    if (assetList && assetList.toString().split(',').length > 0) {
-      match._id = { $in: assetList.toString().split(',') };
-    }
-    if (userRole !== 'admin') {
-      const mapData = await MapUserAssetLocationModel.find({ userId: user_id });
-      if (mapData && mapData.length > 0) {
-        match._id = { $in: mapData.map((doc: any) => doc.assetId) };
-      }
-    }
-    const data = await AssetModel.find(match).populate([
-      { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
-      { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
-      { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
-    ]);
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const result = data.map((doc: any) => {
-      doc = doc.toObject();
-      return {
-        "asset_id": doc._id,
-        "asset_name": doc.asset_name,
-        "top_level_asset_id": doc.top_level_asset_id ? doc.top_level_asset_id._id : "",
-        "top_level_asset_name": doc.top_level_asset_id ? doc.top_level_asset_id?.asset_name : "NA",
-        "location_id": doc.locationId ? doc.locationId._id : "",
-        "location_name": doc.locationId ? doc.locationId.location_name : "NA",
-        "company_name": doc.account_id ? doc.account_id.account_name : "NA"
-      };
-    })
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: result });
-  } catch (error) {
-    next(error);
+export const getAssetDataSensorList = async (match: any): Promise<any> => {
+  const data = await AssetModel.find(match).populate([
+    { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
+    { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
+    { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
+  ]);
+  if (data.length === 0) {
+    throw Object.assign(new Error('No data found'), { status: 404 });
   }
+  const result = data.map((doc: any) => {
+    doc = doc.toObject();
+    return {
+      "asset_id": doc._id,
+      "asset_name": doc.asset_name,
+      "top_level_asset_id": doc.top_level_asset_id ? doc.top_level_asset_id._id : "",
+      "top_level_asset_name": doc.top_level_asset_id ? doc.top_level_asset_id?.asset_name : "NA",
+      "location_id": doc.locationId ? doc.locationId._id : "",
+      "location_name": doc.locationId ? doc.locationId.location_name : "NA",
+      "company_name": doc.account_id ? doc.account_id.account_name : "NA"
+    };
+  })
+  return result;
 }
 
 export const createAssetOld = async (body: any, account_id: any, user_id: any): Promise<any> => {

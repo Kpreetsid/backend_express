@@ -1,93 +1,99 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { getFormCategories, createFormCategory, updateById, removeById } from './formCategory.service';
+import formCategoryService from './formCategory.service';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
 
-export const getAllFormCategories = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const match: any = { account_id, visible: true };
-    const data = await getFormCategories(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+class FormCategoryController {
+
+  async getAllFormCategories(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { account_id } = get(req, "user", {}) as IUser;
+      const match = { account_id, visible: true };
+      const data = await formCategoryService.getFormCategories(match);
+      if (data.length === 0) {
+        throw Object.assign(new Error('No categories found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Categories fetched successfully", data });
+    } catch (error) {
+      next(error);
     }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
+  }
+
+  async getFormCategoryByID(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { account_id } = get(req, "user", {}) as IUser;
+      const { id } = req.params;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Invalid category ID'), { status: 400 });
+      }
+      const data = await formCategoryService.getCategoryById(id, account_id);
+      if (!data) {
+        throw Object.assign(new Error('Category not found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Category fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async create(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const { body } = req;
+      if (!body.name || typeof body.name !== "string") {
+        throw Object.assign(new Error("Category name is required"), { status: 400 });
+      }
+      const exists = await formCategoryService.categoryExists(user.account_id, body.name);
+      if (exists) {
+        throw Object.assign(new Error(`${body.name} category already exists`), { status: 400 });
+      }
+      const data = await formCategoryService.createFormCategory(body, user);
+      res.status(201).json({ status: true, message: "Category created successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async update(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const { params: { id }, body } = req;
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Invalid category ID'), { status: 400 });
+      }
+      const category = await formCategoryService.getCategoryById(id, user.account_id);
+      if (!category) {
+        throw Object.assign(new Error('Category not found'), { status: 404 });
+      }
+      const nameExists = await formCategoryService.categoryExists(user.account_id, body.name, id);
+      if (nameExists) {
+        throw Object.assign(new Error(`Category name already exists`), { status: 400 });
+      }
+      const data = await formCategoryService.updateById(id, body, user);
+      res.status(200).json({ status: true, message: "Category updated successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async remove(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { account_id } = get(req, "user", {}) as IUser;
+      const { id } = req.params;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Invalid category ID'), { status: 400 });
+      }
+      const category = await formCategoryService.getCategoryById(id, account_id);
+      if (!category) {
+        throw Object.assign(new Error('Category not found'), { status: 404 });
+      }
+      await formCategoryService.removeById(id);
+      res.status(200).json({ status: true, message: "Category removed successfully" });
+    } catch (error) {
+      next(error);
+    }
   }
 }
 
-export const getFormCategoryByID = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    if (!req.params.id) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const match: any = { account_id, visible: true };
-    const data = await getFormCategories(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const user = get(req, "user", {}) as IUser;
-    const { body } = req;
-    const match: any = { name: body.name, account_id: user.account_id, visible: true };
-    const existData: any = await getFormCategories(match);
-    if (existData.length !== 0) {
-      throw Object.assign(new Error(`${body.name} Category already exist.`), { status: 400 });
-    }
-    const data = await createFormCategory(body, user);
-    if (!data) {
-      throw Object.assign(new Error('Failed to create category'), { status: 400 });
-    }
-    res.status(201).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const updateFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const user = get(req, "user", {}) as IUser;
-    const { params: { id }, body } = req;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('No category ID provided'), { status: 400 });
-    }
-    const isData = await getFormCategories({ _id: id, account_id: user.account_id });
-    if (!isData || isData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const data = await updateById(id, body, user);
-    if (!data) {
-      throw Object.assign(new Error('Failed to update form category'), { status: 400 });
-    }
-    res.status(200).json({ status: true, message: "Form category updated successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const removeFormCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    if (!req.params.id) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const isData = await getFormCategories({ _id: req.params.id, account_id });
-    if (!isData || isData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await removeById(req.params.id);
-    res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    next(error);
-  }
-}
+export default new FormCategoryController();
