@@ -5,6 +5,34 @@ import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import mongoose from 'mongoose';
 
+class UserWorkOrderService {
+  async mapUsersWorkOrder (body: any) {
+    return await WorkOrderAssigneeModel.insertMany(body);
+  };
+
+  async getMappedWorkOrderUserIDs (workOrderId: any): Promise<any[]> {
+    const assigneeMappings = await WorkOrderAssigneeModel.find({ woId: workOrderId });
+    return assigneeMappings.map(item => item.userId);
+  };
+
+  async getMappedWorkOrderIDs (user_id: any): Promise<any[]> {
+    const assigneeMappings = await WorkOrderAssigneeModel.find({ userId: user_id });
+    return assigneeMappings.map(item => item.woId);
+  };
+
+  async updateMappedUsers (id: any, userIdList: any[]): Promise<any> {
+    await WorkOrderAssigneeModel.deleteMany({ woId: id });
+    const newMappings = userIdList.map(userId => ({ userId, woId: id }));
+    return await WorkOrderAssigneeModel.insertMany(newMappings);
+  };
+
+  async removeMappedUsers (id: any): Promise<any> {
+    return await WorkOrderAssigneeModel.deleteMany({ woId: id });
+  };
+}
+
+export const userWorkOrderService = new UserWorkOrderService();
+
 export const mappedData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { workOrderId } = req.params;
@@ -49,28 +77,4 @@ export const getAll = async (req: Request, res: Response, next: NextFunction): P
   } catch (error) {
     next(error);
   }
-};
-
-export const mapUsersWorkOrder = async (body: any) => {
-  return await WorkOrderAssigneeModel.insertMany(body);
-};
-
-export const getMappedWorkOrderUserIDs = async (workOrderId: any): Promise<any[]> => {
-  const assigneeMappings = await WorkOrderAssigneeModel.find({ woId: workOrderId });
-  return assigneeMappings.map(item => item.userId);
-};
-
-export const getMappedWorkOrderIDs = async (user_id: any): Promise<any[]> => {
-  const assigneeMappings = await WorkOrderAssigneeModel.find({ userId: user_id });
-  return assigneeMappings.map(item => item.woId);
-};
-
-export const updateMappedUsers = async (id: any, userIdList: any[]): Promise<any> => {
-  await WorkOrderAssigneeModel.deleteMany({ woId: id });
-  const newMappings = userIdList.map(userId => ({ userId, woId: id }));
-  return await WorkOrderAssigneeModel.insertMany(newMappings);
-};
-
-export const removeMappedUsers = async (id: any): Promise<any> => {
-  return await WorkOrderAssigneeModel.deleteMany({ woId: id });
 };

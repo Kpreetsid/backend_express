@@ -1,7 +1,7 @@
 import { IWorkOrder, WorkOrderModel } from "../../models/workOrder.model";
 import { IUser, UserModel } from "../../models/user.model";
 import { sendWorkOrderMail } from "../../_config/mailer";
-import { mapUsersWorkOrder, removeMappedUsers, updateMappedUsers } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
+import { userWorkOrderService } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
 import { assignPartToWorkOrder, revertPartFromWorkOrder } from "../../masters/part/parts.service";
 import { getAllCommentsForWorkOrder } from "../comments/comment.service";
 import { getAllRequests } from "../request/request.service";
@@ -254,7 +254,7 @@ export const createWorkOrder = async (body: any, user: IUser): Promise<any> => {
   if (!userDetails || userDetails.length === 0) {
     throw Object.assign(new Error('No users found'), { status: 404 });
   }
-  const result = await mapUsersWorkOrder(mappedUsers);
+  const result = await userWorkOrderService.mapUsersWorkOrder(mappedUsers);
   if (!result || result.length === 0) {
     throw Object.assign(new Error('Failed to map users to work order'), { status: 500 });
   }
@@ -287,7 +287,7 @@ export const updateById = async (id: string, body: any, user: IUser): Promise<an
     }
   }
   existingOrder.updatedBy = user._id;
-  await updateMappedUsers(id, body.userIdList);
+  await userWorkOrderService.updateMappedUsers(id, body.userIdList);
   const data = await WorkOrderModel.findByIdAndUpdate(id, existingOrder, { new: true });
   if (!data) {
     throw Object.assign(new Error('Failed to update work order'), { status: 400 });
@@ -300,7 +300,7 @@ export const orderStatusChange = async (id: any, body: any): Promise<any> => {
 }
 
 export const removeOrder = async (id: any, user_id: any): Promise<any> => {
-  await removeMappedUsers(id);
+  await userWorkOrderService.removeMappedUsers(id);
   const partsWorkOrder = await WorkOrderModel.find({ _id: id, parts: { $exists: true, $ne: [] } });
   if(partsWorkOrder?.length > 0) {
     await revertPartFromWorkOrder(partsWorkOrder[0].parts, [], user_id);
@@ -309,6 +309,6 @@ export const removeOrder = async (id: any, user_id: any): Promise<any> => {
 };
 
 export const deleteWorkOrderById = async (id: any): Promise<any> => {
-  await removeMappedUsers(id);
+  await userWorkOrderService.removeMappedUsers(id);
   return await WorkOrderModel.findByIdAndDelete(id);
 }

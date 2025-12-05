@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { userLocations, userAssets, mapUserLocations, updateMappedUserLocations, updateMappedUserFlags, createMapUserAssets, updateMapUserAssets } from './userLocation.service';
+import { mapUserToAssetService, mapUserToLocationService } from './userLocation.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
@@ -31,7 +31,7 @@ export const getUserLocations = async (req: Request, res: Response, next: NextFu
     if (query?.populate) {
       filter.populate = query.populate;
     }
-    const data = await userLocations(match, filter);
+    const data = await mapUserToLocationService.userLocations(match, filter);
     if (!data || data.length === 0) {
       throw Object.assign(new Error("No data found"), { status: 404 });
     }
@@ -65,7 +65,7 @@ export const getUserAssets = async (req: Request, res: Response, next: NextFunct
         match.assetId = new mongoose.Types.ObjectId(assetId as string);
       }
     }
-    const data = await userAssets(match, populate);
+    const data = await mapUserToAssetService.userAssets(match, populate);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -82,7 +82,7 @@ export const setUserAssets = async (req: Request, res: Response, next: NextFunct
     if(data.length === 0) {
       throw Object.assign(new Error('Invalid data'), { status: 400 });
     }
-    await createMapUserAssets(body);
+    await mapUserToAssetService.createMapUserAssets(body);
     res.status(201).json({ message: 'Assets mapped successfully' });
   } catch (error) {
     next(error);
@@ -95,7 +95,7 @@ export const updateUserAssets = async (req: Request, res: Response, next: NextFu
     if (!assetId || body.length === 0) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const data = await updateMapUserAssets(assetId, body);
+    const data = await mapUserToAssetService.updateMapUserAssets(assetId, body);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -107,12 +107,14 @@ export const updateUserAssets = async (req: Request, res: Response, next: NextFu
 
 export const setUserLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    const { account_id } = get(req, "user", {}) as IUser;
     const body = req.body;
     const data = body.filter((doc: any) => doc.locationId && doc.userId);
     if(data.length === 0) {
       throw Object.assign(new Error('Invalid data'), { status: 400 });
     }
-    await mapUserLocations(req, res, next);
+    await mapUserToLocationService.mapUserLocations(data, account_id);
+    res.status(201).json({ message: 'Locations mapped successfully' });
   } catch (error) {
     next(error);
   }
@@ -122,7 +124,7 @@ export const updateUserLocations = async (req: Request, res: Response, next: Nex
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const body = req.body;
-    const data = await updateMappedUserLocations(body, account_id);
+    const data = await mapUserToLocationService.updateMappedUserLocations(body, account_id);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -134,7 +136,12 @@ export const updateUserLocations = async (req: Request, res: Response, next: Nex
 
 export const updateSendMailFlag = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    await updateMappedUserFlags(req, res, next);
+    const body: { _id: string; sendMail: boolean }[] = req.body;
+    if (!Array.isArray(body) || body.length === 0) {
+      throw Object.assign(new Error('Invalid input: body must be a non-empty array'), { status: 400 });
+    }
+    await mapUserToAssetService.updateMappedUserFlags(body);
+    return res.status(200).json({ status: true, message: 'Asset mail notification settings updated successfully' });
   } catch (error) {
     next(error);
   }

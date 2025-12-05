@@ -2,7 +2,8 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyByIdWithChildren, getAllEquipment, getEquipmentTreeData, updateEquipmentImageById, removeEquipmentById, getAllChildEquipmentIDs, checkEquipment, getAllChildEquipmentRecursive } from './equipment.service';
 import { IUser } from '../../models/user.model';
-import { createMapUserAssets, getAssetsMappedData, getDataByLocationIds, removeLocationMapping } from '../../transaction/mapUserLocation/userLocation.service';
+import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
+import { mapUserToAssetService } from '../../transaction/mapUserLocation/userLocation.service';
 import { deleteBase64Image, uploadBase64Image } from '../../_config/upload';
 import { getAllChildLocationIds } from '../location/location.service';
 import mongoose from 'mongoose';
@@ -13,7 +14,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
     const match: any = { account_id, visible: true };
     const { query: { top_level_asset_id, top_level, locationId, parent_id } }: any = req;
     if (userRole !== 'admin') {
-      const mappedData = await getAssetsMappedData(`${user_id}`);
+      const mappedData = await mapUserToAssetService.getAssetsMappedData(`${user_id}`);
       if (!mappedData || mappedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -31,7 +32,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
     }
     if (locationId) {
       const childIds = await getAllChildLocationIds(locationId);
-      const mappedData = await getDataByLocationIds([locationId, ...childIds]);
+      const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
       match.locationId = { $in: mappedData.map(doc => doc.locationId) };
     }
     let data = await getAllEquipment(match);
@@ -99,7 +100,7 @@ export const getAssetTree = async (req: Request, res: Response, next: NextFuncti
     let { location_id, id } = req.query;
     let assetQuery: any = { account_id, visible: true };
     if (userRole !== "admin") {
-      const mapData = await getAssetsMappedData(user_id);
+      const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
       assetQuery._id = mapData.map(doc => doc?.assetId ? new mongoose.Types.ObjectId(`${doc?.assetId}`) : null).filter((x) => x);
     }
     const isAssetExists = await checkEquipment(assetQuery);
@@ -189,7 +190,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
         assetsMapData.push({ userId: user, assetId: asset._id, account_id })
       ));
     });
-    await createMapUserAssets(assetsMapData);
+    await mapUserToAssetService.createMapUserAssets(assetsMapData);
     await createExternalAPICall(assetsMapData, account_id, user_id, userToken);
     res.status(200).json({ status: true, message: "Data created successfully", data: equipmentData._id });
   } catch (error) {
@@ -301,7 +302,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
         });
       }
     }
-    await createMapUserAssets(assetsMapData);
+    await mapUserToAssetService.createMapUserAssets(assetsMapData);
     if (newlyCreatedAssetList.length > 0) {
       await createExternalAPICall(newlyCreatedAssetList, account_id, user_id, userToken);
     }
@@ -344,7 +345,7 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await removeLocationMapping(req.params.id);
+    await mapUserToLocationService.removeLocationMapping(req.params.id);
     await removeEquipmentById(match, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {

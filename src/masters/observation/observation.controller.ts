@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import ObservationService from './observation.service';
+import { observationService } from './observation.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
@@ -22,7 +22,7 @@ class ObservationController {
       if (alarmId) {
         match['alarmId'] = Number(alarmId);
       }
-      const data = await ObservationService.getAllObservation(match);
+      const data = await observationService.getAllObservation(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -43,7 +43,7 @@ class ObservationController {
       if (userRole !== 'admin') {
         match['userId'] = user_id;
       }
-      const data = await ObservationService.getAllObservation(match);
+      const data = await observationService.getAllObservation(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -59,20 +59,20 @@ class ObservationController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userToken = get(req, "userToken", {}) as string;
       const { body } = req;
-      data = await ObservationService.insertObservation(body, account_id, user_id);
+      data = await observationService.insertObservation(body, account_id, user_id);
       if(!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       const match: any = { _id: data._id };
-      const insertedData = await ObservationService.getAllObservation(match);
+      const insertedData = await observationService.getAllObservation(match);
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      await ObservationService.setAssetHealthStatus(body, account_id, user_id, userToken);
+      await observationService.setAssetHealthStatus(body, account_id, user_id, userToken);
       res.status(201).json({ status: true, message: "Data created successfully", data: insertedData });
     } catch (error) {
       if (data) {
-        await ObservationService.deleteObservationById(data._id);
+        await observationService.deleteObservationById(data._id);
       }
       next(error);
     }
@@ -85,16 +85,16 @@ class ObservationController {
       if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
-      const existingData = await ObservationService.getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
+      const existingData = await observationService.getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await ObservationService.updateObservationById(id, body, user_id);
+      const data = await observationService.updateObservationById(id, body, user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       const match: any = { _id: new mongoose.Types.ObjectId(`${id}`) };
-      const insertedData = await ObservationService.getAllObservation(match);
+      const insertedData = await observationService.getAllObservation(match);
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -111,11 +111,11 @@ class ObservationController {
       if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
-      const existingData = await ObservationService.getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
+      const existingData = await observationService.getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await ObservationService.removeObservationById(id, user_id);
+      const data = await observationService.removeObservationById(id, user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }    

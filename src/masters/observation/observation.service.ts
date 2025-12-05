@@ -76,4 +76,4 @@ class ObservationService {
   };
 }
 
-export default new ObservationService();
+export const observationService = new ObservationService();

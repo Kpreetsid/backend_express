@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getAllLocations, insertLocation, updateById, removeLocationById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor, cloneLocationNode, getAllChildHierarchy, getLocationById } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
-import { getLocationsMappedData, mapUserLocationData } from '../../transaction/mapUserLocation/userLocation.service';
+import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 
 export const getLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -10,7 +10,7 @@ export const getLocations = async (req: Request, res: Response, next: NextFuncti
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
-      const mappedUserList = await getLocationsMappedData(user_id);
+      const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
       match._id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
     }
     const { query: { locationId, parent_id } } = req;
@@ -48,7 +48,7 @@ export const getLocationTree = async (req: Request, res: Response, next: NextFun
       }
     }
     if (userRole !== "admin") {
-      const mapData = await getLocationsMappedData(user_id);
+      const mapData = await mapUserToLocationService.getLocationsMappedData(user_id);
       allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
       if (allowedLocationIds.length === 0) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -159,7 +159,7 @@ export const getLocation = async (req: Request, res: Response, next: NextFunctio
       }
     }
     if (userRole !== 'admin') {
-      const mapData = await getLocationsMappedData(user_id);
+      const mapData = await mapUserToLocationService.getLocationsMappedData(user_id);
       const allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
       if (allowedLocationIds.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -193,7 +193,7 @@ export const createLocation = async (req: Request, res: Response, next: NextFunc
     body.account_id = account_id;
     body.createdBy = user_id;
     const data: any = await insertLocation(body);
-    await mapUserLocationData(data._id, body.userIdList, account_id);
+    await mapUserToLocationService.mapUserLocationData(data._id, body.userIdList, account_id);
     res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
   } catch (error) {
     next(error);
@@ -219,7 +219,7 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await mapUserLocationData(id, body.userIdList, account_id);
+    await mapUserToLocationService.mapUserLocationData(id, body.userIdList, account_id);
     data.id = data._id;
     const updatedLocation = await getAllLocations({ _id: id, account_id: account_id, visible: true });
     res.status(200).json({ status: true, message: "Data updated successfully", data: updatedLocation });
