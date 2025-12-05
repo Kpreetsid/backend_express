@@ -82,18 +82,18 @@ export const createMapUserAssets = async (data: any): Promise<any> => {
 };
 
 const updateAssetsForLocationHierarchy = async (locationId: string, userIdList: string[]) => {
-  const assets = await AssetModel.find({ locationId: locationId }).select("_id").lean();
+  const assets = await AssetModel.find({ locationId: locationId, visible: true }).select("_id").lean();
   for (const asset of assets) {
     await updateMapUserAssets(asset._id.toString(), userIdList);
   }
-  const childLocations = await LocationModel.find({ parent_id: locationId }).select("_id").lean();
+  const childLocations = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean();
   for (const child of childLocations) {
     await updateAssetsForLocationHierarchy(child._id.toString(), userIdList);
   }
 };
 
 const getAllChildLocations = async (locationId: string, userIdList: string[]) => {
-  const children = await LocationModel.find({ parent_id: locationId }).select("_id").lean();
+  const children = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean();
   if (!children?.length) return;
   const childIds = children.map(c => c._id.toString());
   const allMappedData = await MapUserAssetLocationModel.find({
@@ -125,7 +125,7 @@ export const mapUserLocationData = async (id: any, userIdList: any, account_id: 
 }
 
 const getAllChildAssets = async (assetId: string, userIdList: string[]) => {
-  const children = await AssetModel.find({ parent_id: assetId }).select("_id").lean();
+  const children = await AssetModel.find({ parent_id: assetId, visible: true }).select("_id").lean();
   if (!children?.length) return;
   const childIds = children.map(c => c._id.toString());
   const allMappedData = await MapUserAssetLocationModel.find({
