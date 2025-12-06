@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { emailVerificationCode, verifyOTPCode } from './registration.service';
 import { getAllUsers } from '../../masters/user/user.service';
-import { getAllCompanies } from '../../masters/company/company.service';
+import { companyService } from '../../masters/company/company.service';
 
 export const userRegister = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
@@ -17,7 +17,7 @@ export const userRegister = async (req: Request, res: Response, next: NextFuncti
         if (isUserNameExists.length > 0) {
             throw Object.assign(new Error('Username already exists'), { status: 403 });
         }
-        const isAccountExists = await getAllCompanies({ account_name: account_name });
+        const isAccountExists = await companyService.getAllCompanies({ account_name: account_name });
         if (isAccountExists.length > 0) {
             throw Object.assign(new Error('Account already exists'), { status: 403 });
         }

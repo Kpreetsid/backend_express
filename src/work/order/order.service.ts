@@ -2,7 +2,7 @@ import { IWorkOrder, WorkOrderModel } from "../../models/workOrder.model";
 import { IUser, UserModel } from "../../models/user.model";
 import { sendWorkOrderMail } from "../../_config/mailer";
 import { userWorkOrderService } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
-import { assignPartToWorkOrder, revertPartFromWorkOrder } from "../../masters/part/parts.service";
+import { partsService } from "../../masters/part/parts.service";
 import { commentService } from "../comments/comment.service";
 import { requestService } from "../request/request.service";
 import mongoose from "mongoose";
@@ -264,7 +264,7 @@ class OrderService {
       throw Object.assign(new Error('Failed to create work order'), { status: 400 });
     }
     if(body.parts?.length > 0) {
-      await assignPartToWorkOrder(body.parts, user);
+      await partsService.assignPartToWorkOrder(body.parts, user);
     }
     userDetails.forEach(async (assignedUsers: IUser) => {
       const orders = await this.getAllOrders({ _id: data._id });
@@ -284,7 +284,7 @@ class OrderService {
     existingOrder = { ...existingOrder.toObject(), ...body };
     if(body.parts?.length > 0) {
       if(body.oldParts?.length > 0) {
-        await revertPartFromWorkOrder(body.oldParts, body.parts, user);
+        await partsService.revertPartFromWorkOrder(body.oldParts, body.parts, user);
       }
     }
     existingOrder.updatedBy = user._id;
@@ -304,7 +304,7 @@ class OrderService {
     await userWorkOrderService.removeMappedUsers(id);
     const partsWorkOrder = await WorkOrderModel.find({ _id: id, parts: { $exists: true, $ne: [] } });
     if(partsWorkOrder?.length > 0) {
-      await revertPartFromWorkOrder(partsWorkOrder[0].parts, [], user_id);
+      await partsService.revertPartFromWorkOrder(partsWorkOrder[0].parts, [], user_id);
     }
     return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
   };

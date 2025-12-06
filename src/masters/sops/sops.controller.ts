@@ -1,105 +1,113 @@
 import { Request, Response, NextFunction } from 'express';
-import { getSOPs, createSOPs, updateSOPs, removeSOPs } from './sops.service';
+import { sopsService } from './sops.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 
-export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id, visible: true };
-    const { query: { category, location }} = req;
-    if (category) {
-      match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
+class SOPsController {
+
+  async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const match: any = { account_id, visible: true };
+      const { query: { category, location }} = req;
+      if (category) {
+        match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
+      }
+      if (location) {
+        match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+      }
+      if(userRole !== 'admin') {
+        const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
+        match.locationId = { $in: mappedUserList.map((doc: any) => doc.locationId) };
+      }
+      let data = await sopsService.getSOPs(match);
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
     }
-    if (location) {
-      match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+  }
+  
+  async getSop (req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id } = get(req, "user", {}) as IUser;
+      const { query: { category, location }, params: { id } } = req;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Id is required'), { status: 400 });
+      }
+      const match: any = { _id: id, account_id, visible: true };
+      if (category) {
+        match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
+      }
+      if (location) {
+        match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+      }
+      let data = await sopsService.getSOPs(match);
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
     }
-    if(userRole !== 'admin') {
-      const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
-      match.locationId = { $in: mappedUserList.map((doc: any) => doc.locationId) };
+  }
+  
+  async create (req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      console.log({ account_id, user_id, userRole });
+      const data = await sopsService.createSOPs(req.body, account_id, user_id);
+      if(!data) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data created successfully", data });
+    } catch (error) {
+      next(error);
     }
-    let data = await getSOPs(match);
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
+  }
+  
+  async update (req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { params: { id }, body } = req;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Id is required'), { status: 400 });
+      }
+      const existingData = await sopsService.getSOPs({ _id: id, account_id: account_id, visible: true });
+      if (!existingData || existingData.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      const data = await sopsService.updateSOPs(id, body, user_id);
+      if(!data) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data updated successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+  
+  async remove (req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { id } = req.params;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Id is required'), { status: 400 });
+      }
+      const existingData = await sopsService.getSOPs({ _id: id, account_id: account_id, visible: true });
+      if (!existingData || existingData.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      const data = await sopsService.removeSOPs(id, user_id);
+      if(!data) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      return res.status(200).json({ status: true, message: "Data deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
   }
 }
 
-export const getSop = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const { query: { category, location }, params: { id } } = req;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('Id is required'), { status: 400 });
-    }
-    const match: any = { _id: id, account_id, visible: true };
-    if (category) {
-      match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
-    }
-    if (location) {
-      match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
-    }
-    let data = await getSOPs(match);
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    console.log({ account_id, user_id, userRole });
-    const data = await createSOPs(req.body, account_id, user_id);
-    if(!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data created successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const { params: { id }, body } = req;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('Id is required'), { status: 400 });
-    }
-    const existingData = await getSOPs({ _id: id, account_id: account_id, visible: true });
-    if (!existingData || existingData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const data = await updateSOPs(id, body, user_id);
-    if(!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data updated successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const remove = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('Id is required'), { status: 400 });
-    }
-    const existingData = await getSOPs({ _id: id, account_id: account_id, visible: true });
-    if (!existingData || existingData.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const data = await removeSOPs(id, user_id);
-    if(!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    next(error);
-  }
-}
+export const sopsController = new SOPsController();

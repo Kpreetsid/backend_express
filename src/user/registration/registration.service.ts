@@ -2,7 +2,7 @@ import { IAccount } from "../../models/account.model";
 import { sendRegistrationConfirmation, sendVerificationCode } from '../../_config/mailer'
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { createNewUser } from "../../masters/user/user.service";
-import { createCompany } from "../../masters/company/company.service";
+import { companyService } from "../../masters/company/company.service";
 
 export const verifyOTPCode = async (body: any) => {
   const userVerification = await VerificationCodeModel.findOne({ email: body.email, code: body.verificationCode });
@@ -14,7 +14,7 @@ export const verifyOTPCode = async (body: any) => {
     type: body.type,
     description: body.description
   };
-  const account: IAccount = await createCompany(accountBody);
+  const account: IAccount = await companyService.createCompany(accountBody);
   if (!account) {
     throw Object.assign(new Error('Account creation failed'), { status: 500 });
   }
