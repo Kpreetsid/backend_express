@@ -1,13 +1,13 @@
 import express from 'express';
-import { getCompanies, getCompany, create, updateCompany, removeCompany, updateImageCompany } from './company.controller';
+import { companyController } from './company.controller';
 
 export default (router: express.Router) => {
     const companyRouter = express.Router();
-    companyRouter.get('/', getCompanies);
-    companyRouter.get('/:id', getCompany);
-    companyRouter.post('/', create);
-    companyRouter.put('/:id', updateCompany);
-    companyRouter.patch('/:id', updateImageCompany);
-    companyRouter.delete('/:id', removeCompany);
+    companyRouter.get('/', companyController.getCompanies);
+    companyRouter.get('/:id', companyController.getCompany);
+    companyRouter.post('/', companyController.create);
+    companyRouter.put('/:id', companyController.updateCompany);
+    companyRouter.patch('/:id', companyController.updateImageCompany);
+    companyRouter.delete('/:id', companyController.removeCompany);
     router.use('/companies', companyRouter);
 }

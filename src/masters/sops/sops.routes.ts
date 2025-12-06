@@ -1,12 +1,12 @@
 import express from 'express';
-import { getAll, getSop, create, update, remove } from './sops.controller';
+import { sopsController } from './sops.controller';
 
 export default (router: express.Router) => {
     const sopRouter = express.Router();
-    sopRouter.get('/', getAll);
-    sopRouter.get('/:id', getSop);
-    sopRouter.post('/', create);
-    sopRouter.put('/:id', update);
-    sopRouter.delete('/:id', remove);
+    sopRouter.get('/', sopsController.getAll);
+    sopRouter.get('/:id', sopsController.getSop);
+    sopRouter.post('/', sopsController.create);
+    sopRouter.put('/:id', sopsController.update);
+    sopRouter.delete('/:id', sopsController.remove);
     router.use('/sops', sopRouter);
 }

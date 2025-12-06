@@ -8,7 +8,7 @@ import { sendPasswordChangeConfirmation } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
 import { IAccount } from "../../models/account.model";
-import { getAllCompanies } from "../../masters/company/company.service";
+import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
 import { ExternalUserModel } from "../../models/map_user.model";
@@ -25,7 +25,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
     const accountMatch = { _id: user.account_id };
-    const userAccount: IAccount[] | null = await getAllCompanies(accountMatch);
+    const userAccount: IAccount[] | null = await companyService.getAllCompanies(accountMatch);
     if (!userAccount || userAccount.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
@@ -77,7 +77,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
     const accountMatch = { _id: user.account_id };
-    const userAccount: IAccount[] | null = await getAllCompanies(accountMatch);
+    const userAccount: IAccount[] | null = await companyService.getAllCompanies(accountMatch);
     if (!userAccount || userAccount.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
@@ -111,7 +111,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: { token } });
+    res.status(200).json({ status: true, message: 'Login successful', data: { token, org_id: user.account_id } });
   } catch (error) {
     next(error);
   }
@@ -156,7 +156,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     }
     const { password: _, ...safeUser } = userDetails.toObject();
     const newSafeUserValue: any = { id: safeUser._id, ...safeUser }
-    const accountDetails = await getAllCompanies({ _id: mappedUser.account_id });
+    const accountDetails = await companyService.getAllCompanies({ _id: mappedUser.account_id });
     if (!accountDetails || accountDetails.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }

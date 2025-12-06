@@ -124,7 +124,7 @@ export const updateUserLocations = async (req: Request, res: Response, next: Nex
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const body = req.body;
-    const data = await mapUserToLocationService.updateMappedUserLocations(body, account_id);
+    const data = await mapUserToLocationService.mapUserLocations(body, account_id);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }

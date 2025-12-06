@@ -114,7 +114,7 @@ class MapUserToLocationService {
   }
 
   async getDataByLocationId (locationId: string) {
-    return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } });
+    return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } }).lean();
   }
   
   async getDataByLocationIds (locationIds: string[]) {
@@ -215,14 +215,6 @@ class MapUserToLocationService {
     }
   };
 
-  async updateMappedUserLocations (body: any, account_id: any): Promise<any> {
-    const queryArray: any = [];
-    body.forEach((doc: any) => {
-      queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
-    })
-    return await MapUserAssetLocationModel.insertMany(queryArray);
-  }
-
   async mapUserLocations (body: any, account_id: any): Promise<any> {
     const queryArray: any = [];
     body.forEach((doc: any) => {
@@ -237,6 +229,35 @@ class MapUserToLocationService {
   
   async removeLocationListMapping (locationIdList: string[]) {
     return await MapUserAssetLocationModel.deleteMany({ locationId: { $in: locationIdList } });
+  }
+
+  async updateUserMapping(locationId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = []) {
+    const locationUserMappings = await this.getDataByLocationId(locationId);
+    const existingUsers = locationUserMappings.map((u: any) => String(u.userId));
+    const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
+    const removedUsers = existingUsers.filter(id => !userIdList.includes(id));
+    const effectiveAdded = [...new Set([...addedUsers, ...inheritedAdded])];
+    const effectiveRemoved = [...new Set([...removedUsers, ...inheritedRemoved])];
+    if (effectiveAdded.length > 0) {
+      await this.addChildLocationMapping(locationId, effectiveAdded);
+    }
+    if (effectiveRemoved.length > 0) {
+      await this.removeChildLocationMapping(locationId, effectiveRemoved);
+    }
+    const locationChildList = await LocationModel.find({ parent_id: new mongoose.Types.ObjectId(locationId) }).select("_id").lean();
+    for (const child of locationChildList) {
+      const childExisting = await this.getDataByLocationId(String(child._id));
+      const childUserList = childExisting.map((d: any) => String(d.userId));
+      await this.updateUserMapping( String(child._id), childUserList, effectiveAdded, effectiveRemoved );
+    }
+  }
+
+  async addChildLocationMapping(locationId: string, userIdList: string[]) {
+    await MapUserAssetLocationModel.insertMany(userIdList.map(userId => ({ locationId: new mongoose.Types.ObjectId(locationId), userId: new mongoose.Types.ObjectId(userId) })));
+  }
+
+  async removeChildLocationMapping(locationId: string, userIdList: string[]) {
+    await MapUserAssetLocationModel.deleteMany({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $in: userIdList.map(id => new mongoose.Types.ObjectId(id)) } });
   }
 }
 

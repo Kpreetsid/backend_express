@@ -185,7 +185,7 @@ export const insertLocation = async (body: any) => {
 };
 
 export const updateById = async (id: string, body: any) => {
-  await MapUserAssetLocationModel.deleteMany({ locationId: id });
+  await mapUserToLocationService.updateUserMapping(id, body.userIdList);
   await LocationModel.updateOne({ _id: id }, body);
   return await LocationModel.findById(id);
 };

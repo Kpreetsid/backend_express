@@ -219,7 +219,6 @@ export const updateLocation = async (req: Request, res: Response, next: NextFunc
     if (!data || !data.visible) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await mapUserToLocationService.mapUserLocationData(id, body.userIdList, account_id);
     data.id = data._id;
     const updatedLocation = await getAllLocations({ _id: id, account_id: account_id, visible: true });
     res.status(200).json({ status: true, message: "Data updated successfully", data: updatedLocation });

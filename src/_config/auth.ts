@@ -6,7 +6,7 @@ import { verifyUserLogin } from '../masters/user/user.service';
 import { IUserRoleMenu } from "../models/userRoleMenu.model";
 import { IUser, UserLoginPayload } from '../models/user.model';
 import { verifyUserRole } from '../masters/user/role/roles.service';
-import { verifyCompany } from '../masters/company/company.service';
+import { companyService } from '../masters/company/company.service';
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -22,7 +22,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     if (!id || !username || !companyID || cookieAccountID !== accountID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
-    const companyData = await verifyCompany(accountID);
+    const companyData = await companyService.verifyCompany(accountID);
     if (!companyData) {
       throw Object.assign(new Error('Account ID is invalid'), { status: 401 });
     }
