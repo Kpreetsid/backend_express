@@ -12,7 +12,8 @@ export const getExternalData = async (path: string, method: string, body: any, t
       headers: {
         "Content-Type": "application/json",
         "Authorization": token,
-        "X-User-Id": userID
+        "X-User-Id": userID,
+        "X-Env": "true"
       },
       data: body,
       timeout: 60 * 1000, // 60s timeout
