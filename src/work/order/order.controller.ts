@@ -45,8 +45,13 @@ class OrderController {
     try {
       const { account_id, user_role: userRole, _id: user_id } = get(req, "user", {}) as IUser;
       const { page = 1, limit = 25, pageType = "assignedToMe" } = req.query;
+      const { status, priority, wo_asset_id, wo_location_id } = req.query;
       const skip: number = (Number(page) - 1) * Number(limit);
       const match: any = { account_id, visible: true };
+      if (status) match.status = { $in: status.toString().split(',') };
+      if (priority) match.priority = { $in: priority.toString().split(',') };
+      if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      if (wo_location_id) match.wo_location_id = { $in: wo_location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
       if (pageType === "assignedToMe") {
         const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
         if (userWorkOrderIdList && userWorkOrderIdList.length > 0) {
