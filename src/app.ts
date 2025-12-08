@@ -57,7 +57,7 @@ app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });
 });
 
-app.get("/secure-data", verifyEncryptedToken, (req, res) => {
+app.post("/secure-data", verifyEncryptedToken, (req, res) => {
     res.json({
         message: "Access granted",
         user: (req as any).user,
