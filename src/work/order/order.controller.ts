@@ -40,6 +40,53 @@ class OrderController {
       next(error);
     }
   }
+
+  async getAllWorkOrders(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, user_role: userRole, _id: user_id } = get(req, "user", {}) as IUser;
+      const { page = 1, limit = 25, pageType = "assignedToMe" } = req.query;
+      const skip: number = (Number(page) - 1) * Number(limit);
+      const match: any = { account_id, visible: true };
+      if (pageType === "assignedToMe") {
+        const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
+        if (userWorkOrderIdList && userWorkOrderIdList.length > 0) {
+          match._id = { $in: userWorkOrderIdList };
+        }
+      } else if (pageType === "createdByMe") {
+        match.createdBy = user_id;
+      } else {
+        if (userRole !== "admin") {
+          const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
+          if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
+            match.createdBy = user_id;
+          } else {
+            match.$or = [{ _id: { $in: userWorkOrderIdList } }, { createdBy: user_id }];
+          }
+        }
+      }
+      const totalItems = await orderService.countOrders(match);
+      const data = await orderService.getAllWorkOrders(match, skip, Number(limit));
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error("No data found"), { status: 404 });
+      }
+      const totalPages = Math.ceil(totalItems / Number(limit));
+      res.status(200).json({
+        status: true,
+        message: "Work orders fetched successfully.",
+        pagination: {
+          page,
+          limit,
+          totalItems,
+          totalPages,
+          hasNextPage: Number(page) < totalPages,
+          hasPrevPage: Number(page) > 1
+        },
+        data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
   
   async getOrderById (req: Request, res: Response, next: NextFunction): Promise<any> {
     try {

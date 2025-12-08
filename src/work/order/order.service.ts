@@ -80,6 +80,86 @@ class OrderService {
     }));
     return result;
   };
+
+  async countOrders(match: any) {
+    return await WorkOrderModel.countDocuments(match);
+  }
+
+  async getAllWorkOrders(match: any, skip: number = 0, limit: number = 25) {
+    let data = await WorkOrderModel.aggregate([
+      { $match: match },
+      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
+      { $lookup: { 
+        from: "asset_master", 
+        let: { wo_asset_id: '$wo_asset_id' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
+          { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+          { $addFields: { id: '$_id' } }
+        ],
+        as: "asset" 
+      }},
+      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
+      { $lookup: { 
+        from: "location_master", 
+        let: { wo_location_id: '$wo_location_id' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
+          { $project: { _id: 1, location_name: 1, location_type: 1 } },
+          { $addFields: { id: '$_id' } }
+        ],
+        as: "location" 
+      }},
+      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
+      { $lookup: { 
+        from: "users", 
+        let: { createdBy: '$createdBy' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
+          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+          { $addFields: { id: '$_id' } }
+        ],
+        as: "createdBy" 
+      }},
+      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true }},
+      { $lookup: {
+        from: "users",
+        let: { updatedBy: '$updatedBy' },
+        pipeline: [
+          { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
+          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+          { $addFields: { id: '$_id' } }
+        ],
+        as: "updatedBy"
+      }},
+      { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true }},
+      { $addFields: { id: "$_id" }},
+      { $sort: { createdAt: -1 } },
+      { $skip: skip },
+      { $limit: limit }
+    ]);
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const result = await Promise.all(data.map(async (item: any) => {
+      item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
+        const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username user_profile_img');
+        mapItem.user = user.length > 0 ? user[0] : {};
+        mapItem.id = mapItem._id;
+        return mapItem;
+      }));
+      if (item?.status_details?.length > 0) {
+        item.status_details = await Promise.all(item.status_details.map(async (statusItem: any) => {
+          const user = await UserModel.find({ _id: statusItem.createdBy }).select('id firstName lastName username user_profile_img');
+          statusItem.createdBy = user.length > 0 ? user[0] : {};
+          return statusItem;
+        }));
+      }
+      item.comments = await commentService.getAllCommentsForWorkOrder({ work_order_id: item._id });
+      return item;
+    }));
+    return result;
+  }
   
   async orderStatus (match: any): Promise<any> {
     const data = await WorkOrderModel.aggregate([
