@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../_config/bcrypt';
 import { generateAccessToken } from '../../_config/auth';
 import { TokenModel } from "../../models/userToken.model";
-import { verifyUserRole } from "../../masters/user/role/roles.service";
+import { rolesService } from "../../masters/user/role/roles.service";
 import { sendPasswordChangeConfirmation } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
@@ -45,7 +45,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     safeUser.id = safeUser._id;
     const userTokenPayload: UserLoginPayload = { id: `${user._id}`, username: user.username, companyID: `${user.account_id}` };
     const token = generateAccessToken(userTokenPayload);
-    const userRoleData = await verifyUserRole(`${user._id}`, `${user.account_id}`);
+    const userRoleData = await rolesService.verifyUserRole(`${user._id}`, `${user.account_id}`);
     if (!userRoleData) {
       throw Object.assign(new Error('User does not have any permission'), { status: 403 });
     }
@@ -97,7 +97,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     safeUser.id = safeUser._id;
     const userTokenPayload: UserLoginPayload = { id: `${user._id}`, username: user.username, companyID: `${user.account_id}` };
     const token = generateAccessToken(userTokenPayload);
-    const userRoleData = await verifyUserRole(`${user._id}`, `${user.account_id}`);
+    const userRoleData = await rolesService.verifyUserRole(`${user._id}`, `${user.account_id}`);
     if (!userRoleData) {
       throw Object.assign(new Error('User does not have any permission'), { status: 403 });
     }

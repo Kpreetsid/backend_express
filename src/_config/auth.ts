@@ -3,10 +3,10 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { auth } from '../configDB';
 import * as crypto from "crypto";
 import { merge } from 'lodash';
-import { verifyUserLogin } from '../masters/user/user.service';
+import { usersService } from '../masters/user/user.service';
 import { IUserRoleMenu } from "../models/userRoleMenu.model";
 import { IUser, UserLoginPayload } from '../models/user.model';
-import { verifyUserRole } from '../masters/user/role/roles.service';
+import { rolesService } from '../masters/user/role/roles.service';
 import { companyService } from '../masters/company/company.service';
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -27,11 +27,11 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     if (!companyData) {
       throw Object.assign(new Error('Account ID is invalid'), { status: 401 });
     }
-    const userData: IUser | null = await verifyUserLogin({ id, companyID, username });
+    const userData: IUser | null = await usersService.verifyUserLogin({ id, companyID, username });
     if (!userData) {
       throw Object.assign(new Error('User not found'), { status: 404 });
     }
-    const userRole: IUserRoleMenu | null = await verifyUserRole(id, companyID);
+    const userRole: IUserRoleMenu | null = await rolesService.verifyUserRole(id, companyID);
     if (!userRole) {
       throw Object.assign(new Error('User role not found'), { status: 401 });
     }

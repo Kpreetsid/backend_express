@@ -2,58 +2,63 @@ import { UserModel, IUser, UserLoginPayload } from "../../models/user.model";
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../_config/bcrypt';
-import { createUserRole } from './role/roles.service';
+import { rolesService } from './role/roles.service';
 import mongoose from 'mongoose';
 
-export const getAllUsers = async (match: any) => {
-  return await UserModel.find(match).select('-password');
-};
+class UsersService {
 
-export const getUserDetails = async (match: any) => {
-  return await UserModel.findOne(match).select('+password');
-};
+  async getAllUsers(match: any) {
+    return await UserModel.find(match).select('-password');
+  };
 
-export const verifyUserLogin = async ({ id, companyID, username }: UserLoginPayload) => {
-  return await UserModel.findOne({ _id: id, account_id: companyID, username: username }).select('-password');
-};
+  async getUserDetails(match: any) {
+    return await UserModel.findOne(match).select('+password');
+  };
 
-export const userVerified = async (id: string) => {
-  return await UserModel.findOneAndUpdate({ _id: id }, { isVerified: true }, { new: true });
-};
+  async verifyUserLogin({ id, companyID, username }: UserLoginPayload) {
+    return await UserModel.findOne({ _id: id, account_id: companyID, username: username }).select('-password');
+  };
 
-export const getLocationWiseUser = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { locationID } = req.params;
-    const data = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
-    if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+  async userVerified(id: string) {
+    return await UserModel.findOneAndUpdate({ _id: id }, { isVerified: true }, { new: true });
+  };
+
+  async getLocationWiseUser(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { locationID } = req.params;
+      const data = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
+      if (data.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      const userIDList = data.map((doc: any) => doc.userId);
+      const userData = await UserModel.find({ _id: { $in: userIDList } }).select('-password');
+      return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
+    } catch (error) {
+      next(error);
     }
-    const userIDList = data.map((doc: any) => doc.userId);
-    const userData = await UserModel.find({ _id: { $in: userIDList } }).select('-password');
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
-  } catch (error) {
-    next(error);
+  };
+
+  async createNewUser(body: IUser, account_id: any) {
+    body.password = await passwordService.hashPassword(body.password);
+    const newUser = new UserModel({ ...body, account_id });
+    const userDetails = await newUser.save();
+    const roleDetails = await rolesService.createUserRole(body.user_role, userDetails);
+    return { userDetails, roleDetails };
+  };
+
+  async updateUserPassword(user_id: any, body: any) {
+    body.password = await passwordService.hashPassword(body.password);
+    return await UserModel.findByIdAndUpdate(user_id, body, { new: true });
+  };
+
+  async updateUserDetails(id: string, body: IUser) {
+    return await UserModel.findByIdAndUpdate(id, body, { new: true });
   }
-};
 
-export const createNewUser = async (body: IUser, account_id: any) => {
-  body.password = await passwordService.hashPassword(body.password);
-  const newUser = new UserModel({ ...body, account_id });
-  const userDetails = await newUser.save();
-  const roleDetails = await createUserRole(body.user_role, userDetails);
-  return { userDetails, roleDetails };
-};
-
-export const updateUserPassword = async (user_id: any, body: any) => {
-  body.password = await passwordService.hashPassword(body.password);
-  return await UserModel.findByIdAndUpdate(user_id, body, { new: true });
-};
-
-export const updateUserDetails = async (id: string, body: IUser) => {
-  return await UserModel.findByIdAndUpdate(id, body, { new: true });
+  async removeById(id: string) {
+    await MapUserAssetLocationModel.deleteMany({ userId: id });
+    return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { new: true });
+  };
 }
 
-export const removeById = async (id: string) => {
-  await MapUserAssetLocationModel.deleteMany({ userId: id });
-  return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { new: true });
-};
+export const usersService = new UsersService();

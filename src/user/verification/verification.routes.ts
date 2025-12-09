@@ -1,9 +1,9 @@
 import express from 'express';
-import { sendVerificationCode, userOTPVerification } from './verification.controller';
+import { verificationController } from './verification.controller';
 
 export default (router: express.Router) => {
     const userVerificationRouter = express.Router();
-    userVerificationRouter.post('/send-verification-code', sendVerificationCode);
-    userVerificationRouter.post('/verify-user', userOTPVerification);
+    userVerificationRouter.post('/send-verification-code', verificationController.sendVerificationCode);
+    userVerificationRouter.post('/verify-user', verificationController.userOTPVerification);
     router.use('/user', userVerificationRouter);
 }

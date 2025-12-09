@@ -1,6 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAllUserTokens } from './userToken.service';
+import { userTokenService } from './userToken.service';
 
-export const getUserByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  await getAllUserTokens(req, res, next);
-};
+class UserTokenController {
+  async getUserByToken (req: Request, res: Response, next: NextFunction): Promise<any> {
+    await userTokenService.getAllUserTokens(req, res, next);
+  };
+}
+
+export const userTokenController = new UserTokenController();

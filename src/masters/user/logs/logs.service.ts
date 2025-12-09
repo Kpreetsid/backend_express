@@ -1,5 +1,9 @@
 import { UserLogModel } from "../../../models/userLogs.model";
 
-export const getAllUserLogs = async (match: any): Promise<any> => {
-  return await UserLogModel.find(match).sort({_id: -1});
-};
+class UserLogsService {
+  async getAllUserLogs (match: any): Promise<any> {
+    return await UserLogModel.find(match).sort({_id: -1});
+  };
+}
+
+export const userLogsService = new UserLogsService();

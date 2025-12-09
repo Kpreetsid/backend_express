@@ -1,4 +1,4 @@
-import { getAllUsers } from "../masters/user/user.service";
+import { usersService } from "../masters/user/user.service";
 import { IScheduleMaster, SchedulerModel } from "../models/scheduleMaster.model";
 import { orderService } from "../work/order/order.service";
 
@@ -81,7 +81,7 @@ class SchedulerService {
                 body.end_date = new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split("T")[0];
                 break;
         }
-        const systemUser: any = await getAllUsers({ _id: schedule.createdBy });
+        const systemUser: any = await usersService.getAllUsers({ _id: schedule.createdBy });
         console.log(`▶️ Creating Work Order for schedule: ${schedule.title}`);
         const workOrder = await orderService.createWorkOrder(body, systemUser[0]);
         if (!workOrder) {
