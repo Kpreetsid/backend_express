@@ -96,6 +96,36 @@ class MapUserToAssetService {
     return await MapUserAssetLocationModel.bulkWrite(bulkOps);
   };
 
+  async updateUserMapping(assetId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = []) {
+    const assetUserMappings = await this.getDataByAssetId(assetId);
+    const existingUsers = assetUserMappings.map((u: any) => String(u.userId));
+    const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
+    const removedUsers = existingUsers.filter(id => !userIdList.includes(id));
+    const effectiveAdded = [...new Set([...addedUsers, ...inheritedAdded])];
+    const effectiveRemoved = [...new Set([...removedUsers, ...inheritedRemoved])];
+    if (effectiveAdded.length > 0) {
+      await this.addChildAssetMapping(assetId, effectiveAdded);
+    }
+    if (effectiveRemoved.length > 0) {
+      await this.removeChildAssetMapping(assetId, effectiveRemoved);
+    }
+    const assetChildList = await AssetModel.find({ parent_id: new mongoose.Types.ObjectId(assetId) }).select("_id").lean();
+    for (const child of assetChildList) {
+      const childExisting = await this.getDataByAssetId(String(child._id));
+      const childUserList = childExisting.map((d: any) => String(d.userId));
+      await this.updateUserMapping( String(child._id), childUserList, effectiveAdded, effectiveRemoved );
+    }
+  }
+
+  async addChildAssetMapping (id: string, userIdList: string[]) {
+    const queryArray = userIdList.map(userId => ({ assetId: new mongoose.Types.ObjectId(id), userId: new mongoose.Types.ObjectId(userId) }));
+    await MapUserAssetLocationModel.insertMany(queryArray);
+  }
+
+  async removeChildAssetMapping (id: string, userIdList: string[]) {
+    await MapUserAssetLocationModel.deleteMany({ assetId: new mongoose.Types.ObjectId(id), userId: { $in: userIdList.map(id => new mongoose.Types.ObjectId(id)) } });
+  }
+
   async removeAssetMapping (id: string) {
     return await MapUserAssetLocationModel.deleteMany({ assetId: id });
   }

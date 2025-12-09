@@ -235,7 +235,6 @@ export const updateOld = async (req: Request, res: Response, next: NextFunction)
     if (!existingData || existingData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    console.log(existingData[0].locationId, body.locationId);
     if(body.locationId !== existingData[0].locationId) {
       await updateAllChildAssetsLocation(id, body.locationId, user_id);
     }
@@ -243,7 +242,6 @@ export const updateOld = async (req: Request, res: Response, next: NextFunction)
     if (!data) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await mapUserToAssetService.updateMapUserAssets(id, body.userIdList);
     const insertedData: any = await getAllAssets({ _id: id });
     if (!insertedData || insertedData.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
