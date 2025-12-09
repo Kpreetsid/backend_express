@@ -136,7 +136,6 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
 export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { body: { external_token }} = req;
-    console.log('external_token', external_token);
     if(!external_token) {
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
@@ -147,7 +146,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     }
     const userDetails = await UserModel.findOne({ email, user_status: 'active' });
     if (!userDetails) {
-      throw Object.assign(new Error('User is not mapped with external account'), { status: 404 });
+      throw Object.assign(new Error('User data not found'), { status: 404 });
     }
     const { password: _, ...safeUser } = userDetails.toObject();
     const newSafeUserValue: any = { id: safeUser._id, ...safeUser }
@@ -157,7 +156,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     }
     const userRoleMenu = await rolesService.verifyUserRole(`${userDetails._id}`, `${userDetails.account_id}`);
     if (!userRoleMenu) {
-      throw Object.assign(new Error('User does not have any permission'), { status: 403 });
+      throw Object.assign(new Error('User does not role permissions'), { status: 403 });
     }
     const userTokenPayload: UserLoginPayload = { id: `${userDetails._id}`, username: userDetails.username, companyID: `${userDetails.account_id}` };
     const newToken = generateAccessToken(userTokenPayload);
@@ -170,9 +169,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    // console.log({token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data});
     res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data} });
-    // res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken } });
   } catch (error) {
     next(error);
   }
