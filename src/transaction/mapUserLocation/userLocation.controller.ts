@@ -3,7 +3,7 @@ import { mapUserToAssetService, mapUserToLocationService } from './userLocation.
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
-import { getAllAssets } from '../../masters/asset/asset.service';
+import { assetService } from '../../masters/asset/asset.service';
 import { getLocationsList } from '../../masters/location/location.service';
 
 class MapUserAssetLocationController {
@@ -56,7 +56,7 @@ class MapUserAssetLocationController {
         if (assetId) {
           assetMatch._id = new mongoose.Types.ObjectId(assetId as string);
         }
-        const assetData = await getAllAssets(assetMatch);
+        const assetData = await assetService.getAllAssets(assetMatch);
         if (!assetData || assetData.length === 0) {
           throw Object.assign(new Error('No assets found'), { status: 404 });
         }

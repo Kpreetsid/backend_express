@@ -3,7 +3,7 @@ import { get } from 'lodash';
 import { usersService } from './user.service';
 import { IUser } from '../../models/user.model';
 import { resetPasswordService } from '../../user/resetPassword/resetPassword.service';
-import { passwordService } from '../../_config/bcrypt';
+import { passwordService } from '../../util/bcrypt';
 import mongoose from 'mongoose';
 
 class UserController {

@@ -3,7 +3,6 @@ import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUse
 import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
 import { mapUserToLocationService, mapUserToAssetService } from '../../transaction/mapUserLocation/userLocation.service';
-import { getData } from "../../util/queryBuilder";
 
 export const getLocationsList = async (match: any) => {
   return await LocationModel.find(match).lean();
@@ -25,7 +24,7 @@ export const getAllLocations = async (match: any) => {
 
 const buildLocationTree = async (parentId: string | null, account_id: any, allowedLocationIds: string[], userRole: string): Promise<any[]> => {
   const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false } };
-  const nodes = await getData(LocationModel, { filter: match });
+  const nodes = await LocationModel.find(match).lean();
   return Promise.all(
     nodes.map(async (node: any) => {
       if (userRole !== "admin" && !allowedLocationIds.includes(node._id.toString())) {
@@ -51,7 +50,7 @@ export const getAllChildLocationIds = async (locationId: string): Promise<string
 };
 
 export const getTree = async (match: any, location_id: any, allowedLocationIds: string[], userRole: string): Promise<any> => {
-  const rootLocations: ILocationMaster[] = await getData(LocationModel, { filter: match });
+  const rootLocations: ILocationMaster[] = await LocationModel.find(match).lean();
   if (!rootLocations?.length) {
     throw Object.assign(new Error("No data found"), { status: 404 });
   }

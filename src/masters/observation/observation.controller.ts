@@ -3,7 +3,7 @@ import { observationService } from './observation.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
-import { getAllChildAssetIDs } from '../asset/asset.service';
+import { assetService } from '../asset/asset.service';
 
 class ObservationController {
 
@@ -16,7 +16,7 @@ class ObservationController {
         match['locationId'] = new mongoose.Types.ObjectId(`${locationId}`);
       }
       if (assetId) {
-        const childAssetIds = await getAllChildAssetIDs(new mongoose.Types.ObjectId(`${assetId}`));
+        const childAssetIds = await assetService.getAllChildAssetIDs(new mongoose.Types.ObjectId(`${assetId}`));
         match['assetId'] = { $in: childAssetIds };
       }
       if (alarmId) {

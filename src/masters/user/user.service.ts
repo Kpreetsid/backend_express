@@ -1,7 +1,7 @@
 import { UserModel, IUser, UserLoginPayload } from "../../models/user.model";
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
-import { passwordService } from '../../_config/bcrypt';
+import { passwordService } from '../../util/bcrypt';
 import { rolesService } from './role/roles.service';
 import mongoose from 'mongoose';
 
