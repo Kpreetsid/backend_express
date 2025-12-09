@@ -1,7 +1,7 @@
 import { UserModel, IUser, UserLoginPayload } from "../../models/user.model";
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
-import { hashPassword } from '../../_config/bcrypt';
+import { passwordService } from '../../_config/bcrypt';
 import { createUserRole } from './role/roles.service';
 import mongoose from 'mongoose';
 
@@ -37,7 +37,7 @@ export const getLocationWiseUser = async (req: Request, res: Response, next: Nex
 };
 
 export const createNewUser = async (body: IUser, account_id: any) => {
-  body.password = await hashPassword(body.password);
+  body.password = await passwordService.hashPassword(body.password);
   const newUser = new UserModel({ ...body, account_id });
   const userDetails = await newUser.save();
   const roleDetails = await createUserRole(body.user_role, userDetails);
@@ -45,7 +45,7 @@ export const createNewUser = async (body: IUser, account_id: any) => {
 };
 
 export const updateUserPassword = async (user_id: any, body: any) => {
-  body.password = await hashPassword(body.password);
+  body.password = await passwordService.hashPassword(body.password);
   return await UserModel.findByIdAndUpdate(user_id, body, { new: true });
 };
 

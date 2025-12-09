@@ -3,7 +3,7 @@ import { get } from 'lodash';
 import { getAllUsers, createNewUser, updateUserDetails, removeById, getLocationWiseUser, getUserDetails, updateUserPassword } from './user.service';
 import { IUser } from '../../models/user.model';
 import { deleteVerificationCode, verifyOTPExists } from '../../user/resetPassword/resetPassword.service';
-import { comparePassword } from '../../_config/bcrypt';
+import { passwordService } from '../../_config/bcrypt';
 import mongoose from 'mongoose';
 
 export const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -89,7 +89,7 @@ export const updatePasswordUser = async (req: Request, res: Response, next: Next
     if (newPassword !== confirmNewPassword)
       throw Object.assign(new Error("Passwords do not match"), { status: 400 });
 
-    const isCorrect = await comparePassword(password, userData.password);
+    const isCorrect = await passwordService.comparePassword(password, userData.password);
     if (!isCorrect) throw Object.assign(new Error("Incorrect current password"), { status: 400 });
     userData.password = newPassword;
     await updateUserPassword(user_id, userData);

@@ -1,7 +1,7 @@
 import { IUser, UserModel, UserLoginPayload } from "../../models/user.model";
 import { Request, Response, NextFunction } from 'express';
-import { comparePassword, hashPassword } from '../../_config/bcrypt';
-import { generateAccessToken, generateExternalAccessToken, verifyExternalAccessToken } from '../../_config/auth';
+import { passwordService } from '../../_config/bcrypt';
+import { generateAccessToken } from '../../_config/auth';
 import { TokenModel } from "../../models/userToken.model";
 import { verifyUserRole } from "../../masters/user/role/roles.service";
 import { sendPasswordChangeConfirmation } from "../../_config/mailer";
@@ -11,7 +11,6 @@ import { IAccount } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
-import { ExternalUserModel } from "../../models/map_user.model";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -29,7 +28,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!userAccount || userAccount.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
-    const isMatch = await comparePassword(password, user.password);
+    const isMatch = await passwordService.comparePassword(password, user.password);
     if (!isMatch) {
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });
     }
@@ -81,7 +80,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     if (!userAccount || userAccount.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
-    const isMatch = await comparePassword(password, user.password);
+    const isMatch = await passwordService.comparePassword(password, user.password);
     if (!isMatch) {
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });
     }
@@ -117,67 +116,14 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
   }
 };
 
-export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { params: { email }} = req;
-    if(!email) {
-      throw Object.assign(new Error('Bad request'), { status: 404 });
-    }
-    const external_user = await ExternalUserModel.findOne({ username: email });
-    if (!external_user) {
-      throw Object.assign(new Error('User data not found'), { status: 404 });
-    }
-    const external_token = generateExternalAccessToken({ email });
-    res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
-  } catch (error) {
-    next(error);
-  }
-}
-
 export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { body: { external_token }} = req;
+    const { external_token } = req.body;
     console.log('external_token', external_token);
     if(!external_token) {
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
-    const decoded = verifyExternalAccessToken(external_token);
-    const { email } = decoded;
-    if (!email) {
-      throw Object.assign(new Error('Invalid token'), { status: 401 });
-    }
-    const mappedUser = await ExternalUserModel.findOne({ username: email });
-    if (!mappedUser) {
-      throw Object.assign(new Error('User is not mapped with external account'), { status: 404 });
-    }
-    const userDetails = await UserModel.findOne({ _id: mappedUser.user_id, account_id: mappedUser.account_id, user_status: 'active' });
-    if (!userDetails) {
-      throw Object.assign(new Error('User not found'), { status: 404 });
-    }
-    const { password: _, ...safeUser } = userDetails.toObject();
-    const newSafeUserValue: any = { id: safeUser._id, ...safeUser }
-    const accountDetails = await companyService.getAllCompanies({ _id: mappedUser.account_id });
-    if (!accountDetails || accountDetails.length === 0) {
-      throw Object.assign(new Error('User account not found'), { status: 404 });
-    }
-    const userRoleMenu = await verifyUserRole(`${userDetails._id}`, `${userDetails.account_id}`);
-    if (!userRoleMenu) {
-      throw Object.assign(new Error('User does not have any permission'), { status: 403 });
-    }
-    const userTokenPayload: UserLoginPayload = { id: `${userDetails._id}`, username: userDetails.username, companyID: `${userDetails.account_id}` };
-    const newToken = generateAccessToken(userTokenPayload);
-    res.cookie('token', newToken, { httpOnly: true, secure: false , sameSite: 'lax'});
-    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
-    const userTokenData = new TokenModel({
-      _id: newToken,
-      userId: userDetails._id,
-      principalType: 'user',
-      ttl: parseInt(auth.expiresIn as string)
-    });
-    await userTokenData.save();
-    console.log({token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data});
-    // res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data} });
-    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken } });
+    res.status(200).json({ status: true, message: 'Access granted' });
   } catch (error) {
     next(error);
   }
@@ -197,7 +143,7 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
     if (!user) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const hashNewPassword = await hashPassword(password);
+    const hashNewPassword = await passwordService.hashPassword(password);
     await UserModel.updateOne({ _id: user._id, account_id: user.account_id }, { $set: { password: hashNewPassword } });
     await sendPasswordChangeConfirmation(user);
     await VerificationCodeModel.deleteOne({ email: user.email, code: token.toString() });
