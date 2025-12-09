@@ -1,12 +1,12 @@
 import express from 'express';
-import { getUserLocations, getUserAssets, setUserLocations, setUserAssets, updateUserAssets, updateUserLocations, updateSendMailFlag } from './userLocation.controller';
+import { userLocationController } from './userLocation.controller';
 
 export default (router: express.Router) => {
-    router.get('/userToLocations', getUserLocations);
-    router.post('/userToLocations', setUserLocations);
-    router.put('/userToLocations', updateUserLocations);
-    router.get('/userToAssets', getUserAssets);
-    router.post('/userToAssets', setUserAssets);
-    router.put('/userToAssets/:assetId', updateUserAssets);
-    router.post('/updateAssetsFlags', updateSendMailFlag);
+    router.get('/userToLocations', userLocationController.getUserLocations);
+    router.post('/userToLocations', userLocationController.setUserLocations);
+    router.put('/userToLocations', userLocationController.updateUserLocations);
+    router.get('/userToAssets', userLocationController.getUserAssets);
+    router.post('/userToAssets', userLocationController.setUserAssets);
+    router.put('/userToAssets/:assetId', userLocationController.updateUserAssets);
+    router.post('/updateAssetsFlags', userLocationController.updateSendMailFlag);
 }

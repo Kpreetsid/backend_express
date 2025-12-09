@@ -15,7 +15,6 @@ import transactionRoutes from './transaction/transaction.routes';
 import masterRoutes from './masters/master.routes';
 import inspectionRoutes from './inspection/inspection.routes';
 import { fileLogger, activityLogger, errorMiddleware } from './middlewares';
-import { verifyEncryptedToken } from './middlewares/auth';
 
 const app: Express = express();
 app.set('trust proxy', 1);
@@ -55,13 +54,6 @@ app.use(compression({
 
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });
-});
-
-app.post("/secure-data", verifyEncryptedToken, (req, res) => {
-    res.json({
-        message: "Access granted",
-        user: (req as any).user,
-    });
 });
 
 const apiRouter: Router = Router();
