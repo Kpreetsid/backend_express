@@ -138,6 +138,7 @@ export const createAssetOld = async (body: any, account_id: any, user_id: any): 
 }
 
 export const updateAssetOld = async (id: any, body: any, user_id: any): Promise<any> => {
+  await mapUserToAssetService.updateUserMapping(id, body.userIdList);
   return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true });
 }
 
