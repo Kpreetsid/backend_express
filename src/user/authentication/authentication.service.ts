@@ -110,7 +110,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: { token, org_id: user.account_id } });
+    res.status(200).json({ status: true, message: 'Login successful', data: { token, org_id: user.account_id, user_id: user._id } });
   } catch (error) {
     next(error);
   }
