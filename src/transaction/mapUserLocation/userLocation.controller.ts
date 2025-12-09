@@ -97,10 +97,7 @@ class MapUserAssetLocationController {
       if (!assetId || body.length === 0) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const data = await mapUserToAssetService.updateMapUserAssets(assetId, body);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
+      await mapUserToAssetService.updateUserMapping(assetId, body.userIdList);
       res.status(201).json({ status: true, message: 'Assets mapped successfully' });
     } catch (error) {
       next(error);
