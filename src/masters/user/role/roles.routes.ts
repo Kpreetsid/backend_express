@@ -1,13 +1,13 @@
 import express from 'express';
-import { getAll, getDataById, createRole, updateRole, removeRole, myRoleData } from './roles.controller';
+import { rolesController } from './roles.controller';
 
 export default (router: express.Router) => {
     const roleRouter = express.Router();
-    roleRouter.get('/', getAll);
-    roleRouter.get('/self', myRoleData);
-    roleRouter.get('/:id', getDataById);
-    roleRouter.post('/', createRole);
-    roleRouter.put('/:id', updateRole);
-    roleRouter.delete('/:id', removeRole);
+    roleRouter.get('/', rolesController.getAll);
+    roleRouter.get('/self', rolesController.myRoleData);
+    roleRouter.get('/:id', rolesController.getDataById);
+    roleRouter.post('/', rolesController.createRole);
+    roleRouter.put('/:id', rolesController.updateRole);
+    roleRouter.delete('/:id', rolesController.removeRole);
     router.use('/roles', roleRouter);
 }

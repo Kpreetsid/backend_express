@@ -1,7 +1,7 @@
 import { IAccount } from "../../models/account.model";
 import { sendRegistrationConfirmation, sendVerificationCode } from '../../_config/mailer'
 import { VerificationCodeModel } from "../../models/userVerification.model";
-import { createNewUser } from "../../masters/user/user.service";
+import { usersService } from "../../masters/user/user.service";
 import { companyService } from "../../masters/company/company.service";
 
 export const verifyOTPCode = async (body: any) => {
@@ -21,7 +21,7 @@ export const verifyOTPCode = async (body: any) => {
   body.isFirstUser = true;
   body.user_role = "admin";
   body.isVerified = true;
-  const userDetails = await createNewUser(body, account._id);
+  const userDetails = await usersService.createNewUser(body, account._id);
   if (!userDetails) {
     throw Object.assign(new Error('User creation failed'), { status: 500 });
   }

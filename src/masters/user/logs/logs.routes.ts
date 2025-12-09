@@ -1,8 +1,8 @@
 import express from 'express';
-import { userLogs } from './logs.controller';
+import { userLogsController } from './logs.controller';
 
 export default (router: express.Router) => {
     const userLogRouter = express.Router();
-    userLogRouter.get('/', userLogs);
+    userLogRouter.get('/', userLogsController.userLogs);
     router.use('/logs', userLogRouter);
 }
