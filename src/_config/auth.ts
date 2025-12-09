@@ -58,6 +58,33 @@ export const generateAccessToken = (payload: UserLoginPayload): string => {
   } as jwt.SignOptions); 
 };
 
+export const generateExternalAccessToken = (email: any, ttlSeconds: number = 300): string => {
+  const key = getKey();
+  const iv = crypto.randomBytes(12);
+  const now = Math.floor(Date.now() / 1000);
+
+  const payload: any = {
+    email,
+    iat: now,
+    exp: now + ttlSeconds,
+  };
+
+  const plaintext = Buffer.from(JSON.stringify(payload), "utf8");
+
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+
+  const ct = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const tag = cipher.getAuthTag();
+
+  const tokenStruct = {
+    iv: iv.toString("base64"),
+    ct: ct.toString("base64"),
+    tag: tag.toString("base64"),
+  };
+
+  return Buffer.from(JSON.stringify(tokenStruct)).toString("base64");
+};
+
 const verifyAccessToken = (token: string): JwtPayload => {
   return jwt.verify(token, auth.secret, {
     algorithms: [auth.algorithm as jwt.Algorithm],

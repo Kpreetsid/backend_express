@@ -1,7 +1,7 @@
 import { IUser, UserModel, UserLoginPayload } from "../../models/user.model";
 import { Request, Response, NextFunction } from 'express';
-import { passwordService } from '../../_config/bcrypt';
-import { generateAccessToken } from '../../_config/auth';
+import { passwordService } from '../../util/bcrypt';
+import { decryptToken, generateAccessToken, generateExternalAccessToken } from '../../_config/auth';
 import { TokenModel } from "../../models/userToken.model";
 import { rolesService } from "../../masters/user/role/roles.service";
 import { sendPasswordChangeConfirmation } from "../../_config/mailer";
@@ -116,14 +116,63 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
   }
 };
 
+export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const { params: { email }} = req;
+    if(!email) {
+      throw Object.assign(new Error('Bad request'), { status: 404 });
+    }
+    const external_user = await UserModel.findOne({ email, user_status: 'active' });
+    if (!external_user) {
+      throw Object.assign(new Error('User data not found'), { status: 404 });
+    }
+    const external_token = generateExternalAccessToken(email);
+    res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { external_token } = req.body;
+    const { body: { external_token }} = req;
     console.log('external_token', external_token);
     if(!external_token) {
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
-    res.status(200).json({ status: true, message: 'Access granted' });
+    const decoded = decryptToken(external_token);
+    const { email } = decoded;
+    if (!email) {
+      throw Object.assign(new Error('Invalid token'), { status: 401 });
+    }
+    const userDetails = await UserModel.findOne({ email, user_status: 'active' });
+    if (!userDetails) {
+      throw Object.assign(new Error('User is not mapped with external account'), { status: 404 });
+    }
+    const { password: _, ...safeUser } = userDetails.toObject();
+    const newSafeUserValue: any = { id: safeUser._id, ...safeUser }
+    const accountDetails = await companyService.getAllCompanies({ _id: userDetails.account_id });
+    if (!accountDetails || accountDetails.length === 0) {
+      throw Object.assign(new Error('User account not found'), { status: 404 });
+    }
+    const userRoleMenu = await rolesService.verifyUserRole(`${userDetails._id}`, `${userDetails.account_id}`);
+    if (!userRoleMenu) {
+      throw Object.assign(new Error('User does not have any permission'), { status: 403 });
+    }
+    const userTokenPayload: UserLoginPayload = { id: `${userDetails._id}`, username: userDetails.username, companyID: `${userDetails.account_id}` };
+    const newToken = generateAccessToken(userTokenPayload);
+    res.cookie('token', newToken, { httpOnly: true, secure: false , sameSite: 'lax'});
+    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
+    const userTokenData = new TokenModel({
+      _id: newToken,
+      userId: userDetails._id,
+      principalType: 'user',
+      ttl: parseInt(auth.expiresIn as string)
+    });
+    await userTokenData.save();
+    // console.log({token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data});
+    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data} });
+    // res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken } });
   } catch (error) {
     next(error);
   }

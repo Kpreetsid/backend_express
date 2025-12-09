@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { UploadModel } from '../models/upload.model';
-import { uploadBase64Image } from '../_config/upload';
+import { uploadBase64Image } from '../util/upload';
 
 export const uploadService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {

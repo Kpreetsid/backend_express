@@ -1,10 +1,10 @@
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { createEquipment, createMotor, createFlexible, createRigid, createBeltPulley, createGearbox, createFanBlower, createPumps, createCompressor, createExternalAPICall, deleteAssetsById, updateEquipment, updateCompressor, updateFanBlower, updateFlexible, updateMotor, updatePumps, updateRigid, updateBeltPulley, updateGearbox, makeAssetCopyByIdWithChildren, getAllEquipment, getEquipmentTreeData, updateEquipmentImageById, removeEquipmentById, getAllChildEquipmentIDs, checkEquipment, getAllChildEquipmentRecursive } from './equipment.service';
+import { equipmentService } from './equipment.service';
 import { IUser } from '../../models/user.model';
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { mapUserToAssetService } from '../../transaction/mapUserLocation/userLocation.service';
-import { deleteBase64Image, uploadBase64Image } from '../../_config/upload';
+import { deleteBase64Image, uploadBase64Image } from '../../util/upload';
 import { getAllChildLocationIds } from '../location/location.service';
 import mongoose from 'mongoose';
 
@@ -35,7 +35,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
       const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
       match.locationId = { $in: mappedData.map(doc => doc.locationId) };
     }
-    let data = await getAllEquipment(match);
+    let data = await equipmentService.getAllEquipment(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -62,7 +62,7 @@ export const getAsset = async (req: Request, res: Response, next: NextFunction):
     if (locationId) {
       match.locationId = new mongoose.Types.ObjectId(`${locationId}`);
     }
-    const data = await getAllEquipment(match);
+    const data = await equipmentService.getAllEquipment(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -79,12 +79,12 @@ export const getChildAsset = async (req: Request, res: Response, next: NextFunct
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const childIds = await getAllChildEquipmentIDs(new mongoose.Types.ObjectId(`${id}`));
+    const childIds = await equipmentService.getAllChildEquipmentIDs(new mongoose.Types.ObjectId(`${id}`));
     if (childIds.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { _id: { $in: childIds }, account_id: account_id, visible: true };
-    const data = await getAllEquipment(match);
+    const data = await equipmentService.getAllEquipment(match);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -103,7 +103,7 @@ export const getAssetTree = async (req: Request, res: Response, next: NextFuncti
       const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
       assetQuery._id = mapData.map(doc => doc?.assetId ? new mongoose.Types.ObjectId(`${doc?.assetId}`) : null).filter((x) => x);
     }
-    const isAssetExists = await checkEquipment(assetQuery);
+    const isAssetExists = await equipmentService.checkEquipment(assetQuery);
     if (!isAssetExists || isAssetExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -113,7 +113,7 @@ export const getAssetTree = async (req: Request, res: Response, next: NextFuncti
     if (location_id) {
       assetQuery.locationId = { $in: location_id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
     }
-    const data = await getEquipmentTreeData(assetQuery);
+    const data = await equipmentService.getEquipmentTreeData(assetQuery);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -136,51 +136,51 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
       const image = await uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image.fileName;
     }
-    const equipmentData = await createEquipment(Equipment, account_id, user_id);
+    const equipmentData = await equipmentService.createEquipment(Equipment, account_id, user_id);
     equipmentId = equipmentData._id;
     const assetsPromiseList: any = [];
     if (Motor) {
       if (Object.keys(Motor).length !== 0) {
-        assetsPromiseList.push(await createMotor(Motor, equipmentData, account_id, user_id));
+        assetsPromiseList.push(await equipmentService.createMotor(Motor, equipmentData, account_id, user_id));
       }
     }
     if (Flexible) {
       if (Object.keys(Flexible).length !== 0) {
-        assetsPromiseList.push(await createFlexible(Flexible, equipmentData, account_id, user_id));
+        assetsPromiseList.push(await equipmentService.createFlexible(Flexible, equipmentData, account_id, user_id));
       }
     }
     if (Rigid) {
       if (Object.keys(Rigid).length !== 0) {
-        assetsPromiseList.push(await createRigid(Rigid, equipmentData, account_id, user_id));
+        assetsPromiseList.push(await equipmentService.createRigid(Rigid, equipmentData, account_id, user_id));
       }
     }
     if (Belt_Pulley && Belt_Pulley.length > 0) {
       for (let beltPulley of Belt_Pulley) {
         if (Object.keys(beltPulley).length !== 0) {
-          assetsPromiseList.push(await createBeltPulley(beltPulley, equipmentData, account_id, user_id));
+          assetsPromiseList.push(await equipmentService.createBeltPulley(beltPulley, equipmentData, account_id, user_id));
         }
       }
     }
     if (Gearbox && Gearbox.length > 0) {
       for (let gearbox of Gearbox) {
         if (Object.keys(gearbox).length !== 0) {
-          assetsPromiseList.push(await createGearbox(gearbox, equipmentData, account_id, user_id));
+          assetsPromiseList.push(await equipmentService.createGearbox(gearbox, equipmentData, account_id, user_id));
         }
       }
     }
     if (Fan_Blower) {
       if (Object.keys(Fan_Blower).length !== 0) {
-        assetsPromiseList.push(await createFanBlower(Fan_Blower, equipmentData, account_id, user_id));
+        assetsPromiseList.push(await equipmentService.createFanBlower(Fan_Blower, equipmentData, account_id, user_id));
       }
     }
     if (Pumps) {
       if (Object.keys(Pumps).length !== 0) {
-        assetsPromiseList.push(await createPumps(Pumps, equipmentData, account_id, user_id));
+        assetsPromiseList.push(await equipmentService.createPumps(Pumps, equipmentData, account_id, user_id));
       }
     }
     if (Compressor) {
       if (Object.keys(Compressor).length !== 0) {
-        assetsPromiseList.push(await createCompressor(Compressor, equipmentData, account_id, user_id));
+        assetsPromiseList.push(await equipmentService.createCompressor(Compressor, equipmentData, account_id, user_id));
       }
     }
     const assetData = await Promise.all(assetsPromiseList);
@@ -191,11 +191,11 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
       ));
     });
     await mapUserToAssetService.createMapUserAssets(assetsMapData);
-    await createExternalAPICall(assetsMapData, account_id, user_id, userToken);
+    await equipmentService.createExternalAPICall(assetsMapData, account_id, user_id, userToken);
     res.status(200).json({ status: true, message: "Data created successfully", data: equipmentData._id });
   } catch (error) {
     if (equipmentId) {
-      await deleteAssetsById(equipmentId);
+      await equipmentService.deleteAssetsById(equipmentId);
     }
     next(error);
   }
@@ -215,7 +215,7 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     if (!Equipment.userList || Equipment.userList.length === 0) {
       throw Object.assign(new Error("Please select at least one user"), { status: 400 });
     }
-    const existEquipmentData = await getAllEquipment({ _id: id, account_id: account_id, visible: true });
+    const existEquipmentData = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
     if (Equipment.image_path && Equipment.image_path.startsWith("data:image")) {
       const image = await uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image.fileName;
@@ -227,66 +227,66 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
       const image = await uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image.fileName;
     }
-    await updateEquipment(Equipment, account_id, user_id);
+    await equipmentService.updateEquipment(Equipment, account_id, user_id);
     const assetUpdatePromises: any[] = [];
     if (Motor && Object.keys(Motor).length !== 0) {
       if (Motor.id) {
-        assetUpdatePromises.push(await updateMotor(Motor, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.updateMotor(Motor, Equipment, account_id, user_id));
       } else {
-        assetUpdatePromises.push(await createMotor(Motor, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.createMotor(Motor, Equipment, account_id, user_id));
       }
     }
     if (Flexible && Object.keys(Flexible).length !== 0) {
       if (Flexible.id) {
-        assetUpdatePromises.push(await updateFlexible(Flexible, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.updateFlexible(Flexible, Equipment, account_id, user_id));
       } else {
-        assetUpdatePromises.push(await createFlexible(Flexible, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.createFlexible(Flexible, Equipment, account_id, user_id));
       }
     }
     if (Rigid && Object.keys(Rigid).length !== 0) {
       if (Rigid.id) {
-        assetUpdatePromises.push(await updateRigid(Rigid, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.updateRigid(Rigid, Equipment, account_id, user_id));
       } else {
-        assetUpdatePromises.push(await createRigid(Rigid, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.createRigid(Rigid, Equipment, account_id, user_id));
       }
     }
     if (Belt_Pulley.length > 0) {
       for (let beltPulley of Belt_Pulley) {
         if (beltPulley.id) {
-          assetUpdatePromises.push(await updateBeltPulley(beltPulley, Equipment, account_id, user_id));
+          assetUpdatePromises.push(await equipmentService.updateBeltPulley(beltPulley, Equipment, account_id, user_id));
         } else {
-          assetUpdatePromises.push(await createBeltPulley(beltPulley, Equipment, account_id, user_id));
+          assetUpdatePromises.push(await equipmentService.createBeltPulley(beltPulley, Equipment, account_id, user_id));
         }
       }
     }
     if (Gearbox.length > 0) {
       for (let gearbox of Gearbox) {
         if (gearbox.id) {
-          assetUpdatePromises.push(await updateGearbox(gearbox, Equipment, account_id, user_id));
+          assetUpdatePromises.push(await equipmentService.updateGearbox(gearbox, Equipment, account_id, user_id));
         } else {
-          assetUpdatePromises.push(await createGearbox(gearbox, Equipment, account_id, user_id));
+          assetUpdatePromises.push(await equipmentService.createGearbox(gearbox, Equipment, account_id, user_id));
         }
       }
     }
     if (Fan_Blower && Object.keys(Fan_Blower).length !== 0) {
       if (Fan_Blower.id) {
-        assetUpdatePromises.push(await updateFanBlower(Fan_Blower, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.updateFanBlower(Fan_Blower, Equipment, account_id, user_id));
       } else {
-        assetUpdatePromises.push(await createFanBlower(Fan_Blower, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.createFanBlower(Fan_Blower, Equipment, account_id, user_id));
       }
     }
     if (Pumps && Object.keys(Pumps).length !== 0) {
       if (Pumps.id) {
-        assetUpdatePromises.push(await updatePumps(Pumps, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.updatePumps(Pumps, Equipment, account_id, user_id));
       } else {
-        assetUpdatePromises.push(await createPumps(Pumps, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.createPumps(Pumps, Equipment, account_id, user_id));
       }
     }
     if (Compressor && Object.keys(Compressor).length !== 0) {
       if (Compressor.id) {
-        assetUpdatePromises.push(await updateCompressor(Compressor, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.updateCompressor(Compressor, Equipment, account_id, user_id));
       } else {
-        assetUpdatePromises.push(await createCompressor(Compressor, Equipment, account_id, user_id));
+        assetUpdatePromises.push(await equipmentService.createCompressor(Compressor, Equipment, account_id, user_id));
       }
     }
     const updatedAssets = await Promise.all(assetUpdatePromises);
@@ -304,9 +304,9 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     }
     await mapUserToAssetService.createMapUserAssets(assetsMapData);
     if (newlyCreatedAssetList.length > 0) {
-      await createExternalAPICall(newlyCreatedAssetList, account_id, user_id, userToken);
+      await equipmentService.createExternalAPICall(newlyCreatedAssetList, account_id, user_id, userToken);
     }
-    const data = await getAllEquipment({ _id: id, account_id: account_id, visible: true });
+    const data = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
     res.status(200).json({ status: true, message: "Asset updated successfully", data });
   } catch (error) {
     next(error);
@@ -323,11 +323,11 @@ export const updateAssetImage = async (req: Request, res: Response, next: NextFu
     if (!image_path) {
       throw Object.assign(new Error('Image path is required'), { status: 400 });
     }
-    const dataExists: any = await getAllEquipment({ _id: req.params.id, account_id: account_id, visible: true });
+    const dataExists: any = await equipmentService.getAllEquipment({ _id: req.params.id, account_id: account_id, visible: true });
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    await updateEquipmentImageById(req.params.id, image_path, `${user_id}`);
+    await equipmentService.updateEquipmentImageById(req.params.id, image_path, `${user_id}`);
     res.status(200).json({ status: true, message: "Data updated successfully" });
   } catch (error) {
     next(error);
@@ -341,12 +341,12 @@ export const removeAsset = async (req: Request, res: Response, next: NextFunctio
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const match: any = { _id: req.params.id, account_id: account_id, visible: true };
-    const dataExists: any = await getAllEquipment(match);
+    const dataExists: any = await equipmentService.getAllEquipment(match);
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     await mapUserToLocationService.removeLocationMapping(req.params.id);
-    await removeEquipmentById(match, user_id);
+    await equipmentService.removeEquipmentById(match, user_id);
     res.status(200).json({ status: true, message: "Data deleted successfully" });
   } catch (error) {
     next(error);
@@ -361,25 +361,25 @@ export const makeAssetCopy = async (req: Request, res: Response, next: NextFunct
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       throw Object.assign(new Error("No asset id provided"), { status: 400 });
     }
-    const dataExists: any = await getAllEquipment({ _id: id, account_id, visible: true });
+    const dataExists: any = await equipmentService.getAllEquipment({ _id: id, account_id, visible: true });
     if (!dataExists || dataExists.length === 0) {
       throw Object.assign(new Error("Asset not found"), { status: 404 });
     }
     const sourceAsset = dataExists[0];
-    const allChildren: any[] = await getAllChildEquipmentRecursive(id, account_id);
+    const allChildren: any[] = await equipmentService.getAllChildEquipmentRecursive(id, account_id);
     const idMap: Record<string, any> = {};
     const originalTopLevelId = sourceAsset.top_level ? sourceAsset.id : sourceAsset.top_level_asset_id;
     const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;
-    const newParentId = await makeAssetCopyByIdWithChildren(sourceAsset, user_id, userToken, account_id, parentForCopy, idMap, null );
+    const newParentId = await equipmentService.makeAssetCopyByIdWithChildren(sourceAsset, user_id, userToken, account_id, parentForCopy, idMap, null );
     const newTopLevelId = sourceAsset.top_level ? newParentId : originalTopLevelId;
     idMap[`${sourceAsset.id}`] = newParentId;
     for (const child of allChildren) {
       const newParent = idMap[child.parent_id?.toString()] || newParentId;
-      const newChildId = await makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap, newTopLevelId );
+      const newChildId = await equipmentService.makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap, newTopLevelId );
       idMap[child._id.toString()] = newChildId;
     }
-    await createExternalAPICall([{ assetId: newParentId }, ...allChildren.map(c => ({ assetId: idMap[c._id.toString()] }))], account_id, user_id, userToken);
-    const copiedData: any = await getAllEquipment({ _id: newParentId, account_id, visible: true });
+    await equipmentService.createExternalAPICall([{ assetId: newParentId }, ...allChildren.map(c => ({ assetId: idMap[c._id.toString()] }))], account_id, user_id, userToken);
+    const copiedData: any = await equipmentService.getAllEquipment({ _id: newParentId, account_id, visible: true });
     res.status(201).json({ status: true, message: "Asset hierarchy copied successfully", data: copiedData});
   } catch (error) {
     next(error);
