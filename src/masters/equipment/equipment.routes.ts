@@ -1,17 +1,17 @@
 import express from 'express';
-import { getAssets, getAsset, getChildAsset, getAssetTree, removeAsset, create, updateAssetImage, update, makeAssetCopy } from './equipment.controller';
+import { equipmentController } from './equipment.controller';
 import { hasRolePermission } from '../../middlewares';
 
 export default (router: express.Router) => {
     const equipmentRouter = express.Router();
-    equipmentRouter.get('/', getAssets);
-    equipmentRouter.get('/tree', getAssetTree);
-    equipmentRouter.get('/child/:id', getChildAsset);
-    equipmentRouter.get('/make-copy/:id', hasRolePermission('asset', 'add_asset'), makeAssetCopy);
-    equipmentRouter.get('/:id', getAsset);
-    equipmentRouter.post('/', hasRolePermission('asset', 'add_asset'), create);
-    equipmentRouter.put('/:id', hasRolePermission('asset', 'edit_asset'), update);
-    equipmentRouter.patch('/:id', hasRolePermission('asset', 'edit_asset'), updateAssetImage);
-    equipmentRouter.delete('/:id', hasRolePermission('asset', 'delete_asset'), removeAsset);
+    equipmentRouter.get('/', equipmentController.getAssets);
+    equipmentRouter.get('/tree', equipmentController.getAssetTree);
+    equipmentRouter.get('/child/:id', equipmentController.getChildAsset);
+    equipmentRouter.get('/make-copy/:id', hasRolePermission('asset', 'add_asset'), equipmentController.makeAssetCopy);
+    equipmentRouter.get('/:id', equipmentController.getAsset);
+    equipmentRouter.post('/', hasRolePermission('asset', 'add_asset'), equipmentController.create);
+    equipmentRouter.put('/:id', hasRolePermission('asset', 'edit_asset'), equipmentController.update);
+    equipmentRouter.patch('/:id', hasRolePermission('asset', 'edit_asset'), equipmentController.updateAssetImage);
+    equipmentRouter.delete('/:id', hasRolePermission('asset', 'delete_asset'), equipmentController.removeAsset);
     router.use('/equipment', equipmentRouter);
 }
