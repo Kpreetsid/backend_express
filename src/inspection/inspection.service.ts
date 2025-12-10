@@ -1,7 +1,8 @@
 import { InspectionModel } from "../models/inspection.model";
 import { setInspection, removeInspectionById } from "../transaction/mapUserInspection/userInspection.service";
 
-export const getAllInspection = async (filter: any) => {
+class InspectionService {
+ async getAllInspection (filter: any) {
   const data = await InspectionModel.aggregate([
     { $match: filter },
     {
@@ -83,7 +84,7 @@ export const getAllInspection = async (filter: any) => {
   return data;
 };
 
-export const createInspection = async (body: any, account_id: any, user_id: any) => {
+ async createInspection (body: any, account_id: any, user_id: any) {
   const newInspection = new InspectionModel({
     account_id,
     title: body.title,
@@ -104,7 +105,7 @@ export const createInspection = async (body: any, account_id: any, user_id: any)
   return await newInspection.save();
 };
 
-export const updateInspection = async (id: any, body: any, account_id: any, user_id: any) => {
+ async updateInspection (id: any, body: any, account_id: any, user_id: any) {
   await setInspection(account_id, id, body.assignedUser);
   return await InspectionModel.findOneAndUpdate(
     { _id: id, account_id },
@@ -113,7 +114,7 @@ export const updateInspection = async (id: any, body: any, account_id: any, user
   );
 };
 
-export const removeInspection = async (id: any, account_id: any, user_id: any) => {
+ async removeInspection (id: any, account_id: any, user_id: any) {
   await removeInspectionById(account_id, id);
   return await InspectionModel.findOneAndUpdate(
     { _id: id, account_id },
@@ -121,3 +122,6 @@ export const removeInspection = async (id: any, account_id: any, user_id: any) =
     { new: true }
   );
 };
+}
+
+export const inspectionService = new InspectionService();

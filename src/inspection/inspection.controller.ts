@@ -1,11 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../models/user.model';
-import { getAllInspection, createInspection, updateInspection, removeInspection } from './inspection.service';
+import { inspectionService } from './inspection.service';
 import mongoose from 'mongoose';
 import { getInspectionByUserId } from '../transaction/mapUserInspection/userInspection.service';
 
-export const getAll = async (req: Request, res: Response, next: NextFunction) => {
+class InspectionController {
+
+ async getAll (req: Request, res: Response, next: NextFunction) {
   try {
     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const match: any = { account_id, visible: true };
@@ -20,7 +22,7 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
       const inspectionMappedData: any = await getInspectionByUserId(account_id, user_id);
       match._id = { $in: inspectionMappedData.map((doc: any) => doc.inspection_id) };
     }
-    const data = await getAllInspection(match);
+    const data = await inspectionService.getAllInspection(match);
     if (!data.length) {
       throw Object.assign(new Error('No inspections data found'), { status: 404 });
     }
@@ -30,11 +32,11 @@ export const getAll = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const getById = async (req: Request, res: Response, next: NextFunction) => {
+ async getById (req: Request, res: Response, next: NextFunction) {
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const data = await getAllInspection({ _id: id, account_id, visible: true });
+    const data = await inspectionService.getAllInspection({ _id: id, account_id, visible: true });
     if (!data.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
@@ -44,14 +46,14 @@ export const getById = async (req: Request, res: Response, next: NextFunction) =
   }
 };
 
-export const create = async (req: Request, res: Response, next: NextFunction) => {
+ async create (req: Request, res: Response, next: NextFunction) {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const data: any = await createInspection(req.body, account_id, user_id);
+    const data: any = await inspectionService.createInspection(req.body, account_id, user_id);
     if (!data) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
-    const result = await getAllInspection({ _id: data._id, account_id, visible: true });
+    const result = await inspectionService.getAllInspection({ _id: data._id, account_id, visible: true });
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
@@ -61,15 +63,15 @@ export const create = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-export const updateById = async (req: Request, res: Response, next: NextFunction) => {
+ async updateById (req: Request, res: Response, next: NextFunction) {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const data = await updateInspection(id, req.body, account_id, user_id);
+    const data = await inspectionService.updateInspection(id, req.body, account_id, user_id);
     if (!data) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
-    const result = await getAllInspection({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+    const result = await inspectionService.getAllInspection({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
@@ -79,15 +81,15 @@ export const updateById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-export const removeById = async (req: Request, res: Response, next: NextFunction) => {
+ async removeById (req: Request, res: Response, next: NextFunction) {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const data = await getAllInspection({ _id: id, account_id, visible: true });
+    const data = await inspectionService.getAllInspection({ _id: id, account_id, visible: true });
     if (!data.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
-    const result = await removeInspection(id, account_id, user_id);
+    const result = await inspectionService.removeInspection(id, account_id, user_id);
     if (!result) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
@@ -96,3 +98,6 @@ export const removeById = async (req: Request, res: Response, next: NextFunction
     next(error);
   }
 };
+}
+
+export const inspectionController = new InspectionController();

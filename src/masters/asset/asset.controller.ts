@@ -3,7 +3,7 @@ import { get } from "lodash";
 import { assetService } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { mapUserToAssetService, mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
-import { getAllChildLocationIds } from '../location/location.service';
+import { locationService } from '../location/location.service';
 import mongoose from 'mongoose';
 
 class AssetController {
@@ -30,7 +30,7 @@ class AssetController {
         match.top_level = top_level == 'true' ? true : false;
       }
       if (locationId) {
-        const childIds = await getAllChildLocationIds(locationId);
+        const childIds = await locationService.getAllChildLocationIds(locationId);
         const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
         match.locationId = { $in: mappedData.map(doc => doc.locationId) };
       }
