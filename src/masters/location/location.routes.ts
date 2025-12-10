@@ -1,20 +1,20 @@
 import express from 'express';
-import { getLocations, getLocation, updateLocation, getChildLocation, getLocationTree, removeLocation, createDuplicateLocation, getKpiFilterLocations, getChildAssetsAgainstLocation, createLocation, updateLocationFloorMapImage, getLocationSensorList } from './location.controller';
+import { locationController } from './location.controller';
 import { hasRolePermission } from '../../middlewares';
 
 export default (router: express.Router) => {
   const locationRouter = express.Router();
-  locationRouter.get('/', getLocations);
-  locationRouter.get('/tree', getLocationTree);
-  locationRouter.get('/sensor-list', getLocationSensorList);
-  locationRouter.get('/kpi-filter', getKpiFilterLocations);
-  locationRouter.get('/child/:id', getChildLocation);
-  locationRouter.get('/make-copy/:id', createDuplicateLocation);
-  locationRouter.get('/:id', getLocation);
-  locationRouter.post('/', hasRolePermission('location', 'add_location'), createLocation);
-  locationRouter.post('/child-assets', getChildAssetsAgainstLocation);
-  locationRouter.put('/floor-map-image/:id', updateLocationFloorMapImage);
-  locationRouter.put('/:id', hasRolePermission('location', 'edit_location'), updateLocation);
-  locationRouter.delete('/:id', hasRolePermission('location', 'delete_location'), removeLocation);
+  locationRouter.get('/', locationController.getLocations);
+  locationRouter.get('/tree', locationController.getLocationTree);
+  locationRouter.get('/sensor-list', locationController.getLocationSensorList);
+  locationRouter.get('/kpi-filter', locationController.getKpiFilterLocations);
+  locationRouter.get('/child/:id', locationController.getChildLocation);
+  locationRouter.get('/make-copy/:id', locationController.createDuplicateLocation);
+  locationRouter.get('/:id', locationController.getLocation);
+  locationRouter.post('/', hasRolePermission('location', 'add_location'), locationController.createLocation);
+  locationRouter.post('/child-assets', locationController.getChildAssetsAgainstLocation);
+  locationRouter.put('/floor-map-image/:id', locationController.updateLocationFloorMapImage);
+  locationRouter.put('/:id', hasRolePermission('location', 'edit_location'), locationController.updateLocation);
+  locationRouter.delete('/:id', hasRolePermission('location', 'delete_location'), locationController.removeLocation);
   router.use('/locations', locationRouter);
 };

@@ -1,309 +1,314 @@
 import { Request, Response, NextFunction } from 'express';
-import { getAllLocations, insertLocation, updateById, removeLocationById, getTree, kpiFilterLocations, childAssetsAgainstLocation, updateFloorMapImage, getLocationSensor, cloneLocationNode, getAllChildHierarchy, getLocationById } from './location.service';
+import { locationService } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
 
-export const getLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const match: any = { account_id, visible: true };
-    if (userRole !== 'admin') {
-      const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
-      match._id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
-    }
-    const { query: { locationId, parent_id } } = req;
-    if (locationId) {
-      match._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-    }
-    if (parent_id) {
-      match.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-    }
-    let data = await getAllLocations(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
+class LocationController {
 
-export const getLocationTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { query: { location_id, location_floor_map_tree } } = req;
-    let match: any = { account_id, visible: true };
-    let allowedLocationIds: any = [];
-    if (location_floor_map_tree) {
-      if (location_id) {
-        match._id = location_id;
+  async getLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const match: any = { account_id, visible: true };
+      if (userRole !== 'admin') {
+        const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
+        match._id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
       }
-    } else {
-      if (location_id) {
-        match._id = location_id;
-      } else {
-        match.parent_id = { $exists: false };
+      const { query: { locationId, parent_id } } = req;
+      if (locationId) {
+        match._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
       }
-    }
-    if (userRole !== "admin") {
-      const mapData = await mapUserToLocationService.getLocationsMappedData(user_id);
-      allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
-      if (allowedLocationIds.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+      if (parent_id) {
+        match.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
       }
-      if (match._id) {
-        const isAllowed = allowedLocationIds.includes(match._id.toString());
-        if (!isAllowed) {
-          throw Object.assign(new Error("No access to this location"), { status: 403 });
-        }
-      } else {
-        match._id = { $in: allowedLocationIds };
-      }
-    }
-    const data = await getTree(match, location_id, allowedLocationIds, userRole);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error("No data found"), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getChildLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const { params: { id } } = req;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
-    }
-    const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
-    const isDataExists = await getAllLocations(match);
-    if (!isDataExists || isDataExists.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const getChildLocationIds = await getChildLocationByRecursive(id);
-    const data = await getAllLocations({ _id: { $in: getChildLocationIds }, account_id, visible: true });
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-const getChildLocationByRecursive = async (id: string) => {
-  try {
-    const locationIdList = [id];
-    const data = await getAllLocations({ parent_id: new mongoose.Types.ObjectId(id), visible: true });
-    if (data && data.length > 0) {
-      for(let dataItem of data) {
-        const getChildLocationIds = await getChildLocationByRecursive(dataItem.id.toString());
-        if (getChildLocationIds && getChildLocationIds.length > 0) {
-          locationIdList.push(...getChildLocationIds);
-        }
-      }
-    }
-    return [...locationIdList];
-  } catch (error) {
-    return [];
-  }
-}
-
-export const getKpiFilterLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const data = await kpiFilterLocations(account_id, user_id, userRole);
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const getChildAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id } = get(req, "user", {}) as IUser;
-    const { levelOneLocations, levelTwoLocations } = req.body;
-    const data = await childAssetsAgainstLocation(levelOneLocations, levelTwoLocations, account_id);
-    if (!data) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const getLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const { params: { id }, query: { location_id, location_floor_map_tree } } = req;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
-    }
-    let match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
-    if (location_floor_map_tree) {
-      match.top_level = true;
-      if (location_id) {
-        match._id = location_id;
-      }
-    } else {
-      if (location_id) {
-        match._id = location_id;
-      }
-    }
-    if (userRole !== 'admin') {
-      const mapData = await mapUserToLocationService.getLocationsMappedData(user_id);
-      const allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
-      if (allowedLocationIds.length === 0) {
+      let data = await locationService.getAllLocations(match);
+      if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      if (match._id) {
-        const isAllowed = allowedLocationIds.includes(match._id.toString());
-        if (!isAllowed) {
-          throw Object.assign(new Error('No access to this location'), { status: 403 });
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getLocationTree(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const { query: { location_id, location_floor_map_tree } } = req;
+      let match: any = { account_id, visible: true };
+      let allowedLocationIds: any = [];
+      if (location_floor_map_tree) {
+        if (location_id) {
+          match._id = location_id;
         }
       } else {
-        match._id = { $in: allowedLocationIds };
+        if (location_id) {
+          match._id = location_id;
+        } else {
+          match.parent_id = { $exists: false };
+        }
       }
-    }
-    const data = await getAllLocations(match);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const createLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const body = req.body;
-    if (body.userIdList.length === 0) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
-    }
-    body.account_id = account_id;
-    body.createdBy = user_id;
-    const data: any = await insertLocation(body);
-    await mapUserToLocationService.mapUserLocationData(data._id, body.userIdList, account_id);
-    res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const updateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const { params: { id }, body } = req;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
-    }
-    if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
-    }
-    const location = await getAllLocations({ _id: id, account_id: account_id, visible: true });
-    if (!location || location.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    body.updatedBy = user_id;
-    const data: any = await updateById(id, body);
-    if (!data || !data.visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    data.id = data._id;
-    const updatedLocation = await getAllLocations({ _id: id, account_id: account_id, visible: true });
-    res.status(200).json({ status: true, message: "Data updated successfully", data: updatedLocation });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const removeLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const { params: { id } } = req;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error('Bad request'), { status: 400 });
-    }
-    const match = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
-    const location = await getAllLocations(match);
-    if (!location || location.length === 0 || !location[0].visible) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    await removeLocationById(new mongoose.Types.ObjectId(id), user_id);
-    res.status(200).json({ status: true, message: "Data deleted successfully" });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const updateLocationFloorMapImage = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { params: { id }, body: { top_level_location_image } } = req;
-    if (!id || !top_level_location_image) {
-      throw Object.assign(new Error('Invalid request data'), { status: 400 });
-    }
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    await updateFloorMapImage(id, account_id, user_id, top_level_location_image);
-    res.status(200).json({ status: true, message: "Data updated successfully" });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const getLocationSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const data = await getLocationSensor(account_id, user_id, userRole);
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-}
-
-export const createDuplicateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const { id } = req.params;
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error("Bad request"), { status: 400 });
-    }
-    let sourceLocation: any = await getLocationById(id, account_id);
-    if (!sourceLocation) {
-      throw Object.assign(new Error("Location not found"), { status: 404 });
-    }
-    sourceLocation = sourceLocation.toObject ? sourceLocation.toObject() : sourceLocation;
-    const allChildren: any[] = await getAllChildHierarchy(id, account_id);
-    const idMap: Record<string, any> = {};
-    const parentForCopy = sourceLocation.parent_id ? sourceLocation.parent_id : undefined;
-    const newParentId = await cloneLocationNode( sourceLocation, user_id, account_id, parentForCopy, idMap, null );
-    const newTopLevelId = sourceLocation.parent_id ? sourceLocation.top_level_location_id : newParentId;
-    idMap[`${sourceLocation._id || sourceLocation.id}`] = newParentId;
-    if (allChildren.length > 0) {
-      for (const child of allChildren) {
-        const newParent = idMap[child.parent_id?.toString()] || newParentId;
-        const newChildId = await cloneLocationNode( child, user_id, account_id, newParent, idMap, newTopLevelId );
-        idMap[child._id.toString()] = newChildId;
+      if (userRole !== "admin") {
+        const mapData = await mapUserToLocationService.getLocationsMappedData(user_id);
+        allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
+        if (allowedLocationIds.length === 0) {
+          throw Object.assign(new Error("No data found"), { status: 404 });
+        }
+        if (match._id) {
+          const isAllowed = allowedLocationIds.includes(match._id.toString());
+          if (!isAllowed) {
+            throw Object.assign(new Error("No access to this location"), { status: 403 });
+          }
+        } else {
+          match._id = { $in: allowedLocationIds };
+        }
       }
+      const data = await locationService.getTree(match, location_id, allowedLocationIds, userRole);
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error("No data found"), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
     }
-    const getData = await getAllLocations({ _id: newParentId, account_id, visible: true });
-    if (!getData || getData.length === 0) {
-      throw Object.assign(new Error("No data found"), { status: 404 });
+  };
+
+  async getChildLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id } = get(req, "user", {}) as IUser;
+      const { params: { id } } = req;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+      const isDataExists = await locationService.getAllLocations(match);
+      if (!isDataExists || isDataExists.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      const getChildLocationIds = await this.getChildLocationByRecursive(id);
+      const data = await locationService.getAllLocations({ _id: { $in: getChildLocationIds }, account_id, visible: true });
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
     }
-    res.status(201).json({ status: true, message: "Location hierarchy copied successfully", data: getData });
-  } catch (error) {
-    next(error);
   }
-};
+
+  async getChildLocationByRecursive(id: string) {
+    try {
+      const locationIdList = [id];
+      const data = await locationService.getAllLocations({ parent_id: new mongoose.Types.ObjectId(id), visible: true });
+      if (data && data.length > 0) {
+        for (let dataItem of data) {
+          const getChildLocationIds = await this.getChildLocationByRecursive(dataItem.id.toString());
+          if (getChildLocationIds && getChildLocationIds.length > 0) {
+            locationIdList.push(...getChildLocationIds);
+          }
+        }
+      }
+      return [...locationIdList];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async getKpiFilterLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const data = await locationService.kpiFilterLocations(account_id, user_id, userRole);
+      if (!data) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getChildAssetsAgainstLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const { levelOneLocations, levelTwoLocations } = req.body;
+      const data = await locationService.childAssetsAgainstLocation(levelOneLocations, levelTwoLocations, account_id, user_id, userRole);
+      if (!data) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const { params: { id }, query: { location_id, location_floor_map_tree } } = req;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      let match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+      if (location_floor_map_tree) {
+        match.top_level = true;
+        if (location_id) {
+          match._id = location_id;
+        }
+      } else {
+        if (location_id) {
+          match._id = location_id;
+        }
+      }
+      if (userRole !== 'admin') {
+        const mapData = await mapUserToLocationService.getLocationsMappedData(user_id);
+        const allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
+        if (allowedLocationIds.length === 0) {
+          throw Object.assign(new Error('No data found'), { status: 404 });
+        }
+        if (match._id) {
+          const isAllowed = allowedLocationIds.includes(match._id.toString());
+          if (!isAllowed) {
+            throw Object.assign(new Error('No access to this location'), { status: 403 });
+          }
+        } else {
+          match._id = { $in: allowedLocationIds };
+        }
+      }
+      const data = await locationService.getAllLocations(match);
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const body = req.body;
+      if (body.userIdList.length === 0) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      body.account_id = account_id;
+      body.createdBy = user_id;
+      const data: any = await locationService.insertLocation(body);
+      await mapUserToLocationService.mapUserLocationData(data._id, body.userIdList, account_id);
+      res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { params: { id }, body } = req;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      const location = await locationService.getAllLocations({ _id: id, account_id: account_id, visible: true });
+      if (!location || location.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      body.updatedBy = user_id;
+      const data: any = await locationService.updateById(id, body);
+      if (!data || !data.visible) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      data.id = data._id;
+      const updatedLocation = await locationService.getAllLocations({ _id: id, account_id: account_id, visible: true });
+      res.status(200).json({ status: true, message: "Data updated successfully", data: updatedLocation });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async removeLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { params: { id } } = req;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      const match = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+      const location = await locationService.getAllLocations(match);
+      if (!location || location.length === 0 || !location[0].visible) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      await locationService.removeLocationById(new mongoose.Types.ObjectId(id), user_id);
+      res.status(200).json({ status: true, message: "Data deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateLocationFloorMapImage(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { params: { id }, body: { top_level_location_image } } = req;
+      if (!id || !top_level_location_image) {
+        throw Object.assign(new Error('Invalid request data'), { status: 400 });
+      }
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      await locationService.updateFloorMapImage(id, account_id, user_id, top_level_location_image);
+      res.status(200).json({ status: true, message: "Data updated successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getLocationSensorList(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const data = await locationService.getLocationSensor(account_id, user_id, userRole);
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createDuplicateLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { id } = req.params;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error("Bad request"), { status: 400 });
+      }
+      let sourceLocation: any = await locationService.getLocationById(id, account_id);
+      if (!sourceLocation) {
+        throw Object.assign(new Error("Location not found"), { status: 404 });
+      }
+      sourceLocation = sourceLocation.toObject ? sourceLocation.toObject() : sourceLocation;
+      const allChildren: any[] = await locationService.getAllChildHierarchy(id, account_id);
+      const idMap: Record<string, any> = {};
+      const parentForCopy = sourceLocation.parent_id ? sourceLocation.parent_id : undefined;
+      const newParentId = await locationService.cloneLocationNode(sourceLocation, user_id, account_id, parentForCopy, idMap, null);
+      const newTopLevelId = sourceLocation.parent_id ? sourceLocation.top_level_location_id : newParentId;
+      idMap[`${sourceLocation._id || sourceLocation.id}`] = newParentId;
+      if (allChildren.length > 0) {
+        for (const child of allChildren) {
+          const newParent = idMap[child.parent_id?.toString()] || newParentId;
+          const newChildId = await locationService.cloneLocationNode(child, user_id, account_id, newParent, idMap, newTopLevelId);
+          idMap[child._id.toString()] = newChildId;
+        }
+      }
+      const getData = await locationService.getAllLocations({ _id: newParentId, account_id, visible: true });
+      if (!getData || getData.length === 0) {
+        throw Object.assign(new Error("No data found"), { status: 404 });
+      }
+      res.status(201).json({ status: true, message: "Location hierarchy copied successfully", data: getData });
+    } catch (error) {
+      next(error);
+    }
+  };
+}
+
+export const locationController = new LocationController();

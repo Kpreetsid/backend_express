@@ -1,6 +1,6 @@
 import express from 'express';
 const router = express.Router();
-import { uploadController, uploadBaseImage } from './upload.controller';
+import { uploadController } from './upload.controller';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -31,8 +31,8 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 export default (): express.Router => {
-    router.post('/', upload.array('files', 5), uploadController);
-    router.post('/baseImage', uploadBaseImage);
-    router.post('/:folderName', upload.array('files', 5), uploadController);
+    router.post('/', upload.array('files', 5), uploadController.uploadController);
+    router.post('/baseImage', uploadController.uploadBaseImage);
+    router.post('/:folderName', upload.array('files', 5), uploadController.uploadController);
     return router;
 }

@@ -4,7 +4,7 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
 import { assetService } from '../../masters/asset/asset.service';
-import { getLocationsList } from '../../masters/location/location.service';
+import { locationService } from '../../masters/location/location.service';
 
 class MapUserAssetLocationController {
 
@@ -16,7 +16,7 @@ class MapUserAssetLocationController {
       const filter: any = { populate: "userId" };
       if (userRole === "admin") {
         const locationMatch = { account_id, visible: true };
-        const locationData = await getLocationsList(locationMatch);
+        const locationData = await locationService.getLocationsList(locationMatch);
         if (!locationData?.length) {
           throw Object.assign(new Error("No data found"), { status: 404 });
         }
@@ -25,7 +25,7 @@ class MapUserAssetLocationController {
       if (query.locationId) {
         const locationId = new mongoose.Types.ObjectId(query.locationId as string);
         match.locationId = locationId;
-        const locationData = await getLocationsList({ _id: locationId, account_id });
+        const locationData = await locationService.getLocationsList({ _id: locationId, account_id });
         if (!locationData) {
           throw Object.assign(new Error("No data found"), { status: 404 });
         }

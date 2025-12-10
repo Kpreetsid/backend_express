@@ -4,8 +4,8 @@ import { equipmentService } from './equipment.service';
 import { IUser } from '../../models/user.model';
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { mapUserToAssetService } from '../../transaction/mapUserLocation/userLocation.service';
-import { deleteBase64Image, uploadBase64Image } from '../../util/upload';
-import { getAllChildLocationIds } from '../location/location.service';
+import { uploadFilesService } from '../../util/upload';
+import { locationService } from '../location/location.service';
 import mongoose from 'mongoose';
 
 export const getAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -31,7 +31,7 @@ export const getAssets = async (req: Request, res: Response, next: NextFunction)
       match.top_level = top_level == 'true' ? true : false;
     }
     if (locationId) {
-      const childIds = await getAllChildLocationIds(locationId);
+      const childIds = await locationService.getAllChildLocationIds(locationId);
       const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
       match.locationId = { $in: mappedData.map(doc => doc.locationId) };
     }
@@ -133,7 +133,7 @@ export const create = async (req: Request, res: Response, next: NextFunction): P
       throw Object.assign(new Error('Please select at least one user'), { status: 400 });
     }
     if (Equipment.image_path) {
-      const image = await uploadBase64Image(Equipment.image_path, "assets");
+      const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image.fileName;
     }
     const equipmentData = await equipmentService.createEquipment(Equipment, account_id, user_id);
@@ -217,14 +217,14 @@ export const update = async (req: Request, res: Response, next: NextFunction): P
     }
     const existEquipmentData = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
     if (Equipment.image_path && Equipment.image_path.startsWith("data:image")) {
-      const image = await uploadBase64Image(Equipment.image_path, "assets");
+      const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image.fileName;
     }
     if (Equipment.image_path) {
       if (existEquipmentData.image_path && existEquipmentData.image_path['fileName']) {
-        await deleteBase64Image(existEquipmentData.image_path['fileName'], "asset");
+        await uploadFilesService.deleteBase64Image(existEquipmentData.image_path['fileName'], "asset");
       }
-      const image = await uploadBase64Image(Equipment.image_path, "assets");
+      const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");
       Equipment.image_path = image.fileName;
     }
     await equipmentService.updateEquipment(Equipment, account_id, user_id);
