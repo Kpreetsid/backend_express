@@ -1,9 +1,4 @@
-import { WorkOrderAssigneeModel, IWorkOrderAssignee } from "../../models/mapUserWorkOrder.model";
-import { Request, Response, NextFunction } from 'express';
-import { WorkOrderModel } from "../../models/workOrder.model";
-import { get } from "lodash";
-import { IUser } from "../../models/user.model";
-import mongoose from 'mongoose';
+import { WorkOrderAssigneeModel } from "../../models/mapUserWorkOrder.model";
 
 class UserWorkOrderService {
   async mapUsersWorkOrder (body: any) {
@@ -29,52 +24,14 @@ class UserWorkOrderService {
   async removeMappedUsers (id: any): Promise<any> {
     return await WorkOrderAssigneeModel.deleteMany({ woId: id });
   };
+  
+  async mappedData (match: any): Promise<any> {
+    return await WorkOrderAssigneeModel.find(match);
+  };
+  
+  async getAll (match: any): Promise<any> {
+    return await WorkOrderAssigneeModel.find(match).populate([{ path: 'woId', model: "Schema_WorkOrder" }])
+  };
 }
 
 export const userWorkOrderService = new UserWorkOrderService();
-
-export const mappedData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-    const { workOrderId } = req.params;
-    const data: IWorkOrderAssignee[] = await WorkOrderAssigneeModel.find({ woId: new mongoose.Types.ObjectId(workOrderId) })
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getAll = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  try {
-     const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-    const query = req.query;
-    const match: any = {};
-    if(userRole === 'admin') {
-      const workOrderMatch = { account_id: account_id, visible: true };
-      const workOrderData: IWorkOrderAssignee[] = await WorkOrderModel.find(workOrderMatch);
-      if (!workOrderData || workOrderData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      match.woId = { $in: workOrderData.map(doc => doc._id) };
-    } else {
-      match.userId = user_id;
-    }
-    if(query.workOrderId) {
-      match.woId = query.workOrderId;
-      const workOrderMatch = { _id: query.workOrderId, account_id : account_id };
-      const workOrderData: IWorkOrderAssignee[] = await WorkOrderModel.find(workOrderMatch);
-      if (!workOrderData || workOrderData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-    }
-    const data: IWorkOrderAssignee[] = await WorkOrderAssigneeModel.find(match).populate('woId');
-    if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    return res.status(200).json({ status: true, message: "Data fetched successfully", data });
-  } catch (error) {
-    next(error);
-  }
-};

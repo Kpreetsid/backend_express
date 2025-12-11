@@ -3,7 +3,7 @@ import { get } from 'lodash';
 import { IUser } from '../models/user.model';
 import { inspectionService } from './inspection.service';
 import mongoose from 'mongoose';
-import { getInspectionByUserId } from '../transaction/mapUserInspection/userInspection.service';
+import { mapInspectionService } from '../transaction/mapUserInspection/userInspection.service';
 
 class InspectionController {
 
@@ -19,7 +19,7 @@ class InspectionController {
       match.asset_id = asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
     }
     if (userRole !== 'admin') {
-      const inspectionMappedData: any = await getInspectionByUserId(account_id, user_id);
+      const inspectionMappedData: any = await mapInspectionService.getInspectionByUserId(account_id, user_id);
       match._id = { $in: inspectionMappedData.map((doc: any) => doc.inspection_id) };
     }
     const data = await inspectionService.getAllInspection(match);

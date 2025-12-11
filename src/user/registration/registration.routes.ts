@@ -1,11 +1,10 @@
 import express from 'express';
-
-import { userRegister, userOTPVerification } from './registration.controller';
+import { registrationController } from './registration.controller';
 
 export default (router: express.Router) => {
     const registrationRouter = express.Router();
-    registrationRouter.post('/', userRegister);
-    registrationRouter.post('/sendEmail', userRegister);
-    registrationRouter.post('/verifyOTP', userOTPVerification);
+    registrationRouter.post('/', registrationController.userRegister);
+    registrationRouter.post('/sendEmail', registrationController.userRegister);
+    registrationRouter.post('/verifyOTP', registrationController.userOTPVerification);
     router.use('/registration', registrationRouter);
 }

@@ -163,7 +163,7 @@ class OrderController {
           }
         }
         if(isWorkOrderExist[0].sop_form_id) {
-          if(!isWorkOrderExist[0].sop_form_data) {
+          if(!isWorkOrderExist[0].sop_form_submitted) {
             throw Object.assign(new Error('Form is not completed'), { status: 400 });
           }
         }
