@@ -1,46 +1,50 @@
 import { NextFunction, Request, Response } from 'express';
-import { emailVerificationCode, verifyOTPCode } from './registration.service';
+import { registrationService } from './registration.service';
 import { usersService } from '../../masters/user/user.service';
 import { companyService } from '../../masters/company/company.service';
 
-export const userRegister = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    try {
-        const { email, username, firstName, account_name } = req.body;
-        if (!email || !username || !firstName) {
-            throw Object.assign(new Error('Email and Username are required'), { status: 400 });
+class RegistrationController {
+    async userRegister (req: Request, res: Response, next: NextFunction): Promise<any> {
+        try {
+            const { email, username, firstName, account_name } = req.body;
+            if (!email || !username || !firstName) {
+                throw Object.assign(new Error('Email and Username are required'), { status: 400 });
+            }
+            const isEmailExists = await usersService.getAllUsers({ email: email });
+            if (isEmailExists.length > 0) {
+                throw Object.assign(new Error('Email already exists'), { status: 403 });
+            }
+            const isUserNameExists = await usersService.getAllUsers({ username: username });
+            if (isUserNameExists.length > 0) {
+                throw Object.assign(new Error('Username already exists'), { status: 403 });
+            }
+            const isAccountExists = await companyService.getAllCompanies({ account_name: account_name });
+            if (isAccountExists.length > 0) {
+                throw Object.assign(new Error('Account already exists'), { status: 403 });
+            }
+            const match = { email: email, firstName: firstName };
+            const data = await registrationService.emailVerificationCode(match);
+            if(!data) {
+                throw Object.assign(new Error('Failed to send verification email'), { status: 500 });
+            }
+            res.status(200).json({ status: true, message: "Verification email sent successfully" });
+        } catch (error) {
+            next(error);
         }
-        const isEmailExists = await usersService.getAllUsers({ email: email });
-        if (isEmailExists.length > 0) {
-            throw Object.assign(new Error('Email already exists'), { status: 403 });
+    }
+
+    async userOTPVerification (req: Request, res: Response, next: NextFunction): Promise<any> {
+        try {
+            const body = req.body;
+            const data = await registrationService.verifyOTPCode(body);
+            if (!data) {
+                throw Object.assign(new Error('OTP verification failed'), { status: 403 });
+            }
+            res.status(201).json({ status: true, message: "OTP code verified successfully" });
+        } catch (error) {
+            next(error);
         }
-        const isUserNameExists = await usersService.getAllUsers({ username: username });
-        if (isUserNameExists.length > 0) {
-            throw Object.assign(new Error('Username already exists'), { status: 403 });
-        }
-        const isAccountExists = await companyService.getAllCompanies({ account_name: account_name });
-        if (isAccountExists.length > 0) {
-            throw Object.assign(new Error('Account already exists'), { status: 403 });
-        }
-        const match = { email: email, firstName: firstName };
-        const data = await emailVerificationCode(match);
-        if(!data) {
-            throw Object.assign(new Error('Failed to send verification email'), { status: 500 });
-        }
-        res.status(200).json({ status: true, message: "Verification email sent successfully" });
-    } catch (error) {
-        next(error);
     }
 }
 
-export const userOTPVerification = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    try {
-        const body = req.body;
-        const data = await verifyOTPCode(body);
-        if (!data) {
-            throw Object.assign(new Error('OTP verification failed'), { status: 403 });
-        }
-        res.status(201).json({ status: true, message: "OTP code verified successfully" });
-    } catch (error) {
-        next(error);
-    }
-}
+export const registrationController = new RegistrationController();

@@ -1,5 +1,5 @@
 import { InspectionModel } from "../models/inspection.model";
-import { setInspection, removeInspectionById } from "../transaction/mapUserInspection/userInspection.service";
+import { mapInspectionService } from "../transaction/mapUserInspection/userInspection.service";
 
 class InspectionService {
  async getAllInspection (filter: any) {
@@ -101,12 +101,12 @@ class InspectionService {
     no_of_actions: body.no_of_actions,
     createdBy: user_id
   });
-  await setInspection(account_id, newInspection._id, body.assignedUser);
+  await mapInspectionService.setInspection(account_id, newInspection._id, body.assignedUser);
   return await newInspection.save();
 };
 
  async updateInspection (id: any, body: any, account_id: any, user_id: any) {
-  await setInspection(account_id, id, body.assignedUser);
+  await mapInspectionService.setInspection(account_id, id, body.assignedUser);
   return await InspectionModel.findOneAndUpdate(
     { _id: id, account_id },
     { ...body, updatedBy: user_id },
@@ -115,7 +115,7 @@ class InspectionService {
 };
 
  async removeInspection (id: any, account_id: any, user_id: any) {
-  await removeInspectionById(account_id, id);
+  await mapInspectionService.removeInspectionById(account_id, id);
   return await InspectionModel.findOneAndUpdate(
     { _id: id, account_id },
     { visible: false, updatedBy: user_id },
