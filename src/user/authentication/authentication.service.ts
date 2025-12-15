@@ -14,6 +14,7 @@ import { mapUserToLocationService } from "../../transaction/mapUserLocation/user
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    const restrictedRoles = ['manager', 'employee', 'customer', 'user'];
     const { username, password } = req.body;
     if (!username || !password) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
@@ -35,7 +36,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if(!user.isVerified) {
       throw Object.assign(new Error('Unverified user'), { status: 403 });
     }
-    if(user.user_role !== 'admin') {
+    if (restrictedRoles.includes(user.user_role)) {
       const locationList = await mapUserToLocationService.getLocationsMappedData(user._id);
       if (!locationList || locationList.length === 0) {
         throw Object.assign(new Error('User does not have any location'), { status: 401 });

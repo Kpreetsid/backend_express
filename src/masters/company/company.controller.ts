@@ -1,18 +1,19 @@
 import { get } from "lodash";
-import { IUser } from '../../models/user.model';
+import { USER_ROLES, IUser } from '../../models/user.model';
 import { NextFunction, Request, Response } from 'express';
 import { companyService } from './company.service';
 import mongoose from "mongoose";
+import { applyRoleFilter } from "../../util/roleFilter";
 
 class CompanyController {
 
   async getCompanies (req: Request, res: Response, next: NextFunction) {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
       const { type } = req.query;
-      const match: any = { _id: account_id, visible: true };
-      if (type) match.type = type;
-      const data = await companyService.getAllCompanies(match);
+      const baseFilter = {};
+      if (type) baseFilter["type"] = type;
+      const filter = applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "_id" });
+      const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
@@ -24,12 +25,17 @@ class CompanyController {
   
   async getCompany (req: Request, res: Response, next: NextFunction) {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) throw Object.assign(new Error("Invalid ID"), { status: 400 });
-      if (`${account_id}` !== id) throw Object.assign(new Error("Invalid ID"), { status: 400 });
-      const match = { visible: true, _id: new mongoose.Types.ObjectId(id)};
-      const data = await companyService.getAllCompanies(match);
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error("Invalid ID"), { status: 400 });
+      }
+      if (USER_ROLES.includes(userRole) && `${account_id}` !== id) {
+        throw Object.assign(new Error("Invalid ID"), { status: 400 });
+      }
+      const baseFilter = { _id: new mongoose.Types.ObjectId(id) };
+      const filter = applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "_id" });
+      const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
@@ -38,7 +44,7 @@ class CompanyController {
       next(error);
     }
   };
-  
+
   async create (req: Request, res: Response, next: NextFunction) {
     try {
       const newCompany = {
