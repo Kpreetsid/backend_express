@@ -23,6 +23,7 @@ class UserController {
         delete baseFilter.user_status;
       }
       const filter = applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
+      delete filter.visible;
       const data = await usersService.getAllUsers(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
