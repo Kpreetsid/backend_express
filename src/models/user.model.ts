@@ -2,7 +2,9 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
 export const STATUS = ['active', 'inactive'];
-export const ROLE = ['super_admin', 'admin', 'manager', 'employee', 'customer', 'user'];
+export const ROLE = ['super_admin', 'super_employee', 'super_user', 'admin', 'manager', 'employee', 'customer', 'user'];
+export const USER_ROLES = ["admin", "manager", "employee", "customer", "user"];
+export const SUPER_ROLES = ["super_admin", "super_employee", "super_user"];
 
 export interface UserLoginPayload {
   id: string;
@@ -17,7 +19,7 @@ export interface IUser extends Document {
   email: string;
   emailStatus: boolean;
   user_status: 'active' | 'inactive' | string;
-  user_role: 'super_admin' | 'admin' | 'user' | 'employee' | string;
+  user_role: 'super_admin' | 'super_employee' | 'super_user' | 'admin' | 'manager' | 'employee' | 'customer' | 'user';
   createdOn: Date;
   user_profile_img: string;
   account_id: ObjectId;

@@ -26,6 +26,7 @@ class RegistrationService {
     }
     body.isFirstUser = true;
     body.user_role = "admin";
+    body.emailStatus = true;
     body.isVerified = true;
     const userDetails = await usersService.createNewUser(body, account._id);
     if (!userDetails) {

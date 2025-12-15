@@ -5,34 +5,55 @@ import { IUser } from '../../models/user.model';
 import { resetPasswordService } from '../../user/resetPassword/resetPassword.service';
 import { passwordService } from '../../util/bcrypt';
 import mongoose from 'mongoose';
+import { applyRoleFilter } from '../../util/roleFilter';
 
 class UserController {
-  async getUsers (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getUsers(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, user_role } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, user_status: "active" };
-      if (user_role === "admin") delete match.user_status;
-      const data = await usersService.getAllUsers(match);
-      if (!data.length) throw Object.assign(new Error("No data found"), { status: 404 });
+      const user = get(req, "user", {}) as IUser;
+      const baseFilter: any = { user_status: "active" };
+      const { account_id } = req.query;
+      if (account_id) {
+        if (!account_id || !mongoose.Types.ObjectId.isValid(String(account_id))) {
+          throw Object.assign(new Error("Bad request"), { status: 400 });
+        }
+        baseFilter.account_id = new mongoose.Types.ObjectId(String(account_id));
+      }
+      if (user.user_role === "admin") {
+        delete baseFilter.user_status;
+      }
+      const filter = applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
+      const data = await usersService.getAllUsers(filter);
+      if (!data.length) {
+        throw Object.assign(new Error("No data found"), { status: 404 });
+      }
       res.status(200).json({ status: true, message: "Users fetched successfully", data });
     } catch (error) {
       next(error);
     }
   };
   
-  async getUser (req: Request, res: Response, next: NextFunction) {
+  async getUser(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) throw Object.assign(new Error("Bad request"), { status: 400 });
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, user_status: "active" };
-      const data = await usersService.getAllUsers(match);
-      if (!data.length) throw Object.assign(new Error("No data found"), { status: 404 });
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error("Bad request"), { status: 400 });
+      }
+      const baseFilter: any = { _id: new mongoose.Types.ObjectId(id), user_status: "active" };
+      if (user.user_role === "admin") {
+        delete baseFilter.user_status;
+      }
+      const filter = applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
+      const data = await usersService.getAllUsers(filter);
+      if (!data.length) {
+        throw Object.assign(new Error("No data found"), { status: 404 });
+      }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
       next(error);
     }
-  };
+  }
   
   async getLocationWiseUsers (req: Request, res: Response, next: NextFunction) {
     try {
