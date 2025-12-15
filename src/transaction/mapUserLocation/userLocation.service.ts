@@ -69,8 +69,8 @@ class MapUserToAssetService {
 
   async updateAssetsForLocationHierarchy (locationId: string, userIdList: string[]) {
     const assetList = await AssetModel.find({ locationId: new mongoose.Types.ObjectId(locationId) }).select("_id").lean();
-    for (const asset of assetList) {
-      await this.updateUserMapping(String(asset._id), userIdList);
+    for (const { _id } of assetList) {
+      await this.updateUserMapping(String(_id), userIdList);
     }
   }
 
@@ -79,8 +79,8 @@ class MapUserToAssetService {
     const existingUsers = assetUserMappings.map((u: any) => String(u.userId));
     const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
     const removedUsers = existingUsers.filter(id => !userIdList.includes(id));
-    const effectiveAdded = [...new Set([...addedUsers, ...inheritedAdded])];
-    const effectiveRemoved = [...new Set([...removedUsers, ...inheritedRemoved])];
+    const effectiveAdded = Array.from([...new Set([...addedUsers, ...inheritedAdded])]);
+    const effectiveRemoved = Array.from([...new Set([...removedUsers, ...inheritedRemoved])]);
     if (effectiveAdded.length > 0) {
       await this.addChildAssetMapping(assetId, effectiveAdded);
     }
@@ -88,11 +88,10 @@ class MapUserToAssetService {
       await this.removeChildAssetMapping(assetId, effectiveRemoved);
     }
     const assetChildList = await AssetModel.find({ parent_id: new mongoose.Types.ObjectId(assetId) }).select("_id").lean();
-    for (const child of assetChildList) {
-      const childExisting = await this.getDataByAssetId(String(child._id));
+    for (const { _id } of assetChildList) {
+      const childExisting = await this.getDataByAssetId(String(_id));
       const childUserList = childExisting.map((d: any) => String(d.userId));
-      console.log({ assetId: String(child._id), childUserList, effectiveAdded, effectiveRemoved });
-      await this.updateUserMapping( String(child._id), childUserList, effectiveAdded, effectiveRemoved );
+      await this.updateUserMapping( String(_id), childUserList, effectiveAdded, effectiveRemoved );
     }
   }
 
@@ -245,8 +244,8 @@ class MapUserToLocationService {
     const existingUsers = locationUserMappings.map((u: any) => String(u.userId));
     const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
     const removedUsers = existingUsers.filter(id => !userIdList.includes(id));
-    const effectiveAdded = [...new Set([...addedUsers, ...inheritedAdded])];
-    const effectiveRemoved = [...new Set([...removedUsers, ...inheritedRemoved])];
+    const effectiveAdded = Array.from([...new Set([...addedUsers, ...inheritedAdded])]);
+    const effectiveRemoved = Array.from([...new Set([...removedUsers, ...inheritedRemoved])]);
     if (effectiveAdded.length > 0) {
       await this.addChildLocationMapping(locationId, effectiveAdded);
     }
@@ -255,10 +254,10 @@ class MapUserToLocationService {
     }
     await mapUserToAssetService.updateAssetsForLocationHierarchy(locationId, userIdList);
     const locationChildList = await LocationModel.find({ parent_id: new mongoose.Types.ObjectId(locationId) }).select("_id").lean();
-    for (const child of locationChildList) {
-      const childExisting = await this.getDataByLocationId(String(child._id));
+    for (const { _id } of locationChildList) {
+      const childExisting = await this.getDataByLocationId(String(_id));
       const childUserList = childExisting.map((d: any) => String(d.userId));
-      await this.updateUserMapping( String(child._id), childUserList, effectiveAdded, effectiveRemoved );
+      await this.updateUserMapping( String(_id), childUserList, effectiveAdded, effectiveRemoved );
     }
   }
 

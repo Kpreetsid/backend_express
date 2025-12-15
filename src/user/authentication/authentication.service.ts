@@ -52,6 +52,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     }
     res.cookie('token', token, { httpOnly: true, secure: false , sameSite: 'lax'});
     res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
+    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
+    res.cookie("accountID", userTokenPayload.companyID, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
     const userTokenData = new TokenModel({
       _id: token,
       userId: user._id,
@@ -204,9 +206,16 @@ export const userLogOutService = async (req: Request, res: Response, next: NextF
   try {
     const { _id: user_id } = get(req, "user", {}) as IUser;
     console.log('User ID:', user_id);
-    // await TokenModel.deleteMany({ userId: user_id });
-    res.clearCookie('token');
-    res.clearCookie('companyID');
+    const data = await TokenModel.deleteMany({ userId: user_id });
+    console.log('Data:', data);
+    const options = { httpOnly: true, secure: true, sameSite: "strict" as const, path: "/" };
+    res.cookie("token", "", { ...options, expires: new Date(0) });
+    res.cookie("accountID", "", { ...options, expires: new Date(0) });
+    res.clearCookie('token', options);
+    res.clearCookie('accountID', options);
+    Object.keys(req.cookies || {}).forEach((cookieName) => {
+      res.clearCookie(cookieName, options);
+    });
     return res.status(200).json({ status: true, message: 'Logout successful' });
   } catch (error) {
     next(error);
