@@ -59,6 +59,13 @@ class OrderController {
         }
       } else if (pageType === "createdByMe") {
         match.createdBy = user_id;
+      } else if (pageType === "openToAll") {
+        match.status = { $in: ['Open', 'In-Progress', 'On-Hold'] };
+        match.createdBy = { $ne: user_id };
+        const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
+        if (userWorkOrderIdList && userWorkOrderIdList.length > 0) {
+          match._id = { $nin: userWorkOrderIdList };
+        }
       } else {
         if (userRole !== "admin") {
           const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
