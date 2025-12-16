@@ -3,13 +3,12 @@ import { IUser } from "../models/user.model";
 interface RoleFilterOptions<T> {
   user: IUser;
   baseFilter?: any;
-  accountField?: string;   // field name that stores account_id
-  createdByField?: string; // optional -> for user-level ownership
+  accountField?: string;
+  createdByField?: string;
 }
 
 export const applyRoleFilter = <T>({ user, baseFilter = {}, accountField = "account_id", createdByField = "createdBy" }: RoleFilterOptions<T>): any => {
   let finalFilter: any = { ...baseFilter };
-  debugger 
 
   switch (user.user_role) {
     case "super_admin":
@@ -19,7 +18,6 @@ export const applyRoleFilter = <T>({ user, baseFilter = {}, accountField = "acco
       break;
 
     case "admin":
-      // Admin can access all records from same account
       finalFilter[accountField] = user.account_id;
       finalFilter['visible'] = true;
       break;
@@ -27,15 +25,14 @@ export const applyRoleFilter = <T>({ user, baseFilter = {}, accountField = "acco
     case "manager":
     case "employee":
     case "customer":
-      // Manager/Employee → account + visibility
       finalFilter[accountField] = user.account_id;
       finalFilter["visible"] = true;
       break;
 
     case "user":
-      // Normal user → only own records
       finalFilter[accountField] = user.account_id;
       finalFilter[createdByField] = user._id;
+      finalFilter["visible"] = true;
       break;
 
     default:

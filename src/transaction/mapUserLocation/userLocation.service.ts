@@ -271,3 +271,45 @@ class MapUserToLocationService {
 }
 
 export const mapUserToLocationService = new MapUserToLocationService();
+
+export const updateLocationAssetMapping = async (locationId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = []) => {
+  const locationObjectId = new mongoose.Types.ObjectId(locationId);
+  const locationMappings = await MapUserAssetLocationModel.find({ locationId: locationObjectId, userId: { $exists: true } }).lean();
+  const existingUsers = locationMappings.map(d => String(d.userId));
+  const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
+  const removedUsers = existingUsers.filter(id => !userIdList.includes(id));
+  const effectiveAdded = [...new Set([...addedUsers, ...inheritedAdded])];
+  const effectiveRemoved = [...new Set([...removedUsers, ...inheritedRemoved])];
+  if (effectiveAdded.length) {
+    await MapUserAssetLocationModel.insertMany(effectiveAdded.map(userId => ({ locationId: locationObjectId, userId: new mongoose.Types.ObjectId(userId) })), { ordered: false });
+  }
+  if (effectiveRemoved.length) {
+    await MapUserAssetLocationModel.deleteMany({ locationId: locationObjectId, userId: { $in: effectiveRemoved.map(id => new mongoose.Types.ObjectId(id)) }});
+  }
+  const assets = await AssetModel.find({ locationId: locationObjectId }).select('_id').lean();
+  for (const asset of assets) {
+    const assetId = new mongoose.Types.ObjectId(asset._id);
+    const assetMappings = await MapUserAssetLocationModel.find({ assetId, userId: { $exists: true } }).lean();
+    const assetUsers = assetMappings.map(d => String(d.userId));
+    const assetAdded = effectiveAdded.filter(id => !assetUsers.includes(id));
+    const assetRemoved = effectiveRemoved.filter(id => assetUsers.includes(id));
+    if (assetAdded.length) {
+      await MapUserAssetLocationModel.insertMany( assetAdded.map(userId => ({ assetId, userId: new mongoose.Types.ObjectId(userId) })), { ordered: false });
+    }
+    if (assetRemoved.length) {
+      await MapUserAssetLocationModel.deleteMany({ assetId, userId: { $in: assetRemoved.map(id => new mongoose.Types.ObjectId(id)) } });
+    }
+    const childAssets = await AssetModel.find({ parent_id: assetId }).select('_id').lean();
+    for (const child of childAssets) {
+      const childMappings = await MapUserAssetLocationModel.find({ assetId: new mongoose.Types.ObjectId(child._id), userId: { $exists: true } }).lean();
+      const childUsers = childMappings.map(d => String(d.userId));
+      await updateLocationAssetMapping(String(child._id), childUsers, assetAdded, assetRemoved);
+    }
+  }
+  const childLocations = await LocationModel.find({ parent_id: locationObjectId }).select('_id').lean();
+  for (const child of childLocations) {
+    const childMappings = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(child._id), userId: { $exists: true }}).lean();
+    const childUsers = childMappings.map(d => String(d.userId));
+    await updateLocationAssetMapping(String(child._id), childUsers, effectiveAdded, effectiveRemoved);
+  }
+};
