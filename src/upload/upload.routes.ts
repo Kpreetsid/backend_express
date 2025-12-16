@@ -28,11 +28,20 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ storage, limits: { files: 12, fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['.png', '.jpg', '.jpeg', '.pdf'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!allowedTypes.includes(ext)) {
+      return cb(new Error('Invalid file type'));
+    }
+    cb(null, true);
+  }
+});
 
 export default (): express.Router => {
-    router.post('/', upload.array('files', 5), uploadController.uploadController);
+    router.post('/', upload.array('files', 12), uploadController.uploadController);
     router.post('/baseImage', uploadController.uploadBaseImage);
-    router.post('/:folderName', upload.array('files', 5), uploadController.uploadController);
+    router.post('/:folderName', upload.array('files', 12), uploadController.uploadController);
     return router;
 }

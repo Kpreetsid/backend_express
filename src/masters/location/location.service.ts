@@ -2,7 +2,7 @@ import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
-import { mapUserToLocationService, mapUserToAssetService } from '../../transaction/mapUserLocation/userLocation.service';
+import { mapUserToLocationService, mapUserToAssetService, updateLocationAssetMapping } from '../../transaction/mapUserLocation/userLocation.service';
 import { getData } from "../../util/queryBuilder";
 
 class LocationService {
@@ -197,7 +197,8 @@ class LocationService {
   };
 
   async updateById(id: string, body: any) {
-    await mapUserToLocationService.updateUserMapping(id, body.userIdList);
+    // await mapUserToLocationService.updateUserMapping(id, body.userIdList);
+    await updateLocationAssetMapping(id, body.userIdList);
     await LocationModel.updateOne({ _id: id }, body);
     return await LocationModel.findById(id);
   };
