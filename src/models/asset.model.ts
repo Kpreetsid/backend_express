@@ -92,7 +92,7 @@ const assetSchema = new Schema<IAsset>({
   asset_behavior: { type: String, trim: true },
   asset_frequency: { type: String, trim: true },
   asset_timezone: { type: String, trim: true, default: () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Calcutta' },
-  asset_build_type: { type: String, trim: true, required: true },
+  asset_build_type: { type: String, trim: true },
   imageNodeData: { type: Object },
   isNewFlow: { type: Boolean },
   loadType: { type: String, trim: true },
