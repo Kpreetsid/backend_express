@@ -53,11 +53,11 @@ class AssetService {
     if (!allAssets.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
     }
-    const data = this.buildAssetsTree(allAssets);
+    const data = await this.buildAssetsTree(allAssets);
     return data;
   };
   
-  buildAssetsTree (assets: any[]) {
+  buildAssetsTree = async (assets: any[]) => {
     if (!Array.isArray(assets) || !assets.length) return [];
     const childrenMap = new Map<string, any[]>();
     const rootNodes: any[] = [];
