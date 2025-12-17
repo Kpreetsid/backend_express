@@ -13,10 +13,10 @@ export const getExternalData = async (path: string, method: string, body: any, t
         "Content-Type": "application/json",
         "Authorization": token,
         "X-User-Id": userID,
-        "X-Env": "true"
+        "X-Env": true
       },
       data: body,
-      timeout: 60 * 1000, // 60s timeout
+      timeout: 3 * 60 * 1000, // 3 minutes timeout
     };
     const response = await axios(config);
     if(response.status !== 200) {
