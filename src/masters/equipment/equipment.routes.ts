@@ -6,6 +6,7 @@ export default (router: express.Router) => {
     const equipmentRouter = express.Router();
     equipmentRouter.get('/', equipmentController.getAssets);
     equipmentRouter.get('/tree', equipmentController.getAssetTree);
+    equipmentRouter.get('/tree/:id', equipmentController.getAssetTreeById);
     equipmentRouter.get('/child/:id', equipmentController.getChildAsset);
     equipmentRouter.get('/make-copy/:id', hasRolePermission('asset', 'add_asset'), equipmentController.makeAssetCopy);
     equipmentRouter.get('/:id', equipmentController.getAsset);
