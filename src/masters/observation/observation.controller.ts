@@ -4,6 +4,7 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
 import { assetService } from '../asset/asset.service';
+import { processorAPIService } from '../../api-processor';
 
 class ObservationController {
 
@@ -68,7 +69,7 @@ class ObservationController {
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      await observationService.setAssetHealthStatus(body, account_id, user_id, userToken);
+      await processorAPIService.updateAssetHealthStatus(body, account_id, user_id, userToken);
       res.status(201).json({ status: true, message: "Data created successfully", data: insertedData });
     } catch (error) {
       if (data) {

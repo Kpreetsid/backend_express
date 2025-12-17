@@ -1,6 +1,4 @@
 import { ObservationModel } from "../../models/observation.model";
-import { getExternalData } from "../../util/externalAPI";
-
 
 class ObservationService {
   async getAllObservation (match: any): Promise<any> {
@@ -54,14 +52,6 @@ class ObservationService {
     const newObservation = new ObservationModel({ accountId: account_id, ...body, userId: user_id, createdBy: user_id });
     return await newObservation.save();
   };
-  
-  async setAssetHealthStatus (body: any, account_id: any, user_id: any, token: any) {
-    const payload: any = { "asset_id": body.assetId, "asset_status": body.status, "org_id": account_id };
-    if(body.alarmId) {
-      payload.alarm_id = body.alarmId;
-    }
-    await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);
-  }
   
   async updateObservationById (id: string, body: any, user_id: any): Promise<any> {
     return await ObservationModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
