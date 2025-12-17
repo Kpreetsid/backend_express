@@ -5,6 +5,7 @@ import { IUser } from '../../models/user.model';
 import { mapUserToAssetService, mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { locationService } from '../location/location.service';
 import mongoose from 'mongoose';
+import { processorAPIService } from '../../api-processor';
 
 class AssetController {
   async getAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -219,7 +220,7 @@ class AssetController {
       }
       const assetsMapData = body.userIdList.map((user: any) => ({ account_id, userId: user, assetId: data._id }));
       await mapUserToAssetService.createMapUserAssets(assetsMapData);
-      await assetService.createExternalAPICall(assetsMapData, account_id, user_id, userToken);
+      await processorAPIService.setAssetHealthStatus(assetsMapData, account_id, user_id, userToken);
       const insertedData: any = await assetService.getAllAssets({ _id: data._id });
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -377,7 +378,7 @@ class AssetController {
         const newChildId = await assetService.makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap, newTopLevelId);
         idMap[child._id.toString()] = newChildId;
       }
-      await assetService.createExternalAPICall([{ assetId: newParentId }, ...allChildren.map(c => ({ assetId: idMap[c._id.toString()] }))], account_id, user_id, userToken);
+      await processorAPIService.setAssetHealthStatus([{ assetId: newParentId }, ...allChildren.map(c => ({ assetId: idMap[c._id.toString()] }))], account_id, user_id, userToken);
       const copiedData: any = await assetService.getAllAssets({ _id: newParentId, account_id, visible: true });
       res.status(201).json({ status: true, message: "Asset hierarchy copied successfully", data: copiedData });
     } catch (error) {

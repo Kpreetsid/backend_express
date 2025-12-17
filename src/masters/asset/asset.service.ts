@@ -1,7 +1,7 @@
 import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../transaction/mapUserLocation/userLocation.service";
-import { getExternalData } from "../../util/externalAPI";
+import { processorAPIService } from '../../api-processor';
 import mongoose from 'mongoose';
 
 class AssetService {
@@ -49,6 +49,8 @@ class AssetService {
   };
   
   async getAssetsTreeData (match: any): Promise<any> {
+    const asset_type_list: string[] = ["Rigid", "Flexible"];
+    match.asset_type = { $nin: asset_type_list };
     const allAssets = await AssetModel.aggregate([
       { $match: match },
       { $lookup: {
@@ -240,7 +242,7 @@ class AssetService {
         userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
       } catch {}
       try {
-        const endPointList: any = await this.getAssetEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
+        const endPointList: any = await processorAPIService.getEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
         if (endPointList?.data?.length > 0) {
           for (const item of endPointList.data) {
             const newEndPointPayload = {
@@ -256,7 +258,7 @@ class AssetService {
               bearing_number: item.bearing_number || "",
               parent_asset_id: newParentId || null
             };
-            await this.createEndPointCopy(newEndPointPayload, user_id, token);
+            await processorAPIService.createEndPoint(newEndPointPayload, user_id, token);
           }
         }
       } catch (err) {
@@ -272,21 +274,6 @@ class AssetService {
       throw error;
     }
   };
-  
-  async getAssetEndPoints (asset_id: string[], token: string, user_id: any) {
-    const payload: any = { asset_id };
-    return await getExternalData(`/getAllEndPoints/`, 'POST', payload, token, `${user_id}`);
-  }
-  
-  async createEndPointCopy (assetsList: any, user_id: any, token: any): Promise<any> {
-    return await getExternalData(`/endPointApi/`, 'POST', assetsList, token, `${user_id}`);
-  }
-  
-  async createExternalAPICall (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> {
-    const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);
-    const match = { org_id: `${account_id}`, asset_status: "Not Defined", asset_id: assetIdList };
-    return await getExternalData(`/asset_health_status/`, 'POST', match, token, `${user_id}`);
-  }
 }
 
 export const assetService = new AssetService();

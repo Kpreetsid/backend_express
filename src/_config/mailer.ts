@@ -28,10 +28,11 @@ const sendMail = async ({ to, subject, html }: MailOptions): Promise<void> => {
     mailLogData.mailInfo = info;
     mailLogData.status = 'success';
     console.log(`Message Id: ${info.messageId}, Accepted: ${info.accepted}, Rejected: ${info.rejected}, Response: ${info.response}`);
-  } catch (err: any) {
-    console.error('Error sending email:', err);
+  } catch (error: any) {
+    console.error('Error sending email:', error);
     mailLogData.status = 'failed';
-    mailLogData.error = err?.message || 'Unknown error';
+    mailLogData.error = error || 'Unknown error';
+    throw error;
   }
   await createMailLog(mailLogData);
 };

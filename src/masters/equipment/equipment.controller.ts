@@ -7,6 +7,7 @@ import { mapUserToAssetService } from '../../transaction/mapUserLocation/userLoc
 import { uploadFilesService } from '../../util/upload';
 import { locationService } from '../location/location.service';
 import mongoose from 'mongoose';
+import { processorAPIService } from '../../api-processor';
 
 class EquipmentController {
   async getAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -223,7 +224,7 @@ class EquipmentController {
         ));
       });
       await mapUserToAssetService.createMapUserAssets(assetsMapData);
-      await equipmentService.createExternalAPICall(assetsMapData, account_id, user_id, userToken);
+      await processorAPIService.setAssetHealthStatus(assetsMapData, account_id, user_id, userToken);
       res.status(200).json({ status: true, message: "Data created successfully", data: equipmentData._id });
     } catch (error) {
       if (equipmentId) {
@@ -336,7 +337,7 @@ class EquipmentController {
       }
       await mapUserToAssetService.createMapUserAssets(assetsMapData);
       if (newlyCreatedAssetList.length > 0) {
-        await equipmentService.createExternalAPICall(newlyCreatedAssetList, account_id, user_id, userToken);
+        await processorAPIService.setAssetHealthStatus(newlyCreatedAssetList, account_id, user_id, userToken);
       }
       const data = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
       res.status(200).json({ status: true, message: "Asset updated successfully", data });
@@ -410,7 +411,7 @@ class EquipmentController {
         const newChildId = await equipmentService.makeAssetCopyByIdWithChildren(child, user_id, userToken, account_id, newParent, idMap, newTopLevelId);
         idMap[child._id.toString()] = newChildId;
       }
-      await equipmentService.createExternalAPICall([{ assetId: newParentId }, ...allChildren.map(c => ({ assetId: idMap[c._id.toString()] }))], account_id, user_id, userToken);
+      await processorAPIService.setAssetHealthStatus([{ assetId: newParentId }, ...allChildren.map(c => ({ assetId: idMap[c._id.toString()] }))], account_id, user_id, userToken);
       const copiedData: any = await equipmentService.getAllEquipment({ _id: newParentId, account_id, visible: true });
       res.status(201).json({ status: true, message: "Asset hierarchy copied successfully", data: copiedData });
     } catch (error) {

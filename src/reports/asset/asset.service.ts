@@ -1,10 +1,8 @@
 import { ReportAssetModel, IReportAsset } from "../../models/assetReport.model";
-import { getExternalData } from "../../util/externalAPI";
+import { processorAPIService } from "../../api-processor";
 import { orderService } from "../../work/order/order.service";
 
 class AssetReportService {
-  private assetHealthArray = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
-  
   async getAllAssetReports (match: any, populateFilter?: any) {
     match.$or = [{ visible: true }, { visible: { $exists: false } }];
     return await ReportAssetModel.find(match).sort({ _id: -1 }).populate(populateFilter);
@@ -26,7 +24,7 @@ class AssetReportService {
         assetReport.work_order_id = workOrder._id;
         await assetReport.save();
       }
-      await this.setAssetHealthStatus(body, user.account_id, user._id, token);
+      await processorAPIService.updateAssetHealthStatusOld(body, user.account_id, user._id, token);
       return assetReport;
     } catch (error) {
       if (workOrder?._id) {
@@ -39,14 +37,8 @@ class AssetReportService {
     }
   };
   
-  async setAssetHealthStatus (body: any, account_id: any, user_id: any, token: any) {
-    const apiPath = `/asset_health_status/`;
-    const payload: any = { "asset_id": body.assetId, "asset_status": this.assetHealthArray[body.EquipmentHealth], "org_id": account_id };
-    await getExternalData(apiPath, 'PATCH', payload, token, user_id);
-  }
-  
   async updateAssetReport (id: string, body: IReportAsset, account_id: any, user_id: any, token: any) {
-    await this.setAssetHealthStatus(body, account_id, user_id, token);
+    await processorAPIService.updateAssetHealthStatusOld(body, account_id, user_id, token);
     return await ReportAssetModel.findByIdAndUpdate(id, body, { new: true });
   };
   
