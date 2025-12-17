@@ -9,7 +9,8 @@ cd /home/ubuntu/express_cmms
 export NODE_ENV=production
 
 # Start application with PM2
-pm2 start npm --name "cmms_express" -- start
+# pm2 start npm --name "cmms_express" -- start
+pm2 start "npm start" --name "cmms_express"
 
 # Save PM2 process list
 pm2 save
