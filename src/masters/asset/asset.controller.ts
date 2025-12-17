@@ -149,7 +149,8 @@ class AssetController {
       let assetQuery: any = { account_id, visible: true };
       if (userRole !== "admin") {
         const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-        assetQuery._id = mapData.map(doc => doc?.assetId ? new mongoose.Types.ObjectId(`${doc?.assetId}`) : null).filter((x) => x);
+        const assetIds = mapData.flatMap(doc => doc?.assetId ? [new mongoose.Types.ObjectId(doc.assetId)] : [] );
+        assetQuery.$or = [ { _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
       }
       if (id) {
         const assetIds = id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`));

@@ -49,7 +49,21 @@ class AssetService {
   };
   
   async getAssetsTreeData (match: any): Promise<any> {
-    const allAssets = await AssetModel.find(match).lean();
+    const allAssets = await AssetModel.aggregate([
+      { $match: match },
+      { $lookup: {
+          from: 'location_master',
+          let: { locationId: '$locationId' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$locationId'] } }},
+            { $project: { _id: 1, location_name: 1, location_type: 1 }},
+            { $addFields: { id: '$_id' }}
+          ],
+          as: 'locationData'
+        }
+      },
+      { $unwind: { path: '$locationData', preserveNullAndEmptyArrays: true }}
+    ]);
     if (!allAssets.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
     }

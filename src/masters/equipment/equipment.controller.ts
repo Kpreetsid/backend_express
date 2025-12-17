@@ -102,19 +102,50 @@ class EquipmentController {
       let assetQuery: any = { account_id, visible: true };
       if (userRole !== "admin") {
         const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-        assetQuery._id = mapData.map(doc => doc?.assetId ? new mongoose.Types.ObjectId(`${doc?.assetId}`) : null).filter((x) => x);
+        const assetIds = mapData.flatMap(doc => doc?.assetId ? [new mongoose.Types.ObjectId(doc.assetId)] : [] );
+        assetQuery.$or = [ { _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
       }
       const isAssetExists = await equipmentService.checkEquipment(assetQuery);
       if (!isAssetExists || isAssetExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       if (id) {
-        assetQuery._id = { $in: id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
+        const assetIds = id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`));
+        assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
       }
       if (location_id) {
         assetQuery.locationId = { $in: location_id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
       }
       const data = await equipmentService.getEquipmentTreeData(assetQuery);
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  getAssetTreeById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      let { id } = req.params;
+      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Bad Request'), { status: 400 });
+      }
+      let assetQuery: any = { account_id, visible: true };
+      const assetIds = id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`));
+      assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
+      if (userRole !== "admin") {
+        const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
+        const assetIds = mapData.flatMap(doc => doc?.assetId ? [new mongoose.Types.ObjectId(doc.assetId)] : [] );
+        assetQuery.$or = [ { _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
+      }
+      const isAssetExists = await equipmentService.checkEquipment(assetQuery);
+      if (!isAssetExists || isAssetExists.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
+      const data = await equipmentService.getEquipmentTreeDataById(assetQuery);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

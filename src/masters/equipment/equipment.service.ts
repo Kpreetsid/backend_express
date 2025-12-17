@@ -74,6 +74,64 @@ class EquipmentService {
     return data;
   };
 
+  getEquipmentTreeDataById = async (match: any) => {
+    const assets = await AssetModel.aggregate([
+      { $match: match },
+      { $lookup: {
+          from: 'location_master',
+          let: { locationId: '$locationId' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$locationId'] } }},
+            { $project: { _id: 1, location_name: 1, location_type: 1 }},
+            { $addFields: { id: '$_id' }}
+          ],
+          as: 'locationData'
+        }
+      },
+      { $unwind: { path: '$locationData', preserveNullAndEmptyArrays: true }}
+    ]);
+    if (!assets.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+    const assetIds = assets.map(a => a._id);
+    const assetUsers = await MapUserAssetLocationModel.aggregate([
+      { $match: { assetId: { $in: assetIds }, userId: { $exists: true }}},
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' }},
+      { $unwind: '$user' },
+      { $project: { assetId: 1, user: { id: '$user._id', firstName: '$user.firstName', lastName: '$user.lastName', user_role: '$user.user_role' }}}
+    ]);
+    return this.buildEquipmentTree(assets, assetUsers);
+  };
+
+  buildEquipmentTree = async (assets: any[], assetUsers: any[]) => {
+    const childrenMap = new Map<string, any[]>();
+    const rootNodes: any[] = [];
+    const assetUserMap = new Map<string, any[]>();
+    for (const entry of assetUsers) {
+      const key = String(entry.assetId);
+      if (!assetUserMap.has(key)) assetUserMap.set(key, []);
+      assetUserMap.get(key)!.push(entry.user);
+    }
+    for (const asset of assets) {
+      const parentKey = asset.parent_id ? String(asset.parent_id) : 'ROOT';
+      if (!childrenMap.has(parentKey)) {
+        childrenMap.set(parentKey, []);
+      }
+      asset.id = String(asset._id);
+      asset.userList = assetUserMap.get(asset.id) || [];
+      childrenMap.get(parentKey)!.push(asset);
+      if (!asset.parent_id) {
+        rootNodes.push(asset);
+      }
+    }
+    const attachChildren = (node: any): any => {
+      const nodeId = String(node._id);
+      node.childs = (childrenMap.get(nodeId) || []).map(attachChildren);
+      return node;
+    };
+    return rootNodes.map(attachChildren);
+  };
+
   async updateEquipmentImageById (id: string, image_path: string, user_id: string) {
     return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
   }
