@@ -43,6 +43,8 @@ class EquipmentService {
   };
 
   async getEquipmentTreeData (match: any): Promise<any> {
+    const asset_type_list: string[] = ["Rigid", "Flexible"];
+    match.asset_type = { $nin: asset_type_list };
     const allAssets = await AssetModel.find(match).lean();
     if (!allAssets.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
@@ -75,8 +77,6 @@ class EquipmentService {
   };
 
   getEquipmentTreeDataById = async (match: any) => {
-    const asset_type_list: string[] = ["Rigid", "Flexible"];
-    match.asset_type = { $nin: asset_type_list };
     const assets = await AssetModel.aggregate([
       { $match: match },
       { $lookup: {
