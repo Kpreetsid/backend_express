@@ -152,7 +152,8 @@ class AssetController {
         assetQuery._id = mapData.map(doc => doc?.assetId ? new mongoose.Types.ObjectId(`${doc?.assetId}`) : null).filter((x) => x);
       }
       if (id) {
-        assetQuery._id = { $in: id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
+        const assetIds = id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`));
+        assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
       }
       if (location_id) {
         assetQuery.locationId = { $in: location_id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };

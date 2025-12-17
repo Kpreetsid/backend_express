@@ -7,7 +7,7 @@ import mongoose from 'mongoose';
 
 class LocationController {
 
-  async getLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
@@ -32,7 +32,7 @@ class LocationController {
     }
   }
 
-  async getLocationTree(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getLocationTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { query: { location_id, location_floor_map_tree } } = req;
@@ -74,48 +74,40 @@ class LocationController {
     }
   };
 
-  async getChildLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getChildLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
       if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+      const match = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
       const isDataExists = await locationService.getAllLocations(match);
-      if (!isDataExists || isDataExists.length === 0) {
+      if (!isDataExists?.length) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const getChildLocationIds = await this.getChildLocationByRecursive(id);
-      const data = await locationService.getAllLocations({ _id: { $in: getChildLocationIds }, account_id, visible: true });
-      if (!data || data.length === 0) {
+      const childIds = await this.getChildLocationByRecursive(id);
+      const data = await locationService.getAllLocations({ _id: { $in: childIds }, account_id, visible: true });
+      if (!data?.length) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      return res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
       next(error);
     }
-  }
+  };
 
-  async getChildLocationByRecursive(id: string) {
-    try {
-      const locationIdList = [id];
-      const data = await locationService.getAllLocations({ parent_id: new mongoose.Types.ObjectId(id), visible: true });
-      if (data && data.length > 0) {
-        for (let dataItem of data) {
-          const getChildLocationIds = await this.getChildLocationByRecursive(dataItem.id.toString());
-          if (getChildLocationIds && getChildLocationIds.length > 0) {
-            locationIdList.push(...getChildLocationIds);
-          }
-        }
-      }
-      return [...locationIdList];
-    } catch (error) {
-      return [];
+  getChildLocationByRecursive = async (id: string): Promise<string[]> => {
+    const locationIdList: string[] = [id];
+    const children = await locationService.getAllLocations({ parent_id: new mongoose.Types.ObjectId(id), visible: true });
+    for (const child of children || []) {
+      const childIds = await this.getChildLocationByRecursive(child.id.toString());
+      locationIdList.push(...childIds);
     }
-  }
+    return locationIdList;
+  };
 
-  async getKpiFilterLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getKpiFilterLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const data = await locationService.kpiFilterLocations(account_id, user_id, userRole);
@@ -128,7 +120,7 @@ class LocationController {
     }
   }
 
-  async getChildAssetsAgainstLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getChildAssetsAgainstLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { levelOneLocations, levelTwoLocations } = req.body;
@@ -142,7 +134,7 @@ class LocationController {
     }
   }
 
-  async getLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { params: { id }, query: { location_id, location_floor_map_tree } } = req;
@@ -185,7 +177,7 @@ class LocationController {
     }
   }
 
-  async createLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+  createLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const body = req.body;
@@ -202,7 +194,7 @@ class LocationController {
     }
   }
 
-  async updateLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+  updateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
@@ -229,7 +221,7 @@ class LocationController {
     }
   }
 
-  async removeLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+  removeLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
@@ -248,7 +240,7 @@ class LocationController {
     }
   }
 
-  async updateLocationFloorMapImage(req: Request, res: Response, next: NextFunction): Promise<any> {
+  updateLocationFloorMapImage = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { params: { id }, body: { top_level_location_image } } = req;
       if (!id || !top_level_location_image) {
@@ -262,7 +254,7 @@ class LocationController {
     }
   }
 
-  async getLocationSensorList(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getLocationSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const data = await locationService.getLocationSensor(account_id, user_id, userRole);
@@ -275,7 +267,7 @@ class LocationController {
     }
   }
 
-  async createDuplicateLocation(req: Request, res: Response, next: NextFunction): Promise<any> {
+  createDuplicateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
