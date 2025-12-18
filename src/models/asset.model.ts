@@ -91,7 +91,10 @@ const assetSchema = new Schema<IAsset>({
   asset_orient: { type: String, trim: true },
   asset_behavior: { type: String, trim: true },
   asset_frequency: { type: String, trim: true },
-  asset_timezone: { type: String, trim: true, default: () => Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Calcutta' },
+  asset_timezone: { type: String, trim: true, default: () => {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return tz && tz !== 'UTC' ? tz : 'Asia/Kolkata';
+  }},
   asset_build_type: { type: String, trim: true },
   imageNodeData: { type: Object },
   isNewFlow: { type: Boolean },

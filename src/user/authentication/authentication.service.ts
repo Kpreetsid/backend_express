@@ -50,8 +50,6 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!userRoleData) {
       throw Object.assign(new Error('User does not have any permission'), { status: 403 });
     }
-    res.cookie('token', token, { httpOnly: true, secure: false , sameSite: 'lax'});
-    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
     res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
     res.cookie("accountID", userTokenPayload.companyID, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
     const userTokenData = new TokenModel({
@@ -104,8 +102,8 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     if (!userRoleData) {
       throw Object.assign(new Error('User does not have any permission'), { status: 403 });
     }
-    res.cookie('token', token, { httpOnly: true, secure: false , sameSite: 'lax'});
-    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
+    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
+    res.cookie("accountID", userTokenPayload.companyID, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
     const userTokenData = new TokenModel({
       _id: token,
       userId: user._id,
@@ -163,8 +161,8 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     }
     const userTokenPayload: UserLoginPayload = { id: `${userDetails._id}`, username: userDetails.username, companyID: `${userDetails.account_id}` };
     const newToken = generateAccessToken(userTokenPayload);
-    res.cookie('token', newToken, { httpOnly: true, secure: false , sameSite: 'lax'});
-    res.cookie('accountID', userTokenPayload.companyID, { httpOnly: true, secure: false, sameSite: 'lax' });
+    res.cookie("token", newToken, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
+    res.cookie("accountID", userTokenPayload.companyID, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
     const userTokenData = new TokenModel({
       _id: newToken,
       userId: userDetails._id,
