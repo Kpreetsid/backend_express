@@ -4,25 +4,19 @@ import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import mongoose from 'mongoose';
+import { applyRoleFilter } from '../../util/roleFilter';
 
 class LocationController {
 
   getLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
-      if (userRole !== 'admin') {
-        const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
-        match._id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
-      }
-      const { query: { locationId, parent_id } } = req;
-      if (locationId) {
-        match._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-      }
-      if (parent_id) {
-        match.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-      }
-      let data = await locationService.getAllLocations(match);
+      const { query: { locationId, parent_id, account_id} } = req;
+      const baseFilter: any = {};
+      if(locationId) baseFilter._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      if(parent_id) baseFilter.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      if(account_id) baseFilter.account_id = { $in: account_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      const filter: any = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "account_id", mapping: "location" });
+      let data = await locationService.getAllLocations(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

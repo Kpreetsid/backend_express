@@ -50,8 +50,22 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!userRoleData) {
       throw Object.assign(new Error('User does not have any permission'), { status: 403 });
     }
-    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
-    res.cookie("accountID", userTokenPayload.companyID, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      domain: '.presageinsights.ai',
+      path: "/",
+      maxAge: 1000 * 60 * 60 * 24 * 7
+    });
+    res.cookie("accountID", userTokenPayload.companyID, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      domain: '.presageinsights.ai',
+      path: "/",
+      maxAge: 1000 * 60 * 60 * 24 * 7
+    });
     const userTokenData = new TokenModel({
       _id: token,
       userId: user._id,
@@ -102,8 +116,22 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     if (!userRoleData) {
       throw Object.assign(new Error('User does not have any permission'), { status: 403 });
     }
-    res.cookie("token", token, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
-    res.cookie("accountID", userTokenPayload.companyID, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
+    res.cookie("token", token, { 
+      httpOnly: true, 
+      secure: true, 
+      sameSite: 'none',
+      domain: '.presageinsights.ai', 
+      path: "/", 
+      maxAge: 1000 * 60 * 60 * 24 * 7 
+    });
+    res.cookie("accountID", userTokenPayload.companyID, { 
+      httpOnly: true, 
+      secure: true, 
+      sameSite: 'none',
+      domain: '.presageinsights.ai', 
+      path: "/", 
+      maxAge: 1000 * 60 * 60 * 24 * 7 
+    });
     const userTokenData = new TokenModel({
       _id: token,
       userId: user._id,
@@ -161,8 +189,22 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     }
     const userTokenPayload: UserLoginPayload = { id: `${userDetails._id}`, username: userDetails.username, companyID: `${userDetails.account_id}` };
     const newToken = generateAccessToken(userTokenPayload);
-    res.cookie("token", newToken, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
-    res.cookie("accountID", userTokenPayload.companyID, { httpOnly: true, secure: true, sameSite: "strict", path: "/", maxAge: 1000 * 60 * 60 * 24 * 7 });
+    res.cookie("token", newToken, { 
+      httpOnly: true, 
+      secure: true, 
+      sameSite: 'none',
+      domain: '.presageinsights.ai', 
+      path: "/", 
+      maxAge: 1000 * 60 * 60 * 24 * 7 
+    });
+    res.cookie("accountID", userTokenPayload.companyID, { 
+      httpOnly: true, 
+      secure: true, 
+      sameSite: 'none',
+      domain: '.presageinsights.ai', 
+      path: "/", 
+      maxAge: 1000 * 60 * 60 * 24 * 7 
+    });
     const userTokenData = new TokenModel({
       _id: newToken,
       userId: userDetails._id,
@@ -202,11 +244,11 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
 
 export const userLogOutService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { _id: user_id } = get(req, "user", {}) as IUser;
-    console.log('User ID:', user_id);
-    const data = await TokenModel.deleteMany({ userId: user_id });
+    const user_id = get(req, 'user_id');
+    const userToken = get(req, 'userToken');
+    const data = await TokenModel.deleteMany({ _id: userToken, userId: user_id });
     console.log('Data:', data);
-    const options = { httpOnly: true, secure: true, sameSite: "strict" as const, path: "/" };
+    const options = { httpOnly: true, secure: true, sameSite: "none" as const, domain: '.presageinsights.ai', path: "/" };
     res.cookie("token", "", { ...options, expires: new Date(0) });
     res.cookie("accountID", "", { ...options, expires: new Date(0) });
     res.clearCookie('token', options);

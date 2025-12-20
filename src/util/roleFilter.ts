@@ -1,43 +1,50 @@
 import { IUser } from "../models/user.model";
+import { mapUserToAssetService, mapUserToLocationService, } from "../transaction/mapUserLocation/userLocation.service";
 
-interface RoleFilterOptions<T> {
+type MappingType = "location" | "asset" | "";
+
+interface RoleFilterOptions {
   user: IUser;
-  baseFilter?: any;
+  baseFilter?: Record<string, any>;
   accountField?: string;
   createdByField?: string;
+  mapping?: MappingType;
 }
-
-export const applyRoleFilter = <T>({ user, baseFilter = {}, accountField = "account_id", createdByField = "createdBy" }: RoleFilterOptions<T>): any => {
-  let finalFilter: any = { ...baseFilter };
-
+export const applyRoleFilter = async ({ user, baseFilter = {}, accountField = "account_id", createdByField = "createdBy", mapping = "" }: RoleFilterOptions): Promise<Record<string, any>> => {
+  const finalFilter: Record<string, any> = { ...baseFilter };
   switch (user.user_role) {
+
     case "super_admin":
     case "super_employee":
     case "super_user":
-      finalFilter = {...baseFilter};
-      break;
+      return finalFilter;
 
+    /** ACCOUNT LEVEL */
     case "admin":
-      finalFilter[accountField] = user.account_id;
-      finalFilter['visible'] = true;
-      break;
+      return { ...finalFilter, [accountField]: user.account_id, visible: true };
 
+    /** ACCOUNT + MAPPING LEVEL */
     case "manager":
     case "employee":
-    case "customer":
+    case "customer": {
+      if (mapping === "location") {
+        const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
+        finalFilter._id = { $in: mappedLocations.map((doc: any) => doc.locationId) };
+      }
+      if (mapping === "asset") {
+        const mappedAssets = await mapUserToAssetService.getAssetsMappedData(user._id);
+        finalFilter._id = { $in: mappedAssets.map((doc: any) => doc.assetId) };
+      }
       finalFilter[accountField] = user.account_id;
-      finalFilter["visible"] = true;
-      break;
+      finalFilter.visible = true;
+      return finalFilter;
+    }
 
+    /** OWN DATA ONLY */
     case "user":
-      finalFilter[accountField] = user.account_id;
-      finalFilter[createdByField] = user._id;
-      finalFilter["visible"] = true;
-      break;
+      return { ...finalFilter, [accountField]: user.account_id, [createdByField]: user._id, visible: true };
 
     default:
       throw new Error("Unknown role — cannot apply role filter.");
   }
-
-  return finalFilter;
 };

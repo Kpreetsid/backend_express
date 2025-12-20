@@ -12,7 +12,7 @@ class CompanyController {
       const { type } = req.query;
       const baseFilter = {};
       if (type) baseFilter["type"] = type;
-      const filter = applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "_id" });
+      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "_id" });
       const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -34,7 +34,7 @@ class CompanyController {
         throw Object.assign(new Error("Invalid ID"), { status: 400 });
       }
       const baseFilter = { _id: new mongoose.Types.ObjectId(id) };
-      const filter = applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "_id" });
+      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "_id" });
       const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
