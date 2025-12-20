@@ -11,16 +11,16 @@ import { companyService } from '../masters/company/company.service';
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const cookieToken = req.cookies['token'] || req.headers.authorization?.split(' ')[1];
-    const cookieAccountID = req.cookies['accountID'] || req.headers.accountid;
-    if (!cookieToken || !cookieAccountID) {
+    const headerToken = req.headers.authorization?.split(' ')[1];
+    const headerAccountID = req.headers.accountid;
+    if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
-    const decoded = verifyAccessToken(cookieToken);
+    const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
     const accountID = req.headers.accountid as string;
 
-    if (!id || !username || !companyID || cookieAccountID !== accountID) {
+    if (!id || !username || !companyID || headerAccountID !== accountID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     const companyData = await companyService.verifyCompany(accountID);
@@ -38,7 +38,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     if (userRole.account_id.toString() !== companyID) {
       throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
     }
-    merge(req, { user: userData.toObject(), companyID, role: userRole.toObject().data, userToken: cookieToken });
+    merge(req, { user: userData.toObject(), companyID, role: userRole.toObject().data, userToken: headerToken });
     next();
   } catch (error) {
     next(error)
@@ -47,18 +47,18 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
 
 export const isLogOutAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const cookieToken = req.cookies['token'];
-    const cookieAccountID = req.cookies['accountID'];
-    if (!cookieToken || !cookieAccountID) {
+    const headerToken = req.headers.authorization?.split(' ')[1];
+    const headerAccountID = req.headers.accountid;
+    if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
-    const decoded = verifyAccessToken(cookieToken);
+    const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
     const accountID = req.headers.accountid as string;
-    if (!id || !username || !companyID || cookieAccountID !== accountID) {
+    if (!id || !username || !companyID || headerAccountID !== accountID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
-    merge(req, { user_id: id, userToken: cookieToken });
+    merge(req, { user_id: id, userToken: headerToken });
     next();
   } catch (error) {
     next(error)
