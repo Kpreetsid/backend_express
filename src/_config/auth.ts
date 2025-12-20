@@ -45,6 +45,26 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
   }
 };
 
+export const isLogOutAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const cookieToken = req.cookies['token'];
+    const cookieAccountID = req.cookies['accountID'];
+    if (!cookieToken || !cookieAccountID) {
+      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
+    }
+    const decoded = verifyAccessToken(cookieToken);
+    const { id, username, companyID } = decoded;
+    const accountID = req.headers.accountid as string;
+    if (!id || !username || !companyID || cookieAccountID !== accountID) {
+      throw Object.assign(new Error('Invalid token'), { status: 401 });
+    }
+    merge(req, { user_id: id, userToken: cookieToken });
+    next();
+  } catch (error) {
+    next(error)
+  }
+};
+
 export const decodedAccessToken = (token: string): JwtPayload => {
   return jwt.decode(token) as JwtPayload;
 };
@@ -62,26 +82,16 @@ export const generateExternalAccessToken = (email: any, ttlSeconds: number = 300
   const key = getKey();
   const iv = crypto.randomBytes(12);
   const now = Math.floor(Date.now() / 1000);
-
-  const payload: any = {
-    email,
-    iat: now,
-    exp: now + ttlSeconds,
-  };
-
+  const payload: any = { email, iat: now, exp: now + ttlSeconds };
   const plaintext = Buffer.from(JSON.stringify(payload), "utf8");
-
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-
   const ct = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   const tag = cipher.getAuthTag();
-
   const tokenStruct = {
     iv: iv.toString("base64"),
     ct: ct.toString("base64"),
-    tag: tag.toString("base64"),
+    tag: tag.toString("base64")
   };
-
   return Buffer.from(JSON.stringify(tokenStruct)).toString("base64");
 };
 
@@ -109,26 +119,16 @@ export function encryptToken(email: string, ttlSeconds: number = 300): string {
   const key = getKey();
   const iv = crypto.randomBytes(12);
   const now = Math.floor(Date.now() / 1000);
-
-  const payload = {
-    email,
-    iat: now,
-    exp: now + ttlSeconds,
-  };
-
+  const payload = { email, iat: now, exp: now + ttlSeconds };
   const plaintext = Buffer.from(JSON.stringify(payload), "utf8");
-
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-
   const ct = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   const tag = cipher.getAuthTag();
-
   const tokenStruct = {
     iv: iv.toString("base64"),
     ct: ct.toString("base64"),
-    tag: tag.toString("base64"),
+    tag: tag.toString("base64")
   };
-
   return Buffer.from(JSON.stringify(tokenStruct)).toString("base64");
 }
 

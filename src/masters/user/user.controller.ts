@@ -12,17 +12,20 @@ class UserController {
     try {
       const user = get(req, "user", {}) as IUser;
       const baseFilter: any = { user_status: "active" };
-      const { account_id } = req.query;
+      const { account_id, username } = req.query;
       if (account_id) {
-        if (!account_id || !mongoose.Types.ObjectId.isValid(String(account_id))) {
+        if (!mongoose.Types.ObjectId.isValid(String(account_id))) {
           throw Object.assign(new Error("Bad request"), { status: 400 });
         }
         baseFilter.account_id = new mongoose.Types.ObjectId(String(account_id));
       }
+      if (username) {
+        baseFilter.$or = [{ username: username }, { email: username }];
+      }
       if (user.user_role === "admin") {
         delete baseFilter.user_status;
       }
-      const filter = applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
+      const filter = await applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
       delete filter.visible;
       const data = await usersService.getAllUsers(filter);
       if (!data.length) {
@@ -45,7 +48,7 @@ class UserController {
       if (user.user_role === "admin") {
         delete baseFilter.user_status;
       }
-      const filter = applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
+      const filter = await applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
       const data = await usersService.getAllUsers(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -86,14 +89,24 @@ class UserController {
   
   async updateUser (req: Request, res: Response, next: NextFunction) {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) throw Object.assign(new Error("Bad request"), { status: 400 });
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id };
-      const userData = await usersService.getAllUsers(match);
-      if (!userData.length) throw Object.assign(new Error("No data found"), { status: 404 });
-      const data = await usersService.updateUserDetails(id, { ...userData[0].toObject(), ...body, updatedBy: user_id });
-      if (!data) throw Object.assign(new Error("No data found"), { status: 404 });
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      const baseFilter: any = { _id: new mongoose.Types.ObjectId(id), user_status: 'active' };
+      if (user.user_role === 'admin') {
+        delete baseFilter.user_status;
+      }
+      const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
+      const userData = await usersService.getAllUsers(filter);
+      if (!userData.length) {
+        throw Object.assign(new Error("No data found"), { status: 404 });
+      } 
+      const data = await usersService.updateUserDetails(id, { ...userData[0].toObject(), ...body, updatedBy: user._id });
+      if (!data) {
+        throw Object.assign(new Error("No data found"), { status: 404 });
+      } 
       res.status(200).json({ status: true, message: "User updated successfully", data });
     } catch (error) {
       next(error);
@@ -145,11 +158,14 @@ class UserController {
   
   async removeUser (req: Request, res: Response, next: NextFunction) {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) throw Object.assign(new Error("Bad request"), { status: 400 });
-      const match = { _id: id, account_id, user_status: "active" };
-      const userData = await usersService.getAllUsers(match);
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      const baseFilter: any = { _id: new mongoose.Types.ObjectId(id), user_status: 'active' };
+      const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
+      const userData = await usersService.getAllUsers(filter);
       if (!userData.length)
         throw Object.assign(new Error("No data found or already deleted"), { status: 404 });
       await usersService.removeById(id);
