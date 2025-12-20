@@ -28,8 +28,6 @@ class UserTokenService {
       if (!userRoleData) {
         throw Object.assign(new Error('User does not have any permission'), { status: 403 });
       }
-      res.cookie('token', token, { httpOnly: true, secure: true });
-      res.cookie('companyID', safeUser.account_id, { httpOnly: true, secure: true });
       return res.status(200).json({ status: true, message: "Data fetched successfully", data: {userDetails: safeUser, token, platformControl: userRoleData.data} });
     } catch (error) {
       next(error);     
