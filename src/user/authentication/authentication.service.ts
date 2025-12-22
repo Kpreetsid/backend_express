@@ -124,7 +124,7 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
     if (!external_user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
-    const external_token = generateExternalAccessToken({ email, org_id: external_user.account_id});
+    const external_token = generateExternalAccessToken({ email, org_id: external_user.account_id, isExternal: true });
     res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
   } catch (error) {
     next(error);
@@ -138,7 +138,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
     const decoded = decryptToken(external_token);
-    const { email, org_id } = decoded;
+    const { email, org_id, isExternal } = decoded;
     if (!email && !org_id) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
@@ -165,7 +165,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data} });
+    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data, isExternal} });
   } catch (error) {
     next(error);
   }

@@ -6,36 +6,30 @@ import { mapUserToAssetService, mapUserToLocationService } from '../../transacti
 import { locationService } from '../location/location.service';
 import mongoose from 'mongoose';
 import { processorAPIService } from '../../api-processor';
+import { applyRoleFilter } from '../../util/roleFilter';
 
 class AssetController {
   async getAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
+      const baseFilter: any = {};
       const { query: { top_level_asset_id, top_level, locationId, parent_id } }: any = req;
-      if (userRole !== 'admin') {
-        const mappedData = await mapUserToAssetService.getAssetsMappedData(`${user_id}`);
-        if (!mappedData || mappedData.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
-        }
-        match._id = { $in: mappedData.map(doc => doc.assetId) };
-      }
       if (top_level_asset_id && top_level_asset_id.split(',').length > 0) {
-        match.top_level_asset_id = { $in: top_level_asset_id.split(',') };
+        baseFilter.top_level_asset_id = { $in: top_level_asset_id.split(',') };
       }
       if (parent_id && parent_id.split(',').length > 0) {
-        match._id = { $in: parent_id.split(',') };
-        match.parent_id = { $in: parent_id.split(',') };
+        baseFilter._id = { $in: parent_id.split(',') };
+        baseFilter.parent_id = { $in: parent_id.split(',') };
       }
       if (top_level) {
-        match.top_level = top_level == 'true' ? true : false;
+        baseFilter.top_level = top_level == 'true' ? true : false;
       }
       if (locationId) {
         const childIds = await locationService.getAllChildLocationIds(locationId);
         const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
-        match.locationId = { $in: mappedData.map(doc => doc.locationId) };
+        baseFilter.locationId = { $in: mappedData.map(doc => doc.locationId) };
       }
-      let data = await assetService.getAllAssets(match);
+      const filter: any = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "account_id", mapping: "asset" });
+      let data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
