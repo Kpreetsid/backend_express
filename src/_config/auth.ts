@@ -78,12 +78,13 @@ export const generateAccessToken = (payload: UserLoginPayload): string => {
   } as jwt.SignOptions); 
 };
 
-export const generateExternalAccessToken = (email: any, ttlSeconds: number = 300): string => {
+export const generateExternalAccessToken = (body: any, ttlSeconds: number = 300): string => {
   const key = getKey();
   const iv = crypto.randomBytes(12);
   const now = Math.floor(Date.now() / 1000);
-  const payload: any = { email, iat: now, exp: now + ttlSeconds };
-  const plaintext = Buffer.from(JSON.stringify(payload), "utf8");
+  body.iat = Math.floor(Date.now() / 1000);
+  body.exp = now + ttlSeconds;
+  const plaintext = Buffer.from(JSON.stringify(body), "utf8");
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
   const ct = Buffer.concat([cipher.update(plaintext), cipher.final()]);
   const tag = cipher.getAuthTag();

@@ -11,6 +11,7 @@ import { IAccount } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
+import mongoose from "mongoose";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -123,7 +124,7 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
     if (!external_user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
-    const external_token = generateExternalAccessToken(email);
+    const external_token = generateExternalAccessToken({ email, org_id: external_user.account_id});
     res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
   } catch (error) {
     next(error);
@@ -137,11 +138,11 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
     const decoded = decryptToken(external_token);
-    const { email } = decoded;
-    if (!email) {
+    const { email, org_id } = decoded;
+    if (!email && !org_id) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
-    const userDetails = await UserModel.findOne({ email, user_status: 'active' });
+    const userDetails = await UserModel.findOne({ email, account_id: new mongoose.Types.ObjectId(String(org_id)), user_status: 'active' });
     if (!userDetails) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
