@@ -11,6 +11,7 @@ import { applyRoleFilter } from '../../util/roleFilter';
 class AssetController {
   async getAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
+      const user = get(req, "user", {}) as IUser;
       const baseFilter: any = {};
       const { query: { top_level_asset_id, top_level, locationId, parent_id } }: any = req;
       if (top_level_asset_id && top_level_asset_id.split(',').length > 0) {
@@ -28,7 +29,7 @@ class AssetController {
         const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
         baseFilter.locationId = { $in: mappedData.map(doc => doc.locationId) };
       }
-      const filter: any = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "account_id", mapping: "asset" });
+      const filter: any = await applyRoleFilter({ user, baseFilter, accountField: "account_id", mapping: "asset" });
       let data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -41,31 +42,23 @@ class AssetController {
 
   async getAsset(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
       const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), account_id: account_id, visible: true };
-      if (userRole !== 'admin') {
-        const mappedData = await mapUserToAssetService.getAssetsMappedData(`${user_id}`);
-        if (!mappedData || mappedData.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
-        }
-        if (!mappedData.map(doc => String(doc.assetId)).includes(id)) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
-        }
-      }
+      const baseFilter: any = { _id: new mongoose.Types.ObjectId(id) };
       if (top_level_asset_id) {
-        match.top_level_asset_id = top_level_asset_id.toString().split(',');
+        baseFilter.top_level_asset_id = top_level_asset_id.toString().split(',');
       }
       if (top_level) {
-        match.top_level = top_level == 'true' ? true : false;
+        baseFilter.top_level = top_level == 'true' ? true : false;
       }
       if (locationId) {
-        match.locationId = new mongoose.Types.ObjectId(`${locationId}`);
+        baseFilter.locationId = new mongoose.Types.ObjectId(`${locationId}`);
       }
-      const data = await assetService.getAllAssets(match);
+      const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', mapping: 'asset' });
+      const data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -77,13 +70,14 @@ class AssetController {
 
   async getBuzzerAssetList(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
-      const match: any = { account_id: account_id, visible: true };
-      const { query: { location_id } } = req;
+      const user = get(req, 'user', {}) as IUser;
+      const baseFilter: any = {};
+      const { location_id } = req.query;
       if (location_id) {
-        match.locationId = new mongoose.Types.ObjectId(`${location_id}`);
+        baseFilter.locationId = new mongoose.Types.ObjectId(`${location_id}`);
       }
-      const data = await assetService.buzzerAssetList(match);
+      const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', mapping: 'asset' });
+      const data = await assetService.buzzerAssetList(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -95,13 +89,14 @@ class AssetController {
 
   async setBuzzerAssetList(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true }
+      const user = get(req, 'user', {}) as IUser;
       const { params: { location_id }, body } = req;
+      const baseFilter: any = {};
       if (location_id) {
-        match.locationId = new mongoose.Types.ObjectId(`${location_id}`);
+        baseFilter.locationId = new mongoose.Types.ObjectId(location_id);
       }
-      const data = await assetService.buzzerAssetList(match);
+      const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', mapping: 'asset' });
+      const data = await assetService.buzzerAssetList(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -117,7 +112,7 @@ class AssetController {
 
   async getChildAsset(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
       if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -126,8 +121,8 @@ class AssetController {
       if (childIds.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const match: any = { _id: { $in: childIds }, account_id: account_id, visible: true };
-      const data = await assetService.getAllAssets(match);
+      const filter = await applyRoleFilter({ user, baseFilter: { _id: { $in: childIds } }, accountField: 'account_id', mapping: 'asset' });
+      const data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -139,22 +134,18 @@ class AssetController {
 
   async getAssetTree(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      let { location_id, id } = req.query;
-      let assetQuery: any = { account_id, visible: true };
-      if (userRole !== "admin") {
-        const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-        const assetIds = mapData.flatMap(doc => doc?.assetId ? [new mongoose.Types.ObjectId(doc.assetId)] : [] );
-        assetQuery.$or = [ { _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
-      }
+      const user = get(req, 'user', {}) as IUser;
+      const { id, location_id } = req.query;
+      const baseFilter: any = {};
       if (id) {
-        const assetIds = id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`));
-        assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
+        const ids = id.toString().split(',').map(x => new mongoose.Types.ObjectId(x));
+        baseFilter.$or = [{ _id: { $in: ids } }, { parent_id: { $in: ids } }];
       }
       if (location_id) {
-        assetQuery.locationId = { $in: location_id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
+        baseFilter.locationId = { $in: location_id.toString().split(',').map(x => new mongoose.Types.ObjectId(x)) };
       }
-      const data = await assetService.getAssetsTreeData(assetQuery);
+      const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', mapping: 'asset' });
+      const data = await assetService.getAssetsTreeData(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

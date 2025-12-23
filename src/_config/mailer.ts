@@ -6,6 +6,7 @@ import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
 import { VerificationCodeModel } from '../models/userVerification.model';
 
 const transporter = nodemailer.createTransport({
+  service: mailCredential.service,
   host: mailCredential.host,
   port: mailCredential.port,
   secure: mailCredential.secure,

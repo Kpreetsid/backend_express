@@ -124,7 +124,7 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
     if (!external_user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
-    const external_token = generateExternalAccessToken({ email, org_id: external_user.account_id, isExternal: true });
+    const external_token = generateExternalAccessToken({ email, org_id: external_user.account_id, isExternal: false });
     res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
   } catch (error) {
     next(error);
@@ -165,7 +165,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data, isExternal} });
+    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data, isExternal : !!isExternal} });
   } catch (error) {
     next(error);
   }

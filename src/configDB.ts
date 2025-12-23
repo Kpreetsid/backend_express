@@ -26,6 +26,7 @@ export const auth = {
 };
 
 export const mailCredential = {
+  service: process.env.MAIL_SERVICE!,
   host: process.env.MAIL_HOST!,
   port: parseInt(process.env.MAIL_PORT!),
   secure: process.env.MAIL_SECURE === 'true',
