@@ -14,20 +14,22 @@ class FloorMapService {
       throw Object.assign(new Error("No coordinates found"), { status: 404 });
     }
     let mappedAssetIds: string[] = [];
-    if (userRole !== "admin") {
-      const mapped = await mapUserToAssetService.getAssetsMappedData(String(user_id));
-      mappedAssetIds = mapped.map(m => String(m.assetId));
+    if (userRole !== "admin" && user_id) {
+      const mappedAssets = await mapUserToAssetService.getAssetsMappedData(String(user_id));
+      mappedAssetIds = mappedAssets.map((m) => String(m.assetId));
     }
-    const parentLocationIds = floorMaps.map(f => String(f.locationId._id));
-    const allChildLocationIds = await this.getAllChildLocationsRecursive(parentLocationIds, user_id, userRole);
     return Promise.all(
-      floorMaps.map(async item => {
-        const allowedLocations = [String(item.locationId._id), ...allChildLocationIds];
+      floorMaps.map(async (item) => {
+        if (!item.locationId?._id) return null;
+        const locationId = String(item.locationId._id);
+        const childLocationIds = await this.getAllChildLocationsRecursive([locationId], user_id, userRole);
+        const allowedLocations = [locationId, ...childLocationIds];
         const assetMatch: any = {
           account_id,
           visible: true,
           asset_type: { $nin: ["Flexible", "Rigid", "Belt_Pulley"] },
-          locationId: { $in: allowedLocations }
+          locationId: { $in: allowedLocations },
+          top_level: true
         };
         if (userRole !== "admin") {
           assetMatch._id = { $in: mappedAssetIds };
@@ -42,13 +44,13 @@ class FloorMapService {
     if (!parentIds.length) return [];
     if (userRole !== "admin") {
       const mapped = await mapUserToLocationService.getLocationsMappedData(String(user_id));
-      const mappedIds = mapped.map(m => String(m.locationId));
-      parentIds = parentIds.filter(id => mappedIds.includes(id));
+      const mappedIds = mapped.map((m) => String(m.locationId));
+      parentIds = parentIds.filter((id) => mappedIds.includes(id));
       if (!parentIds.length) return [];
     }
-    const children = await LocationModel.find({ parent_id: { $in: parentIds }, visible: true }).select("_id");
+    const children = await LocationModel.find({parent_id: { $in: parentIds }, visible: true}).select("_id");
     if (!children.length) return [];
-    const childIds = children.map(c => String(c._id));
+    const childIds = children.map((c) => String(c._id));
     const grandChildIds = await this.getAllChildLocationsRecursive(childIds, user_id, userRole);
     return [...childIds, ...grandChildIds];
   }
@@ -61,7 +63,7 @@ class FloorMapService {
       data_type: body.data_type,
       createdBy: user_id
     });
-    if (body.data_type === 'asset') {
+    if (body.data_type === "asset") {
       endpointLocation.end_point_id = body.end_point_id;
       endpointLocation.end_point = body.end_point;
     }

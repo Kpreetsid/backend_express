@@ -24,6 +24,7 @@ const sendMail = async ({ to, subject, html }: MailOptions): Promise<void> => {
   const mailLogData: IMailLog = new MailLogModel({ to, subject, html });
   try {
     await transporter.verify();
+    console.log("SMTP verified successfully.")
     const info = await transporter.sendMail({ from: `Presage Insights <${mailCredential.from}>`, to, subject, html });
     mailLogData.messageId = info.messageId;
     mailLogData.mailInfo = info;
