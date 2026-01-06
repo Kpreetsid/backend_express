@@ -26,8 +26,12 @@ class AssetController {
       }
       if (locationId) {
         const childIds = await locationService.getAllChildLocationIds(locationId);
-        const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
-        baseFilter.locationId = { $in: mappedData.map(doc => doc.locationId) };
+        if(user.user_role !== 'admin') {
+          const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
+          baseFilter.locationId = { $in: mappedData.map(doc => doc.locationId) };
+        } else {
+          baseFilter.locationId = { $in: [locationId, ...childIds] };
+        }
       }
       const filter: any = await applyRoleFilter({ user, baseFilter, accountField: "account_id", mapping: "asset" });
       let data = await assetService.getAllAssets(filter);

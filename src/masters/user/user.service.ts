@@ -6,7 +6,6 @@ import { rolesService } from './role/roles.service';
 import mongoose from 'mongoose';
 
 class UsersService {
-
   async getAllUsers(match: any) {
     return await UserModel.find(match).select('-password');
   };

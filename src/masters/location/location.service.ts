@@ -40,7 +40,7 @@ class LocationService {
   };
 
   async getAllChildLocationIds(locationId: string): Promise<string[]> {
-    const children = await LocationModel.find({ parent_id: locationId, visible: true }).select('_id');
+    const children = await LocationModel.find({ parent_id: locationId, visible: true }).lean();
     if (!children || children.length === 0) {
       return [locationId];
     }

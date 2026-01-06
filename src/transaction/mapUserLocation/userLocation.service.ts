@@ -126,7 +126,7 @@ class MapUserToLocationService {
   }
   
   async getDataByLocationIds (locationIds: string[]) {
-    return await MapUserAssetLocationModel.find({ locationId: { $in: locationIds.map(id => new mongoose.Types.ObjectId(id)) }, userId: { $exists: true } });
+    return await MapUserAssetLocationModel.find({ locationId: { $in: locationIds.map(id => new mongoose.Types.ObjectId(id)) }, userId: { $exists: true } }).lean();
   }
 
   async mapUserLocationData (id: any, userIdList: any, account_id: any) {
@@ -156,8 +156,8 @@ class MapUserToLocationService {
               { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
               { $addFields: { id: '$_id' } }
             ],
-            as: "location",
-          },
+            as: "location"
+          }
         },
         { $unwind: "$location" }
       );
@@ -172,8 +172,8 @@ class MapUserToLocationService {
               { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
               { $addFields: { id: '$_id' } }
             ],
-            as: "user",
-          },
+            as: "user"
+          }
         },
         { $unwind: "$user" }
       );
