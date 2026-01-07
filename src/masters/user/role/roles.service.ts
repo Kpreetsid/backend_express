@@ -1,7 +1,7 @@
 import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model";
 import { IUser } from "../../../models/user.model";
-import { platformControlData } from "../../../_role/userRoles";
-import { roleMenuData } from "../../../_role/newUserRoles";
+import { PlatformControlManager } from "../../../_role/userRoles";
+import { RoleManager } from "../../../_role/newUserRoles";
 import mongoose from "mongoose";
 
 class RolesService {
@@ -28,8 +28,8 @@ class RolesService {
 
   async createUserRole(userRole: any, userData: IUser) {
     try {
-      var platformControl = await platformControlData(userRole);
-      var newRoleMenu = await roleMenuData(userRole);
+      var platformControl = await PlatformControlManager.getRoleMenuData(userRole);
+      var newRoleMenu = await RoleManager.getRoleMenuData(userRole);
       const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({
         account_id: userData.account_id,
         user_id: userData._id,

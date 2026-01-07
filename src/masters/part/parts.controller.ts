@@ -90,16 +90,13 @@ class PartsController {
   async updateStock(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const { params: { id }, body: { quantity, part_number } } = req;
+      const { params: { id }, body: { quantity } } = req;
       if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
       const part = await partsService.getAllParts({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
       if (!part || part.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      if (part[0].part_number !== part_number) {
-        throw Object.assign(new Error('Part number does not match'), { status: 400 });
       }
       part[0].quantity = Number(part[0].quantity) + Number(quantity);
       const updatedPart = await partsService.updatePartStock(id, part[0], user_id);
