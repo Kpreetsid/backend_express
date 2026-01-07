@@ -12,7 +12,7 @@ class UserWorkOrderService {
 
   async getMappedWorkOrderIDs (user_id: any): Promise<any[]> {
     const assigneeMappings = await WorkOrderAssigneeModel.find({ userId: user_id });
-    return assigneeMappings.map(item => item.woId);
+    return [...new Set(assigneeMappings.map(item => item.woId))];
   };
 
   async updateMappedUsers (id: any, userIdList: any[]): Promise<any> {

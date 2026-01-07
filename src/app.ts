@@ -1,7 +1,6 @@
 import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
 import path from 'path';
-import morgan from 'morgan';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -13,16 +12,14 @@ import reportsRoutes from './reports/reports.routes';
 import transactionRoutes from './transaction/transaction.routes';
 import masterRoutes from './masters/master.routes';
 import inspectionRoutes from './inspection/inspection.routes';
-import { fileLogger, activityLogger, errorMiddleware } from './middlewares';
+import { logger, errorMiddleware } from './middlewares';
 
 const app: Express = express();
 app.set('trust proxy', 1);
-app.use(morgan('dev'));
 app.use(express.json({ limit: '50mb' }));
 app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(fileLogger);
-app.use(activityLogger);
+app.use(logger.logMiddleware());
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/assets')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/asset_report')));

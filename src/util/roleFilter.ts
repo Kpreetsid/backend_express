@@ -28,12 +28,16 @@ export const applyRoleFilter = async ({ user, baseFilter = {}, accountField = "a
     case "employee":
     case "customer": {
       if (mapping === "location") {
-        const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
-        finalFilter._id = { $in: mappedLocations.map((doc: any) => doc.locationId) };
+        if(!finalFilter._id){
+          const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
+          finalFilter._id = { $in: mappedLocations.map((doc: any) => doc.locationId) };
+        }
       }
       if (mapping === "asset") {
-        const mappedAssets = await mapUserToAssetService.getAssetsMappedData(user._id);
-        finalFilter._id = { $in: mappedAssets.map((doc: any) => doc.assetId) };
+        if(!finalFilter._id){
+          const mappedAssets = await mapUserToAssetService.getAssetsMappedData(user._id);
+          finalFilter._id = { $in: mappedAssets.map((doc: any) => doc.assetId) };
+        }
       }
       finalFilter[accountField] = user.account_id;
       finalFilter.visible = true;

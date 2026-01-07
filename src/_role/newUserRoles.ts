@@ -54,6 +54,7 @@ const adminRoles = {
     "peripheral_sensors" : { "view" : true, "add" : true, "edit" : true, "delete" : true, "import" : true, "export" : true },
     "gateways" : { "view" : true, "add" : true, "edit" : true, "delete" : true, "import" : true, "export" : true },
     "users" : { "view" : true, "add" : true, "edit" : true, "delete" : true, "import" : true, "export" : true },
+    "admin_panel": { "view": true, "add": true, "edit": true, "delete": true, "export": true, "import": true },
     "permission" : { "view" : true, "add" : true, "edit" : true, "delete" : true, "import" : true, "export" : true },
     "asset_mail" : { "view" : true, "add" : true, "edit" : true, "delete" : true, "import" : true, "export" : true }
 }
@@ -90,9 +91,10 @@ const managerRoles = {
     "devices" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
     "peripheral_sensors" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
     "gateways" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
-    "users" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
-    "permission" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
-    "asset_mail" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false }
+    "admin_panel": { "view": false, "add": false, "edit": false, "delete": false, "export": false, "import": false },
+    "users" : { "view": false, "add": false, "edit": false, "delete": false, "import": false, "export": false },
+    "permission" : { "view": false, "add": false, "edit": false, "delete": false, "import": false, "export": false },
+    "asset_mail" : { "view": false, "add": false, "edit": false, "delete": false, "import": false, "export": false }
 }
 
 const employeeRoles = {
@@ -127,9 +129,10 @@ const employeeRoles = {
     "devices" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
     "peripheral_sensors" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
     "gateways" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
-    "users" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
-    "permission" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
-    "asset_mail" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false }
+    "admin_panel": { "view": false, "add": false, "edit": false, "delete": false, "export": false, "import": false },
+    "users" : { "view": false, "add": false, "edit": false, "delete": false, "import": false, "export": false },
+    "permission" : { "view": false, "add": false, "edit": false, "delete": false, "import": false, "export": false },
+    "asset_mail" : { "view": false, "add": false, "edit": false, "delete": false, "import": false, "export": false }
 }
 
 const customerRoles = {
@@ -164,7 +167,8 @@ const customerRoles = {
     "devices" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
     "peripheral_sensors" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
     "gateways" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
-    "users" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
-    "permission" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false },
-    "asset_mail" : { "view": true, "add": false, "edit": false, "delete": false, "import": false, "export": false }
+    "admin_panel": { "view": false, "add": false, "edit": false, "delete": false, "export": false, "import": false },
+    "users" : { "view": false, "add": false, "edit": false, "delete": false, "import": false, "export": false },
+    "permission" : { "view": false, "add": false, "edit": false, "delete": false, "import": false, "export": false },
+    "asset_mail" : { "view": false, "add": false, "edit": false, "delete": false, "import": false, "export": false }
 }

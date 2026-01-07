@@ -44,53 +44,70 @@ class OrderController {
   async getAllWorkOrders(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, user_role: userRole, _id: user_id } = get(req, "user", {}) as IUser;
-      const { page = 1, limit = 25, pageType = "assignedToMe" } = req.query;
-      const { status, priority, wo_asset_id, wo_location_id } = req.query;
-      const skip: number = (Number(page) - 1) * Number(limit);
+      const { page = 1, limit = 25, pageType = "assignedToMe", status, priority, wo_asset_id, wo_location_id, assignedUser } = req.query;
+      const skip = (Number(page) - 1) * Number(limit);
       const match: any = { account_id, visible: true };
-      if (status) match.status = { $in: status.toString().split(',') };
-      if (priority) match.priority = { $in: priority.toString().split(',') };
-      if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-      if (wo_location_id) match.wo_location_id = { $in: wo_location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-      if (pageType === "assignedToMe") {
-        const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
-        if (userWorkOrderIdList && userWorkOrderIdList.length > 0) {
-          match._id = { $in: userWorkOrderIdList };
-        }
-      } else if (pageType === "createdByMe") {
-        match.createdBy = user_id;
-      } else if (pageType === "openToAll") {
-        match.status = { $in: ['Open', 'In-Progress', 'On-Hold'] };
-        match.createdBy = { $ne: user_id };
-        const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
-        if (userWorkOrderIdList && userWorkOrderIdList.length > 0) {
-          match._id = { $nin: userWorkOrderIdList };
-        }
-      } else {
-        if (userRole !== "admin") {
-          const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
-          if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
-            match.createdBy = user_id;
+      if (status) {
+        match.status = { $in: status.toString().split(",") };
+      }
+      if (priority) {
+        match.priority = { $in: priority.toString().split(",") };
+      }
+      if (wo_asset_id) {
+        match.wo_asset_id = { $in: wo_asset_id.toString().split(",").map(id => new mongoose.Types.ObjectId(id)) };
+      }
+      if (wo_location_id) {
+        match.wo_location_id = { $in: wo_location_id.toString().split(",").map(id => new mongoose.Types.ObjectId(id)) };
+      }
+      if (assignedUser) {
+        match["assignedUsers.userId"] = { $in: assignedUser.toString().split(",").map(id => new mongoose.Types.ObjectId(id)) };
+      }
+      switch (pageType) {
+        case "assignedToMe": {
+          const ids = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
+          if (ids?.length) {
+            match._id = { $in: ids };
           } else {
-            match.$or = [{ _id: { $in: userWorkOrderIdList } }, { createdBy: user_id }];
+            match._id = { $in: [] };
+          }
+          break;
+        }
+        case "createdByMe": {
+          match.createdBy = new mongoose.Types.ObjectId(user_id);
+          break;
+        }
+        case "openToAll": {
+          match.createdBy = { $ne: new mongoose.Types.ObjectId(user_id) };
+          if (!status) {
+            match.status = { $in: ["Open", "In-Progress", "On-Hold"] };
+          }
+          const ids = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
+          if (ids?.length) {
+            match._id = { $nin: ids };
+          }
+          break;
+        }
+        default: {
+          if (userRole !== "admin") {
+            const ids = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
+            match.$or = [
+              { _id: { $in: ids || [] } },
+              { createdBy: new mongoose.Types.ObjectId(user_id) }
+            ];
           }
         }
       }
       const totalItems = await orderService.countOrders(match);
       const data = await orderService.getAllWorkOrders(match, skip, Number(limit));
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
-      }
-      const totalPages = Math.ceil(totalItems / Number(limit));
       res.status(200).json({
         status: true,
         message: "Work orders fetched successfully.",
         pagination: {
-          page,
-          limit,
+          page: Number(page),
+          limit: Number(limit),
           totalItems,
-          totalPages,
-          hasNextPage: Number(page) < totalPages,
+          totalPages: Math.ceil(totalItems / Number(limit)),
+          hasNextPage: skip + Number(limit) < totalItems,
           hasPrevPage: Number(page) > 1
         },
         data
