@@ -53,7 +53,7 @@ export const sendVerificationCode = async (match: any): Promise<boolean> => {
     htmlTemplate = htmlTemplate.replace('{{NAME}}', match.fullName);
     const mailResponse = await sendMail({
       to: match.email,
-      subject: 'Verify Your Email Address',
+      subject: 'Confirm Your Email with This OTP',
       html: htmlTemplate
     });
     await new VerificationCodeModel({ email: match.email, firstName: match.firstName, code: otp.toString() }).save();
