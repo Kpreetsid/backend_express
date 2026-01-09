@@ -28,7 +28,7 @@ class AssetReportService {
       return assetReport;
     } catch (error) {
       if (workOrder?._id) {
-        await orderService.deleteWorkOrderById(workOrder._id);
+        await orderService.deleteWorkOrderById(workOrder._id, user._id);
       }
       if (assetReport?._id) {
         await this.deleteAssetReport(assetReport._id);
