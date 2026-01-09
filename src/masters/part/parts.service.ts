@@ -1,6 +1,15 @@
 import mongoose from "mongoose";
 import { PartsModel, IPart } from "../../models/part.model";
 
+interface InventoryAdjustmentResult {
+  warnings: {
+    part_id: any;
+    part_name: string;
+    quantity: number;
+    min_quantity: number;
+  }[];
+}
+
 class PartsService {
 
   async getAllParts(match: any): Promise<IPart[]> {
@@ -130,6 +139,47 @@ class PartsService {
       await part.save();
     }
   };
+
+  async adjustInventoryByWorkOrder(oldParts: any[] = [], newParts: any[] = [], user: any): Promise<InventoryAdjustmentResult> {
+    const oldMap = new Map<string, number>();
+    const newMap = new Map<string, number>();
+    const warnings: InventoryAdjustmentResult["warnings"] = [];
+
+    oldParts.forEach(p => oldMap.set(String(p.part_id), Number(p.estimatedQuantity)));
+    newParts.forEach(p => newMap.set(String(p.part_id), Number(p.estimatedQuantity)));
+
+    const allPartIds = [...new Set([...oldMap.keys(), ...newMap.keys()])];
+
+    for (const partId of allPartIds) {
+      const oldQty = oldMap.get(partId) || 0;
+      const newQty = newMap.get(partId) || 0;
+      const diff = newQty - oldQty;
+
+      if (diff === 0) continue;
+
+      const part = await PartsModel.findById(partId);
+      if (!part) continue;
+
+      if (diff > 0 && part.quantity < diff) {
+        throw Object.assign(new Error(`Insufficient stock for ${part.part_name}`), { status: 400 });
+      }
+
+      part.quantity -= diff;
+      part.updatedBy = user._id;
+
+      await part.save();
+
+      if (part.quantity <= part.min_quantity) {
+        warnings.push({
+          part_id: part._id,
+          part_name: part.part_name,
+          quantity: part.quantity,
+          min_quantity: part.min_quantity
+        });
+      }
+    }
+    return { warnings };
+  }
 }
 
 export const partsService = new PartsService();

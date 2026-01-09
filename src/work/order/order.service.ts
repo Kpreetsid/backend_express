@@ -345,12 +345,13 @@ class OrderService {
     if (!result || result.length === 0) {
       throw Object.assign(new Error('Failed to map users to work order'), { status: 500 });
     }
-    const data = await newAsset.save();
+    const data: any = await newAsset.save();
     if (!data) {
       throw Object.assign(new Error('Failed to create work order'), { status: 400 });
     }
-    if(body.parts?.length > 0) {
-      await partsService.assignPartToWorkOrder(body.parts, user);
+    if (body.parts?.length > 0) {
+      const inventoryResult = await partsService.adjustInventoryByWorkOrder([], body.parts, user);
+      data.inventoryWarnings = inventoryResult.warnings;
     }
     userDetails.forEach(async (assignedUsers: IUser) => {
       const orders = await this.getAllOrders({ _id: data._id });
@@ -368,10 +369,9 @@ class OrderService {
       throw Object.assign(new Error('Work Order not found'), { status: 404 });
     }
     existingOrder = { ...existingOrder.toObject(), ...body };
-    if(body.parts?.length > 0) {
-      if(body.oldParts?.length > 0) {
-        await partsService.revertPartFromWorkOrder(body.oldParts, body.parts, user);
-      }
+    if (body.parts?.length > 0) {
+      const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || [], body.parts, user);
+      existingOrder.inventoryWarnings = inventoryResult.warnings;
     }
     existingOrder.updatedBy = user._id;
     await userWorkOrderService.updateMappedUsers(id, body.userIdList);
@@ -388,15 +388,19 @@ class OrderService {
   
   async removeOrder (id: any, user_id: any): Promise<any> {
     await userWorkOrderService.removeMappedUsers(id);
-    const partsWorkOrder = await WorkOrderModel.find({ _id: id, parts: { $exists: true, $ne: [] } });
-    if(partsWorkOrder?.length > 0) {
-      await partsService.revertPartFromWorkOrder(partsWorkOrder[0].parts, [], user_id);
+    const order: any = await WorkOrderModel.findById(id).lean();
+    if (order?.parts?.length > 0) {
+      await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id });
     }
     return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
   };
   
-  async deleteWorkOrderById (id: any): Promise<any> {
+  async deleteWorkOrderById (id: any, user_id: any): Promise<any> {
     await userWorkOrderService.removeMappedUsers(id);
+    const order: any = await WorkOrderModel.findById(id).lean();
+    if (order?.parts?.length > 0) {
+      await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id });
+    }
     return await WorkOrderModel.findByIdAndDelete(id);
   }
 }

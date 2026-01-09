@@ -112,11 +112,11 @@ export const verifyExternalAccessToken = (token: string): JwtPayload => {
   }) as JwtPayload;
 };
 
-function getKey(): Buffer {
+const getKey = (): Buffer => {
   return crypto.createHash("sha256").update(auth.external_secret).digest();
 }
 
-export function encryptToken(email: string, ttlSeconds: number = 300): string {
+export const encryptToken = (email: string, ttlSeconds: number = 300): string => {
   const key = getKey();
   const iv = crypto.randomBytes(12);
   const now = Math.floor(Date.now() / 1000);
@@ -133,7 +133,7 @@ export function encryptToken(email: string, ttlSeconds: number = 300): string {
   return Buffer.from(JSON.stringify(tokenStruct)).toString("base64");
 }
 
-export function decryptToken(token: string): any {
+export const decryptToken = (token: string): any => {
   const key = getKey();
   const decodedJson = Buffer.from(token, "base64").toString("utf8");
   const decoded = JSON.parse(decodedJson);
@@ -146,7 +146,7 @@ export function decryptToken(token: string): any {
   return JSON.parse(plaintext.toString("utf8"));
 }
 
-export function verifyEncryptedToken(req: Request, res: Response, next: NextFunction): void {
+export const verifyEncryptedToken = (req: Request, res: Response, next: NextFunction): void => {
   try {
     const { external_token } = req.body;
     if (!external_token || typeof external_token !== "string") {
