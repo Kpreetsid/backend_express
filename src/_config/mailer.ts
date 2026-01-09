@@ -115,7 +115,8 @@ export class MailerService {
       {
         userFullName: this.getFullName(user),
         userName: user.username,
-        changedAt: new Date().toLocaleString()
+        changedAt: new Date().toLocaleString(),
+        loginUrl: mailCredential.loginUrl
       }
     );
     await this.send({to: user.email, subject: 'Your Presage CMMS Password Has Been Updated', html});
