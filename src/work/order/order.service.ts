@@ -1,6 +1,6 @@
 import { IWorkOrder, WorkOrderModel } from "../../models/workOrder.model";
 import { IUser, UserModel } from "../../models/user.model";
-import { sendWorkOrderMail } from "../../_config/mailer";
+import { MailerService } from "../../_config/mailer";
 import { userWorkOrderService } from "../../transaction/mapUserWorkOrder/userWorkOrder.service";
 import { partsService } from "../../masters/part/parts.service";
 import { commentService } from "../comments/comment.service";
@@ -8,6 +8,12 @@ import { requestService } from "../request/request.service";
 import mongoose from "mongoose";
 
 class OrderService {
+  private mailerService: MailerService;
+  
+  constructor() {
+    this.mailerService = new MailerService();
+  }
+
   async getAllOrders (match: any): Promise<any> {
     let data = await WorkOrderModel.aggregate([
       { $match: match },
@@ -348,7 +354,7 @@ class OrderService {
     }
     userDetails.forEach(async (assignedUsers: IUser) => {
       const orders = await this.getAllOrders({ _id: data._id });
-      await sendWorkOrderMail(orders[0], assignedUsers, user);
+      await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
     });
     return data;
   };

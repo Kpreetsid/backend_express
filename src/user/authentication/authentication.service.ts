@@ -4,7 +4,7 @@ import { passwordService } from '../../util/bcrypt';
 import { decryptToken, generateAccessToken, generateExternalAccessToken } from '../../_config/auth';
 import { TokenModel } from "../../models/userToken.model";
 import { rolesService } from "../../masters/user/role/roles.service";
-import { sendPasswordChangeConfirmation } from "../../_config/mailer";
+import { MailerService } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
 import { IAccount } from "../../models/account.model";
@@ -172,6 +172,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
 };
 
 export const userResetPassword = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  const mailerService = new MailerService();
   try {
     const { token, password } = req.body;
     if(!token) {
@@ -187,7 +188,7 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
     }
     const hashNewPassword = await passwordService.hashPassword(password);
     await UserModel.updateOne({ _id: user._id, account_id: user.account_id }, { $set: { password: hashNewPassword } });
-    await sendPasswordChangeConfirmation(user);
+    await mailerService.sendPasswordChangeConfirmation(user);
     await VerificationCodeModel.deleteOne({ email: user.email, code: token.toString() });
     return res.status(200).json({ status: true, message: 'Password reset successful' });
   } catch (error) {

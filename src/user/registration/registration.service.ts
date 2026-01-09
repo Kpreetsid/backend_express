@@ -1,10 +1,15 @@
 import { IAccount } from "../../models/account.model";
-import { sendRegistrationConfirmation, sendVerificationCode } from "../../_config/mailer";
+import { MailerService } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { usersService } from "../../masters/user/user.service";
 import { companyService } from "../../masters/company/company.service";
 
 class RegistrationService {
+  private mailerService: MailerService;
+  
+  constructor() {
+    this.mailerService = new MailerService();
+  }
   async verifyOTPCode(body: any) {
     const userVerification = await VerificationCodeModel.findOne({
       email: body.email,
@@ -32,7 +37,7 @@ class RegistrationService {
     if (!userDetails) {
       throw Object.assign(new Error("User creation failed"), { status: 500 });
     }
-    await sendRegistrationConfirmation(userDetails.userDetails);
+    await this.mailerService.sendRegistrationConfirmation(userDetails.userDetails);
     await userVerification.deleteOne({
       email: body.email,
       code: body.verificationCode,
@@ -41,7 +46,7 @@ class RegistrationService {
   }
 
   async emailVerificationCode(match: any) {
-    return await sendVerificationCode(match);
+    return await this.mailerService.sendVerificationCode(match);
   }
 }
 

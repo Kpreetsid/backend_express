@@ -1,155 +1,159 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { Transporter } from 'nodemailer';
 import { mailCredential } from '../configDB';
 import fs from 'fs';
 import path from 'path';
 import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
 import { VerificationCodeModel } from '../models/userVerification.model';
 
-const transporter = nodemailer.createTransport({
-  service: mailCredential.service,
-  host: mailCredential.host,
-  port: mailCredential.port,
-  secure: mailCredential.secure,
-  tls: { rejectUnauthorized: false },
-  auth: { user: mailCredential.user, pass: mailCredential.pass }
-});
-
-interface MailOptions {
+interface MailPayload {
   to: string;
   subject: string;
   html: string;
 }
 
-const sendMail = async ({ to, subject, html }: MailOptions): Promise<void> => {
-  const mailLogData: IMailLog = new MailLogModel({ to, subject, html });
-  try {
-    await transporter.verify();
-    console.log("SMTP verified successfully.")
-    const info = await transporter.sendMail({ from: `Presage Insights <${mailCredential.from}>`, to, subject, html });
-    mailLogData.messageId = info.messageId;
-    mailLogData.mailInfo = info;
-    mailLogData.status = 'success';
-    console.log(`Message Id: ${info.messageId}, Accepted: ${info.accepted}, Rejected: ${info.rejected}, Response: ${info.response}`);
-  } catch (error: any) {
-    console.error('Error sending email:', error);
-    mailLogData.status = 'failed';
-    mailLogData.error = error || 'Unknown error';
-    throw error;
-  }
-  await createMailLog(mailLogData);
-};
+export class MailerService {
+  private readonly transporter: Transporter;
 
-export const sendVerificationCode = async (match: any): Promise<boolean> => {
-  try {
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    const templatePath = path.join(__dirname, '../public/verificationCode.template.html');
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
-    htmlTemplate = htmlTemplate.replace('{{OTP}}', otp.toString());
-    htmlTemplate = htmlTemplate.replace('{{YEAR}}', new Date().getFullYear().toString());
-    const fullName = match.firstName;
-    if (match.lastName) {
-      match.fullName = fullName + ' ' + match.lastName;
-    }
-    htmlTemplate = htmlTemplate.replace('{{NAME}}', match.fullName);
-    const mailResponse = await sendMail({
-      to: match.email,
-      subject: 'Email Verification Required – Presage CMMS',
-      html: htmlTemplate
+  constructor() {
+    this.transporter = nodemailer.createTransport({
+      service: mailCredential.service,
+      host: mailCredential.host,
+      port: mailCredential.port,
+      secure: mailCredential.secure,
+      tls: { rejectUnauthorized: false },
+      auth: {
+        user: mailCredential.user,
+        pass: mailCredential.pass
+      }
     });
-    await new VerificationCodeModel({ email: match.email, firstName: match.firstName, code: otp.toString() }).save();
-    console.log(mailResponse);
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
+  }
+
+  private async send({ to, subject, html }: MailPayload): Promise<void> {
+    const mailLog: IMailLog = new MailLogModel({ to, subject, html });
+    try {
+      await this.transporter.verify();
+      console.log('Mail verified');
+      const info = await this.transporter.sendMail({
+        from: `Presage Insights <${mailCredential.from}>`,
+        to,
+        subject,
+        html
+      });
+      mailLog.messageId = info.messageId;
+      mailLog.mailInfo = info;
+      mailLog.status = 'success';
+      console.log(`Message Id: ${info.messageId}, Accepted: ${info.accepted}, Rejected: ${info.rejected}, Response: ${info.response}`);
+    } catch (error: any) {
+      console.error('Error sending email:', error);
+      mailLog.status = 'failed';
+      mailLog.error = error;
+      throw error;
+    } finally {
+      await createMailLog(mailLog);
+    }
+  }
+
+  private loadTemplate(templateName: string): string {
+    const templatePath = path.join(__dirname,`../public/${templateName}`);
+    return fs.readFileSync(templatePath, 'utf8');
+  }
+
+  private replace(template: string, data: Record<string, string>): string {
+    let html = template;
+    for (const key in data) {
+      html = html.replaceAll(`{{${key}}}`, data[key]);
+    }
+    return html;
+  }
+
+  private getFullName(user: any): string {
+    return [user.firstName, user.lastName].filter(Boolean).join(' ');
+  }
+
+  async sendVerificationCode(user: any): Promise<boolean> {
+    try {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const fileName = this.loadTemplate(`verificationCode.template.html`);
+      const html = this.replace(fileName,
+        {
+          OTP: otp,
+          YEAR: new Date().getFullYear().toString(),
+          NAME: this.getFullName(user)
+        }
+      );
+      await this.send({to: user.email, subject: 'Email Verification Required – Presage CMMS', html});
+      await VerificationCodeModel.create({email: user.email, firstName: user.firstName, code: otp});
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async sendRegistrationConfirmation(user: any): Promise<boolean> {
+    try {
+      const fileName = this.loadTemplate(`registration.template.html`);
+      const html = this.replace(fileName,
+        {
+          YEAR: new Date().getFullYear().toString(),
+          fullName: this.getFullName(user),
+          userName: user.username,
+          userEmail: user.email,
+          registrationDate: new Date().toLocaleString(),
+          loginLink: mailCredential.loginUrl
+        }
+      );
+      await this.send({to: user.email, subject: 'Welcome to Presage CMMS - Your Registration Is Complete', html});
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async sendPasswordChangeConfirmation(user: any): Promise<void> {
+    const fileName = this.loadTemplate(`confirmPasswordChange.template.html`);
+    const html = this.replace(fileName,
+      {
+        userFullName: this.getFullName(user),
+        userName: user.username,
+        changedAt: new Date().toLocaleString()
+      }
+    );
+    await this.send({to: user.email, subject: 'Your Presage CMMS Password Has Been Updated', html});
+  }
+
+  async sendWorkOrderMail(workOrder: any, assignedUser: any, createdBy: any): Promise<void> {
+    const fileName = this.loadTemplate(`workOrder.template.html`);
+    const html = this.replace(fileName,
+      {
+        userFullName: this.getFullName(assignedUser),
+        workOrderNo: workOrder.order_no,
+        title: workOrder.title,
+        workOrderDescription: workOrder.description,
+        locationName: workOrder.location?.location_name || '',
+        assetName: workOrder.asset?.asset_name || '',
+        datetime: new Date().toLocaleString(),
+        createdBy: this.getFullName(createdBy),
+        startDate: workOrder.start_date.toISOString().split('T')[0],
+        endDate: workOrder.end_date.toISOString().split('T')[0],
+        status: workOrder.status,
+        detailsLink: `${mailCredential.loginUrl}/work-order/list/1/${workOrder._id}/info`
+      }
+    );
+    await this.send({to: assignedUser.email, subject: `${workOrder.title} - New Work Order Assigned`, html});
+  }
+
+  async sendUserCreatedMail(data: { userName: string; userEmail: string;}): Promise<void> {
+    const fileName = this.loadTemplate(`userRegister.template.html`);
+    const html = this.replace(fileName,
+      {
+        userName: data.userName,
+        userEmail: data.userEmail,
+        loginUrl: mailCredential.loginUrl,
+        companyName: 'Presage Insights Pvt. Ltd.',
+        createdAt: new Date().toLocaleString(),
+        year: new Date().getFullYear().toString()
+      }
+    );
+    await this.send({to: data.userEmail, subject: 'Welcome to Presage Insights - Your Account Is Ready', html});
   }
 }
-
-export const sendRegistrationConfirmation = async (match: any): Promise<boolean> => {
-  try {
-    const templatePath = path.join(__dirname, '../public/registration.template.html');
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
-    htmlTemplate = htmlTemplate.replace('{{YEAR}}', new Date().getFullYear().toString());
-    const fullName = match.firstName;
-    if (match.lastName) {
-      match.fullName = fullName + ' ' + match.lastName;
-    }
-    htmlTemplate = htmlTemplate.replace('{{fullName}}', match.fullName);
-    htmlTemplate = htmlTemplate.replace('{{userName}}', match.username);
-    htmlTemplate = htmlTemplate.replace('{{userEmail}}', match.email);
-    htmlTemplate = htmlTemplate.replace('{{registrationDate}}', new Date().toLocaleString());
-    htmlTemplate = htmlTemplate.replace('{{loginLink}}', mailCredential.loginUrl);
-    const mailResponse = await sendMail({
-      to: match.email,
-      subject: `Welcome to Presage CMMS - Your Registration Is Complete`,
-      html: htmlTemplate
-    });
-    console.log(mailResponse);
-    return true;
-  } catch (error) {
-    console.error(error);
-    return false;
-  }
-}
-
-export const sendPasswordChangeConfirmation = async (user: any): Promise<void> => {
-  try {
-    const templatePath = path.join(__dirname, '../public/confirmPasswordChange.template.html');
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
-    htmlTemplate = htmlTemplate.replace('{{userFullName}}', user.firstName + ' ' + user.lastName);
-    htmlTemplate = htmlTemplate.replace('{{userName}}', user.username);
-    htmlTemplate = htmlTemplate.replace('{{changedAt}}', new Date().toLocaleString());
-    await sendMail({
-      to: user.email,
-      subject: 'Your Presage CMMS Password Has Been Updated',
-      html: htmlTemplate
-    });
-  } catch (error) {
-    console.error('Error sending password change confirmation:', error);
-  }
-};
-
-export const sendWorkOrderMail = async (workOrder: any, assignedUsers: any, user: any): Promise<void> => {
-  try {
-    const templatePath = path.join(__dirname, '../public/workOrder.template.html');
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
-    htmlTemplate = htmlTemplate.replace('{{userFullName}}', assignedUsers.firstName + ' ' + assignedUsers.lastName);
-    htmlTemplate = htmlTemplate.replaceAll('{{workOrderNo}}', workOrder.order_no);
-    htmlTemplate = htmlTemplate.replace('{{workOrderDescription}}', workOrder.description);
-    htmlTemplate = htmlTemplate.replaceAll('{{title}}', workOrder.title);
-    htmlTemplate = htmlTemplate.replace('{{locationName}}', workOrder.location?.location_name);
-    htmlTemplate = htmlTemplate.replace('{{assetName}}', workOrder.asset?.asset_name);
-    htmlTemplate = htmlTemplate.replace('{{datetime}}', new Date().toLocaleString());
-    htmlTemplate = htmlTemplate.replace('{{createdBy}}', `${user.firstName} ${user.lastName}`);
-    htmlTemplate = htmlTemplate.replace('{{startDate}}', workOrder.start_date.toISOString().split('T')[0]);
-    htmlTemplate = htmlTemplate.replace('{{endDate}}', workOrder.end_date.toISOString().split('T')[0]);
-    htmlTemplate = htmlTemplate.replace('{{status}}', workOrder.status);
-    htmlTemplate = htmlTemplate.replace('{{detailsLink}}', `${mailCredential.loginUrl}/work-order/list/1/${workOrder.id || workOrder._id}/info`);
-    await sendMail({
-      to: assignedUsers.email,
-      subject: `${workOrder.title} - New Work Order Assigned by ${user.firstName} ${user.lastName}`,
-      // Action Required: "${workOrder.title}" Work Order Assigned by ${user.firstName} ${user.lastName}
-      html: htmlTemplate
-    });
-  } catch (error) {
-    console.error('Error sending work order email:', error);
-  }
-};
-
-export const sendUserCreatedMail = async (data: { userName: string; userEmail: string; }) => {
-  const templatePath = path.join(__dirname, '../public/userRegister.template.html');
-  let html = fs.readFileSync(templatePath, 'utf8');
-  html = html
-    .replace('{{userName}}', data.userName)
-    .replace('{{userEmail}}', data.userEmail)
-    .replace('{{loginUrl}}', mailCredential.loginUrl)
-    .replace('{{companyName}}', 'Presage Insights Pvt. Ltd.')
-    .replace('{{createdAt}}', new Date().toLocaleString())
-    .replace('{{year}}', new Date().getFullYear().toString());
-
-  await sendMail({
-    to: data.userEmail,
-    subject: 'Welcome to Presage Insights - Your Account Is Ready',
-    html,
-  });
-};

@@ -4,9 +4,15 @@ import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../util/bcrypt';
 import { rolesService } from './role/roles.service';
 import mongoose from 'mongoose';
-import { sendPasswordChangeConfirmation } from "../../_config/mailer";
+import { MailerService } from "../../_config/mailer";
 
 class UsersService {
+  private mailerService: MailerService;
+
+  constructor() {
+    this.mailerService = new MailerService();
+  }
+  
   async getAllUsers(match: any) {
     return await UserModel.find(match).select('-password');
   };
@@ -49,7 +55,7 @@ class UsersService {
   async updateUserPassword(user_id: any, body: any) {
     body.password = await passwordService.hashPassword(body.password);
     const updatedUser = await UserModel.findByIdAndUpdate(user_id, body, { new: true });
-    await sendPasswordChangeConfirmation(updatedUser);
+    await this.mailerService.sendPasswordChangeConfirmation(updatedUser);
     return updatedUser;
   };
 
