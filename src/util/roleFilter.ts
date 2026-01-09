@@ -1,5 +1,5 @@
 import { IUser } from "../models/user.model";
-import { mapUserToAssetService, mapUserToLocationService, } from "../transaction/mapUserLocation/userLocation.service";
+import { mapUserToAssetService, mapUserToLocationService } from "../transaction/mapUserLocation/userLocation.service";
 
 type MappingType = "location" | "asset" | "";
 
@@ -10,10 +10,9 @@ interface RoleFilterOptions {
   createdByField?: string;
   mapping?: MappingType;
 }
-export const applyRoleFilter = async ({ user, baseFilter = {}, accountField = "account_id", createdByField = "createdBy", mapping = "" }: RoleFilterOptions): Promise<Record<string, any>> => {
+export const applyRoleFilter = async ({user, baseFilter = {}, accountField = "account_id", createdByField = "createdBy", mapping = ""}: RoleFilterOptions): Promise<Record<string, any>> => {
   const finalFilter: Record<string, any> = { ...baseFilter };
   switch (user.user_role) {
-
     case "super_admin":
     case "super_employee":
     case "super_user":
@@ -27,14 +26,12 @@ export const applyRoleFilter = async ({ user, baseFilter = {}, accountField = "a
     case "manager":
     case "employee":
     case "customer": {
-      if (mapping === "location") {
-        if(!finalFilter._id){
+      if (!finalFilter._id) {
+        if (mapping === "location") {
           const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
           finalFilter._id = { $in: mappedLocations.map((doc: any) => doc.locationId) };
         }
-      }
-      if (mapping === "asset") {
-        if(!finalFilter._id){
+        if (mapping === "asset") {
           const mappedAssets = await mapUserToAssetService.getAssetsMappedData(user._id);
           finalFilter._id = { $in: mappedAssets.map((doc: any) => doc.assetId) };
         }
@@ -44,7 +41,6 @@ export const applyRoleFilter = async ({ user, baseFilter = {}, accountField = "a
       return finalFilter;
     }
 
-    /** OWN DATA ONLY */
     case "user":
       return { ...finalFilter, [accountField]: user.account_id, [createdByField]: user._id, visible: true };
 

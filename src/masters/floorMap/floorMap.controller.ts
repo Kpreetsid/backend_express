@@ -4,12 +4,15 @@ import { floorMapService } from './floorMap.service';
 import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
+import { applyRoleFilter } from "../../util/roleFilter";
 
 class FloorMapController {
   async getAllFloorMaps(req: Request, res: Response, next: NextFunction) {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
-      const data = await floorMapService.getFloorMaps({ account_id });
+      const baseFilter = { };
+      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter });
+      delete filter.visible;
+      const data = await floorMapService.getFloorMaps(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
@@ -21,12 +24,14 @@ class FloorMapController {
 
   async getFloorMapByID(req: Request, res: Response, next: NextFunction) {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
       if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
-      const data = await floorMapService.getFloorMaps({ _id: new mongoose.Types.ObjectId(id), account_id });
+      const baseFilter = { _id: new mongoose.Types.ObjectId(id) };
+      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter });
+      delete filter.visible;
+      const data = await floorMapService.getFloorMaps(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }

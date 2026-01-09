@@ -2,27 +2,23 @@ import { Request, Response, NextFunction } from 'express';
 import { sopsService } from './sops.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
-import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
+import { applyRoleFilter } from '../../util/roleFilter';
 import mongoose from 'mongoose';
 
 class SOPsController {
 
   async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
+      const baseFilter: any = { };
       const { query: { category, location }} = req;
       if (category) {
-        match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
+        baseFilter.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
       }
       if (location) {
-        match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+        baseFilter.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
       }
-      if(userRole !== 'admin') {
-        const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
-        match.locationId = { $in: mappedUserList.map((doc: any) => doc.locationId) };
-      }
-      let data = await sopsService.getSOPs(match);
+      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location' });
+      let data = await sopsService.getSOPs(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -34,19 +30,22 @@ class SOPsController {
   
   async getSop (req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
       const { query: { category, location }, params: { id } } = req;
       if (!id || !mongoose.Types.ObjectId.isValid(id)) {
         throw Object.assign(new Error('Id is required'), { status: 400 });
       }
-      const match: any = { _id: id, account_id, visible: true };
+      const baseFilter: any = { _id: new mongoose.Types.ObjectId(id) };
       if (category) {
-        match.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
+        baseFilter.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
       }
       if (location) {
-        match.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+        baseFilter.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
       }
-      let data = await sopsService.getSOPs(match);
+      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location' });
+      let data = await sopsService.getSOPs(filter);
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error('No data found'), { status: 404 });
+      }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
       next(error);
