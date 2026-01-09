@@ -4,6 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../util/bcrypt';
 import { rolesService } from './role/roles.service';
 import mongoose from 'mongoose';
+import { sendPasswordChangeConfirmation } from "../../_config/mailer";
 
 class UsersService {
   async getAllUsers(match: any) {
@@ -47,7 +48,9 @@ class UsersService {
 
   async updateUserPassword(user_id: any, body: any) {
     body.password = await passwordService.hashPassword(body.password);
-    return await UserModel.findByIdAndUpdate(user_id, body, { new: true });
+    const updatedUser = await UserModel.findByIdAndUpdate(user_id, body, { new: true });
+    await sendPasswordChangeConfirmation(updatedUser);
+    return updatedUser;
   };
 
   async updateUserDetails(id: string, body: IUser) {

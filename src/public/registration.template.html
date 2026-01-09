@@ -1,98 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="color-scheme" content="light only">
-    <title>Welcome to Presage Insights</title>
-    <style>
-      body {
-        background-color: #f9f9f9;
-        font-family: Helvetica, Arial, sans-serif;
-        font-size: 16px;
-        margin: 0;
-        padding: 0;
-        -webkit-text-size-adjust: none;
-      }
+<head>
+  <meta charset="UTF-8" />
+  <title>Welcome to Presage Insights</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light only" />
 
-      .email-container {
-        max-width: 600px;
-        background: #ffffff;
-        margin: 20px auto;
-        padding: 30px;
-        border-radius: 8px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-      }
+  <!--[if mso]>
+  <style>
+    body, table, td {
+      font-family: Arial, sans-serif !important;
+    }
+  </style>
+  <![endif]-->
+</head>
 
-      .logo {
-        display: block;
-        margin: 0 auto 20px;
-        max-height: 50px;
-      }
+<body style="margin:0; padding:0; background-color:#f4f6f8;">
 
-      h2 {
-        font-size: 20px;
-        color: #333333;
-        margin-bottom: 15px;
-      }
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background-color:#f4f6f8;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
 
-      p {
-        font-size: 15px;
-        color: #555555;
-        line-height: 1.6;
-        margin: 0 0 10px 0;
-      }
+        <!-- Main Card -->
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+          style="max-width:600px; background-color:#ffffff; border-radius:10px;">
 
-      .btn {
-        display: inline-block;
-        font-size: 14px;
-        font-weight: bold;
-        text-decoration: none;
-        padding: 10px 22px;
-        border-radius: 30px;
-        background-color: #28a745;
-        color: #ffffff !important;
-        text-transform: uppercase;
-        margin-top: 15px;
-      }
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding:28px 20px 12px;">
+              <img
+                src="https://app.presageinsights.ai/cmms_api/api/uploads/logo/download/5841cb65-825d-427f-ac4d-89f8edc37041.png"
+                alt="Presage Insights"
+                style="max-height:50px; display:block; border:0;"
+              />
+            </td>
+          </tr>
 
-      .btn:hover {
-        background-color: #218838;
-      }
+          <!-- Title -->
+          <tr>
+            <td align="center" style="padding:10px 30px;">
+              <h2 style="margin:0; font-size:22px; font-weight:600; color:#1f2937;">
+                Welcome to Presage Insights 🎉
+              </h2>
+            </td>
+          </tr>
 
-      .footer {
-        font-size: 13px;
-        color: #999999;
-        text-align: center;
-        margin-top: 25px;
-        padding-top: 15px;
-        border-top: 1px solid #eeeeee;
-      }
+          <!-- Content -->
+          <tr>
+            <td style="padding:20px 32px; font-size:15px; color:#374151; line-height:1.6;">
 
-      a {
-        color: #28a745;
-        text-decoration: none;
-      }
-    </style>
-  </head>
+              <p style="margin:0 0 14px;">
+                Hello <strong>{{fullName}}</strong>,
+              </p>
 
-  <body>
-    <div class="email-container">
-      <img src="https://app.presageinsights.ai/cmms_api/api/uploads/logo/download/5841cb65-825d-427f-ac4d-89f8edc37041.png" alt="Presage Insights Logo" class="logo" />
-      <h2>Hello {{fullName}},</h2>
-      <p>Welcome to <strong>Presage Insights</strong>! 🎉</p>
-      <p>Your registration was successful. Here are your account details:</p>
-      <p><strong>Username:</strong> {{userName}}</p>
-      <p><strong>Email:</strong> {{userEmail}}</p>
-      <p><strong>Registered On:</strong> {{registrationDate}}</p>
-      <p style="margin-top: 20px;">
-        <a href="{{loginLink}}" class="btn" target="_blank">Login to Your Account</a>
-      </p>
-      <p>If you didn’t register for this account, please ignore this message.</p>
-      <p>Best regards,<br><strong>The Presage Insights Team</strong></p>
-      <div class="footer">
-        <p>© {{YEAR}} Presage Insights Pvt Ltd. All rights reserved.</p>
-        <p>Need help? Contact us at <a href="mailto:help@presageinsights.ai">help@presageinsights.ai</a></p>
-      </div>
-    </div>
-  </body>
+              <p style="margin:0 0 14px;">
+                We’re excited to have you on board. Your registration with
+                <strong>Presage Insights</strong> was successful.
+              </p>
+
+              <!-- Account Details -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+                style="background-color:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; margin:16px 0;">
+                <tr>
+                  <td style="padding:14px; font-size:14px;">
+                    <strong>Username:</strong> {{userName}}<br />
+                    <strong>Email:</strong> {{userEmail}}<br />
+                    <strong>Registered On:</strong> {{registrationDate}}
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Login Button -->
+              <table cellpadding="0" cellspacing="0" role="presentation" align="center" style="margin:22px auto;">
+                <tr>
+                  <td bgcolor="#28a745" style="border-radius:30px;">
+                    <a
+                      href="{{loginLink}}"
+                      target="_blank"
+                      style="
+                        display:inline-block;
+                        padding:13px 34px;
+                        font-size:15px;
+                        font-weight:600;
+                        color:#ffffff;
+                        text-decoration:none;
+                        border-radius:30px;
+                        text-transform:uppercase;
+                      "
+                    >
+                      Login to Your Account
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Note -->
+              <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+                style="background-color:#f8f9fa; border-left:4px solid #28a745; border-radius:6px; margin-top:20px;">
+                <tr>
+                  <td style="padding:12px 14px; font-size:14px; color:#374151;">
+                    <strong>Note:</strong> If you didn’t register for this account, you can safely ignore this email.
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:24px 0 0; font-weight:600;">
+                Best regards,<br />
+                Team Presage Insights
+              </p>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="
+              padding:20px;
+              font-size:13px;
+              color:#6b7280;
+              border-top:1px solid #e5e7eb;
+            ">
+              © {{YEAR}} Presage Insights Pvt Ltd. All rights reserved.<br />
+              Need help? Contact us at
+              <a href="mailto:help@presageinsights.ai" style="color:#28a745; text-decoration:none;">
+                help@presageinsights.ai
+              </a>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+
+</body>
 </html>

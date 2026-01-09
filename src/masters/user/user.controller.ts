@@ -6,6 +6,7 @@ import { resetPasswordService } from '../../user/resetPassword/resetPassword.ser
 import { passwordService } from '../../util/bcrypt';
 import mongoose from 'mongoose';
 import { applyRoleFilter } from '../../util/roleFilter';
+import { sendUserCreatedMail } from '../../_config/mailer';
 
 class UserController {
   async getUsers(req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -81,6 +82,7 @@ class UserController {
       body.createdBy = user_id;
   
       const data = await usersService.createNewUser(body, account_id);
+      await sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email });
       res.status(201).json({ status: true, message: "Data created successfully", data: data.userDetails, roleData: data.roleDetails });
     } catch (error) {
       next(error);
