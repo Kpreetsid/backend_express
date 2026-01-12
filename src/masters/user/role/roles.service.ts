@@ -11,7 +11,7 @@ class RolesService {
 
   async verifyUserRole(id: string, companyID: string) {
     try {
-      const userRole: IUserRoleMenu | null = await RoleMenuModel.findOne({ user_id: new mongoose.Types.ObjectId(id), account_id: new mongoose.Types.ObjectId(companyID) });
+      const userRole: IUserRoleMenu | null = await RoleMenuModel.findOne({ user_id: new mongoose.Types.ObjectId(String(id)), account_id: new mongoose.Types.ObjectId(companyID) });
       if (!userRole) {
         return null;
       }

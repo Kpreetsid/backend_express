@@ -24,10 +24,10 @@ class FormCategoryController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Invalid category ID'), { status: 400 });
       }
-      const data = await formCategoryService.getCategoryById(id, account_id);
+      const data = await formCategoryService.getCategoryById(String(id), account_id);
       if (!data) {
         throw Object.assign(new Error('Category not found'), { status: 404 });
       }
@@ -59,18 +59,18 @@ class FormCategoryController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!mongoose.Types.ObjectId.isValid(id)) {
+      if (!mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Invalid category ID'), { status: 400 });
       }
-      const category = await formCategoryService.getCategoryById(id, user.account_id);
+      const category = await formCategoryService.getCategoryById(String(id), user.account_id);
       if (!category) {
         throw Object.assign(new Error('Category not found'), { status: 404 });
       }
-      const nameExists = await formCategoryService.categoryExists(user.account_id, body.name, id);
+      const nameExists = await formCategoryService.categoryExists(user.account_id, body.name, String(id));
       if (nameExists) {
         throw Object.assign(new Error(`Category name already exists`), { status: 400 });
       }
-      const data = await formCategoryService.updateById(id, body, user);
+      const data = await formCategoryService.updateById(String(id), body, user);
       res.status(200).json({ status: true, message: "Category updated successfully", data });
     } catch (error) {
       next(error);
@@ -81,14 +81,14 @@ class FormCategoryController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Invalid category ID'), { status: 400 });
       }
-      const category = await formCategoryService.getCategoryById(id, account_id);
+      const category = await formCategoryService.getCategoryById(String(id), account_id);
       if (!category) {
         throw Object.assign(new Error('Category not found'), { status: 404 });
       }
-      await formCategoryService.removeById(id);
+      await formCategoryService.removeById(String(id));
       res.status(200).json({ status: true, message: "Category removed successfully" });
     } catch (error) {
       next(error);

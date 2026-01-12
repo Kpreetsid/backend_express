@@ -13,10 +13,10 @@ class InspectionController {
     const match: any = { account_id, visible: true };
     const { query: { location_id, asset_id } } = req;
     if (location_id) {
-      match.location_id = location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      match.location_id = location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id)));
     }
     if (asset_id) {
-      match.asset_id = asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id));
+      match.asset_id = asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id)));
     }
     if (userRole !== 'admin') {
       const inspectionMappedData: any = await mapInspectionService.getInspectionByUserId(account_id, user_id);
@@ -71,7 +71,7 @@ class InspectionController {
     if (!data) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
-    const result = await inspectionService.getAllInspection({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+    const result = await inspectionService.getAllInspection({ _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true });
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }

@@ -41,7 +41,7 @@ class RolesController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
       const match: any = { account_id: account_id, _id: id };
@@ -72,7 +72,7 @@ class RolesController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
       const match: any = { account_id: account_id, _id: new mongoose.Types.ObjectId(`${id}`) };
@@ -94,7 +94,7 @@ class RolesController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
       const match: any = { account_id: account_id, _id: new mongoose.Types.ObjectId(`${id}`) };

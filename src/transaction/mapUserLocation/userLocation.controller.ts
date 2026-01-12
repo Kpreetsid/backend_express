@@ -97,7 +97,7 @@ class MapUserAssetLocationController {
       if (!assetId || body.length === 0) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      await mapUserToAssetService.updateUserMapping(assetId, body.userIdList);
+      await mapUserToAssetService.updateUserMapping(String(assetId), body.userIdList);
       res.status(201).json({ status: true, message: 'Assets mapped successfully' });
     } catch (error) {
       next(error);

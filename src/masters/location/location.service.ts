@@ -91,7 +91,7 @@ class LocationService {
         if (!locationIds.length) {
           throw Object.assign(new Error('No valid location IDs found'), { status: 404 });
         }
-        match._id = { $in: locationIds.map((id) => new mongoose.Types.ObjectId(id)) };
+        match._id = { $in: locationIds.map((id) => new mongoose.Types.ObjectId(String(id))) };
       }
       const locations: any = await LocationModel.find(match).lean();
       if (!locations?.length) {
@@ -139,7 +139,7 @@ class LocationService {
       const childIds = await this.getAllChildLocationsRecursive(lTwo);
       const finalList = [...new Set([...childIds, ...lOne, ...lTwo])];
       const assetMatch: any = { account_id, visible: true };
-      const locationObjectIds = finalList.map(id => new mongoose.Types.ObjectId(id));
+      const locationObjectIds = finalList.map(id => new mongoose.Types.ObjectId(String(id)));
       if (locationObjectIds?.length > 0) {
         assetMatch.locationId = { $in: locationObjectIds };
       }
@@ -207,7 +207,7 @@ class LocationService {
     const totalIds = [id];
     const childIds = await this.getAllChildLocationsRecursive([id]);
     totalIds.push(...childIds);
-    const objectIds = totalIds.map(id => new mongoose.Types.ObjectId(id));
+    const objectIds = totalIds.map(id => new mongoose.Types.ObjectId(String(id)));
     await mapUserToLocationService.removeLocationListMapping(totalIds);
     const getAssetsByLocationId = await AssetModel.find({ locationId: { $in: objectIds } });
     if (getAssetsByLocationId?.length > 0) {

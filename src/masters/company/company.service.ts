@@ -23,7 +23,7 @@ class CompanyService {
   
   async verifyCompany (id: string) {
     try {
-      const data: IAccount | null = await AccountModel.findById(new mongoose.Types.ObjectId(id));
+      const data: IAccount | null = await AccountModel.findById(new mongoose.Types.ObjectId(String(id)));
       if(!data || !data.visible || data.account_status === 'inactive') {
         return null;
       }

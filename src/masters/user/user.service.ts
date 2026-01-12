@@ -31,8 +31,11 @@ class UsersService {
 
   async getLocationWiseUser(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { locationID } = req.params;
-      const data = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationID) }).select('userId -_id');
+      const { params: { locationID } } = req;
+      if (!locationID || !mongoose.Types.ObjectId.isValid(String(locationID))) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      const data = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(String(locationID)) }).select('userId -_id');
       if (data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

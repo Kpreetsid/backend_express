@@ -31,10 +31,10 @@ class PostController {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
+      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
       const { postType, relatedTo } = req.query;
       if (postType) {
         match.postType = postType.toString().split(',');
@@ -69,10 +69,10 @@ class PostController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
+      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllParts(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -91,10 +91,10 @@ class PostController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
+      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllParts(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });

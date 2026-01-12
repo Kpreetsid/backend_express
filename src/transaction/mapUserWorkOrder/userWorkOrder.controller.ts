@@ -40,10 +40,10 @@ class UserWorkOrderController {
   async getMappedData (req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { workOrderId } = req.params;
-      if (!workOrderId || !mongoose.Types.ObjectId.isValid(workOrderId)) {
+      if (!workOrderId || !mongoose.Types.ObjectId.isValid(String(workOrderId))) {
         throw Object.assign(new Error("Invalid ID"), { status: 400 });
       }
-      const data = await userWorkOrderService.mappedData({ woId: new mongoose.Types.ObjectId(workOrderId) });
+      const data = await userWorkOrderService.mappedData({ woId: new mongoose.Types.ObjectId(String(workOrderId)) });
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

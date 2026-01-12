@@ -31,10 +31,10 @@ class SOPsController {
   async getSop (req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { query: { category, location }, params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Id is required'), { status: 400 });
       }
-      const baseFilter: any = { _id: new mongoose.Types.ObjectId(id) };
+      const baseFilter: any = { _id: new mongoose.Types.ObjectId(String(id)) };
       if (category) {
         baseFilter.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
       }
@@ -70,7 +70,7 @@ class SOPsController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Id is required'), { status: 400 });
       }
       const existingData = await sopsService.getSOPs({ _id: id, account_id: account_id, visible: true });
@@ -91,7 +91,7 @@ class SOPsController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Id is required'), { status: 400 });
       }
       const existingData = await sopsService.getSOPs({ _id: id, account_id: account_id, visible: true });

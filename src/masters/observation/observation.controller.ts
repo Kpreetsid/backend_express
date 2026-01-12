@@ -37,7 +37,7 @@ class ObservationController {
      try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { params: { id }} = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id };
@@ -83,14 +83,14 @@ class ObservationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
       const existingData = await observationService.getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await observationService.updateObservationById(id, body, user_id);
+      const data = await observationService.updateObservationById(String(id), body, user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -109,14 +109,14 @@ class ObservationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
       const existingData = await observationService.getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await observationService.removeObservationById(id, user_id);
+      const data = await observationService.removeObservationById(String(id), user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }    

@@ -45,10 +45,10 @@ class LocationReportController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }} = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Invalid request data'), { status: 400 });
       }
-      const result = await locationReportService.deleteLocationsReport(id, `${account_id}`, `${user_id}`);
+      const result = await locationReportService.deleteLocationsReport(String(id), String(account_id), String(user_id));
       if (!result) {
         throw Object.assign(new Error('Report not found'), { status: 404 });
       }

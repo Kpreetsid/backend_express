@@ -12,9 +12,9 @@ class LocationController {
     try {
       const { query: { locationId, parent_id, account_id} } = req;
       const baseFilter: any = {};
-      if(locationId) baseFilter._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-      if(parent_id) baseFilter.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
-      if(account_id) baseFilter.account_id = { $in: account_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+      if(locationId) baseFilter._id = { $in: locationId.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
+      if(parent_id) baseFilter.parent_id = { $in: parent_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
+      if(account_id) baseFilter.account_id = { $in: account_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
       const filter: any = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "account_id", mapping: "location" });
       let data = await locationService.getAllLocations(filter);
       if (!data || data.length === 0) {
@@ -72,15 +72,15 @@ class LocationController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+      const match = { _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true };
       const isDataExists = await locationService.getAllLocations(match);
       if (!isDataExists?.length) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const childIds = await this.getChildLocationByRecursive(id);
+      const childIds = await this.getChildLocationByRecursive(String(id));
       const data = await locationService.getAllLocations({ _id: { $in: childIds }, account_id, visible: true });
       if (!data?.length) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -93,7 +93,7 @@ class LocationController {
 
   getChildLocationByRecursive = async (id: string): Promise<string[]> => {
     const locationIdList: string[] = [id];
-    const children = await locationService.getAllLocations({ parent_id: new mongoose.Types.ObjectId(id), visible: true });
+    const children = await locationService.getAllLocations({ parent_id: new mongoose.Types.ObjectId(String(id)), visible: true });
     for (const child of children || []) {
       const childIds = await this.getChildLocationByRecursive(child.id.toString());
       locationIdList.push(...childIds);
@@ -132,10 +132,10 @@ class LocationController {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { params: { id }, query: { location_id, location_floor_map_tree } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      let match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+      let match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true };
       if (location_floor_map_tree) {
         match.top_level = true;
         if (location_id) {
@@ -192,7 +192,7 @@ class LocationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
       if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
@@ -203,12 +203,12 @@ class LocationController {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       body.updatedBy = user_id;
-      const data: any = await locationService.updateById(id, body);
+      const data: any = await locationService.updateById(String(id), body);
       if (!data || !data.visible) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       data.id = data._id;
-      const updatedLocation = await locationService.getAllLocations({ _id: id, account_id: account_id, visible: true });
+      const updatedLocation = await locationService.getAllLocations({ _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true });
       res.status(200).json({ status: true, message: "Data updated successfully", data: updatedLocation });
     } catch (error) {
       next(error);
@@ -219,15 +219,15 @@ class LocationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+      const match = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
       const location = await locationService.getAllLocations(match);
       if (!location || location.length === 0 || !location[0].visible) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      await locationService.removeLocationById(new mongoose.Types.ObjectId(id), user_id);
+      await locationService.removeLocationById(new mongoose.Types.ObjectId(String(id)), user_id);
       res.status(200).json({ status: true, message: "Data deleted successfully" });
     } catch (error) {
       next(error);
@@ -241,7 +241,7 @@ class LocationController {
         throw Object.assign(new Error('Invalid request data'), { status: 400 });
       }
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      await locationService.updateFloorMapImage(id, account_id, user_id, top_level_location_image);
+      await locationService.updateFloorMapImage(String(id), account_id, user_id, top_level_location_image);
       res.status(200).json({ status: true, message: "Data updated successfully" });
     } catch (error) {
       next(error);
@@ -265,15 +265,15 @@ class LocationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error("Bad request"), { status: 400 });
       }
-      let sourceLocation: any = await locationService.getLocationById(id, account_id);
+      let sourceLocation: any = await locationService.getLocationById(String(id), account_id);
       if (!sourceLocation) {
         throw Object.assign(new Error("Location not found"), { status: 404 });
       }
       sourceLocation = sourceLocation.toObject ? sourceLocation.toObject() : sourceLocation;
-      const allChildren: any[] = await locationService.getAllChildHierarchy(id, account_id);
+      const allChildren: any[] = await locationService.getAllChildHierarchy(String(id), account_id);
       const idMap: Record<string, any> = {};
       const parentForCopy = sourceLocation.parent_id ? sourceLocation.parent_id : undefined;
       const newParentId = await locationService.cloneLocationNode(sourceLocation, user_id, account_id, parentForCopy, idMap, null);

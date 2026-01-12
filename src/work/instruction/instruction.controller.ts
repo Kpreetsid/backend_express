@@ -23,10 +23,10 @@ class InstructionController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
       const data = await instructionService.getInstructions(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -55,19 +55,19 @@ class InstructionController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
       const existingRequest = await instructionService.getInstructions(match);
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await instructionService.updateInstructions(id, body, user_id);
+      const data = await instructionService.updateInstructions(String(id), body, user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-  
+      res.status(200).send({ status: true, message: 'Work order updated successfully', data: body });
     } catch (error) {
       next(error);
     }
@@ -77,15 +77,15 @@ class InstructionController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
       const existingRequest = await instructionService.getInstructions(match);
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      await instructionService.deleteInstructionsById(id, user_id);
+      await instructionService.deleteInstructionsById(String(id), user_id);
       res.status(200).json({ status: true, message: "Data deleted successfully" });
     } catch (error) {
       next(error);

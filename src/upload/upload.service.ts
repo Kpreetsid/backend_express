@@ -12,7 +12,7 @@ class UploadService {
       }
       const data = files.map((file: any) => {
         let fileURL = `${req.protocol}://${req.get('host')}/${file.filename}`;
-        const data = new UploadModel({
+        const data: any = new UploadModel({
           "originalName": file.originalname,
           "type": file.mimetype,
           "destination": file.destination,

@@ -46,10 +46,10 @@ class RequestController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id }, query } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
-      let match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
+      let match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
       if(query) {
         match = { ...match, ...query };
       }
@@ -81,11 +81,11 @@ class RequestController {
     try {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
       const { params: { id, status }, body } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('ID is required'), { status: 404 });
       }
       if(status) {
-        if(!WORK_REQUEST_STATUSES.includes(status)) {
+        if(!WORK_REQUEST_STATUSES.includes(String(status))) {
           throw Object.assign(new Error('Status is not editable'), { status: 400 });
         }
         body.status = status;
@@ -98,7 +98,7 @@ class RequestController {
           throw Object.assign(new Error('Invalid priority value'), { status: 400 });
         }
       }
-      const existingRequest = await requestService.getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
+      const existingRequest = await requestService.getAllRequests({ _id: new mongoose.Types.ObjectId(String(id)), account_id });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -112,7 +112,7 @@ class RequestController {
       if(status === 'Approved') {
         body.approvedBy = user_id;
       }
-      const data = await requestService.updateRequest(id, body, user_id);
+      const data = await requestService.updateRequest(String(id), body, user_id);
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('No data updated'), { status: 404 });
       }
@@ -126,17 +126,17 @@ class RequestController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
-      const existingRequest = await requestService.getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
+      const existingRequest = await requestService.getAllRequests({ _id: new mongoose.Types.ObjectId(String(id)), account_id });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       if(existingRequest[0].status === 'Approved') {
         throw Object.assign(new Error('Request is already approved'), { status: 400 });
       }
-      const data = await requestService.updateRequest(id, { status: 'Approved', updatedBy: user_id }, user_id);
+      const data = await requestService.updateRequest(String(id), { status: 'Approved', updatedBy: user_id }, user_id);
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('No data updated'), { status: 404 });
       }
@@ -150,13 +150,13 @@ class RequestController {
     try {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
       const { params: { id }, body: { remarks } } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('ID is required'), { status: 400 });
       }
       if(!remarks) {
         throw Object.assign(new Error('Remarks is required'), { status: 400 });
       }
-      const existingRequest = await requestService.getAllRequests({ _id: new mongoose.Types.ObjectId(id), account_id });
+      const existingRequest = await requestService.getAllRequests({ _id: new mongoose.Types.ObjectId(String(id)), account_id });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -165,7 +165,7 @@ class RequestController {
       }
       const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
       const updatedRemarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${remarks} by ${firstName} ${lastName} on ${dateTime}` : `${remarks} by ${firstName} ${lastName} on ${dateTime}`;
-      const data = await requestService.updateRequest(id, { status: 'Rejected', remarks: updatedRemarks }, user_id);
+      const data = await requestService.updateRequest(String(id), { status: 'Rejected', remarks: updatedRemarks }, user_id);
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('No data updated'), { status: 404 });
       }
@@ -179,10 +179,10 @@ class RequestController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id };
+      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
       const existingRequest = await requestService.getAllRequests(match);
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });

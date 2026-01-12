@@ -25,10 +25,10 @@ class FloorMapController {
   async getFloorMapByID(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
-      const baseFilter = { _id: new mongoose.Types.ObjectId(id) };
+      const baseFilter = { _id: new mongoose.Types.ObjectId(String(id)) };
       const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter });
       delete filter.visible;
       const data = await floorMapService.getFloorMaps(filter);
@@ -58,7 +58,7 @@ class FloorMapController {
     try {
       const { _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error("ID is required"), { status: 400 });
       }
       const data = await floorMapService.updateById(id, req.body, user_id);
@@ -75,10 +75,10 @@ class FloorMapController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error("ID is required"), { status: 400 });
       }
-      const check = await floorMapService.getFloorMaps({ _id: new mongoose.Types.ObjectId(id), account_id });
+      const check = await floorMapService.getFloorMaps({ _id: new mongoose.Types.ObjectId(String(id)), account_id });
       if (!check.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
@@ -125,7 +125,7 @@ class FloorMapController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id: location_id } = req.params;
-      if (!location_id || !mongoose.Types.ObjectId.isValid(location_id)) {
+      if (!location_id || !mongoose.Types.ObjectId.isValid(String(location_id))) {
         throw Object.assign(new Error("ID is required"), { status: 400 });
       }
       const data = await floorMapService.getFloorMaps({ account_id, data_type: "asset", locationId: String(location_id) });
@@ -182,10 +182,10 @@ class FloorMapController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error("ID is required"), { status: 400 });
       }
-      const result = await floorMapService.deleteCoordinates({ _id: new mongoose.Types.ObjectId(id), account_id });
+      const result = await floorMapService.deleteCoordinates({ _id: new mongoose.Types.ObjectId(String(id)), account_id });
       if (!result) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }

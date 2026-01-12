@@ -15,7 +15,7 @@ class UserTokenService {
       if (data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const userData = decodedAccessToken(token);
+      const userData = decodedAccessToken(String(token));
       if(!userData.id && !userData.username && !userData.email && !userData.companyID) {
         throw Object.assign(new Error('Invalid link'), { status: 401 });
       }

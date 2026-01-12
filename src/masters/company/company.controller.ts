@@ -27,13 +27,13 @@ class CompanyController {
     try {
       const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error("Invalid ID"), { status: 400 });
       }
       if (USER_ROLES.includes(userRole) && `${account_id}` !== id) {
         throw Object.assign(new Error("Invalid ID"), { status: 400 });
       }
-      const baseFilter = { _id: new mongoose.Types.ObjectId(id) };
+      const baseFilter = { _id: new mongoose.Types.ObjectId(String(id)) };
       const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "_id" });
       const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
@@ -64,7 +64,7 @@ class CompanyController {
     try {
       const { id } = req.params;
       const { account_name, type, description } = req.body;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) throw Object.assign(new Error("No data found"), { status: 404 });
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) throw Object.assign(new Error("No data found"), { status: 404 });
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       if (`${account_id}` !== id) throw Object.assign(new Error("Invalid ID"), { status: 400 });
       const updatedObj = {
@@ -85,7 +85,7 @@ class CompanyController {
     try {
       const { params: { id }, body: { fileName }} = req;
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) throw Object.assign(new Error("No data found"), { status: 404 });
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) throw Object.assign(new Error("No data found"), { status: 404 });
       if (!fileName) throw Object.assign(new Error("File name is required"), { status: 400 });
       if (`${account_id}` !== id) throw Object.assign(new Error("Invalid ID"), { status: 400 });
       const updatedObj = { fileName, updatedBy: user_id };
@@ -100,11 +100,11 @@ class CompanyController {
   async removeCompany (req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         return next(Object.assign(new Error("Invalid ID"), { status: 400 }));
       }
       const { _id: userId } = get(req, "user", {}) as IUser;
-      const deleted = await companyService.removeById(id, userId);
+      const deleted = await companyService.removeById(String(id), userId);
       if (!deleted) {
         return next(Object.assign(new Error("No data found"), { status: 404 }));
       }

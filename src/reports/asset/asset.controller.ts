@@ -77,11 +77,11 @@ class AssetReportController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
       const userToken = get(req, "userToken", {}) as string;
-      if(!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
       body.updatedBy = user_id;
-      const data = await assetReportService.updateAssetReport(id, body, account_id, user_id, userToken);
+      const data = await assetReportService.updateAssetReport(String(id), body, account_id, user_id, userToken);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -95,7 +95,7 @@ class AssetReportController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
       const match = { _id: id, accountId: account_id };
@@ -103,7 +103,7 @@ class AssetReportController {
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await assetReportService.removeAssetReportById(id, user_id);
+      const data = await assetReportService.removeAssetReportById(String(id), user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

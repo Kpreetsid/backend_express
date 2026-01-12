@@ -361,7 +361,7 @@ class OrderService {
   };
   
   async updateById (id: string, body: any, user: IUser): Promise<any> {
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
       throw Object.assign(new Error('Work Order ID is required'), { status: 400 });
     }
     let existingOrder: any = await WorkOrderModel.findById(id);

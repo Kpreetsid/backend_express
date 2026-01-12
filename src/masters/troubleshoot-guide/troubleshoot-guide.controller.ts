@@ -24,10 +24,10 @@ class TroubleshootGuideController {
         try {
             const { account_id } = get(req, "user", {}) as IUser;
             const { params: { id } } = req;
-            if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
                 throw Object.assign(new Error('Bad request'), { status: 400 });
             }
-            const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+            const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
             const data = await troubleshootGuideService.getAllTroubleshootGuide(match);
             if (!data || data.length === 0) {
                 throw Object.assign(new Error('No data found'), { status: 404 });
@@ -55,10 +55,10 @@ class TroubleshootGuideController {
         try {
             const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
             const { params: { id }, body } = req;
-            if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
                 throw Object.assign(new Error('Bad request'), { status: 400 });
             }
-            const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+            const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
             const existingData = await troubleshootGuideService.getAllTroubleshootGuide(match);
             if (!existingData || existingData.length === 0) {
                 throw Object.assign(new Error('No data found'), { status: 404 });
@@ -77,10 +77,10 @@ class TroubleshootGuideController {
         try {
             const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
             const { params: { id } } = req;
-            if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
                 throw Object.assign(new Error('Bad request'), { status: 400 });
             }
-            const match: any = { _id: new mongoose.Types.ObjectId(id), account_id: account_id, visible: true };
+            const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
             const existingData = await troubleshootGuideService.getAllTroubleshootGuide(match);
             if (!existingData || existingData.length === 0) {
                 throw Object.assign(new Error('No data found'), { status: 404 });

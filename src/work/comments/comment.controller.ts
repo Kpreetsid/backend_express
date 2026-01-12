@@ -13,7 +13,7 @@ class CommentController {
       if (!orderId) {
         throw Object.assign(new Error('Order ID is required'), { status: 400 });
       }
-      const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), visible: true };
+      const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)), visible: true };
       const data = await commentService.getAllComments(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -28,13 +28,13 @@ class CommentController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id: orderId, commentId } } = req;
-      if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      if (!mongoose.Types.ObjectId.isValid(String(orderId))) {
         throw Object.assign(new Error('Invalid order ID'), { status: 400 });
       }
-      if (!mongoose.Types.ObjectId.isValid(commentId)) {
+      if (!mongoose.Types.ObjectId.isValid(String(commentId))) {
         throw Object.assign(new Error('Invalid comment ID'), { status: 400 });
       }
-      const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), _id: new mongoose.Types.ObjectId(commentId), visible: true };
+      const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)), _id: new mongoose.Types.ObjectId(String(commentId)), visible: true };
       const data = await commentService.getAllComments(match);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -60,7 +60,7 @@ class CommentController {
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const result = await commentService.getAllComments({ _id: data._id, parentCommentId: data.parentCommentId, account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId) });
+      const result = await commentService.getAllComments({ _id: data._id, parentCommentId: data.parentCommentId, account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)) });
       res.status(201).json({ status: true, message: "Data created successfully", data: result[0] });
     } catch (error) {
       next(error);
@@ -77,12 +77,12 @@ class CommentController {
       if (!commentId) {
         throw Object.assign(new Error('Comment ID is required'), { status: 400 });
       }
-      const existingComment = await commentService.getAllComments({ _id: commentId, account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), visible: true });
+      const existingComment = await commentService.getAllComments({ _id: new mongoose.Types.ObjectId(String(commentId)), account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)), visible: true });
       if (!existingComment) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       body.order_id = orderId;
-      const data = await commentService.updateComment(commentId, body.comments, user_id);
+      const data = await commentService.updateComment(String(commentId), body.comments, user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -102,11 +102,11 @@ class CommentController {
       if (!commentId) {
         throw Object.assign(new Error('Comment ID is required'), { status: 400 });
       }
-      const existingComment = await commentService.getComments({ _id: new mongoose.Types.ObjectId(commentId), account_id: account_id, order_id: new mongoose.Types.ObjectId(orderId), visible: true });
+      const existingComment = await commentService.getComments({ _id: new mongoose.Types.ObjectId(String(commentId)), account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)), visible: true });
       if (!existingComment) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await commentService.removeComment(commentId, user_id);
+      const data = await commentService.removeComment(String(commentId), user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

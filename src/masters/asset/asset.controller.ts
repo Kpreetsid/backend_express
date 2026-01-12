@@ -48,10 +48,10 @@ class AssetController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
-      if (!mongoose.Types.ObjectId.isValid(id)) {
+      if (!mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const baseFilter: any = { _id: new mongoose.Types.ObjectId(id) };
+      const baseFilter: any = { _id: new mongoose.Types.ObjectId(String(id)) };
       if (top_level_asset_id) {
         baseFilter.top_level_asset_id = top_level_asset_id.toString().split(',');
       }
@@ -97,7 +97,7 @@ class AssetController {
       const { params: { location_id }, body } = req;
       const baseFilter: any = {};
       if (location_id) {
-        baseFilter.locationId = new mongoose.Types.ObjectId(location_id);
+        baseFilter.locationId = new mongoose.Types.ObjectId(String(location_id));
       }
       const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', mapping: 'asset' });
       const data = await assetService.buzzerAssetList(filter);
@@ -118,7 +118,7 @@ class AssetController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       const childIds = await assetService.getAllChildAssetIDs(new mongoose.Types.ObjectId(`${id}`));
@@ -227,7 +227,7 @@ class AssetController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
       if (body.userIdList?.length === 0) {
@@ -257,7 +257,8 @@ class AssetController {
   async updateAssetImage(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      if (!req.params.id) {
+      const { params: { id } } = req;
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
       const { image_path } = req.body;
@@ -268,7 +269,7 @@ class AssetController {
       if (!dataExists || dataExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      await assetService.updateAssetImageById(req.params.id, image_path, `${user_id}`);
+      await assetService.updateAssetImageById(String(id), image_path, `${user_id}`);
       res.status(200).json({ status: true, message: "Data updated successfully" });
     } catch (error) {
       next(error);
@@ -278,15 +279,16 @@ class AssetController {
   async removeAsset(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      if (!req.params.id) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+      const { params: { id } } = req;
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match: any = { _id: req.params.id, account_id: account_id, visible: true };
+      const match: any = { _id: id, account_id: account_id, visible: true };
       const dataExists: any = await assetService.getAllAssets(match);
       if (!dataExists || dataExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      await mapUserToLocationService.removeLocationMapping(req.params.id);
+      await mapUserToLocationService.removeLocationMapping(String(id));
       await assetService.removeById(match, user_id);
       res.status(200).json({ status: true, message: "Data deleted successfully" });
     } catch (error) {
@@ -347,7 +349,7 @@ class AssetController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userToken = get(req, "userToken", {}) as string;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error("No asset id provided"), { status: 400 });
       }
       const dataExists: any = await assetService.getAllAssets({ _id: id, account_id, visible: true });
@@ -355,7 +357,7 @@ class AssetController {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       const sourceAsset = dataExists[0];
-      const allChildren: any[] = await assetService.getAllChildAssetsRecursive(id, account_id);
+      const allChildren: any[] = await assetService.getAllChildAssetsRecursive(String(id), account_id);
       const idMap: Record<string, any> = {};
       const originalTopLevelId = sourceAsset.top_level ? sourceAsset.id : sourceAsset.top_level_asset_id;
       const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;

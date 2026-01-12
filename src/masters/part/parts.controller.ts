@@ -13,10 +13,10 @@ class PartsController {
       const match: any = { account_id, visible: true };
       const { query: { id, location_id } } = req;
       if (id) {
-        match._id = { $in: id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+        match._id = { $in: id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
       }
       if (location_id) {
-        match.location_id = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(id)) };
+        match.location_id = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
       }
       if (userRole !== 'admin') {
         const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
@@ -37,10 +37,10 @@ class PartsController {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      match._id = new mongoose.Types.ObjectId(id);
+      match._id = new mongoose.Types.ObjectId(String(id));
       if (userRole !== 'admin') {
         const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
         match.location_id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
@@ -69,15 +69,15 @@ class PartsController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true };
       const isDataExists = await partsService.getAllParts(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await partsService.updatePartById(id, body, user_id);
+      const data = await partsService.updatePartById(String(id), body, user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -91,15 +91,15 @@ class PartsController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body: { quantity } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const part = await partsService.getAllParts({ _id: new mongoose.Types.ObjectId(id), account_id, visible: true });
+      const part = await partsService.getAllParts({ _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true });
       if (!part || part.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       part[0].quantity = Number(part[0].quantity) + Number(quantity);
-      const updatedPart = await partsService.updatePartStock(id, part[0], user_id);
+      const updatedPart = await partsService.updatePartStock(String(id), part[0], user_id);
       if (!updatedPart) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -113,15 +113,15 @@ class PartsController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(id), account_id, visible: true };
+      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true };
       const isDataExists = await partsService.getAllParts(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await partsService.removeById(id, user_id);
+      const data = await partsService.removeById(String(id), user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
