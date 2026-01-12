@@ -26,12 +26,11 @@ export interface IUser extends Document {
   phone_no: object;
   isFirstUser: boolean;
   isVerified: boolean;
-  visible: boolean;
   createdBy?: ObjectId;
   updatedBy?: ObjectId;
 }
 
-const userSchema = new Schema<IUser>({
+export const userSchema = new Schema<IUser>({
   firstName: { type: String, required: true, trim: true },
   lastName: { type: String, trim: true },
   username: { type: String, required: true, unique: true , trim: true },
@@ -45,7 +44,6 @@ const userSchema = new Schema<IUser>({
   phone_no: { type: Object, required: true },
   isFirstUser: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
-  visible: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {

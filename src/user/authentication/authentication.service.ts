@@ -45,11 +45,11 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     }
     const { password: _, ...safeUser } = user.toObject();
     safeUser.id = safeUser._id;
-    const userTokenPayload: UserLoginPayload = { id: `${user._id}`, username: user.username, companyID: `${user.account_id}` };
+    const userTokenPayload: UserLoginPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id) };
     const token = generateAccessToken(userTokenPayload);
-    const userRoleData = await rolesService.verifyUserRole(`${user._id}`, `${user.account_id}`);
+    let userRoleData: any = await rolesService.verifyUserRole(String(user._id), String(user.account_id));
     if (!userRoleData) {
-      throw Object.assign(new Error('User does not have any permission'), { status: 403 });
+      userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
     const userTokenData = new TokenModel({
       _id: token,
@@ -95,11 +95,11 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     }
     const { password: _, ...safeUser } = user.toObject();
     safeUser.id = safeUser._id;
-    const userTokenPayload: UserLoginPayload = { id: `${user._id}`, username: user.username, companyID: `${user.account_id}` };
+    const userTokenPayload: UserLoginPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id) };
     const token = generateAccessToken(userTokenPayload);
-    const userRoleData = await rolesService.verifyUserRole(`${user._id}`, `${user.account_id}`);
+    let userRoleData: any = await rolesService.verifyUserRole(String(user._id), String(user.account_id));
     if (!userRoleData) {
-      throw Object.assign(new Error('User does not have any permission'), { status: 403 });
+      userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
     const userTokenData = new TokenModel({
       _id: token,
@@ -152,11 +152,11 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     if (!accountDetails || accountDetails.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
-    const userRoleMenu = await rolesService.verifyUserRole(`${userDetails._id}`, `${userDetails.account_id}`);
+    let userRoleMenu: any = await rolesService.verifyUserRole(String(userDetails._id), String(userDetails.account_id));
     if (!userRoleMenu) {
-      throw Object.assign(new Error('User does not role permissions'), { status: 403 });
+      userRoleMenu = await rolesService.createUserRole(userDetails.user_role, userDetails);
     }
-    const userTokenPayload: UserLoginPayload = { id: `${userDetails._id}`, username: userDetails.username, companyID: `${userDetails.account_id}` };
+    const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id) };
     const newToken = generateAccessToken(userTokenPayload);
     const userTokenData = new TokenModel({
       _id: newToken,
@@ -165,7 +165,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data, isExternal : !!isExternal} });
+    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data, roleMenu: userRoleMenu.roleMenu, isExternal : !!isExternal} });
   } catch (error) {
     next(error);
   }

@@ -1,51 +1,15 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
-interface IPhoneNo {
-  number: string;
-  internationalNumber: string;
-  nationalNumber: string;
-  e164Number: string;
-  countryCode: string;
-  dialCode: string;
-}
-
-interface IUser {
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  emailStatus: boolean;
-  user_status: string;
-  user_role: string;
-  createdOn: Date | string;
-  id: string;
-  account_id: string;
-  phone_no: IPhoneNo;
-  isFirstUser: boolean;
-}
-
-interface ILocationItem {
-  location_name: string;
-  id: string;
-  assigned_to: string;
-}
-
-interface IAssetItem {
-  name: string;
-  id: string;
-  locId: string;
-}
-
 export interface IBlog extends Document {
   title?: string;
   description: string;
   createdOn: Date;
   account_id: ObjectId;
   userId?: ObjectId;
-  user?: IUser;
-  location?: ILocationItem[];
-  asset?: IAssetItem[];
+  user?: Object;
+  location?: object[];
+  asset?: object[];
   problemType: string;
   postPriority: string;
   files: string[];

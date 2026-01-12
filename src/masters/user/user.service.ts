@@ -5,6 +5,8 @@ import { passwordService } from '../../util/bcrypt';
 import { rolesService } from './role/roles.service';
 import mongoose from 'mongoose';
 import { MailerService } from "../../_config/mailer";
+import { RoleManager } from "../../_role/newUserRoles";
+import { RoleMenuModel } from "../../models/userRoleMenu.model";
 
 class UsersService {
   private mailerService: MailerService;
@@ -16,6 +18,19 @@ class UsersService {
   async getAllUsers(match: any) {
     return await UserModel.find(match).select('-password');
   };
+
+  async updateNewRoleMenu() {
+    const userList = await UserModel.find({});
+    for (const user of userList) {
+      if(user.user_role) {
+        const newRoleMenu = await RoleManager.getRoleMenuData(user.user_role);
+        await RoleMenuModel.updateOne({ user_id: user._id }, { roleMenu: newRoleMenu });
+        console.log(`Updated user role menu for user: ${user._id}, role: ${user.user_role}`);
+      } else {
+        console.log(`User role not found for user: ${user._id}`);
+      }
+    }
+  }
 
   async getUserDetails(match: any) {
     return await UserModel.findOne(match).select('+password');
@@ -40,7 +55,7 @@ class UsersService {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       const userIDList = data.map((doc: any) => doc.userId);
-      const userData = await UserModel.find({ _id: { $in: userIDList } }).select('-password');
+      const userData = await this.getAllUsers({ _id: { $in: userIDList } });
       return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
     } catch (error) {
       next(error);
