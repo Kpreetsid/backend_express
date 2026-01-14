@@ -381,6 +381,10 @@ class OrderService {
     }
     return data;
   };
+
+  async updateDataById (id: string, body: any, user: IUser): Promise<any> {
+    return await WorkOrderModel.findByIdAndUpdate(id, { ...body, updatedBy: user._id }, { new: true });
+  };
   
   async orderStatusChange (id: any, body: any): Promise<any> {
     return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });

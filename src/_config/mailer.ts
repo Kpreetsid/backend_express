@@ -116,7 +116,8 @@ export class MailerService {
         userFullName: this.getFullName(user),
         userName: user.username,
         changedAt: new Date().toLocaleString(),
-        loginUrl: mailCredential.loginUrl
+        loginUrl: mailCredential.loginUrl,
+        YEAR: new Date().getFullYear().toString()
       }
     );
     await this.send({to: user.email, subject: 'Your Presage CMMS Password Has Been Updated', html});
@@ -137,7 +138,8 @@ export class MailerService {
         startDate: workOrder.start_date.toISOString().split('T')[0],
         endDate: workOrder.end_date.toISOString().split('T')[0],
         status: workOrder.status,
-        detailsLink: `${mailCredential.loginUrl}/work-order/list/1/${workOrder._id}/info`
+        detailsLink: `${mailCredential.loginUrl}/work-order/list/1/${workOrder._id}/info`,
+        YEAR: new Date().getFullYear().toString()
       }
     );
     await this.send({to: assignedUser.email, subject: `${workOrder.title} - New Work Order Assigned`, html});

@@ -171,7 +171,37 @@ class OrderController {
       next(error);
     }
   }
-  
+
+  async updateOrderSubmitData (req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user: any = get(req, "user", {}) as IUser;
+      const { params: { id }, body } = req;
+      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      if (!body?.task_submitted && !body?.sop_form_submitted) {
+        throw Object.assign(new Error('No data submitted'), { status: 400 });
+      }
+      const filter = { _id: new mongoose.Types.ObjectId(String(id)), account_id: user.account_id, visible: true };
+      const isWorkOrderExist: any = await orderService.getAllOrders(filter);
+      if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
+      }
+      if (body.task_submitted) {
+        isWorkOrderExist[0].task_submitted = true;
+        isWorkOrderExist[0].tasks = body.tasks;
+      }
+      if (body.sop_form_submitted) {
+        isWorkOrderExist[0].sop_form_submitted = true;
+        isWorkOrderExist[0].sop_form_data = body.sop_form_data;
+      }
+      await orderService.updateDataById(String(id), body, user);
+      res.status(200).send({ status: true, message: 'Work order updated successfully', data: body });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async statusUpdateOrder (req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
