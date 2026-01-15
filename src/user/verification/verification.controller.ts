@@ -45,7 +45,7 @@ class VerificationController {
             if (!data) {
                 throw Object.assign(new Error('Invalid OTP'), { status: 400 });
             }
-            const user = await usersService.userVerified(`${emailCheck[0]._id}`);
+            const user = await usersService.userVerified(String(emailCheck[0]._id));
             if (!user) {
                 throw Object.assign(new Error('Failed to verify user'), { status: 500 });
             }

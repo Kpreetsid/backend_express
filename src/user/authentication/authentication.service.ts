@@ -34,9 +34,6 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!isMatch) {
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });
     }
-    if(!user.isVerified) {
-      throw Object.assign(new Error('Unverified user'), { status: 403 });
-    }
     if (restrictedRoles.includes(user.user_role)) {
       const locationList = await mapUserToLocationService.getLocationsMappedData(user._id);
       if (!locationList || locationList.length === 0) {
@@ -83,9 +80,6 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     const isMatch = await passwordService.comparePassword(password, user.password);
     if (!isMatch) {
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });
-    }
-    if(!user.isVerified) {
-      throw Object.assign(new Error('Unverified user'), { status: 403 });
     }
     if(user.user_role !== 'admin') {
       const locationList = await mapUserToLocationService.getLocationsMappedData(user._id);

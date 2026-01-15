@@ -17,7 +17,6 @@ export interface IUser extends Document {
   username: string;
   password: string;
   email: string;
-  emailStatus: boolean;
   user_status: 'active' | 'inactive' | string;
   user_role: 'super_admin' | 'super_employee' | 'super_user' | 'admin' | 'manager' | 'employee' | 'customer' | 'user';
   createdOn: Date;
@@ -36,7 +35,6 @@ export const userSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true , trim: true },
   password: { type: String, required: true, select: false },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  emailStatus: { type: Boolean, default: false },
   user_profile_img: { type: String },
   user_status: { type: String, enum: STATUS, default: 'active' },
   user_role: { type: String, required: true, enum: ROLE, default: 'employee', trim: true, lowercase: true },

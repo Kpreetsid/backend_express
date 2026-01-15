@@ -56,6 +56,7 @@ class UserController {
         delete baseFilter.user_status;
       }
       const filter = await applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
+      delete filter.visible;
       const data = await usersService.getAllUsers(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -107,6 +108,7 @@ class UserController {
         delete baseFilter.user_status;
       }
       const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
+      delete filter.visible;
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -173,6 +175,7 @@ class UserController {
       }
       const baseFilter: any = { _id: new mongoose.Types.ObjectId(String(id)), user_status: 'active' };
       const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
+      delete filter.visible;
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length)
         throw Object.assign(new Error("No data found or already deleted"), { status: 404 });

@@ -13,6 +13,7 @@ export default (router: express.Router) => {
     userRouter.post('/', userController.createUser);
     userRouter.post('/change-password', userController.updatePasswordUser);
     userRouter.put('/:id', userController.updateUser);
+    userRouter.patch('/:id', userController.updateUser);
     userRouter.delete('/:id', userController.removeUser);
     router.use('/users', userRouter);
 }
