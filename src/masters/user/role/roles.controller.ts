@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import { rolesService } from './roles.service';
 import { IUser } from '../../../models/user.model';
+import { usersService } from '../user.service';
 import { get } from 'lodash';
 import mongoose from 'mongoose';
+import { RoleManager } from '../../../_role/newUserRoles';
 
 class RolesController {
   async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -58,6 +60,15 @@ class RolesController {
   async createRole (req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const userData: any = await usersService.getAllUsers({_id: new mongoose.Types.ObjectId(String(user_id))});
+      if (!userData || userData.length === 0) {
+        throw Object.assign(new Error('User not found'), { status: 404 });
+      }
+      const newRoleMenu = await RoleManager.getRoleMenuData(userData[0].user_role);
+      if (!newRoleMenu) {
+        throw Object.assign(new Error('User role not found'), { status: 404 });
+      }
+      req.body.roleMenu = newRoleMenu;
       const data = await rolesService.insertRole(req.body, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });

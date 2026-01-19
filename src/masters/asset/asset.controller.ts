@@ -9,6 +9,22 @@ import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../util/roleFilter';
 
 class AssetController {
+
+  validateObjectId = (id: string): mongoose.Types.ObjectId => {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw Object.assign(new Error('Invalid ID'), { status: 400 });
+    }
+    return new mongoose.Types.ObjectId(id);
+  };
+
+  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
+    const idsArray = ids.split(',');
+    if (idsArray.length === 0) {
+      throw Object.assign(new Error('Invalid IDs'), { status: 400 });
+    }
+    return idsArray.map(id => this.validateObjectId(id));
+  };
+
   async getAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
