@@ -7,6 +7,10 @@ export interface IMapUserLocation extends Document {
   locationId?: ObjectId;
   assetId?: ObjectId;
   sendMail?: boolean;
+  alert?: boolean;
+  danger?: boolean;
+  critical?: boolean;
+
 }
 
 const MapUserLocationSchema = new Schema<IMapUserLocation>({
@@ -14,7 +18,10 @@ const MapUserLocationSchema = new Schema<IMapUserLocation>({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel' },
-  sendMail: { type: Boolean, default: true }
+  sendMail: { type: Boolean, default: true },
+  alert: { type: Boolean, default: true },
+  danger: { type: Boolean, default: true },
+  critical: { type: Boolean, default: true }
 }, {
   collection: 'location_user_mapping',
   timestamps: true,

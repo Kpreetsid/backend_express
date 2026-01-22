@@ -34,6 +34,10 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!isMatch) {
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });
     }
+    const getFirstUser = await UserModel.findOne({ account_id: user.account_id, isFirstUser: true, user_status: 'active' });
+    if (!getFirstUser) {
+      throw Object.assign(new Error('Your account has been locked. Please contact support team.'), { status: 401 });
+    }
     if (restrictedRoles.includes(user.user_role)) {
       const locationList = await mapUserToLocationService.getLocationsMappedData(user._id);
       if (!locationList || locationList.length === 0) {
