@@ -135,7 +135,7 @@ class MapUserAssetLocationController {
   
    async updateSendMailFlag (req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const body: { _id: string; sendMail: boolean }[] = req.body;
+      const body: { _id: string; sendMail: boolean, alert: boolean, danger: boolean, critical: boolean }[] = req.body;
       if (!Array.isArray(body) || body.length === 0) {
         throw Object.assign(new Error('Invalid input: body must be a non-empty array'), { status: 400 });
       }

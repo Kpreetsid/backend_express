@@ -54,13 +54,13 @@ class MapUserToAssetService {
 
   async updateMappedUserFlags (body: any): Promise<any> {
     const bulkOps = body.map((doc: any) => {
-      if (!doc._id || typeof doc.sendMail !== 'boolean') {
+      if (!doc._id || typeof doc.sendMail !== 'boolean' || typeof doc.alert !== 'boolean' || typeof doc.danger !== 'boolean' || typeof doc.critical !== 'boolean') {
         throw Object.assign(new Error('Each item must have _id and sendMail (boolean)'), { status: 400 });
       }
       return {
         updateOne: {
           filter: { _id: new mongoose.Types.ObjectId(doc._id) },
-          update: { $set: { sendMail: doc.sendMail } }
+          update: { $set: { sendMail: doc.sendMail, alert: doc.alert, danger: doc.danger, critical: doc.critical} }
         }
       };
     });
