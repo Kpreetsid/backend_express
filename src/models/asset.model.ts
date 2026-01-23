@@ -26,6 +26,7 @@ export interface IAsset extends Document {
   motorType: string;
   maxInputRotation: string;
   brandId: string;
+  alarmType: string[];
   brand: string;
   mountType: string;
   specificFrequency: string[];
@@ -108,6 +109,7 @@ const assetSchema = new Schema<IAsset>({
   element: { type: String, trim: true },
   brand: { type: String, trim: true },
   brandId: { type: String, trim: true },
+  alarmType: { type: [String] },
   brandModel: { type: String, trim: true },
   pinionGearTeethCount: { type: String, trim: true },
   timingGearTeethCount: { type: String, trim: true },

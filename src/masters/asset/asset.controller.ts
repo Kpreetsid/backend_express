@@ -223,7 +223,17 @@ class AssetController {
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const assetsMapData = body.userIdList.map((user: any) => ({ account_id, userId: user, assetId: data._id }));
+      const assetsMapData = body.userIdList.map((user: any) => {
+        return {
+          account_id,
+          userId: user,
+          assetId: data._id,
+          sendMail: body.alarmType.includes('sendMail'),
+          alert: body.alarmType.includes('alert'),
+          danger: body.alarmType.includes('danger'),
+          critical: body.alarmType.includes('critical')
+        }
+      })
       await mapUserToAssetService.createMapUserAssets(assetsMapData);
       await processorAPIService.setAssetHealthStatus(assetsMapData, account_id, user_id, userToken);
       const insertedData: any = await assetService.getAllAssets({ _id: data._id });

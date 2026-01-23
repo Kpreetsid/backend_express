@@ -18,8 +18,8 @@ class AppLogger {
     }
     this.accessLogStream = fs.createWriteStream(path.join(this.logDir, 'access.log'), { flags: 'a' });
     this.registerMorganTokens();
-    const fileFormat = ':date[iso] | :userId | :userName | :action | :method | :url | :module | :status | :res[content-length] | :response-time ms | IP: :remote-addr | Device: :device';
-    const consoleFormat = ':date[iso] | :status | :userId | :userName | :action | :method | :response-time ms | :url';
+    const fileFormat = ':date_ist | :userId | :userName | :action | :method | :url | :module | :status | :res[content-length] | :response-time ms | IP: :remote-addr | Device: :device';
+    const consoleFormat = ':date_ist | :status | :userId | :userName | :action | :method | :response-time ms | :url';
     this.fileLogger = morgan(fileFormat, { stream: this.accessLogStream });
     this.consoleLogger = morgan(consoleFormat);
   }
@@ -177,6 +177,12 @@ class AppLogger {
     morgan.token('userId', (req: any) => req.user?._id?.toString() || 'Anonymous');
     morgan.token('action', (req) => this.mapAction(req.method));
     morgan.token('module', (req) => this.extractModule(req.url));
+    morgan.token('date_ist', () => {
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const istDate = new Date(now.getTime() + istOffset);
+      return istDate.toISOString().replace('Z', '+05:30');
+    });
   }
 
   private mapAction(method: any): string {
