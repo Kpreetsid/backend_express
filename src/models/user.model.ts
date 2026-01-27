@@ -48,14 +48,20 @@ export const userSchema = new Schema<IUser>({
   collection: 'users',
   timestamps: true,
   versionKey: false,
-  toJSON: {
-    virtuals: true,
-    transform(doc: any, ret: any) {
-      ret.id = ret._id;
-      delete ret._id;
-      return ret;
+  toJSON: { 
+      virtuals: true,
+      transform(doc: any, ret: any) {
+        ret.id = ret._id;
+        return ret;
+      }
+    },
+    toObject: { 
+      virtuals: true,
+      transform(doc: any, ret: any) {
+        ret.id = ret._id;
+        return ret;
+      }
     }
-  }
 });
 
 export const UserModel = mongoose.model<IUser>('Schema_User', userSchema);

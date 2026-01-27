@@ -33,11 +33,11 @@ class CompanyService {
     }
   };
   
-  async updateById (id: string, body: any) {
+  async updateById (id: any, body: any) {
     return await AccountModel.findByIdAndUpdate(id, body, { new: true });
   };
   
-  async removeById (id: string, userId: any): Promise<boolean> {
+  async removeById (id: any, userId: any): Promise<boolean> {
     const data: IAccount | null = await AccountModel.findById(id);
     if (!data || !data.visible || data.account_status === 'inactive') {
       throw Object.assign(new Error('No data found'), { status: 404 });

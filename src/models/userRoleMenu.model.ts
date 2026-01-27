@@ -21,14 +21,20 @@ const userRoleMenuSchema = new Schema<IUserRoleMenu>({
   collection: 'platform-control',
   timestamps: true,
   versionKey: false,
-  toJSON: {
-    virtuals: true,
-    transform(doc: any, ret: any) {
-      ret.id = ret._id;
-      delete ret._id;
-      return ret;
+  toJSON: { 
+      virtuals: true,
+      transform(doc: any, ret: any) {
+        ret.id = ret._id;
+        return ret;
+      }
+    },
+    toObject: { 
+      virtuals: true,
+      transform(doc: any, ret: any) {
+        ret.id = ret._id;
+        return ret;
+      }
     }
-  }
 });
 
 export const RoleMenuModel = mongoose.model<IUserRoleMenu>('Schema_RoleMenu', userRoleMenuSchema);
