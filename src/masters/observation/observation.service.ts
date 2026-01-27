@@ -53,11 +53,11 @@ class ObservationService {
     return await newObservation.save();
   };
   
-  async updateObservationById (id: string, body: any, user_id: any): Promise<any> {
+  async updateObservationById (id: any, body: any, user_id: any): Promise<any> {
     return await ObservationModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
   };
   
-  async removeObservationById (id: string, user_id: any): Promise<any> {
+  async removeObservationById (id: any, user_id: any): Promise<any> {
     return await ObservationModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
   };
   

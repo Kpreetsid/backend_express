@@ -4,21 +4,33 @@ import { AssetModel } from "../../models/asset.model";
 import mongoose from "mongoose";
 
 class MapUserToAssetService {
-  async getAssetsMappedData (userId: any) {
-    return await MapUserAssetLocationModel.find({ userId: new mongoose.Types.ObjectId(userId), assetId: { $exists: true } }).lean();
-  }
+  private buildAlarmFlags = (alarmType: string[] = []) => ({
+    alert: alarmType.includes("alert"),
+    danger: alarmType.includes("danger"),
+    critical: alarmType.includes("critical"),
+  });
 
-  async getDataByAssetId (assetId: string) {
-    return await MapUserAssetLocationModel.find({ assetId: new mongoose.Types.ObjectId(assetId), userId: { $exists: true } }).lean();
-  }
+  getAssetsMappedData = async (userId: any) => {
+    return await MapUserAssetLocationModel.find({
+      userId: new mongoose.Types.ObjectId(userId),
+      assetId: { $exists: true },
+    }).lean();
+  };
 
-  async createMapUserAssets (data: any): Promise<any> {
+  getDataByAssetId = async (assetId: string) => {
+    return await MapUserAssetLocationModel.find({
+      assetId: new mongoose.Types.ObjectId(assetId),
+      userId: { $exists: true },
+    }).lean();
+  };
+
+  createMapUserAssets = async (data: any): Promise<any> => {
     return await MapUserAssetLocationModel.insertMany(data);
   };
 
-  async userAssets (match: any, populate: any): Promise<any> {
+  userAssets = async (match: any, populate: any): Promise<any> => {
     const pipeline: any[] = [{ $match: match }];
-    if (populate === 'assetId') {
+    if (populate === "assetId") {
       pipeline.push({
         $lookup: {
           from: "asset_master",
@@ -26,14 +38,14 @@ class MapUserToAssetService {
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$assetId"] } } },
             { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $addFields: { id: "$_id" } },
           ],
           as: "asset",
         },
       });
       pipeline.push({ $unwind: "$asset" });
     }
-    if (populate === 'userId') {
+    if (populate === "userId") {
       pipeline.push({
         $lookup: {
           from: "users",
@@ -41,44 +53,67 @@ class MapUserToAssetService {
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
             { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $addFields: { id: "$_id" } },
           ],
           as: "user",
         },
       });
       pipeline.push({ $unwind: "$user" });
     }
-    pipeline.push({ $addFields: { id: '$_id' } });
+    pipeline.push({ $addFields: { id: "$_id" } });
     return await MapUserAssetLocationModel.aggregate(pipeline);
   };
 
-  async updateMappedUserFlags (body: any): Promise<any> {
+  updateMappedUserFlags = async (body: any): Promise<any> => {
     const bulkOps = body.map((doc: any) => {
-      if (!doc._id || typeof doc.sendMail !== 'boolean' || typeof doc.alert !== 'boolean' || typeof doc.danger !== 'boolean' || typeof doc.critical !== 'boolean') {
-        throw Object.assign(new Error('Each item must have _id and sendMail (boolean)'), { status: 400 });
+      if (
+        !doc._id ||
+        typeof doc.sendMail !== "boolean" ||
+        typeof doc.alert !== "boolean" ||
+        typeof doc.danger !== "boolean" ||
+        typeof doc.critical !== "boolean"
+      ) {
+        throw Object.assign(
+          new Error("Each item must have _id and sendMail (boolean)"),
+          { status: 400 },
+        );
       }
       return {
         updateOne: {
           filter: { _id: new mongoose.Types.ObjectId(doc._id) },
-          update: { $set: { sendMail: doc.sendMail, alert: doc.alert, danger: doc.danger, critical: doc.critical} }
-        }
+          update: {
+            $set: {
+              sendMail: doc.sendMail,
+              alert: doc.alert,
+              danger: doc.danger,
+              critical: doc.critical,
+            },
+          },
+        },
       };
     });
     return await MapUserAssetLocationModel.bulkWrite(bulkOps);
   };
 
-  async updateAssetsForLocationHierarchy (locationId: string, userIdList: string[]) {
-    const assetList = await AssetModel.find({ locationId: new mongoose.Types.ObjectId(locationId) }).select("_id").lean();
+  updateAssetsForLocationHierarchy = async (
+    locationId: string,
+    userIdList: string[],
+  ) => {
+    const assetList = await AssetModel.find({
+      locationId: new mongoose.Types.ObjectId(locationId),
+    })
+      .select("_id")
+      .lean();
     for (const { _id } of assetList) {
       await this.updateUserMapping(String(_id), userIdList);
     }
-  }
+  };
 
-  async updateUserMapping(assetId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = []) {
+  updateUserMapping = async (assetId: string, userIdList: any, inheritedAdded: string[] = [], inheritedRemoved: string[] = []) => {
     const assetUserMappings = await this.getDataByAssetId(assetId);
     const existingUsers = assetUserMappings.map((u: any) => String(u.userId));
-    const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
-    const removedUsers = existingUsers.filter(id => !userIdList.includes(id));
+    const addedUsers = userIdList.filter((id: any) => !existingUsers.includes(id));
+    const removedUsers = existingUsers.filter((id: any) => !userIdList.includes(id));
     const effectiveAdded = Array.from([...new Set([...addedUsers, ...inheritedAdded])]);
     const effectiveRemoved = Array.from([...new Set([...removedUsers, ...inheritedRemoved])]);
     if (effectiveAdded.length > 0) {
@@ -91,45 +126,79 @@ class MapUserToAssetService {
     for (const { _id } of assetChildList) {
       const childExisting = await this.getDataByAssetId(String(_id));
       const childUserList = childExisting.map((d: any) => String(d.userId));
-      await this.updateUserMapping( String(_id), childUserList, effectiveAdded, effectiveRemoved );
+      await this.updateUserMapping(String(_id), childUserList, effectiveAdded, effectiveRemoved);
     }
+  };
+
+  updateFlagOnAssetUpdate = async (assetId: any, userIdList: string[], alarmType: string[]) => {
+    const updateData: any = {};
+    if (alarmType.includes("alert")) {
+      updateData.alert = true;
+    }
+    if (alarmType.includes("danger")) {
+      updateData.danger = true;
+    }
+    if (alarmType.includes("critical")) {
+      updateData.critical = true;
+    }
+    return await MapUserAssetLocationModel.updateMany(
+      {
+        assetId: new mongoose.Types.ObjectId(String(assetId)),
+        userId: {
+          $in: userIdList.map((id: string) => new mongoose.Types.ObjectId(id)),
+        },
+      },
+      { $set: this.buildAlarmFlags(alarmType) }
+    );
   }
 
-  async addChildAssetMapping (id: string, userIdList: string[]) {
-    const queryArray = userIdList.map(userId => ({ assetId: new mongoose.Types.ObjectId(String(id)), userId: new mongoose.Types.ObjectId(userId) }));
+  addChildAssetMapping = async(id: string, userIdList: string[]) => {
+    const queryArray = userIdList.map((userId: string) => {
+      const mapData: any = {
+        assetId: new mongoose.Types.ObjectId(String(id)),
+        userId: new mongoose.Types.ObjectId(userId),
+      };
+      return mapData;
+    });
     await MapUserAssetLocationModel.insertMany(queryArray);
   }
 
-  async removeChildAssetMapping (id: string, userIdList: string[]) {
-    await MapUserAssetLocationModel.deleteMany({ assetId: new mongoose.Types.ObjectId(String(id)), userId: { $in: userIdList.map(id => new mongoose.Types.ObjectId(String(id))) } });
+  removeChildAssetMapping = async (id: string, userIdList: string[]) => {
+    await MapUserAssetLocationModel.deleteMany({
+      assetId: new mongoose.Types.ObjectId(String(id)),
+      userId: {
+        $in: userIdList.map((id) => new mongoose.Types.ObjectId(String(id))),
+      },
+    });
   }
 
-  async removeAssetMapping (id: string) {
+  removeAssetMapping = async (id: string) => {
     return await MapUserAssetLocationModel.deleteMany({ assetId: id });
   }
 
-  async removeAssetListMapping (assetIdList: string[]) {
-    return await MapUserAssetLocationModel.deleteMany({ assetId: { $in: assetIdList } });
+  removeAssetListMapping = async (assetIdList: string[]) => {
+    return await MapUserAssetLocationModel.deleteMany({
+      assetId: { $in: assetIdList },
+    });
   }
-
 }
 
 export const mapUserToAssetService = new MapUserToAssetService();
 
 class MapUserToLocationService {
-  async getLocationsMappedData (userId: any) {
+  getLocationsMappedData = async (userId: any) => {
     return await MapUserAssetLocationModel.find({ userId: new mongoose.Types.ObjectId(userId), locationId: { $exists: true } });
   }
 
-  async getDataByLocationId (locationId: string) {
+  getDataByLocationId = async (locationId: string) => {
     return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } }).lean();
   }
   
-  async getDataByLocationIds (locationIds: string[]) {
+  getDataByLocationIds = async (locationIds: string[]) => {
     return await MapUserAssetLocationModel.find({ locationId: { $in: locationIds.map(id => new mongoose.Types.ObjectId(String(id))) }, userId: { $exists: true } }).lean();
   }
 
-  async mapUserLocationData (id: any, userIdList: any, account_id: any) {
+  mapUserLocationData = async (id: any, userIdList: any, account_id: any) => {
     await this.getAllChildLocations(id, userIdList);
     await MapUserAssetLocationModel.deleteMany({ locationId: id });
     const queryArray: any = [];
@@ -144,7 +213,7 @@ class MapUserToLocationService {
     return await MapUserAssetLocationModel.insertMany(queryArray);
   }
 
-  async userLocations (match: any, filter: any): Promise<any> {
+  userLocations = async (match: any, filter: any): Promise<any> => {
     const pipeline: any[] = [{ $match: match }];
     if (filter.populate === "locationId") {
       pipeline.push(
@@ -195,7 +264,7 @@ class MapUserToLocationService {
     return data;
   };
 
-  async getAllChildLocations (locationId: string, userIdList: string[]) {
+  getAllChildLocations = async (locationId: string, userIdList: string[]) => {
     const children = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean();
     if (!children?.length) return;
     const childIds = children.map(c => c._id.toString());
@@ -212,7 +281,7 @@ class MapUserToLocationService {
     await Promise.all(childIds.map(async (id: string) => await this.getAllChildLocations(id, userIdList)));
   }
 
-  async updateAssetsForLocationHierarchy (locationId: string, userIdList: string[]) {
+  updateAssetsForLocationHierarchy = async (locationId: string, userIdList: string[]) => {
     const assets = await AssetModel.find({ locationId: locationId, visible: true }).select("_id").lean();
     for (const asset of assets) {
       await mapUserToAssetService.updateUserMapping(`${asset._id}`, userIdList);
@@ -223,7 +292,7 @@ class MapUserToLocationService {
     }
   };
 
-  async mapUserLocations (body: any, account_id: any): Promise<any> {
+  mapUserLocations = async (body: any, account_id: any): Promise<any> => {
     const queryArray: any = [];
     body.forEach((doc: any) => {
       queryArray.push(new MapUserAssetLocationModel({ locationId: doc.locationId, userId: doc.userId, account_id }));
@@ -231,15 +300,15 @@ class MapUserToLocationService {
     return await MapUserAssetLocationModel.insertMany(queryArray);
   };
 
-  async removeLocationMapping (id: string) {
+  removeLocationMapping = async (id: any) => {
     return await MapUserAssetLocationModel.deleteMany({ locationId: id });
   }
   
-  async removeLocationListMapping (locationIdList: string[]) {
+  removeLocationListMapping = async (locationIdList: string[]) => {
     return await MapUserAssetLocationModel.deleteMany({ locationId: { $in: locationIdList } });
   }
 
-  async updateUserMapping(locationId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = []) {
+  updateUserMapping = async (locationId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = []) => {
     const locationUserMappings = await this.getDataByLocationId(locationId);
     const existingUsers = locationUserMappings.map((u: any) => String(u.userId));
     const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
@@ -261,11 +330,11 @@ class MapUserToLocationService {
     }
   }
 
-  async addChildLocationMapping(locationId: string, userIdList: string[]) {
+  addChildLocationMapping = async (locationId: string, userIdList: string[]) => {
     await MapUserAssetLocationModel.insertMany(userIdList.map(userId => ({ locationId: new mongoose.Types.ObjectId(locationId), userId: new mongoose.Types.ObjectId(userId) })));
   }
 
-  async removeChildLocationMapping(locationId: string, userIdList: string[]) {
+  removeChildLocationMapping = async (locationId: string, userIdList: string[]) => {
     await MapUserAssetLocationModel.deleteMany({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $in: userIdList.map(id => new mongoose.Types.ObjectId(String(id))) } });
   }
 }

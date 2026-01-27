@@ -5,8 +5,22 @@ import { IUser } from '../../models/user.model';
 import mongoose from 'mongoose';
 
 class FormCategoryController {
+  validateObjectId = (id: string): mongoose.Types.ObjectId => {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw Object.assign(new Error("Invalid ID"), { status: 400 });
+    }
+    return new mongoose.Types.ObjectId(id);
+  };
 
-  async getAllFormCategories(req: Request, res: Response, next: NextFunction) {
+  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
+    const idsArray = ids.split(",");
+    if (idsArray.length === 0) {
+      throw Object.assign(new Error("Invalid IDs"), { status: 400 });
+    }
+    return idsArray.map((id) => this.validateObjectId(id));
+  };
+
+  getAllFormCategories = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match = { account_id, visible: true };
@@ -20,7 +34,7 @@ class FormCategoryController {
     }
   }
 
-  async getFormCategoryByID(req: Request, res: Response, next: NextFunction) {
+  getFormCategoryByID = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
@@ -37,7 +51,7 @@ class FormCategoryController {
     }
   }
 
-  async create(req: Request, res: Response, next: NextFunction) {
+  create = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = get(req, "user", {}) as IUser;
       const { body } = req;
@@ -55,7 +69,7 @@ class FormCategoryController {
     }
   }
 
-  async update(req: Request, res: Response, next: NextFunction) {
+  update = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
@@ -77,7 +91,7 @@ class FormCategoryController {
     }
   }
 
-  async remove(req: Request, res: Response, next: NextFunction) {
+  remove = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
@@ -96,4 +110,4 @@ class FormCategoryController {
   }
 }
 
-export default new FormCategoryController();
+export const formCategoryController = new FormCategoryController();

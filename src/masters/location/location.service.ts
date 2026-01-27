@@ -254,11 +254,11 @@ class LocationService {
     }
   }
 
-  getLocationById(id: string, account_id: any) {
+  getLocationById(id: any, account_id: any) {
     return LocationModel.findOne({ _id: id, account_id, visible: true });
   };
 
-  async getAllChildHierarchy(parentId: string, account_id: any): Promise<any[]> {
+  async getAllChildHierarchy(parentId: any, account_id: any): Promise<any[]> {
     const children = await LocationModel.find({ parent_id: parentId, account_id, visible: true }).lean();
     const all: any[] = [];
     for (const child of children) {

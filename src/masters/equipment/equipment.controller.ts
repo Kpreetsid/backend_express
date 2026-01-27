@@ -10,7 +10,22 @@ import mongoose from 'mongoose';
 import { processorAPIService } from '../../api-processor';
 
 class EquipmentController {
-  async getAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
+  validateObjectId = (id: string): mongoose.Types.ObjectId => {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw Object.assign(new Error("Invalid ID"), { status: 400 });
+    }
+    return new mongoose.Types.ObjectId(id);
+  };
+
+  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
+    const idsArray = ids.split(",").filter(id => id.trim() !== "");
+    if (idsArray.length === 0) {
+      throw Object.assign(new Error("Invalid IDs"), { status: 400 });
+    }
+    return idsArray.map((id) => this.validateObjectId(id));
+  };
+  
+  getAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
@@ -47,7 +62,7 @@ class EquipmentController {
     }
   }
 
-  async getAsset(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
@@ -74,7 +89,7 @@ class EquipmentController {
     }
   }
 
-  async getChildAsset(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getChildAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
@@ -96,7 +111,7 @@ class EquipmentController {
     }
   }
 
-  async getAssetTree(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getAssetTree = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       let { location_id, id } = req.query;
@@ -156,7 +171,7 @@ class EquipmentController {
     }
   }
 
-  async create(req: Request, res: Response, next: NextFunction): Promise<any> {
+  create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     var equipmentId: any = '';
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
@@ -234,7 +249,7 @@ class EquipmentController {
     }
   }
 
-  async update(req: Request, res: Response, next: NextFunction): Promise<any> {
+  update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userToken = get(req, "userToken", {}) as string;
@@ -346,7 +361,7 @@ class EquipmentController {
     }
   };
 
-  async updateAssetImage(req: Request, res: Response, next: NextFunction): Promise<any> {
+  updateAssetImage = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
@@ -368,7 +383,7 @@ class EquipmentController {
     }
   }
 
-  async removeAsset(req: Request, res: Response, next: NextFunction): Promise<any> {
+  removeAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
@@ -388,7 +403,7 @@ class EquipmentController {
     }
   }
 
-  async makeAssetCopy(req: Request, res: Response, next: NextFunction): Promise<any> {
+  makeAssetCopy = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userToken = get(req, "userToken", {}) as string;

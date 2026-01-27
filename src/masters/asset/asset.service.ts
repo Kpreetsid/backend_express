@@ -99,7 +99,7 @@ class AssetService {
     return rootNodes.map((root) => attachChildren(root));
   };
   
-  async updateAssetImageById (id: string, image_path: string, user_id: string) {
+  async updateAssetImageById (id: any, image_path: string, user_id: any) {
     return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
   }
   
@@ -156,6 +156,7 @@ class AssetService {
   
   async updateAssetOld (id: any, body: any, user_id: any): Promise<any> {
     await mapUserToAssetService.updateUserMapping(id, body.userIdList);
+    await mapUserToAssetService.updateFlagOnAssetUpdate(id, body.userIdList, body.alarmType);
     return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true });
   }
   

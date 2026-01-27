@@ -7,17 +7,31 @@ import { assetService } from '../asset/asset.service';
 import { processorAPIService } from '../../api-processor';
 
 class ObservationController {
+  validateObjectId = (id: string): mongoose.Types.ObjectId => {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw Object.assign(new Error("Invalid ID"), { status: 400 });
+    }
+    return new mongoose.Types.ObjectId(id);
+  };
 
-  async getObservations (req: Request, res: Response, next: NextFunction): Promise<any> {
+  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
+    const idsArray = ids.split(",");
+    if (idsArray.length === 0) {
+      throw Object.assign(new Error("Invalid IDs"), { status: 400 });
+    }
+    return idsArray.map((id) => this.validateObjectId(id));
+  };
+
+  getObservations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { accountId: account_id };
       const { query: { locationId, assetId, alarmId }} = req;
       if (locationId) {
-        match['locationId'] = new mongoose.Types.ObjectId(`${locationId}`);
+        match['locationId'] = this.validateObjectId(String(locationId));
       }
       if (assetId) {
-        const childAssetIds = await assetService.getAllChildAssetIDs(new mongoose.Types.ObjectId(`${assetId}`));
+        const childAssetIds = await assetService.getAllChildAssetIDs(this.validateObjectId(String(assetId)));
         match['assetId'] = { $in: childAssetIds };
       }
       if (alarmId) {
@@ -33,14 +47,11 @@ class ObservationController {
     }
   }
   
-  async getObservation (req: Request, res: Response, next: NextFunction): Promise<any> {
+  getObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
      try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { params: { id }} = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id };
+      const match: any = { _id: this.validateObjectId(String(id)), accountId: account_id };
       if (userRole !== 'admin') {
         match['userId'] = user_id;
       }
@@ -54,7 +65,7 @@ class ObservationController {
     }
   }
   
-  async createObservation (req: Request, res: Response, next: NextFunction): Promise<any> {
+  createObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     var data: any;
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
@@ -79,22 +90,19 @@ class ObservationController {
     }
   }
   
-  async updateObservation (req: Request, res: Response, next: NextFunction): Promise<any> {
+  updateObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 400 });
-      }
-      const existingData = await observationService.getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
+      const existingData = await observationService.getAllObservation({ _id: this.validateObjectId(String(id)), accountId: account_id });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await observationService.updateObservationById(String(id), body, user_id);
+      const data = await observationService.updateObservationById(this.validateObjectId(String(id)), body, user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const match: any = { _id: new mongoose.Types.ObjectId(`${id}`) };
+      const match: any = { _id: this.validateObjectId(String(id)) };
       const insertedData = await observationService.getAllObservation(match);
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -105,18 +113,15 @@ class ObservationController {
     }
   }
   
-  async removeObservation (req: Request, res: Response, next: NextFunction): Promise<any> {
+  removeObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 400 });
-      }
-      const existingData = await observationService.getAllObservation({ _id: new mongoose.Types.ObjectId(`${id}`), accountId: account_id });
+      const existingData = await observationService.getAllObservation({ _id: this.validateObjectId(String(id)), accountId: account_id });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const data = await observationService.removeObservationById(String(id), user_id);
+      const data = await observationService.removeObservationById(this.validateObjectId(String(id)), user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }    
@@ -126,5 +131,4 @@ class ObservationController {
     }
   }
 }
-
-export default new ObservationController();
+export const observationController = new ObservationController();

@@ -1,5 +1,5 @@
 import express from 'express';
-import formCategoryController from './formCategory.controller';
+import { formCategoryController } from "./formCategory.controller";
 
 export default (router: express.Router) => {
     const formCategoryRouter = express.Router();

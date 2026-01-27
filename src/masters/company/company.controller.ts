@@ -21,12 +21,16 @@ class CompanyController {
     return idsArray.map((id) => this.validateObjectId(id));
   };
 
-  async getCompanies(req: Request, res: Response, next: NextFunction) {
+  getCompanies = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { type } = req.query;
       const baseFilter = {};
       if (type) baseFilter["type"] = type;
-      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "_id" });
+      const filter = await applyRoleFilter({
+        user: get(req, "user", {}) as IUser,
+        baseFilter,
+        accountField: "_id",
+      });
       const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -37,7 +41,7 @@ class CompanyController {
     }
   }
 
-  async getCompany(req: Request, res: Response, next: NextFunction) {
+  getCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { id } = req.params;
@@ -45,7 +49,11 @@ class CompanyController {
         throw Object.assign(new Error("Invalid ID"), { status: 400 });
       }
       const baseFilter = { _id: this.validateObjectId(String(id)) };
-      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "_id" });
+      const filter = await applyRoleFilter({
+        user: get(req, "user", {}) as IUser,
+        baseFilter,
+        accountField: "_id",
+      });
       const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -56,12 +64,12 @@ class CompanyController {
     }
   }
 
-  async create(req: Request, res: Response, next: NextFunction) {
+  create = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const newCompany = {
         account_name: req.body.account_name,
         type: req.body.type,
-        description: req.body.description
+        description: req.body.description,
       };
       const data = await companyService.createCompany(newCompany);
       if (!data)
@@ -72,7 +80,7 @@ class CompanyController {
     }
   }
 
-  async updateCompany(req: Request, res: Response, next: NextFunction) {
+  updateCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const { account_name, type, description } = req.body;
@@ -86,7 +94,10 @@ class CompanyController {
         description,
         updatedBy: user_id,
       };
-      const data = await companyService.updateById(this.validateObjectId(String(id)), updatedObj);
+      const data = await companyService.updateById(
+        this.validateObjectId(String(id)),
+        updatedObj,
+      );
       if (!data)
         throw Object.assign(new Error("Data update failed"), { status: 500 });
       res.status(200).json({ status: true, message: "Data updated successfully", data });
@@ -95,17 +106,25 @@ class CompanyController {
     }
   }
 
-  async updateImageCompany(req: Request, res: Response, next: NextFunction) {
+  updateImageCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { params: { id }, body: { fileName } } = req;
+      const {
+        params: { id },
+        body: { fileName },
+      } = req;
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       if (!fileName)
-        throw Object.assign(new Error("File name is required"), { status: 400 });
+        throw Object.assign(new Error("File name is required"), {
+          status: 400,
+        });
       if (String(account_id) !== id) {
         throw Object.assign(new Error("Invalid ID"), { status: 400 });
       }
       const updatedObj = { fileName, updatedBy: user_id };
-      const data = await companyService.updateById(this.validateObjectId(String(id)), updatedObj);
+      const data = await companyService.updateById(
+        this.validateObjectId(String(id)),
+        updatedObj,
+      );
       if (!data)
         throw Object.assign(new Error("Data update failed"), { status: 500 });
       res.status(200).json({ status: true, message: "Data updated successfully", data });
@@ -114,11 +133,14 @@ class CompanyController {
     }
   }
 
-  async removeCompany(req: Request, res: Response, next: NextFunction) {
+  removeCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
       const { _id: userId } = get(req, "user", {}) as IUser;
-      const deleted = await companyService.removeById(this.validateObjectId(String(id)), userId);
+      const deleted = await companyService.removeById(
+        this.validateObjectId(String(id)),
+        userId,
+      );
       if (!deleted) {
         return next(Object.assign(new Error("No data found"), { status: 404 }));
       }
