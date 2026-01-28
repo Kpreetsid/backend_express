@@ -16,10 +16,23 @@ import { logger, errorMiddleware } from './middlewares';
 
 const app: Express = express();
 app.set('trust proxy', 1);
-app.use(express.json({ limit: '50mb' }));
+app.use(helmet());
 app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true }));
+app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(logger.logMiddleware());
+app.use(rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1000,
+  message: 'Too many requests, please try again later.'
+}));
+app.use(compression({
+  level: 9,
+  threshold: 0,
+  filter: (req: Request, res: Response) => {
+    return !req.headers['x-no-compression'];
+  }
+}));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/assets')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/asset_report')));
@@ -33,19 +46,6 @@ app.use('/', express.static(path.join(__dirname, '../uploadFiles/posts')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/user_profile_img')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/WO_docs')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_request')));
-app.use(helmet());
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  message: 'Too many requests, please try again later.'
-}));
-app.use(compression({
-  level: 9,
-  threshold: 0,
-  filter: (req: Request, res: Response) => {
-    return !req.headers['x-no-compression'];
-  }
-}));
 
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });

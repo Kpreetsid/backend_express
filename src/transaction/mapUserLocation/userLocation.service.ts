@@ -130,27 +130,28 @@ class MapUserToAssetService {
     }
   };
 
-  updateFlagOnAssetUpdate = async (assetId: any, userIdList: string[], alarmType: string[]) => {
-    const updateData: any = {};
-    if (alarmType.includes("alert")) {
-      updateData.alert = true;
-    }
-    if (alarmType.includes("danger")) {
-      updateData.danger = true;
-    }
-    if (alarmType.includes("critical")) {
-      updateData.critical = true;
-    }
-    return await MapUserAssetLocationModel.updateMany(
+ updateFlagOnAssetUpdate = async (assetId: any, userIdList: string[], alarmType: string[]) => {
+    if (!userIdList?.length) return { matched: 0, modified: 0 };
+    const assetObjectId = new mongoose.Types.ObjectId(String(assetId));
+    const userObjectIds = userIdList.map(id => new mongoose.Types.ObjectId(id));
+    const newFlags = this.buildAlarmFlags(alarmType);
+    const result: any = await MapUserAssetLocationModel.updateMany(
       {
-        assetId: new mongoose.Types.ObjectId(String(assetId)),
-        userId: {
-          $in: userIdList.map((id: string) => new mongoose.Types.ObjectId(id)),
-        },
+        assetId: assetObjectId,
+        userId: { $in: userObjectIds },
+        $or: [
+          { alert: { $ne: newFlags.alert } },
+          { danger: { $ne: newFlags.danger } },
+          { critical: { $ne: newFlags.critical } }
+        ]
       },
-      { $set: this.buildAlarmFlags(alarmType) }
+      { $set: newFlags }
     );
-  }
+    return {
+      matched: result.matchedCount ?? result.n,
+      modified: result.modifiedCount ?? result.nModified
+    };
+  };
 
   addChildAssetMapping = async(id: string, userIdList: string[]) => {
     const queryArray = userIdList.map((userId: string) => {
