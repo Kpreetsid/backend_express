@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { instructionService } from './instruction.service';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 
 class InstructionController {
   async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -23,10 +23,8 @@ class InstructionController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
+      const instructionId = helperService.validateObjectId(id);
+      const match: any = { _id: instructionId, account_id: account_id, visible: true };
       const data = await instructionService.getInstructions(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -55,10 +53,8 @@ class InstructionController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
+      const instructionId = helperService.validateObjectId(id);
+      const match: any = { _id: instructionId, account_id: account_id, visible: true };
       const existingRequest = await instructionService.getInstructions(match);
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -77,10 +73,8 @@ class InstructionController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
+      const instructionId = helperService.validateObjectId(id);
+      const match: any = { _id: instructionId, account_id: account_id, visible: true };
       const existingRequest = await instructionService.getInstructions(match);
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });

@@ -5,7 +5,7 @@ import { userWorkOrderService } from "../../transaction/mapUserWorkOrder/userWor
 import { partsService } from "../../masters/part/parts.service";
 import { commentService } from "../comments/comment.service";
 import { requestService } from "../request/request.service";
-import mongoose from "mongoose";
+import { helperService } from "../../util/helper";
 
 class OrderService {
   private mailerService: MailerService;
@@ -337,7 +337,7 @@ class OrderService {
       createdBy: user._id
     });
     const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
-    const userDetails = await UserModel.find({ _id: { $in: body.userIdList.map((userId: string) => new mongoose.Types.ObjectId(userId)) } });
+    const userDetails = await UserModel.find({ _id: { $in: helperService.validateObjectIds(body.userIdList.join(',')) } });
     if (!userDetails || userDetails.length === 0) {
       throw Object.assign(new Error('No users found'), { status: 404 });
     }
@@ -361,10 +361,8 @@ class OrderService {
   };
   
   async updateById (id: string, body: any, user: IUser): Promise<any> {
-    if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-      throw Object.assign(new Error('Work Order ID is required'), { status: 400 });
-    }
-    let existingOrder: any = await WorkOrderModel.findById(id);
+    const objectId = helperService.validateObjectId(id);
+    let existingOrder: any = await WorkOrderModel.findById(objectId);
     if (!existingOrder) {
       throw Object.assign(new Error('Work Order not found'), { status: 404 });
     }

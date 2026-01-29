@@ -3,7 +3,7 @@ import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../util/bcrypt';
 import { rolesService } from './role/roles.service';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 import { MailerService } from "../../_config/mailer";
 import { RoleManager } from "../../_role/newUserRoles";
 import { RoleMenuModel } from "../../models/userRoleMenu.model";
@@ -47,10 +47,8 @@ class UsersService {
   async getLocationWiseUser(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { params: { locationID } } = req;
-      if (!locationID || !mongoose.Types.ObjectId.isValid(String(locationID))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      const data = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(String(locationID)) }).select('userId -_id');
+      const locationId = helperService.validateObjectId(locationID);
+      const data = await MapUserAssetLocationModel.find({ locationId: locationId }).select('userId -_id');
       if (data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

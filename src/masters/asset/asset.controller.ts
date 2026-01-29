@@ -366,7 +366,7 @@ class AssetController {
       }
       res.status(200).json({
         status: true,
-        message: "Data created successfully",
+        message: "Data updated successfully",
         data: insertedData,
       });
     } catch (error) {

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { mapUserToAssetService, mapUserToLocationService } from './userLocation.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 import { assetService } from '../../masters/asset/asset.service';
 import { locationService } from '../../masters/location/location.service';
 
@@ -23,7 +23,7 @@ class MapUserAssetLocationController {
         match.locationId = { $in: locationData.map((doc) => doc._id) };
       }
       if (query.locationId) {
-        const locationId = new mongoose.Types.ObjectId(query.locationId as string);
+        const locationId = helperService.validateObjectId(query.locationId);
         match.locationId = locationId;
         const locationData = await locationService.getLocationsList({ _id: locationId, account_id });
         if (!locationData) {
@@ -49,12 +49,12 @@ class MapUserAssetLocationController {
       const { userId, assetId, populate } = req.query;
       const match: any = { assetId: { $exists: true } };
       if(userId) {
-        match.userId = new mongoose.Types.ObjectId(userId as string);
+        match.userId = helperService.validateObjectId(userId);
       }
       if (userRole === 'admin') {
         const assetMatch: any = { account_id, visible: true };
         if (assetId) {
-          assetMatch._id = new mongoose.Types.ObjectId(assetId as string);
+          assetMatch._id = helperService.validateObjectId(assetId);
         }
         const assetData = await assetService.getAllAssets(assetMatch);
         if (!assetData || assetData.length === 0) {
@@ -64,7 +64,7 @@ class MapUserAssetLocationController {
       } else {
         match.userId = user_id;
         if (assetId) {
-          match.assetId = new mongoose.Types.ObjectId(assetId as string);
+          match.assetId = helperService.validateObjectId(assetId);
         }
       }
       const data = await mapUserToAssetService.userAssets(match, populate);

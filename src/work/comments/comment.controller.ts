@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { commentService } from './comment.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 
 class CommentController {
 
@@ -13,7 +13,7 @@ class CommentController {
       if (!orderId) {
         throw Object.assign(new Error('Order ID is required'), { status: 400 });
       }
-      const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)), visible: true };
+      const match : any = { account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true };
       const data = await commentService.getAllComments(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -28,13 +28,9 @@ class CommentController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id: orderId, commentId } } = req;
-      if (!mongoose.Types.ObjectId.isValid(String(orderId))) {
-        throw Object.assign(new Error('Invalid order ID'), { status: 400 });
-      }
-      if (!mongoose.Types.ObjectId.isValid(String(commentId))) {
-        throw Object.assign(new Error('Invalid comment ID'), { status: 400 });
-      }
-      const match : any = { account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)), _id: new mongoose.Types.ObjectId(String(commentId)), visible: true };
+      const orderObjectId = helperService.validateObjectId(orderId);
+      const commentObjectId = helperService.validateObjectId(commentId);
+      const match : any = { account_id: account_id, order_id: orderObjectId, _id: commentObjectId, visible: true };
       const data = await commentService.getAllComments(match);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -53,14 +49,14 @@ class CommentController {
         throw Object.assign(new Error('Order ID is required'), { status: 400 });
       }
       if (body.parentCommentId) {
-        body.parentCommentId = new mongoose.Types.ObjectId(body.parentCommentId);
+        body.parentCommentId = helperService.validateObjectId(body.parentCommentId);
       }
       body.order_id = orderId;
       const data = await commentService.createComment(body, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      const result = await commentService.getAllComments({ _id: data._id, parentCommentId: data.parentCommentId, account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)) });
+      const result = await commentService.getAllComments({ _id: data._id, parentCommentId: data.parentCommentId, account_id: account_id, order_id: helperService.validateObjectId(orderId) });
       res.status(201).json({ status: true, message: "Data created successfully", data: result[0] });
     } catch (error) {
       next(error);
@@ -77,7 +73,7 @@ class CommentController {
       if (!commentId) {
         throw Object.assign(new Error('Comment ID is required'), { status: 400 });
       }
-      const existingComment = await commentService.getAllComments({ _id: new mongoose.Types.ObjectId(String(commentId)), account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)), visible: true });
+      const existingComment = await commentService.getAllComments({ _id: helperService.validateObjectId(commentId), account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true });
       if (!existingComment) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -102,7 +98,7 @@ class CommentController {
       if (!commentId) {
         throw Object.assign(new Error('Comment ID is required'), { status: 400 });
       }
-      const existingComment = await commentService.getComments({ _id: new mongoose.Types.ObjectId(String(commentId)), account_id: account_id, order_id: new mongoose.Types.ObjectId(String(orderId)), visible: true });
+      const existingComment = await commentService.getComments({ _id: helperService.validateObjectId(commentId), account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true });
       if (!existingComment) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

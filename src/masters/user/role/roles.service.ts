@@ -2,7 +2,7 @@ import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model
 import { IUser } from "../../../models/user.model";
 import { PlatformControlManager } from "../../../_role/userRoles";
 import { RoleManager } from "../../../_role/newUserRoles";
-import mongoose from "mongoose";
+import { helperService } from "../../../util/helper";
 
 class RolesService {
   async getRoles(match: any): Promise<any> {
@@ -11,7 +11,9 @@ class RolesService {
 
   async verifyUserRole(id: string, companyID: string) {
     try {
-      const userRole: IUserRoleMenu | null = await RoleMenuModel.findOne({ user_id: new mongoose.Types.ObjectId(String(id)), account_id: new mongoose.Types.ObjectId(companyID) });
+      const userId = helperService.validateObjectId(id);
+      const companyId = helperService.validateObjectId(companyID);
+      const userRole: IUserRoleMenu | null = await RoleMenuModel.findOne({ user_id: userId, account_id: companyId });
       if (!userRole) {
         return null;
       }

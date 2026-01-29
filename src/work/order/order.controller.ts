@@ -3,7 +3,7 @@ import { orderService } from './order.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { userWorkOrderService } from '../../transaction/mapUserWorkOrder/userWorkOrder.service';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 
 class OrderController {
 
@@ -14,8 +14,8 @@ class OrderController {
       const { status, priority, wo_asset_id, wo_location_id, assignedUser } = req.query;
       if (status) match.status = { $in: status.toString().split(',') };
       if (priority) match.priority = { $in: priority.toString().split(',') };
-      if (wo_asset_id) match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
-      if (wo_location_id) match.wo_location_id = { $in: wo_location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
+      if (wo_asset_id) match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
+      if (wo_location_id) match.wo_location_id = { $in: helperService.validateObjectIds(wo_location_id.toString()) };
       const workOrderIds: any = [];
       if(assignedUser) {
         for(let i = 0; i < assignedUser.toString().split(',').length; i++) {
@@ -54,13 +54,13 @@ class OrderController {
         match.priority = { $in: priority.toString().split(",") };
       }
       if (wo_asset_id) {
-        match.wo_asset_id = { $in: wo_asset_id.toString().split(",").map(id => new mongoose.Types.ObjectId(String(id))) };
+        match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       }
       if (wo_location_id) {
-        match.wo_location_id = { $in: wo_location_id.toString().split(",").map(id => new mongoose.Types.ObjectId(String(id))) };
+        match.wo_location_id = { $in: helperService.validateObjectIds(wo_location_id.toString()) };
       }
       if (assignedUser) {
-        match["assignedUsers.userId"] = { $in: assignedUser.toString().split(",").map(id => new mongoose.Types.ObjectId(String(id))) };
+        match["assignedUsers.userId"] = { $in: helperService.validateObjectIds(assignedUser.toString()) };
       }
       switch (pageType) {
         case "assignedToMe": {
@@ -73,11 +73,11 @@ class OrderController {
           break;
         }
         case "createdByMe": {
-          match.createdBy = new mongoose.Types.ObjectId(user_id);
+          match.createdBy = user_id;
           break;
         }
         case "openToAll": {
-          match.createdBy = { $ne: new mongoose.Types.ObjectId(user_id) };
+          match.createdBy = { $ne: user_id };
           if (!status) {
             match.status = { $in: ["Open", "In-Progress", "On-Hold"] };
           }
@@ -92,7 +92,7 @@ class OrderController {
             const ids = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
             match.$or = [
               { _id: { $in: ids || [] } },
-              { createdBy: new mongoose.Types.ObjectId(user_id) }
+              { createdBy: user_id }
             ];
           }
         }
@@ -121,10 +121,8 @@ class OrderController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      const data = await orderService.getAllOrders({ _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true });
+      const orderId = helperService.validateObjectId(id);
+      const data = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -155,13 +153,11 @@ class OrderController {
     try {
       const user: any = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
       if(!body?.userIdList || body.userIdList?.length === 0) {
         throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
       }
-      const isWorkOrderExist: any = await orderService.getAllOrders({ _id: new mongoose.Types.ObjectId(String(id)), account_id: user.account_id, visible: true });
+      const orderId = helperService.validateObjectId(id);
+      const isWorkOrderExist: any = await orderService.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
       if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
         throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
@@ -176,13 +172,11 @@ class OrderController {
     try {
       const user: any = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
       if (!body?.task_submitted && !body?.sop_form_submitted) {
         throw Object.assign(new Error('No data submitted'), { status: 400 });
       }
-      const filter = { _id: new mongoose.Types.ObjectId(String(id)), account_id: user.account_id, visible: true };
+      const orderId = helperService.validateObjectId(id);
+      const filter = { _id: orderId, account_id: user.account_id, visible: true };
       const isWorkOrderExist: any = await orderService.getAllOrders(filter);
       if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
         throw Object.assign(new Error('Work order not found'), { status: 404 });
@@ -206,7 +200,8 @@ class OrderController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body: { status } } = req;
-      const isWorkOrderExist: any = await orderService.getAllOrders({ _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true });
+      const orderId = helperService.validateObjectId(id);
+      const isWorkOrderExist: any = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
       if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
         throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
@@ -246,10 +241,8 @@ class OrderController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 400 });
-      }
-      const data = await orderService.getAllOrders({ _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true });
+      const orderId = helperService.validateObjectId(id);
+      const data = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -266,7 +259,7 @@ class OrderController {
       const match: any = { account_id: account_id, visible: true };
       const { wo_asset_id, fromDate, toDate } = req.query;
       if (wo_asset_id) {
-        match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
+        match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       }
       if (fromDate && toDate) {
         match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
@@ -287,7 +280,7 @@ class OrderController {
       const match: any = { account_id: account_id };
       const { wo_asset_id, fromDate, toDate } = req.query;
       if (wo_asset_id) {
-        match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
+        match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       }
       if (fromDate && toDate) {
         match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
@@ -308,7 +301,7 @@ class OrderController {
       const match: any = { account_id: account_id };
       const { wo_asset_id, fromDate, toDate } = req.query;
       if (wo_asset_id) {
-        match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
+        match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       }
       if (fromDate && toDate) {
         match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
@@ -329,7 +322,7 @@ class OrderController {
       const match: any = { account_id, visible: true };
       const { wo_asset_id, fromDate, toDate, order_no } = req.query;
       if (wo_asset_id) {
-        const ids = wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id)));
+        const ids = helperService.validateObjectIds(wo_asset_id.toString());
         match.wo_asset_id = { $in: ids };
       }
       if (order_no) match.order_no = order_no;
@@ -352,7 +345,7 @@ class OrderController {
       const { wo_asset_id, fromDate, toDate } = req.query;
       const workOrderMatch: any = { account_id, visible: true };
       if (wo_asset_id) {
-        const assetIds = wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id)));
+        const assetIds = helperService.validateObjectIds(wo_asset_id.toString());
         workOrderMatch.wo_asset_id = { $in: assetIds };
       }
       if (fromDate && toDate) {
@@ -384,7 +377,7 @@ class OrderController {
       const match: any = { account_id, visible: true };
       const { wo_asset_id, fromDate, toDate } = req.query;
       if (wo_asset_id) {
-        match.wo_asset_id = { $in: wo_asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
+        match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       }
       if (fromDate && toDate) {
         match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };

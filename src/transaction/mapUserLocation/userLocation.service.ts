@@ -1,6 +1,7 @@
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
+import { helperService } from "../../util/helper";
 import mongoose from "mongoose";
 
 class MapUserToAssetService {
@@ -12,14 +13,14 @@ class MapUserToAssetService {
 
   getAssetsMappedData = async (userId: any) => {
     return await MapUserAssetLocationModel.find({
-      userId: new mongoose.Types.ObjectId(userId),
+      userId: helperService.validateObjectId(userId),
       assetId: { $exists: true },
     }).lean();
   };
 
   getDataByAssetId = async (assetId: string) => {
     return await MapUserAssetLocationModel.find({
-      assetId: new mongoose.Types.ObjectId(assetId),
+      assetId: helperService.validateObjectId(assetId),
       userId: { $exists: true },
     }).lean();
   };
@@ -132,8 +133,8 @@ class MapUserToAssetService {
 
  updateFlagOnAssetUpdate = async (assetId: any, userIdList: string[], alarmType: string[]) => {
     if (!userIdList?.length) return { matched: 0, modified: 0 };
-    const assetObjectId = new mongoose.Types.ObjectId(String(assetId));
-    const userObjectIds = userIdList.map(id => new mongoose.Types.ObjectId(id));
+    const assetObjectId = helperService.validateObjectId(assetId);
+    const userObjectIds = helperService.validateObjectIds(userIdList.join(','));
     const newFlags = this.buildAlarmFlags(alarmType);
     const result: any = await MapUserAssetLocationModel.updateMany(
       {
@@ -154,10 +155,12 @@ class MapUserToAssetService {
   };
 
   addChildAssetMapping = async(id: string, userIdList: string[]) => {
-    const queryArray = userIdList.map((userId: string) => {
+    const assetId = helperService.validateObjectId(id);
+    const userIds = helperService.validateObjectIds(userIdList.join(','));
+    const queryArray = userIds.map((userId) => {
       const mapData: any = {
-        assetId: new mongoose.Types.ObjectId(String(id)),
-        userId: new mongoose.Types.ObjectId(userId),
+        assetId: assetId,
+        userId: userId,
       };
       return mapData;
     });
@@ -165,10 +168,12 @@ class MapUserToAssetService {
   }
 
   removeChildAssetMapping = async (id: string, userIdList: string[]) => {
+    const assetId = helperService.validateObjectId(id);
+    const userIds = helperService.validateObjectIds(userIdList.join(','));
     await MapUserAssetLocationModel.deleteMany({
-      assetId: new mongoose.Types.ObjectId(String(id)),
+      assetId: assetId,
       userId: {
-        $in: userIdList.map((id) => new mongoose.Types.ObjectId(String(id))),
+        $in: userIds,
       },
     });
   }
@@ -188,15 +193,15 @@ export const mapUserToAssetService = new MapUserToAssetService();
 
 class MapUserToLocationService {
   getLocationsMappedData = async (userId: any) => {
-    return await MapUserAssetLocationModel.find({ userId: new mongoose.Types.ObjectId(userId), locationId: { $exists: true } });
+    return await MapUserAssetLocationModel.find({ userId: helperService.validateObjectId(userId), locationId: { $exists: true } });
   }
 
   getDataByLocationId = async (locationId: string) => {
-    return await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $exists: true } }).lean();
+    return await MapUserAssetLocationModel.find({ locationId: helperService.validateObjectId(locationId), userId: { $exists: true } }).lean();
   }
   
   getDataByLocationIds = async (locationIds: string[]) => {
-    return await MapUserAssetLocationModel.find({ locationId: { $in: locationIds.map(id => new mongoose.Types.ObjectId(String(id))) }, userId: { $exists: true } }).lean();
+    return await MapUserAssetLocationModel.find({ locationId: { $in: helperService.validateObjectIds(locationIds.join(',')) }, userId: { $exists: true } }).lean();
   }
 
   mapUserLocationData = async (id: any, userIdList: any, account_id: any) => {
@@ -332,18 +337,22 @@ class MapUserToLocationService {
   }
 
   addChildLocationMapping = async (locationId: string, userIdList: string[]) => {
-    await MapUserAssetLocationModel.insertMany(userIdList.map(userId => ({ locationId: new mongoose.Types.ObjectId(locationId), userId: new mongoose.Types.ObjectId(userId) })));
+    const locationObjectId = helperService.validateObjectId(locationId);
+    const userIds = helperService.validateObjectIds(userIdList.join(','));
+    await MapUserAssetLocationModel.insertMany(userIds.map(userId => ({ locationId: locationObjectId, userId: userId })));
   }
 
   removeChildLocationMapping = async (locationId: string, userIdList: string[]) => {
-    await MapUserAssetLocationModel.deleteMany({ locationId: new mongoose.Types.ObjectId(locationId), userId: { $in: userIdList.map(id => new mongoose.Types.ObjectId(String(id))) } });
+    const locationObjectId = helperService.validateObjectId(locationId);
+    const userIds = helperService.validateObjectIds(userIdList.join(','));
+    await MapUserAssetLocationModel.deleteMany({ locationId: locationObjectId, userId: { $in: userIds } });
   }
 }
 
 export const mapUserToLocationService = new MapUserToLocationService();
 
 export const updateLocationAssetMapping = async (locationId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = []) => {
-  const locationObjectId = new mongoose.Types.ObjectId(locationId);
+  const locationObjectId = helperService.validateObjectId(locationId);
   const locationMappings = await MapUserAssetLocationModel.find({ locationId: locationObjectId, userId: { $exists: true } }).lean();
   const existingUsers = locationMappings.map(d => String(d.userId));
   const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
@@ -351,34 +360,40 @@ export const updateLocationAssetMapping = async (locationId: string, userIdList:
   const effectiveAdded = [...new Set([...addedUsers, ...inheritedAdded])];
   const effectiveRemoved = [...new Set([...removedUsers, ...inheritedRemoved])];
   if (effectiveAdded.length) {
-    await MapUserAssetLocationModel.insertMany(effectiveAdded.map(userId => ({ locationId: locationObjectId, userId: new mongoose.Types.ObjectId(userId) })), { ordered: false });
+    const effectiveAddedIds = helperService.validateObjectIds(effectiveAdded.join(','));
+    await MapUserAssetLocationModel.insertMany(effectiveAddedIds.map(userId => ({ locationId: locationObjectId, userId: userId })), { ordered: false });
   }
   if (effectiveRemoved.length) {
-    await MapUserAssetLocationModel.deleteMany({ locationId: locationObjectId, userId: { $in: effectiveRemoved.map(id => new mongoose.Types.ObjectId(String(id))) }});
+    const effectiveRemovedIds = helperService.validateObjectIds(effectiveRemoved.join(','));
+    await MapUserAssetLocationModel.deleteMany({ locationId: locationObjectId, userId: { $in: effectiveRemovedIds }});
   }
   const assets = await AssetModel.find({ locationId: locationObjectId }).select('_id').lean();
   for (const asset of assets) {
-    const assetId = new mongoose.Types.ObjectId(asset._id);
+    const assetId = helperService.validateObjectId(String(asset._id));
     const assetMappings = await MapUserAssetLocationModel.find({ assetId, userId: { $exists: true } }).lean();
     const assetUsers = assetMappings.map(d => String(d.userId));
     const assetAdded = effectiveAdded.filter(id => !assetUsers.includes(id));
     const assetRemoved = effectiveRemoved.filter(id => assetUsers.includes(id));
     if (assetAdded.length) {
-      await MapUserAssetLocationModel.insertMany( assetAdded.map(userId => ({ assetId, userId: new mongoose.Types.ObjectId(userId) })), { ordered: false });
+      const assetAddedIds = helperService.validateObjectIds(assetAdded.join(','));
+      await MapUserAssetLocationModel.insertMany( assetAddedIds.map(userId => ({ assetId, userId: userId })), { ordered: false });
     }
     if (assetRemoved.length) {
-      await MapUserAssetLocationModel.deleteMany({ assetId, userId: { $in: assetRemoved.map(id => new mongoose.Types.ObjectId(String(id))) } });
+      const assetRemovedIds = helperService.validateObjectIds(assetRemoved.join(','));
+      await MapUserAssetLocationModel.deleteMany({ assetId, userId: { $in: assetRemovedIds } });
     }
     const childAssets = await AssetModel.find({ parent_id: assetId }).select('_id').lean();
     for (const child of childAssets) {
-      const childMappings = await MapUserAssetLocationModel.find({ assetId: new mongoose.Types.ObjectId(child._id), userId: { $exists: true } }).lean();
+      const childAssetId = helperService.validateObjectId(String(child._id));
+      const childMappings = await MapUserAssetLocationModel.find({ assetId: childAssetId, userId: { $exists: true } }).lean();
       const childUsers = childMappings.map(d => String(d.userId));
       await updateLocationAssetMapping(String(child._id), childUsers, assetAdded, assetRemoved);
     }
   }
   const childLocations = await LocationModel.find({ parent_id: locationObjectId }).select('_id').lean();
   for (const child of childLocations) {
-    const childMappings = await MapUserAssetLocationModel.find({ locationId: new mongoose.Types.ObjectId(child._id), userId: { $exists: true }}).lean();
+    const childLocationId = helperService.validateObjectId(String(child._id));
+    const childMappings = await MapUserAssetLocationModel.find({ locationId: childLocationId, userId: { $exists: true }}).lean();
     const childUsers = childMappings.map(d => String(d.userId));
     await updateLocationAssetMapping(String(child._id), childUsers, effectiveAdded, effectiveRemoved);
   }

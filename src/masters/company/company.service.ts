@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import { helperService } from "../../util/helper";
 import { AccountModel, IAccount } from "../../models/account.model";
 
 class CompanyService {
@@ -23,7 +23,8 @@ class CompanyService {
   
   async verifyCompany (id: string) {
     try {
-      const data: IAccount | null = await AccountModel.findById(new mongoose.Types.ObjectId(String(id)));
+      const companyId = helperService.validateObjectId(id);
+      const data: IAccount | null = await AccountModel.findById(companyId);
       if(!data || !data.visible || data.account_status === 'inactive') {
         return null;
       }

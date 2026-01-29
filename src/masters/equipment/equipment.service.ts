@@ -2,6 +2,7 @@ import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService, mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
 import { processorAPIService } from '../../api-processor';
+import { helperService } from '../../util/helper';
 import mongoose from 'mongoose';
 
 class EquipmentService {
@@ -195,8 +196,9 @@ class EquipmentService {
 
   async createMotor (motor: any, equipment: any, account_id: any, user_id: any) {
     motor = this.removeExtraFields(motor);
+    const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
-      parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+      parent_id: helperService.validateObjectId(parentId),
       asset_name: motor.asset_name,
       asset_id: motor.asset_id || equipment.asset_id,
       asset_type: motor.asset_type || "Motor",
@@ -225,8 +227,9 @@ class EquipmentService {
 
   async createFlexible (flexible: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     flexible = this.removeExtraFields(flexible);
+    const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
-      parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+      parent_id: helperService.validateObjectId(parentId),
       asset_name: flexible.asset_name,
       element: flexible.element,
       asset_id: flexible.asset_id || equipment.asset_id,
@@ -250,8 +253,9 @@ class EquipmentService {
 
   async createRigid (rigid: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     rigid = this.removeExtraFields(rigid);
+    const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
-      parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+      parent_id: helperService.validateObjectId(parentId),
       asset_name: rigid.asset_name,
       asset_id: rigid.asset_id || equipment.asset_id,
       asset_type: rigid.asset_type || "Rigid",
@@ -276,8 +280,9 @@ class EquipmentService {
 
   async createBeltPulley (beltPulley: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     beltPulley = this.removeExtraFields(beltPulley);
+    const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
-      parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+      parent_id: helperService.validateObjectId(parentId),
       asset_name: beltPulley.asset_name,
       asset_id: beltPulley.asset_id || equipment.asset_id,
       asset_type: beltPulley.asset_type || "Belt_Pulley",
@@ -304,8 +309,9 @@ class EquipmentService {
 
   async createGearbox (gearbox: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     gearbox = this.removeExtraFields(gearbox);
+    const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
-      parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+      parent_id: helperService.validateObjectId(parentId),
       asset_name: gearbox.asset_name,
       asset_id: gearbox.asset_id || equipment.asset_id,
       asset_type: gearbox.asset_type || "Gearbox",
@@ -351,8 +357,9 @@ class EquipmentService {
 
   async createFanBlower (fanBlower: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     fanBlower = this.removeExtraFields(fanBlower);
+    const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
-      parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
+      parent_id: helperService.validateObjectId(parentId),
       asset_name: fanBlower.asset_name,
       asset_id: fanBlower.asset_id || equipment.asset_id,
       asset_type: fanBlower.asset_type || "Fan_Blower",

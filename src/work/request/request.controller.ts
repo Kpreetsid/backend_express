@@ -3,7 +3,7 @@ import { requestService } from './request.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../../models/workRequest.model';
-import mongoose from "mongoose";
+import { helperService } from '../../util/helper';
 
 class RequestController {
   async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -46,10 +46,8 @@ class RequestController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id }, query } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 400 });
-      }
-      let match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
+      const requestId = helperService.validateObjectId(id);
+      let match: any = { _id: requestId, account_id: account_id };
       if(query) {
         match = { ...match, ...query };
       }
@@ -81,9 +79,7 @@ class RequestController {
     try {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
       const { params: { id, status }, body } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 404 });
-      }
+      const requestId = helperService.validateObjectId(id);
       if(status) {
         if(!WORK_REQUEST_STATUSES.includes(String(status))) {
           throw Object.assign(new Error('Status is not editable'), { status: 400 });
@@ -98,7 +94,7 @@ class RequestController {
           throw Object.assign(new Error('Invalid priority value'), { status: 400 });
         }
       }
-      const existingRequest = await requestService.getAllRequests({ _id: new mongoose.Types.ObjectId(String(id)), account_id });
+      const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -126,10 +122,8 @@ class RequestController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 400 });
-      }
-      const existingRequest = await requestService.getAllRequests({ _id: new mongoose.Types.ObjectId(String(id)), account_id });
+      const requestId = helperService.validateObjectId(id);
+      const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -150,13 +144,11 @@ class RequestController {
     try {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
       const { params: { id }, body: { remarks } } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 400 });
-      }
+      const requestId = helperService.validateObjectId(id);
       if(!remarks) {
         throw Object.assign(new Error('Remarks is required'), { status: 400 });
       }
-      const existingRequest = await requestService.getAllRequests({ _id: new mongoose.Types.ObjectId(String(id)), account_id });
+      const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -179,10 +171,8 @@ class RequestController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if(!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
+      const requestId = helperService.validateObjectId(id);
+      const match: any = { _id: requestId, account_id: account_id };
       const existingRequest = await requestService.getAllRequests(match);
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });

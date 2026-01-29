@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { userWorkOrderService } from './userWorkOrder.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
+import { helperService } from '../../util/helper';
 import mongoose from 'mongoose';
 import { orderService } from '../../work/order/order.service';
 
@@ -21,8 +22,9 @@ class UserWorkOrderController {
         match.userId = user_id;
       }
       if (workOrderId && mongoose.Types.ObjectId.isValid(String(workOrderId))) {
-        match.woId = workOrderId;
-        const workOrderData: any = await orderService.getAllOrders({ _id: new mongoose.Types.ObjectId(String(workOrderId)) , account_id, visible: true });
+        const woId = helperService.validateObjectId(workOrderId);
+        match.woId = woId;
+        const workOrderData: any = await orderService.getAllOrders({ _id: woId , account_id, visible: true });
         if (!workOrderData || workOrderData.length === 0) {
           throw Object.assign(new Error('No data found'), { status: 404 });
         }
@@ -40,10 +42,8 @@ class UserWorkOrderController {
   async getMappedData (req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { workOrderId } = req.params;
-      if (!workOrderId || !mongoose.Types.ObjectId.isValid(String(workOrderId))) {
-        throw Object.assign(new Error("Invalid ID"), { status: 400 });
-      }
-      const data = await userWorkOrderService.mappedData({ woId: new mongoose.Types.ObjectId(String(workOrderId)) });
+      const woId = helperService.validateObjectId(workOrderId);
+      const data = await userWorkOrderService.mappedData({ woId: woId });
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

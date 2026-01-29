@@ -7,11 +7,11 @@ import { rolesService } from "../../masters/user/role/roles.service";
 import { MailerService } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
+import { helperService } from "../../util/helper";
 import { IAccount } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
-import mongoose from "mongoose";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -143,7 +143,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     if (!email && !org_id) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
-    const userDetails = await UserModel.findOne({ email, account_id: new mongoose.Types.ObjectId(String(org_id)), user_status: 'active' });
+    const userDetails = await UserModel.findOne({ email, account_id: helperService.validateObjectId(org_id), user_status: 'active' });
     if (!userDetails) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }

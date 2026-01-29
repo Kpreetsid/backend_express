@@ -6,24 +6,10 @@ import { mapUserToLocationService } from '../../transaction/mapUserLocation/user
 import { mapUserToAssetService } from '../../transaction/mapUserLocation/userLocation.service';
 import { uploadFilesService } from '../../util/upload';
 import { locationService } from '../location/location.service';
-import mongoose from 'mongoose';
 import { processorAPIService } from '../../api-processor';
+import { helperService } from '../../util/helper';
 
 class EquipmentController {
-  validateObjectId = (id: string): mongoose.Types.ObjectId => {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error("Invalid ID"), { status: 400 });
-    }
-    return new mongoose.Types.ObjectId(id);
-  };
-
-  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
-    const idsArray = ids.split(",").filter(id => id.trim() !== "");
-    if (idsArray.length === 0) {
-      throw Object.assign(new Error("Invalid IDs"), { status: 400 });
-    }
-    return idsArray.map((id) => this.validateObjectId(id));
-  };
   
   getAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
@@ -66,10 +52,7 @@ class EquipmentController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(`${id}`), account_id: account_id, visible: true };
+      const match: any = { _id: helperService.validateObjectId(id), account_id: account_id, visible: true };
       if (top_level_asset_id) {
         match.top_level_asset_id = top_level_asset_id.toString().split(',');
       }
@@ -77,7 +60,7 @@ class EquipmentController {
         match.top_level = top_level == 'true' ? true : false;
       }
       if (locationId) {
-        match.locationId = new mongoose.Types.ObjectId(`${locationId}`);
+        match.locationId = helperService.validateObjectId(locationId);
       }
       const data = await equipmentService.getAllEquipment(match);
       if (!data || data.length === 0) {
@@ -93,10 +76,7 @@ class EquipmentController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      const childIds = await equipmentService.getAllChildEquipmentIDs(new mongoose.Types.ObjectId(`${id}`));
+      const childIds = await equipmentService.getAllChildEquipmentIDs(helperService.validateObjectId(id));
       if (childIds.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -118,7 +98,7 @@ class EquipmentController {
       let assetQuery: any = { account_id, visible: true };
       if (userRole !== "admin") {
         const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-        const assetIds = mapData.flatMap(doc => doc?.assetId ? [new mongoose.Types.ObjectId(doc.assetId)] : [] );
+        const assetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : [] );
         assetQuery.$or = [ { _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
       }
       const isAssetExists = await equipmentService.checkEquipment(assetQuery);
@@ -126,11 +106,11 @@ class EquipmentController {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       if (id) {
-        const assetIds = id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`));
+        const assetIds = helperService.validateObjectIds(id);
         assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
       }
       if (location_id) {
-        assetQuery.locationId = { $in: location_id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`)) };
+        assetQuery.locationId = helperService.validateObjectIds(location_id);
       }
       const data = await equipmentService.getEquipmentTreeData(assetQuery);
       if (!data || data.length === 0) {
@@ -146,15 +126,12 @@ class EquipmentController {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       let { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad Request'), { status: 400 });
-      }
       let assetQuery: any = { account_id, visible: true };
-      const assetIds = id.toString().split(',').map((x: any) => new mongoose.Types.ObjectId(`${x}`));
+      const assetIds = helperService.validateObjectIds(id);
       assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
       if (userRole !== "admin") {
         const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-        const assetIds = mapData.flatMap(doc => doc?.assetId ? [new mongoose.Types.ObjectId(doc.assetId)] : [] );
+        const assetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : [] );
         assetQuery.$or = [ { _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
       }
       const isAssetExists = await equipmentService.checkEquipment(assetQuery);
@@ -365,14 +342,11 @@ class EquipmentController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
       const { image_path } = req.body;
       if (!image_path) {
         throw Object.assign(new Error('Image path is required'), { status: 400 });
       }
-      const dataExists: any = await equipmentService.getAllEquipment({ _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true });
+      const dataExists: any = await equipmentService.getAllEquipment({ _id: helperService.validateObjectId(id), account_id: account_id, visible: true });
       if (!dataExists || dataExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -387,10 +361,7 @@ class EquipmentController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
-      const match: any = { _id: id, account_id: account_id, visible: true };
+      const match: any = { _id: helperService.validateObjectId(id), account_id: account_id, visible: true };
       const dataExists: any = await equipmentService.getAllEquipment(match);
       if (!dataExists || dataExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -408,10 +379,7 @@ class EquipmentController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userToken = get(req, "userToken", {}) as string;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error("No asset id provided"), { status: 400 });
-      }
-      const dataExists: any = await equipmentService.getAllEquipment({ _id: id, account_id, visible: true });
+      const dataExists: any = await equipmentService.getAllEquipment({ _id: helperService.validateObjectId(id), account_id, visible: true });
       if (!dataExists || dataExists.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
