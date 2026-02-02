@@ -12,6 +12,7 @@ export default (router: express.Router) => {
     floorMapRouter.get('/:id', floorMapController.getFloorMapByID);
     floorMapRouter.post('/', hasRolePermission('floorMap', 'create_kpi'), floorMapController.createFloorMap);
     floorMapRouter.put('/:id', hasRolePermission('floorMap', 'upload_floor_map'), floorMapController.updateFloorMap);
+    floorMapRouter.patch('/:id', hasRolePermission('floorMap', 'upload_floor_map'), floorMapController.updateFloorMap);
     floorMapRouter.delete('/:id', hasRolePermission('floorMap', 'delete_kpi'), floorMapController.removeFloorMap);
     router.use('/floor-map', floorMapRouter);
 }

@@ -7,6 +7,7 @@ export default (router: express.Router) => {
     postRouter.get('/:id', postController.getPost);
     postRouter.post('/', postController.createPost);
     postRouter.put('/:id', postController.updatePost);
+    postRouter.patch('/:id', postController.updatePost);
     postRouter.delete('/:id', postController.removePost);
     router.use('/posts', postRouter);
 }

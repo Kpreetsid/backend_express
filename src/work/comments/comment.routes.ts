@@ -8,6 +8,7 @@ export default (router: Router) => {
   router.get("/:commentId", validateId, commentController.getDataById);
   router.post("/", validateBody(createCommentSchema), commentController.create);
   router.put("/:commentId", validateId, validateBody(updateCommentSchema), commentController.update);
+  router.patch("/:commentId", validateId, validateBody(updateCommentSchema), commentController.update);
   router.delete("/:commentId", validateId, commentController.remove);
   return router;
 };

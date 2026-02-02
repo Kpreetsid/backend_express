@@ -7,6 +7,7 @@ export default (router: express.Router) => {
     instructionRouter.get('/:id', instructionController.getDataById);
     instructionRouter.post('/', instructionController.create);
     instructionRouter.put('/:id', instructionController.update);
+    instructionRouter.patch('/:id', instructionController.update);
     instructionRouter.delete('/:id', instructionController.remove);
     router.use('/instructions', instructionRouter);
 }

@@ -15,6 +15,7 @@ export default (router: express.Router) => {
   locationRouter.post('/child-assets', locationController.getChildAssetsAgainstLocation);
   locationRouter.put('/floor-map-image/:id', locationController.updateLocationFloorMapImage);
   locationRouter.put('/:id', hasRolePermission('location', 'edit_location'), locationController.updateLocation);
+  locationRouter.patch('/:id', hasRolePermission('location', 'edit_location'), locationController.updateLocation);
   locationRouter.delete('/:id', hasRolePermission('location', 'delete_location'), locationController.removeLocation);
   router.use('/locations', locationRouter);
 };

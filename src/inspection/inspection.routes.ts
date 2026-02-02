@@ -9,6 +9,7 @@ export default () => {
   inspectionRouter.get('/:id', validateId, inspectionController.getById);
   inspectionRouter.post('/', validateBody(createInspectionSchema), inspectionController.create);
   inspectionRouter.put('/:id', validateId, validateBody(updateInspectionSchema), inspectionController.updateById);
+  inspectionRouter.patch('/:id', validateId, validateBody(updateInspectionSchema), inspectionController.updateById);
   inspectionRouter.delete('/:id', validateId, inspectionController.removeById);
   return inspectionRouter;
 };

@@ -8,6 +8,7 @@ export default (router: express.Router) => {
     roleRouter.get('/:id', rolesController.getDataById);
     roleRouter.post('/', rolesController.createRole);
     roleRouter.put('/:id', rolesController.updateRole);
+    roleRouter.patch('/:id', rolesController.updateRole);
     roleRouter.delete('/:id', rolesController.removeRole);
     router.use('/roles', roleRouter);
 }

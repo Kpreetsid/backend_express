@@ -7,6 +7,7 @@ export default (router: express.Router) => {
     sopRouter.get('/:id', sopsController.getSop);
     sopRouter.post('/', sopsController.create);
     sopRouter.put('/:id', sopsController.update);
+    sopRouter.patch('/:id', sopsController.update);
     sopRouter.delete('/:id', sopsController.remove);
     router.use('/sops', sopRouter);
 }

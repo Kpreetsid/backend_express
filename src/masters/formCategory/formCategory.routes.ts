@@ -7,6 +7,7 @@ export default (router: express.Router) => {
     formCategoryRouter.get('/:id', formCategoryController.getFormCategoryByID);
     formCategoryRouter.post('/', formCategoryController.create);
     formCategoryRouter.put('/:id', formCategoryController.update);
+    formCategoryRouter.patch('/:id', formCategoryController.update);
     formCategoryRouter.delete('/:id', formCategoryController.remove);
     router.use('/form-categories', formCategoryRouter);
 }

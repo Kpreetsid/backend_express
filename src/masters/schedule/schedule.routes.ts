@@ -7,6 +7,7 @@ export default (router: express.Router) => {
     scheduleRouter.get('/:id', scheduleController.getDataById);
     scheduleRouter.post('/', scheduleController.create);
     scheduleRouter.put('/:id', scheduleController.update);
+    scheduleRouter.patch('/:id', scheduleController.update);
     scheduleRouter.delete('/:id', scheduleController.remove);
     router.use('/schedulers', scheduleRouter);
 }

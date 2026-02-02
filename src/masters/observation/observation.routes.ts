@@ -8,6 +8,7 @@ export default (router: express.Router) => {
     observationRouter.get('/:id', observationController.getObservation);
     observationRouter.post('/', hasRolePermission('asset', 'add_observation'), observationController.createObservation);
     observationRouter.put('/:id', observationController.updateObservation);
+    observationRouter.patch('/:id', observationController.updateObservation);
     observationRouter.delete('/:id', observationController.removeObservation);
     router.use('/observations', observationRouter);
 }
