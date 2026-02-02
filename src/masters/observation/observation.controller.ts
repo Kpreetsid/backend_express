@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { observationService } from './observation.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 import { assetService } from '../asset/asset.service';
 import { processorAPIService } from '../../api-processor';
 

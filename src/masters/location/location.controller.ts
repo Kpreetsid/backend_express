@@ -3,8 +3,8 @@ import { locationService } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
-import { helperService } from '../../util/helper';
-import { applyRoleFilter } from '../../util/roleFilter';
+import { helperService } from '../../utils/helper';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 class LocationController {
 

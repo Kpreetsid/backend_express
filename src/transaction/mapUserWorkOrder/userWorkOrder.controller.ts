@@ -2,17 +2,17 @@ import { Request, Response, NextFunction } from 'express';
 import { userWorkOrderService } from './userWorkOrder.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 import mongoose from 'mongoose';
 import { orderService } from '../../work/order/order.service';
 
 class UserWorkOrderController {
-  async getUserWorkOrders (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getUserWorkOrders(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const match: any = {};
       const { workOrderId } = req.query;
-      if(userRole === 'admin') {
+      if (userRole === 'admin') {
         const workOrderData: any = await orderService.getAllOrders({ account_id, visible: true });
         if (!workOrderData || workOrderData.length === 0) {
           throw Object.assign(new Error('No data found'), { status: 404 });
@@ -24,7 +24,7 @@ class UserWorkOrderController {
       if (workOrderId && mongoose.Types.ObjectId.isValid(String(workOrderId))) {
         const woId = helperService.validateObjectId(workOrderId);
         match.woId = woId;
-        const workOrderData: any = await orderService.getAllOrders({ _id: woId , account_id, visible: true });
+        const workOrderData: any = await orderService.getAllOrders({ _id: woId, account_id, visible: true });
         if (!workOrderData || workOrderData.length === 0) {
           throw Object.assign(new Error('No data found'), { status: 404 });
         }
@@ -38,8 +38,8 @@ class UserWorkOrderController {
       next(error);
     }
   };
-  
-  async getMappedData (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getMappedData(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { workOrderId } = req.params;
       const woId = helperService.validateObjectId(workOrderId);

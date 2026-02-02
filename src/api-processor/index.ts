@@ -1,4 +1,4 @@
-import { getExternalData } from "../util/externalAPI";
+import { getExternalData } from "../utils/externalAPI";
 
 class ProcessorAPIService {
     private assetHealthArray = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
@@ -11,7 +11,7 @@ class ProcessorAPIService {
 
     updateAssetHealthStatus = async (body: any, account_id: any, user_id: any, token: any) => {
         const payload: any = { "asset_id": body.assetId, "asset_status": body.status, "org_id": account_id };
-        if(body.alarmId) {
+        if (body.alarmId) {
             payload.alarm_id = body.alarmId;
         }
         await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);

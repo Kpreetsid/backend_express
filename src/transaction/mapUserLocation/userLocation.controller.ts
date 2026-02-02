@@ -2,13 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { mapUserToAssetService, mapUserToLocationService } from './userLocation.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 import { assetService } from '../../masters/asset/asset.service';
 import { locationService } from '../../masters/location/location.service';
 
 class MapUserAssetLocationController {
 
-   async getUserLocations (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getUserLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const query = req.query;
@@ -42,13 +42,13 @@ class MapUserAssetLocationController {
       next(error);
     }
   };
-  
-   async getUserAssets (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { userId, assetId, populate } = req.query;
       const match: any = { assetId: { $exists: true } };
-      if(userId) {
+      if (userId) {
         match.userId = helperService.validateObjectId(userId);
       }
       if (userRole === 'admin') {
@@ -76,12 +76,12 @@ class MapUserAssetLocationController {
       next(error);
     }
   };
-  
-   async setUserAssets (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async setUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const body = req.body;
       const data = body.filter((doc: any) => doc.assetId && doc.userId);
-      if(data.length === 0) {
+      if (data.length === 0) {
         throw Object.assign(new Error('Invalid data'), { status: 400 });
       }
       await mapUserToAssetService.createMapUserAssets(body);
@@ -90,8 +90,8 @@ class MapUserAssetLocationController {
       next(error);
     }
   };
-  
-   async updateUserAssets (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async updateUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { params: { assetId }, body } = req;
       if (!assetId || body.length === 0) {
@@ -103,13 +103,13 @@ class MapUserAssetLocationController {
       next(error);
     }
   }
-  
-   async setUserLocations (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async setUserLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const body = req.body;
       const data = body.filter((doc: any) => doc.locationId && doc.userId);
-      if(data.length === 0) {
+      if (data.length === 0) {
         throw Object.assign(new Error('Invalid data'), { status: 400 });
       }
       await mapUserToLocationService.mapUserLocations(data, account_id);
@@ -118,8 +118,8 @@ class MapUserAssetLocationController {
       next(error);
     }
   };
-  
-   async updateUserLocations (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async updateUserLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const body = req.body;
@@ -132,8 +132,8 @@ class MapUserAssetLocationController {
       next(error);
     }
   };
-  
-   async updateSendMailFlag (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async updateSendMailFlag(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const body: { _id: string; sendMail: boolean, alert: boolean, danger: boolean, critical: boolean }[] = req.body;
       if (!Array.isArray(body) || body.length === 0) {

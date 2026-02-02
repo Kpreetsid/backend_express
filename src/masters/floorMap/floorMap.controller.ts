@@ -3,8 +3,8 @@ import { get } from "lodash";
 import { floorMapService } from './floorMap.service';
 import { IUser } from '../../models/user.model';
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
-import { helperService } from "../../util/helper";
-import { applyRoleFilter } from "../../util/roleFilter";
+import { helperService } from "../../utils/helper";
+import { applyRoleFilter } from "../../utils/roleFilter";
 
 class FloorMapController {
 

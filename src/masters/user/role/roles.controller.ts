@@ -3,7 +3,7 @@ import { rolesService } from './roles.service';
 import { IUser } from '../../../models/user.model';
 import { usersService } from '../user.service';
 import { get } from 'lodash';
-import { helperService } from '../../../util/helper';
+import { helperService } from '../../../utils/helper';
 import { RoleManager } from '../../../_role/newUserRoles';
 
 class RolesController {

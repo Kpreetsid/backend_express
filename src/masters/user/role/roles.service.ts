@@ -2,7 +2,7 @@ import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model
 import { IUser } from "../../../models/user.model";
 import { PlatformControlManager } from "../../../_role/userRoles";
 import { RoleManager } from "../../../_role/newUserRoles";
-import { helperService } from "../../../util/helper";
+import { helperService } from "../../../utils/helper";
 
 class RolesService {
   async getRoles(match: any): Promise<any> {

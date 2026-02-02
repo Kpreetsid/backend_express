@@ -3,11 +3,11 @@ import { orderService } from './order.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { userWorkOrderService } from '../../transaction/mapUserWorkOrder/userWorkOrder.service';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 
 class OrderController {
 
-  async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, user_role: userRole, _id: user_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
@@ -17,22 +17,22 @@ class OrderController {
       if (wo_asset_id) match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       if (wo_location_id) match.wo_location_id = { $in: helperService.validateObjectIds(wo_location_id.toString()) };
       const workOrderIds: any = [];
-      if(assignedUser) {
-        for(let i = 0; i < assignedUser.toString().split(',').length; i++) {
+      if (assignedUser) {
+        for (let i = 0; i < assignedUser.toString().split(',').length; i++) {
           workOrderIds.push(await userWorkOrderService.getMappedWorkOrderIDs(assignedUser.toString().split(',')[i]));
         }
         match._id = { $in: workOrderIds.flat() };
       }
-      if(userRole !== 'admin') {
+      if (userRole !== 'admin') {
         const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
-        if(!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
+        if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
           match.createdBy = user_id;
         } else {
-          match.$or = [ { _id: { $in: userWorkOrderIdList } }, { createdBy: user_id } ];
+          match.$or = [{ _id: { $in: userWorkOrderIdList } }, { createdBy: user_id }];
         }
       }
       const data = await orderService.getAllOrders(match);
-      if(!data || data.length === 0) {
+      if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Work orders fetched successfully.", data });
@@ -116,8 +116,8 @@ class OrderController {
       next(error);
     }
   }
-  
-  async getOrderById (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getOrderById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
@@ -131,12 +131,12 @@ class OrderController {
       next(error);
     }
   }
-  
-  async createOrder (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async createOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
       const body = req.body;
-      if(!body.userIdList || body.userIdList.length === 0) {
+      if (!body.userIdList || body.userIdList.length === 0) {
         throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
       }
       const data = await orderService.createWorkOrder(body, user);
@@ -148,12 +148,12 @@ class OrderController {
       next(error);
     }
   }
-  
-  async updateOrder (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async updateOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user: any = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if(!body?.userIdList || body.userIdList?.length === 0) {
+      if (!body?.userIdList || body.userIdList?.length === 0) {
         throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
       }
       const orderId = helperService.validateObjectId(id);
@@ -168,7 +168,7 @@ class OrderController {
     }
   }
 
-  async updateOrderSubmitData (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async updateOrderSubmitData(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user: any = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
@@ -196,7 +196,7 @@ class OrderController {
     }
   }
 
-  async statusUpdateOrder (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async statusUpdateOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body: { status } } = req;
@@ -205,24 +205,24 @@ class OrderController {
       if (!isWorkOrderExist && isWorkOrderExist.length === 0) {
         throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
-      if(status === 'Completed') {
-        if(isWorkOrderExist[0].tasks?.length > 0) {
-          if(!isWorkOrderExist[0].task_submitted) {
+      if (status === 'Completed') {
+        if (isWorkOrderExist[0].tasks?.length > 0) {
+          if (!isWorkOrderExist[0].task_submitted) {
             throw Object.assign(new Error('Task is not completed'), { status: 400 });
           }
         }
-        if(isWorkOrderExist[0].sop_form_id) {
-          if(!isWorkOrderExist[0].sop_form_submitted) {
+        if (isWorkOrderExist[0].sop_form_id) {
+          if (!isWorkOrderExist[0].sop_form_submitted) {
             throw Object.assign(new Error('Form is not completed'), { status: 400 });
           }
         }
-        if(isWorkOrderExist[0].parts?.length > 0) {
+        if (isWorkOrderExist[0].parts?.length > 0) {
           isWorkOrderExist[0].parts = isWorkOrderExist[0].parts.map((part: any) => {
             part.actualQuantity = part.estimatedQuantity;
             return part;
           });
         }
-      } else if(status === 'Open') {
+      } else if (status === 'Open') {
         isWorkOrderExist[0].task_submitted = false;
         isWorkOrderExist[0].sop_form_submitted = false;
       }
@@ -236,8 +236,8 @@ class OrderController {
       next(error);
     }
   }
-  
-  async remove (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
@@ -252,8 +252,8 @@ class OrderController {
       next(error);
     }
   }
-  
-  async getOrderStatus (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getOrderStatus(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id: account_id, visible: true };
@@ -273,8 +273,8 @@ class OrderController {
       next(error);
     }
   }
-  
-  async getOrderPriority (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getOrderPriority(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id: account_id };
@@ -294,8 +294,8 @@ class OrderController {
       next(error);
     }
   }
-  
-  async getMonthlyCount (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getMonthlyCount(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id: account_id };
@@ -315,8 +315,8 @@ class OrderController {
       next(error);
     }
   }
-  
-  async getPlannedUnplanned (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getPlannedUnplanned(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, 'user', {}) as IUser;
       const match: any = { account_id, visible: true };
@@ -338,8 +338,8 @@ class OrderController {
       next(error);
     }
   };
-  
-  async getSummaryData (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getSummaryData(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { wo_asset_id, fromDate, toDate } = req.query;
@@ -370,8 +370,8 @@ class OrderController {
       next(error);
     }
   };
-  
-  async getPendingOrders (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getPendingOrders(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
@@ -382,10 +382,10 @@ class OrderController {
       if (fromDate && toDate) {
         match.createdAt = { $gte: new Date(`${fromDate}`), $lte: new Date(`${toDate}`) };
       }
-      if(userRole !== 'admin') {
+      if (userRole !== 'admin') {
         const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
-        if(!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });  
+        if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
+          throw Object.assign(new Error('No data found'), { status: 404 });
         }
         match._id = { $in: userWorkOrderIdList };
       }

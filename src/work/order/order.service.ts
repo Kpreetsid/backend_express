@@ -5,64 +5,72 @@ import { userWorkOrderService } from "../../transaction/mapUserWorkOrder/userWor
 import { partsService } from "../../masters/part/parts.service";
 import { commentService } from "../comments/comment.service";
 import { requestService } from "../request/request.service";
-import { helperService } from "../../util/helper";
+import { helperService } from "../../utils/helper";
 
 class OrderService {
   private mailerService: MailerService;
-  
+
   constructor() {
     this.mailerService = new MailerService();
   }
 
-  async getAllOrders (match: any): Promise<any> {
+  async getAllOrders(match: any): Promise<any> {
     let data = await WorkOrderModel.aggregate([
       { $match: match },
-      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
-      { $lookup: { 
-        from: "asset_master", 
-        let: { wo_asset_id: '$wo_asset_id' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
-          { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "asset" 
-      }},
-      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
-      { $lookup: { 
-        from: "location_master", 
-        let: { wo_location_id: '$wo_location_id' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
-          { $project: { _id: 1, location_name: 1, location_type: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "location" 
-      }},
-      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
-      { $lookup: { 
-        from: "users", 
-        let: { createdBy: '$createdBy' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "createdBy" 
-      }},
-      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true }},
-      { $lookup: {
-        from: "users",
-        let: { updatedBy: '$updatedBy' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "updatedBy"
-      }},
-      { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true }},
-      { $addFields: { id: "$_id" }}
+      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" } },
+      {
+        $lookup: {
+          from: "asset_master",
+          let: { wo_asset_id: '$wo_asset_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
+            { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "asset"
+        }
+      },
+      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "location_master",
+          let: { wo_location_id: '$wo_location_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
+            { $project: { _id: 1, location_name: 1, location_type: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "location"
+        }
+      },
+      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "users",
+          let: { createdBy: '$createdBy' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
+            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "createdBy"
+        }
+      },
+      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "users",
+          let: { updatedBy: '$updatedBy' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
+            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "updatedBy"
+        }
+      },
+      { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } },
+      { $addFields: { id: "$_id" } }
     ]);
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -94,52 +102,60 @@ class OrderService {
   async getAllWorkOrders(match: any, skip: number = 0, limit: number = 25) {
     let data = await WorkOrderModel.aggregate([
       { $match: match },
-      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" }},
-      { $lookup: { 
-        from: "asset_master", 
-        let: { wo_asset_id: '$wo_asset_id' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
-          { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "asset" 
-      }},
-      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true }},
-      { $lookup: { 
-        from: "location_master", 
-        let: { wo_location_id: '$wo_location_id' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
-          { $project: { _id: 1, location_name: 1, location_type: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "location" 
-      }},
-      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true }},
-      { $lookup: { 
-        from: "users", 
-        let: { createdBy: '$createdBy' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "createdBy" 
-      }},
-      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true }},
-      { $lookup: {
-        from: "users",
-        let: { updatedBy: '$updatedBy' },
-        pipeline: [
-          { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-          { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-          { $addFields: { id: '$_id' } }
-        ],
-        as: "updatedBy"
-      }},
-      { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true }},
-      { $addFields: { id: "$_id" }},
+      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" } },
+      {
+        $lookup: {
+          from: "asset_master",
+          let: { wo_asset_id: '$wo_asset_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
+            { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "asset"
+        }
+      },
+      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "location_master",
+          let: { wo_location_id: '$wo_location_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
+            { $project: { _id: 1, location_name: 1, location_type: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "location"
+        }
+      },
+      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "users",
+          let: { createdBy: '$createdBy' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
+            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "createdBy"
+        }
+      },
+      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: "users",
+          let: { updatedBy: '$updatedBy' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
+            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
+            { $addFields: { id: '$_id' } }
+          ],
+          as: "updatedBy"
+        }
+      },
+      { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } },
+      { $addFields: { id: "$_id" } },
       { $sort: { createdAt: -1 } },
       { $skip: skip },
       { $limit: limit }
@@ -166,8 +182,8 @@ class OrderService {
     }));
     return result;
   }
-  
-  async orderStatus (match: any): Promise<any> {
+
+  async orderStatus(match: any): Promise<any> {
     const data = await WorkOrderModel.aggregate([
       { $match: match },
       { $group: { _id: '$status', count: { $sum: 1 } } },
@@ -183,8 +199,8 @@ class OrderService {
     });
     return result;
   };
-  
-  async orderPriority (match: any): Promise<any> {
+
+  async orderPriority(match: any): Promise<any> {
     match.visible = true;
     const data: IWorkOrder[] = await WorkOrderModel.aggregate([
       { $match: match },
@@ -201,8 +217,8 @@ class OrderService {
     });
     return result;
   };
-  
-  async monthlyCount (match: any): Promise<any> {
+
+  async monthlyCount(match: any): Promise<any> {
     match.visible = true;
     const data: IWorkOrder[] = await WorkOrderModel.find(match)
     if (data.length === 0) {
@@ -220,8 +236,8 @@ class OrderService {
     });
     return monthlyCountArray;
   };
-  
-  async plannedUnplanned (match: any): Promise<any> {
+
+  async plannedUnplanned(match: any): Promise<any> {
     const data: any = await WorkOrderModel.find(match).select('_id createdAt createdFrom').lean();
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -257,8 +273,8 @@ class OrderService {
     }
     return final_result;
   };
-  
-  async summaryData (workOrderMatch: any): Promise<any> {
+
+  async summaryData(workOrderMatch: any): Promise<any> {
     try {
       const workOrders: any = await WorkOrderModel.find(workOrderMatch).lean();
       const today = new Date();
@@ -283,11 +299,11 @@ class OrderService {
           unplannedWO.push(item);
         }
       }
-      const workRequestMatch: any = { status: { $nin: ['completed']}, asset_id: workOrderMatch.wo_asset_id }
-      if(workOrderMatch.wo_location_id) {
+      const workRequestMatch: any = { status: { $nin: ['completed'] }, asset_id: workOrderMatch.wo_asset_id }
+      if (workOrderMatch.wo_location_id) {
         workRequestMatch.location_id = workOrderMatch.wo_location_id;
       }
-      if(workOrderMatch.createdAt) {
+      if (workOrderMatch.createdAt) {
         workRequestMatch.createdAt = workOrderMatch.createdAt;
       }
       const workRequests = await requestService.getAllRequests(workRequestMatch);
@@ -299,41 +315,41 @@ class OrderService {
       throw err;
     }
   };
-  
-  async generateOrderNo (account_id: any): Promise<string> {
+
+  async generateOrderNo(account_id: any): Promise<string> {
     const year = new Date().getFullYear();
-    const totalCount = await WorkOrderModel.countDocuments({ account_id, createdAt: { $gte: new Date(`${year}-01-01T00:00:00Z`), $lte: new Date(`${year}-12-31T23:59:59Z`)}});
+    const totalCount = await WorkOrderModel.countDocuments({ account_id, createdAt: { $gte: new Date(`${year}-01-01T00:00:00Z`), $lte: new Date(`${year}-12-31T23:59:59Z`) } });
     const sequence = String(totalCount + 1).padStart(4, "0");
     return `WO-${year}${sequence}`;
   };
-  
-  async createWorkOrder (body: any, user: IUser): Promise<any> {
+
+  async createWorkOrder(body: any, user: IUser): Promise<any> {
     const newAsset = new WorkOrderModel({
-      account_id : user.account_id,
-      order_no : await this.generateOrderNo(user.account_id),
-      title : body.title,
-      description : body.description,
-      estimated_time : body.estimated_time,
-      priority : body.priority,
-      status : body.status,
-      type : body.type,
-      nature_of_work : body.type,
-      sop_form_id : body.sop_form_id,
-      rescheduleEnabled : false,
-      created_by : user._id,
-      wo_asset_id : body.wo_asset_id,
-      wo_location_id : body.wo_location_id,
-      end_date : body.end_date,
-      start_date : body.start_date,
-      sopForm : body.sopForm,
-      createdFrom : body.createdFrom,
-      files : body.files,
-      tasks : body.tasks,
-      task_submitted : body.task_submitted,
-      parts : body.parts,
-      work_request_id : body.work_request_id,
-      asset_report_id : body.asset_report_id,
-      status_details : [{ status: body.status, createdBy: user._id }],
+      account_id: user.account_id,
+      order_no: await this.generateOrderNo(user.account_id),
+      title: body.title,
+      description: body.description,
+      estimated_time: body.estimated_time,
+      priority: body.priority,
+      status: body.status,
+      type: body.type,
+      nature_of_work: body.type,
+      sop_form_id: body.sop_form_id,
+      rescheduleEnabled: false,
+      created_by: user._id,
+      wo_asset_id: body.wo_asset_id,
+      wo_location_id: body.wo_location_id,
+      end_date: body.end_date,
+      start_date: body.start_date,
+      sopForm: body.sopForm,
+      createdFrom: body.createdFrom,
+      files: body.files,
+      tasks: body.tasks,
+      task_submitted: body.task_submitted,
+      parts: body.parts,
+      work_request_id: body.work_request_id,
+      asset_report_id: body.asset_report_id,
+      status_details: [{ status: body.status, createdBy: user._id }],
       createdBy: user._id
     });
     const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
@@ -359,8 +375,8 @@ class OrderService {
     });
     return data;
   };
-  
-  async updateById (id: string, body: any, user: IUser): Promise<any> {
+
+  async updateById(id: string, body: any, user: IUser): Promise<any> {
     const objectId = helperService.validateObjectId(id);
     let existingOrder: any = await WorkOrderModel.findById(objectId);
     if (!existingOrder) {
@@ -380,15 +396,15 @@ class OrderService {
     return data;
   };
 
-  async updateDataById (id: string, body: any, user: IUser): Promise<any> {
+  async updateDataById(id: string, body: any, user: IUser): Promise<any> {
     return await WorkOrderModel.findByIdAndUpdate(id, { ...body, updatedBy: user._id }, { new: true });
   };
-  
-  async orderStatusChange (id: any, body: any): Promise<any> {
+
+  async orderStatusChange(id: any, body: any): Promise<any> {
     return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
   }
-  
-  async removeOrder (id: any, user_id: any): Promise<any> {
+
+  async removeOrder(id: any, user_id: any): Promise<any> {
     await userWorkOrderService.removeMappedUsers(id);
     const order: any = await WorkOrderModel.findById(id).lean();
     if (order?.parts?.length > 0) {
@@ -396,8 +412,8 @@ class OrderService {
     }
     return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
   };
-  
-  async deleteWorkOrderById (id: any, user_id: any): Promise<any> {
+
+  async deleteWorkOrderById(id: any, user_id: any): Promise<any> {
     await userWorkOrderService.removeMappedUsers(id);
     const order: any = await WorkOrderModel.findById(id).lean();
     if (order?.parts?.length > 0) {

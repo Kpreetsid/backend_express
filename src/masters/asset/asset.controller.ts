@@ -4,9 +4,9 @@ import { assetService } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { mapUserToAssetService, mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { locationService } from '../location/location.service';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 import { processorAPIService } from '../../api-processor';
-import { applyRoleFilter } from '../../util/roleFilter';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 class AssetController {
 

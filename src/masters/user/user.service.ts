@@ -1,9 +1,9 @@
 import { UserModel, IUser, UserLoginPayload } from "../../models/user.model";
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
-import { passwordService } from '../../util/bcrypt';
+import { passwordService } from '../../utils/bcrypt';
 import { rolesService } from './role/roles.service';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 import { MailerService } from "../../_config/mailer";
 import { RoleManager } from "../../_role/newUserRoles";
 import { RoleMenuModel } from "../../models/userRoleMenu.model";
@@ -14,7 +14,7 @@ class UsersService {
   constructor() {
     this.mailerService = new MailerService();
   }
-  
+
   async getAllUsers(match: any) {
     return await UserModel.find(match).select('-password');
   };
@@ -22,7 +22,7 @@ class UsersService {
   async updateNewRoleMenu() {
     const userList = await UserModel.find({});
     for (const user of userList) {
-      if(user.user_role) {
+      if (user.user_role) {
         const newRoleMenu = await RoleManager.getRoleMenuData(user.user_role);
         await RoleMenuModel.updateOne({ user_id: user._id }, { roleMenu: newRoleMenu });
         console.log(`Updated user role menu for user: ${user._id}, role: ${user.user_role}`);

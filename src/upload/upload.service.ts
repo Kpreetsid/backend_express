@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { UploadModel } from '../models/upload.model';
-import { uploadFilesService } from '../util/upload';
+import { uploadFilesService } from '../utils/upload';
 
 class UploadService {
   async uploadService(req: Request, res: Response, next: NextFunction): Promise<any> {

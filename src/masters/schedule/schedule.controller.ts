@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { scheduleService } from './schedule.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 
 class ScheduleController {
 

@@ -1,10 +1,10 @@
 import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { AssetModel } from "../../models/asset.model";
-import { helperService } from "../../util/helper";
+import { helperService } from "../../utils/helper";
 import mongoose from "mongoose";
 import { mapUserToLocationService, mapUserToAssetService, updateLocationAssetMapping } from '../../transaction/mapUserLocation/userLocation.service';
-import { getData } from "../../util/queryBuilder";
+import { getData } from "../../utils/queryBuilder";
 
 class LocationService {
 
@@ -26,7 +26,7 @@ class LocationService {
     return result;
   };
 
-  async buildLocationTree (parentId: string | null, account_id: any, allowedLocationIds: string[], userRole: string): Promise<any[]> {
+  async buildLocationTree(parentId: string | null, account_id: any, allowedLocationIds: string[], userRole: string): Promise<any[]> {
     const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false } };
     const nodes = await getData(LocationModel, { filter: match });
     return Promise.all(
@@ -169,7 +169,7 @@ class LocationService {
     }
   };
 
-  async getAllChildLocationsRecursive (parentIds: string[]): Promise<string[]> {
+  async getAllChildLocationsRecursive(parentIds: string[]): Promise<string[]> {
     try {
       let childIds: string[] = [];
       for (const parentId of parentIds) {

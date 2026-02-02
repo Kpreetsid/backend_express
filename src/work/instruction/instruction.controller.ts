@@ -2,10 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { instructionService } from './instruction.service';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 
 class InstructionController {
-  async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
@@ -18,8 +18,8 @@ class InstructionController {
       next(error);
     }
   }
-  
-  async getDataById (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getDataById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
@@ -34,8 +34,8 @@ class InstructionController {
       next(error);
     }
   }
-  
-  async create (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const body = req.body;
@@ -48,8 +48,8 @@ class InstructionController {
       next(error);
     }
   }
-  
-  async update (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
@@ -68,8 +68,8 @@ class InstructionController {
       next(error);
     }
   }
-  
-  async remove (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;

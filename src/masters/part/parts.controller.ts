@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { partsService } from './parts.service';
 import { IUser } from '../../models/user.model';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 
 class PartsController {

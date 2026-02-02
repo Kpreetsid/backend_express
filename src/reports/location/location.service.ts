@@ -4,14 +4,14 @@ import { LocationModel } from '../../models/location.model';
 import { ILocationReport, ReportLocationModel } from '../../models/locationReport.model';
 
 class LocationReportService {
-  
-  async getAll (match: any): Promise<ILocationReport[]> {
+
+  async getAll(match: any): Promise<ILocationReport[]> {
     match.visible = true;
     const populateFilter = [{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }, { path: 'location_id', model: "Schema_Location", select: '' }];
     return await ReportLocationModel.find(match).populate(populateFilter).sort({ _id: -1 });
   };
-  
-   getDummyMonthList () {
+
+  getDummyMonthList() {
     const now = new Date();
     const result: any[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -20,8 +20,8 @@ class LocationReportService {
     }
     return result;
   };
-  
-  async fetchAllChildLocationIds (locationId: string, account_id: string): Promise<string[]> {
+
+  async fetchAllChildLocationIds(locationId: string, account_id: string): Promise<string[]> {
     const result: string[] = [];
     const stack: string[] = [locationId];
     while (stack.length > 0) {
@@ -32,8 +32,8 @@ class LocationReportService {
     }
     return result;
   };
-  
-  getAssetHealthHistory () {
+
+  getAssetHealthHistory() {
     const now = new Date();
     const result: any[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -42,8 +42,8 @@ class LocationReportService {
     }
     return result;
   };
-  
-  async createLocationReport (location_id: string, user: any): Promise<any> {
+
+  async createLocationReport(location_id: string, user: any): Promise<any> {
     const locationIds = await this.fetchAllChildLocationIds(location_id, `${user.account_id}`);
     locationIds.push(location_id);
     const assets = await AssetModel.find({ locationId: { $in: locationIds }, account_id: user.account_id, top_level: true, visible: true });
@@ -74,19 +74,19 @@ class LocationReportService {
       { key: 'Structural Looseness', value: 0 },
       { key: 'Other', value: 0 }
     ];
-  
+
     const subLocationMap: Record<string, any> = {};
     validReports.forEach((report: any) => {
       const locationId = report?.locationId?._id;
       const health = report.EquipmentHealth || '1';
       const faults = report.faultData || [];
-  
+
       switch (health) {
         case '2': assetConditionSummaryData[1].value.value++; break;
         case '3': assetConditionSummaryData[2].value.value++; break;
         case '4': assetConditionSummaryData[3].value.value++; break;
         case '5': assetConditionSummaryData[4].value.value++; break;
-        default:  assetConditionSummaryData[0].value.value++;
+        default: assetConditionSummaryData[0].value.value++;
       }
       faults.forEach((f: any) => {
         if (f.value !== 1) {
@@ -122,7 +122,7 @@ class LocationReportService {
         })
       });
     });
-  
+
     for (const loc of Object.values(subLocationMap)) {
       const conditionSummary = assetConditionSummaryData.map(item => ({ ...item, value: { ...item.value, value: 0 } }));
       const faultSummary = assetFaultSummaryData.map(item => ({ ...item, value: 0 }));
@@ -132,7 +132,7 @@ class LocationReportService {
           case '3': conditionSummary[2].value.value++; break;
           case '4': conditionSummary[3].value.value++; break;
           case '5': conditionSummary[4].value.value++; break;
-          default:  conditionSummary[0].value.value++;
+          default: conditionSummary[0].value.value++;
         }
         asset.fault_data.forEach((f: any) => {
           if (f.value !== 1) {
@@ -142,7 +142,7 @@ class LocationReportService {
           }
         });
       });
-  
+
       loc.sub_location_asset_condition_summary_data = conditionSummary;
       loc.sub_location_asset_fault_summary_data = faultSummary;
     }
@@ -160,8 +160,8 @@ class LocationReportService {
     });
     return await insertData.save();
   };
-  
-  async deleteLocationsReport (id: string, accountId: string, user_id: string) {
+
+  async deleteLocationsReport(id: any, accountId: any, user_id: any) {
     return await ReportLocationModel.findOneAndUpdate({ _id: id, account_id: accountId, visible: true }, { visible: false, updatedBy: user_id }, { new: true });
   };
 }

@@ -1,13 +1,13 @@
 import { IUser, UserModel, UserLoginPayload } from "../../models/user.model";
 import { Request, Response, NextFunction } from 'express';
-import { passwordService } from '../../util/bcrypt';
+import { passwordService } from '../../utils/bcrypt';
 import { decryptToken, generateAccessToken, generateExternalAccessToken } from '../../_config/auth';
 import { TokenModel } from "../../models/userToken.model";
 import { rolesService } from "../../masters/user/role/roles.service";
 import { MailerService } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
-import { helperService } from "../../util/helper";
+import { helperService } from "../../utils/helper";
 import { IAccount } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
@@ -62,7 +62,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: {token, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu} });
+    res.status(200).json({ status: true, message: 'Login successful', data: { token, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu } });
   } catch (error) {
     next(error);
   }
@@ -88,7 +88,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     if (!isMatch) {
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });
     }
-    if(user.user_role !== 'admin') {
+    if (user.user_role !== 'admin') {
       const locationList = await mapUserToLocationService.getLocationsMappedData(user._id);
       if (!locationList || locationList.length === 0) {
         throw Object.assign(new Error('User does not have any location'), { status: 401 });
@@ -117,8 +117,8 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
 
 export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { params: { email }} = req;
-    if(!email) {
+    const { params: { email } } = req;
+    if (!email) {
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
     const external_user = await UserModel.findOne({ email, user_status: 'active' });
@@ -134,8 +134,8 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
 
 export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { body: { external_token }} = req;
-    if(!external_token) {
+    const { body: { external_token } } = req;
+    if (!external_token) {
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
     const decoded = decryptToken(external_token);
@@ -166,7 +166,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: {token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data, roleMenu: userRoleMenu.roleMenu, isExternal : !!isExternal} });
+    res.status(200).json({ status: true, message: 'Login successful', data: { token: newToken, accountDetails: accountDetails[0], userDetails: newSafeUserValue, platformControl: userRoleMenu.data, roleMenu: userRoleMenu.roleMenu, isExternal: !!isExternal } });
   } catch (error) {
     next(error);
   }
@@ -176,7 +176,7 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
   const mailerService = new MailerService();
   try {
     const { token, password } = req.body;
-    if(!token) {
+    if (!token) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const userToken = await TokenModel.findOne({ _id: token });

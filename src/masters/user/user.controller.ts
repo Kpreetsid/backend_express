@@ -3,10 +3,10 @@ import { get } from 'lodash';
 import { usersService } from './user.service';
 import { IUser } from '../../models/user.model';
 import { resetPasswordService } from '../../user/resetPassword/resetPassword.service';
-import { passwordService } from '../../util/bcrypt';
-import { applyRoleFilter } from '../../util/roleFilter';
+import { passwordService } from '../../utils/bcrypt';
+import { applyRoleFilter } from '../../utils/roleFilter';
 import { MailerService } from '../../_config/mailer';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 
 class UserController {
   private mailerService: MailerService;

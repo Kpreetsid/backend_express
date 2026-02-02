@@ -4,13 +4,13 @@ import { equipmentService } from './equipment.service';
 import { IUser } from '../../models/user.model';
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { mapUserToAssetService } from '../../transaction/mapUserLocation/userLocation.service';
-import { uploadFilesService } from '../../util/upload';
+import { uploadFilesService } from '../../utils/upload';
 import { locationService } from '../location/location.service';
 import { processorAPIService } from '../../api-processor';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 
 class EquipmentController {
-  
+
   getAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
@@ -98,8 +98,8 @@ class EquipmentController {
       let assetQuery: any = { account_id, visible: true };
       if (userRole !== "admin") {
         const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-        const assetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : [] );
-        assetQuery.$or = [ { _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
+        const assetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : []);
+        assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
       }
       const isAssetExists = await equipmentService.checkEquipment(assetQuery);
       if (!isAssetExists || isAssetExists.length === 0) {
@@ -131,8 +131,8 @@ class EquipmentController {
       assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
       if (userRole !== "admin") {
         const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-        const assetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : [] );
-        assetQuery.$or = [ { _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
+        const assetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : []);
+        assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
       }
       const isAssetExists = await equipmentService.checkEquipment(assetQuery);
       if (!isAssetExists || isAssetExists.length === 0) {

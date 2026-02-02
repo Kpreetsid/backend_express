@@ -1,7 +1,7 @@
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
-import { helperService } from "../../util/helper";
+import { helperService } from "../../utils/helper";
 
 class MapUserToAssetService {
   private buildAlarmFlags = (alarmType: string[] = []) => ({

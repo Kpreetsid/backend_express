@@ -3,33 +3,33 @@ import { requestService } from './request.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../../models/workRequest.model';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 
 class RequestController {
-  async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const { query: { priority, location, status, assignedTo, assignedBy, approvedBy, rejectedBy }} = req;
+      const { query: { priority, location, status, assignedTo, assignedBy, approvedBy, rejectedBy } } = req;
       let match: any = { account_id: account_id };
-      if(priority) {
+      if (priority) {
         match.priority = priority.toString().split(",").map((p) => p.trim()).filter((p) => p !== "");
       }
-      if(location) {
+      if (location) {
         match.location_id = location.toString().split(",").map((l) => l.trim()).filter((l) => l !== "");
       }
-      if(status) {
+      if (status) {
         match.status = status.toString().split(",").map((s) => s.trim()).filter((s) => s !== "");
       }
-      if(assignedTo) {
+      if (assignedTo) {
         match.assigned_to = assignedTo.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
       }
-      if(assignedBy) {
+      if (assignedBy) {
         match.createdBy = assignedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
       }
-      if(approvedBy) {
+      if (approvedBy) {
         match.updatedBy = approvedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
       }
-      if(rejectedBy) {
+      if (rejectedBy) {
         match.updatedBy = rejectedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
       }
       const data = await requestService.getAllRequests(match);
@@ -41,14 +41,14 @@ class RequestController {
       next(error);
     }
   }
-  
-  async getById (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id }, query } = req;
       const requestId = helperService.validateObjectId(id);
       let match: any = { _id: requestId, account_id: account_id };
-      if(query) {
+      if (query) {
         match = { ...match, ...query };
       }
       const data = await requestService.getAllRequests(match);
@@ -60,8 +60,8 @@ class RequestController {
       next(error);
     }
   }
-  
-  async create (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
       const body = req.body;
@@ -74,23 +74,23 @@ class RequestController {
       next(error);
     }
   }
-  
-  async update (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
       const { params: { id, status }, body } = req;
       const requestId = helperService.validateObjectId(id);
-      if(status) {
-        if(!WORK_REQUEST_STATUSES.includes(String(status))) {
+      if (status) {
+        if (!WORK_REQUEST_STATUSES.includes(String(status))) {
           throw Object.assign(new Error('Status is not editable'), { status: 400 });
         }
         body.status = status;
-        if(status === 'Approved' || status === 'Rejected') {
+        if (status === 'Approved' || status === 'Rejected') {
           throw Object.assign(new Error('Create a valid request'), { status: 400 });
         }
       }
-      if(body.priority) {
-        if(!WORK_REQUEST_PRIORITIES.includes(body.priority)) {
+      if (body.priority) {
+        if (!WORK_REQUEST_PRIORITIES.includes(body.priority)) {
           throw Object.assign(new Error('Invalid priority value'), { status: 400 });
         }
       }
@@ -98,14 +98,14 @@ class RequestController {
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      if(body.remarks !== existingRequest[0].remarks) {
+      if (body.remarks !== existingRequest[0].remarks) {
         const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
         body.remarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${body.remarks} by ${firstName} ${lastName} on ${dateTime}` : `${body.remarks} by ${firstName} ${lastName} on ${dateTime}`;
       }
-      if(status === existingRequest[0].status) {
+      if (status === existingRequest[0].status) {
         throw Object.assign(new Error('No changes detected'), { status: 400 });
       }
-      if(status === 'Approved') {
+      if (status === 'Approved') {
         body.approvedBy = user_id;
       }
       const data = await requestService.updateRequest(String(id), body, user_id);
@@ -117,8 +117,8 @@ class RequestController {
       next(error);
     }
   }
-  
-  async approve (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async approve(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
@@ -127,7 +127,7 @@ class RequestController {
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      if(existingRequest[0].status === 'Approved') {
+      if (existingRequest[0].status === 'Approved') {
         throw Object.assign(new Error('Request is already approved'), { status: 400 });
       }
       const data = await requestService.updateRequest(String(id), { status: 'Approved', updatedBy: user_id }, user_id);
@@ -139,20 +139,20 @@ class RequestController {
       next(error);
     }
   }
-  
-  async reject (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async reject(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
       const { params: { id }, body: { remarks } } = req;
       const requestId = helperService.validateObjectId(id);
-      if(!remarks) {
+      if (!remarks) {
         throw Object.assign(new Error('Remarks is required'), { status: 400 });
       }
       const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      if(existingRequest[0].status === 'Rejected') {
+      if (existingRequest[0].status === 'Rejected') {
         throw Object.assign(new Error('Request is already rejected'), { status: 400 });
       }
       const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
@@ -166,8 +166,8 @@ class RequestController {
       next(error);
     }
   }
-  
-  async remove (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;

@@ -2,18 +2,18 @@ import { Request, Response, NextFunction } from 'express';
 import { commentService } from './comment.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 
 class CommentController {
 
-  async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id: orderId } } = req;
       if (!orderId) {
         throw Object.assign(new Error('Order ID is required'), { status: 400 });
       }
-      const match : any = { account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true };
+      const match: any = { account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true };
       const data = await commentService.getAllComments(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -23,14 +23,14 @@ class CommentController {
       next(error);
     }
   }
-  
-  async getDataById (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getDataById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id: orderId, commentId } } = req;
       const orderObjectId = helperService.validateObjectId(orderId);
       const commentObjectId = helperService.validateObjectId(commentId);
-      const match : any = { account_id: account_id, order_id: orderObjectId, _id: commentObjectId, visible: true };
+      const match: any = { account_id: account_id, order_id: orderObjectId, _id: commentObjectId, visible: true };
       const data = await commentService.getAllComments(match);
       if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -40,8 +40,8 @@ class CommentController {
       next(error);
     }
   }
-  
-  async create (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id: orderId }, body } = req;
@@ -62,8 +62,8 @@ class CommentController {
       next(error);
     }
   }
-  
-  async update (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id: orderId, commentId }, body } = req;
@@ -87,8 +87,8 @@ class CommentController {
       next(error);
     }
   }
-  
-  async remove (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id: orderId, commentId } } = req;

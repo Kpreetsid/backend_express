@@ -2,16 +2,16 @@ import { Request, Response, NextFunction } from 'express';
 import { locationReportService } from './location.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import mongoose from 'mongoose';
+import { helperService } from '../../utils/helper';
 
 class LocationReportController {
 
-  async getLocationsReport (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getLocationsReport(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id };
       const { locationId } = req.query;
-      if(locationId) {
+      if (locationId) {
         match.location_id = locationId;
       }
       const data = await locationReportService.getAll(match);
@@ -23,11 +23,11 @@ class LocationReportController {
       next(error);
     }
   };
-  
-  async createReport (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async createReport(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-       const { location_id } = req.body;
+      const { location_id } = req.body;
       if (!location_id) {
         throw Object.assign(new Error('Invalid request data'), { status: 400 });
       }
@@ -40,15 +40,12 @@ class LocationReportController {
       next(error);
     }
   }
-  
-  async deleteReport (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async deleteReport(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const { params: { id }} = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Invalid request data'), { status: 400 });
-      }
-      const result = await locationReportService.deleteLocationsReport(String(id), String(account_id), String(user_id));
+      const { params: { id } } = req;
+      const result = await locationReportService.deleteLocationsReport(helperService.validateObjectId(String(id)), helperService.validateObjectId(String(account_id)), helperService.validateObjectId(String(user_id)));
       if (!result) {
         throw Object.assign(new Error('Report not found'), { status: 404 });
       }

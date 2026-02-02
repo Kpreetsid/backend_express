@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { sopsService } from './sops.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
-import { applyRoleFilter } from '../../util/roleFilter';
-import { helperService } from '../../util/helper';
+import { applyRoleFilter } from '../../utils/roleFilter';
+import { helperService } from '../../utils/helper';
 
 class SOPsController {
 

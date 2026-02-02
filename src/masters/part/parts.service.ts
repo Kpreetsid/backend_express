@@ -1,4 +1,4 @@
-import { helperService } from "../../util/helper";
+import { helperService } from "../../utils/helper";
 import { PartsModel, IPart } from "../../models/part.model";
 
 interface InventoryAdjustmentResult {

@@ -2,8 +2,8 @@ import { get } from "lodash";
 import { USER_ROLES, IUser } from "../../models/user.model";
 import { NextFunction, Request, Response } from "express";
 import { companyService } from "./company.service";
-import { helperService } from "../../util/helper";
-import { applyRoleFilter } from "../../util/roleFilter";
+import { helperService } from "../../utils/helper";
+import { applyRoleFilter } from "../../utils/roleFilter";
 
 class CompanyController {
 

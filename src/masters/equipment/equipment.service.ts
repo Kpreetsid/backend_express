@@ -2,11 +2,11 @@ import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService, mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
 import { processorAPIService } from '../../api-processor';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 import mongoose from 'mongoose';
 
 class EquipmentService {
-  async getAllEquipment (match: any) {
+  async getAllEquipment(match: any) {
     const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }]);
     const assetsIds = assetsData.map((asset: any) => `${asset._id}`);
     const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
@@ -26,11 +26,11 @@ class EquipmentService {
     return result;
   }
 
-  async checkEquipment (match: any) {
+  async checkEquipment(match: any) {
     return await AssetModel.find(match).lean();
   }
 
-  async getAllChildEquipmentIDs (assetId: any): Promise<string[]> {
+  async getAllChildEquipmentIDs(assetId: any): Promise<string[]> {
     const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id');
     if (!children || children.length === 0) {
       return [assetId];
@@ -43,7 +43,7 @@ class EquipmentService {
     return [assetId, ...allChildIds];
   };
 
-  async getEquipmentTreeData (match: any): Promise<any> {
+  async getEquipmentTreeData(match: any): Promise<any> {
     const asset_type_list: string[] = ["Rigid", "Flexible"];
     match.asset_type = { $nin: asset_type_list };
     const allAssets = await AssetModel.find(match).lean();
@@ -80,28 +80,29 @@ class EquipmentService {
   getEquipmentTreeDataById = async (match: any) => {
     const assets = await AssetModel.aggregate([
       { $match: match },
-      { $lookup: {
+      {
+        $lookup: {
           from: 'location_master',
           let: { locationId: '$locationId' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$locationId'] } }},
-            { $project: { _id: 1, location_name: 1, location_type: 1 }},
-            { $addFields: { id: '$_id' }}
+            { $match: { $expr: { $eq: ['$_id', '$$locationId'] } } },
+            { $project: { _id: 1, location_name: 1, location_type: 1 } },
+            { $addFields: { id: '$_id' } }
           ],
           as: 'locationData'
         }
       },
-      { $unwind: { path: '$locationData', preserveNullAndEmptyArrays: true }}
+      { $unwind: { path: '$locationData', preserveNullAndEmptyArrays: true } }
     ]);
     if (!assets.length) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
     const assetIds = assets.map(a => a._id);
     const assetUsers = await MapUserAssetLocationModel.aggregate([
-      { $match: { assetId: { $in: assetIds }, userId: { $exists: true }}},
-      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' }},
+      { $match: { assetId: { $in: assetIds }, userId: { $exists: true } } },
+      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
-      { $project: { assetId: 1, user: { id: '$user._id', firstName: '$user.firstName', lastName: '$user.lastName', user_role: '$user.user_role' }}}
+      { $project: { assetId: 1, user: { id: '$user._id', firstName: '$user.firstName', lastName: '$user.lastName', user_role: '$user.user_role' } } }
     ]);
     return this.buildEquipmentTree(assets, assetUsers);
   };
@@ -135,11 +136,11 @@ class EquipmentService {
     return rootNodes.map(attachChildren);
   };
 
-  async updateEquipmentImageById (id: string, image_path: string, user_id: string) {
+  async updateEquipmentImageById(id: string, image_path: string, user_id: string) {
     return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
   }
 
-  async removeEquipmentById (match: any, userID: any) {
+  async removeEquipmentById(match: any, userID: any) {
     const childAssets = await AssetModel.find({ parent_id: match._id });
     if (childAssets && childAssets.length > 0) {
       await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID });
@@ -148,7 +149,7 @@ class EquipmentService {
     return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { new: true });
   };
 
-  async deleteEquipment (id: string): Promise<any> {
+  async deleteEquipment(id: string): Promise<any> {
     const childAssets = await AssetModel.find({ parent_id: id });
     if (childAssets && childAssets.length > 0) {
       for (const asset of childAssets) {
@@ -164,7 +165,7 @@ class EquipmentService {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null));
   }
 
-  async createEquipment (equipment: any, account_id: any, user_id: any) {
+  async createEquipment(equipment: any, account_id: any, user_id: any) {
     equipment = this.removeExtraFields(equipment);
     const newEquipment: any = new AssetModel({
       asset_name: equipment.asset_name,
@@ -194,7 +195,7 @@ class EquipmentService {
     return await newEquipment.save();
   }
 
-  async createMotor (motor: any, equipment: any, account_id: any, user_id: any) {
+  async createMotor(motor: any, equipment: any, account_id: any, user_id: any) {
     motor = this.removeExtraFields(motor);
     const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
@@ -225,7 +226,7 @@ class EquipmentService {
     }).save();
   }
 
-  async createFlexible (flexible: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createFlexible(flexible: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     flexible = this.removeExtraFields(flexible);
     const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
@@ -251,7 +252,7 @@ class EquipmentService {
     }).save();
   }
 
-  async createRigid (rigid: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createRigid(rigid: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     rigid = this.removeExtraFields(rigid);
     const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
@@ -278,7 +279,7 @@ class EquipmentService {
     }).save();
   }
 
-  async createBeltPulley (beltPulley: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createBeltPulley(beltPulley: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     beltPulley = this.removeExtraFields(beltPulley);
     const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
@@ -307,7 +308,7 @@ class EquipmentService {
     }).save();
   }
 
-  async createGearbox (gearbox: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createGearbox(gearbox: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     gearbox = this.removeExtraFields(gearbox);
     const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
@@ -355,7 +356,7 @@ class EquipmentService {
     }).save();
   }
 
-  async createFanBlower (fanBlower: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createFanBlower(fanBlower: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     fanBlower = this.removeExtraFields(fanBlower);
     const parentId = equipment._id ? equipment._id : equipment.id;
     return new AssetModel({
@@ -389,7 +390,7 @@ class EquipmentService {
     }).save();
   }
 
-  async createPumps (pumps: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createPumps(pumps: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     pumps = this.removeExtraFields(pumps);
     return new AssetModel({
       parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
@@ -421,7 +422,7 @@ class EquipmentService {
     }).save();
   }
 
-  async createCompressor (compressor: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createCompressor(compressor: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     compressor = this.removeExtraFields(compressor);
     return new AssetModel({
       parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
@@ -453,7 +454,7 @@ class EquipmentService {
     }).save();
   }
 
-  async deleteAssetsById (assetId: any) {
+  async deleteAssetsById(assetId: any) {
     const childData = await AssetModel.find({ parent_id: assetId });
     if (childData.length > 0) {
       for (const asset of childData) {
@@ -465,7 +466,7 @@ class EquipmentService {
     await mapUserToAssetService.removeAssetMapping(assetId);
   }
 
-  async updateEquipment (equipment: any, account_id: any, user_id: any) {
+  async updateEquipment(equipment: any, account_id: any, user_id: any) {
     equipment = this.removeExtraFields(equipment);
     const updatedEquipment: any = new AssetModel({
       _id: equipment.id,
@@ -496,7 +497,7 @@ class EquipmentService {
     return await AssetModel.updateOne({ _id: equipment.id }, updatedEquipment);
   }
 
-  async updateMotor (motor: any, equipment: any, account_id: any, user_id: any) {
+  async updateMotor(motor: any, equipment: any, account_id: any, user_id: any) {
     motor = this.removeExtraFields(motor);
     const updatedMotor = new AssetModel({
       _id: motor.id,
@@ -529,7 +530,7 @@ class EquipmentService {
     return await AssetModel.updateOne({ _id: motor.id }, updatedMotor);
   }
 
-  async updateFlexible (flexible: any, equipment: any, account_id: any, user_id: any) {
+  async updateFlexible(flexible: any, equipment: any, account_id: any, user_id: any) {
     flexible = this.removeExtraFields(flexible);
     const updatedFlexible = new AssetModel({
       _id: flexible.id,
@@ -557,7 +558,7 @@ class EquipmentService {
     return await AssetModel.updateOne({ _id: flexible.id }, updatedFlexible);
   }
 
-  async updateRigid (rigid: any, equipment: any, account_id: any, user_id: any) {
+  async updateRigid(rigid: any, equipment: any, account_id: any, user_id: any) {
     rigid = this.removeExtraFields(rigid);
     const updatedRigid = new AssetModel({
       _id: rigid.id,
@@ -586,7 +587,7 @@ class EquipmentService {
     return await AssetModel.updateOne({ _id: rigid.id }, updatedRigid);
   }
 
-  async updateBeltPulley (beltPulley: any, equipment: any, account_id: any, user_id: any) {
+  async updateBeltPulley(beltPulley: any, equipment: any, account_id: any, user_id: any) {
     beltPulley = this.removeExtraFields(beltPulley);
     const updatedBeltPulley = new AssetModel({
       _id: beltPulley.id,
@@ -617,7 +618,7 @@ class EquipmentService {
     return await AssetModel.updateOne({ _id: beltPulley.id }, updatedBeltPulley);
   }
 
-  async updateGearbox (gearbox: any, equipment: any, account_id: any, user_id: any) {
+  async updateGearbox(gearbox: any, equipment: any, account_id: any, user_id: any) {
     gearbox = this.removeExtraFields(gearbox);
     const updatedGearbox = new AssetModel({
       _id: gearbox.id,
@@ -667,7 +668,7 @@ class EquipmentService {
     return await AssetModel.updateOne({ _id: gearbox.id }, updatedGearbox);
   }
 
-  async updateFanBlower (fanBlower: any, equipment: any, account_id: any, user_id: any) {
+  async updateFanBlower(fanBlower: any, equipment: any, account_id: any, user_id: any) {
     fanBlower = this.removeExtraFields(fanBlower);
     const updatedFanBlower = new AssetModel({
       _id: fanBlower.id,
@@ -703,7 +704,7 @@ class EquipmentService {
     return await AssetModel.updateOne({ _id: fanBlower.id }, updatedFanBlower);
   }
 
-  async updatePumps (pumps: any, equipment: any, account_id: any, user_id: any) {
+  async updatePumps(pumps: any, equipment: any, account_id: any, user_id: any) {
     pumps = this.removeExtraFields(pumps);
     const updatedPumps = new AssetModel({
       _id: pumps.id,
@@ -738,7 +739,7 @@ class EquipmentService {
     return await AssetModel.updateOne({ _id: pumps.id }, updatedPumps);
   }
 
-  async updateCompressor (compressor: any, equipment: any, account_id: any, user_id: any) {
+  async updateCompressor(compressor: any, equipment: any, account_id: any, user_id: any) {
     compressor = this.removeExtraFields(compressor);
     const updatedCompressor = new AssetModel({
       _id: compressor.id,
@@ -773,7 +774,7 @@ class EquipmentService {
     return await AssetModel.updateOne({ _id: compressor.id }, updatedCompressor);
   }
 
-  async getAllChildEquipmentRecursive (parentId: string, account_id: any): Promise<any[]> {
+  async getAllChildEquipmentRecursive(parentId: string, account_id: any): Promise<any[]> {
     const children = await AssetModel.find({ parent_id: parentId, account_id, visible: true }).lean();
     const all: any[] = [];
     for (const child of children) {
@@ -785,7 +786,7 @@ class EquipmentService {
     return all;
   };
 
-  async makeAssetCopyByIdWithChildren (sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any): Promise<any> {
+  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any): Promise<any> {
     try {
       const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
       const cleanAsset = JSON.parse(JSON.stringify(rest));

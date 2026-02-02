@@ -2,7 +2,7 @@ import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../transaction/mapUserLocation/userLocation.service";
 import { processorAPIService } from '../../api-processor';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 
 class AssetService {
   async getAllAssets(match: any) {

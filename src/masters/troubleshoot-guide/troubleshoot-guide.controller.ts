@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { troubleshootGuideService } from './troubleshoot-guide.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import { helperService } from '../../util/helper';
+import { helperService } from '../../utils/helper';
 
 class TroubleshootGuideController {
 

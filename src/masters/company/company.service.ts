@@ -1,13 +1,13 @@
-import { helperService } from "../../util/helper";
+import { helperService } from "../../utils/helper";
 import { AccountModel, IAccount } from "../../models/account.model";
 
 class CompanyService {
 
-  async getAllCompanies (filter: any) {
+  async getAllCompanies(filter: any) {
     return await AccountModel.find(filter);
   };
-  
-  async createCompany (body: any) {
+
+  async createCompany(body: any) {
     const match: any = { account_name: body.account_name };
     const existingCompany: IAccount[] = await AccountModel.find(match);
     if (existingCompany.length > 0) {
@@ -20,12 +20,12 @@ class CompanyService {
     });
     return await newCompany.save();
   };
-  
-  async verifyCompany (id: string) {
+
+  async verifyCompany(id: string) {
     try {
       const companyId = helperService.validateObjectId(id);
       const data: IAccount | null = await AccountModel.findById(companyId);
-      if(!data || !data.visible || data.account_status === 'inactive') {
+      if (!data || !data.visible || data.account_status === 'inactive') {
         return null;
       }
       return data;
@@ -33,12 +33,12 @@ class CompanyService {
       return null;
     }
   };
-  
-  async updateById (id: any, body: any) {
+
+  async updateById(id: any, body: any) {
     return await AccountModel.findByIdAndUpdate(id, body, { new: true });
   };
-  
-  async removeById (id: any, userId: any): Promise<boolean> {
+
+  async removeById(id: any, userId: any): Promise<boolean> {
     const data: IAccount | null = await AccountModel.findById(id);
     if (!data || !data.visible || data.account_status === 'inactive') {
       throw Object.assign(new Error('No data found'), { status: 404 });

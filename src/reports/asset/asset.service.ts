@@ -3,16 +3,16 @@ import { processorAPIService } from "../../api-processor";
 import { orderService } from "../../work/order/order.service";
 
 class AssetReportService {
-  async getAllAssetReports (match: any, populateFilter?: any) {
+  async getAllAssetReports(match: any, populateFilter?: any) {
     match.$or = [{ visible: true }, { visible: { $exists: false } }];
     return await ReportAssetModel.find(match).sort({ _id: -1 }).populate(populateFilter);
   };
-  
-  async getLatest (match: any, selectedFields: any) {
+
+  async getLatest(match: any, selectedFields: any) {
     return await ReportAssetModel.findOne(match).select(selectedFields).sort({ _id: -1 }).limit(1);
   };
-  
-  async createAssetReportWithWorkOrder (body: IReportAsset, user: any, token: any, CreateWorkRequest: number, workOrderBody?: any) {
+
+  async createAssetReportWithWorkOrder(body: IReportAsset, user: any, token: any, CreateWorkRequest: number, workOrderBody?: any) {
     let assetReport: any = null;
     let workOrder: any = null;
     try {
@@ -36,17 +36,17 @@ class AssetReportService {
       throw error;
     }
   };
-  
-  async updateAssetReport (id: string, body: IReportAsset, account_id: any, user_id: any, token: any) {
+
+  async updateAssetReport(id: any, body: IReportAsset, account_id: any, user_id: any, token: any) {
     await processorAPIService.updateAssetHealthStatusOld(body, account_id, user_id, token);
     return await ReportAssetModel.findByIdAndUpdate(id, body, { new: true });
   };
-  
-  async removeAssetReportById (id: string, user_id: any) {
+
+  async removeAssetReportById(id: any, user_id: any) {
     return await ReportAssetModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
   }
-  
-  async deleteAssetReport (id: string) {
+
+  async deleteAssetReport(id: string) {
     return await ReportAssetModel.findByIdAndDelete(id);
   };
 }
