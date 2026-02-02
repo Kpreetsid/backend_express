@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { partsService } from './parts.service';
 import { IUser } from '../../models/user.model';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 
 class PartsController {
@@ -13,10 +13,10 @@ class PartsController {
       const match: any = { account_id, visible: true };
       const { query: { id, location_id } } = req;
       if (id) {
-        match._id = { $in: id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
+        match._id = { $in: helperService.validateObjectIds(String(id)) };
       }
       if (location_id) {
-        match.location_id = { $in: location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id))) };
+        match.location_id = { $in: helperService.validateObjectIds(String(location_id)) };
       }
       if (userRole !== 'admin') {
         const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
@@ -37,10 +37,7 @@ class PartsController {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      match._id = new mongoose.Types.ObjectId(String(id));
+      match._id = helperService.validateObjectId(String(id));
       if (userRole !== 'admin') {
         const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
         match.location_id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
@@ -69,10 +66,7 @@ class PartsController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true };
+      const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
       const isDataExists = await partsService.getAllParts(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -91,10 +85,7 @@ class PartsController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body: { quantity } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      const part = await partsService.getAllParts({ _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true });
+      const part = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)), account_id, visible: true });
       if (!part || part.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -113,10 +104,7 @@ class PartsController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true };
+      const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
       const isDataExists = await partsService.getAllParts(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });

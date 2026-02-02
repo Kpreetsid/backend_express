@@ -2,7 +2,6 @@ import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
 import { helperService } from "../../util/helper";
-import mongoose from "mongoose";
 
 class MapUserToAssetService {
   private buildAlarmFlags = (alarmType: string[] = []) => ({
@@ -82,7 +81,7 @@ class MapUserToAssetService {
       }
       return {
         updateOne: {
-          filter: { _id: new mongoose.Types.ObjectId(doc._id) },
+          filter: { _id: helperService.validateObjectId(doc._id) },
           update: {
             $set: {
               sendMail: doc.sendMail,
@@ -102,7 +101,7 @@ class MapUserToAssetService {
     userIdList: string[],
   ) => {
     const assetList = await AssetModel.find({
-      locationId: new mongoose.Types.ObjectId(locationId),
+      locationId: helperService.validateObjectId(locationId),
     })
       .select("_id")
       .lean();
@@ -124,7 +123,7 @@ class MapUserToAssetService {
     if (effectiveRemoved.length > 0) {
       await this.removeChildAssetMapping(assetId, effectiveRemoved);
     }
-    const assetChildList = await AssetModel.find({ parent_id: new mongoose.Types.ObjectId(assetId) }).select("_id").lean();
+    const assetChildList = await AssetModel.find({ parent_id: helperService.validateObjectId(assetId) }).select("_id").lean();
     for (const { _id } of assetChildList) {
       const childExisting = await this.getDataByAssetId(String(_id));
       const childUserList = childExisting.map((d: any) => String(d.userId));
@@ -336,7 +335,7 @@ class MapUserToLocationService {
       await this.removeChildLocationMapping(locationId, effectiveRemoved);
     }
     await mapUserToAssetService.updateAssetsForLocationHierarchy(locationId, userIdList);
-    const locationChildList = await LocationModel.find({ parent_id: new mongoose.Types.ObjectId(locationId) }).select("_id").lean();
+    const locationChildList = await LocationModel.find({ parent_id: helperService.validateObjectId(locationId) }).select("_id").lean();
     for (const { _id } of locationChildList) {
       const childExisting = await this.getDataByLocationId(String(_id));
       const childUserList = childExisting.map((d: any) => String(d.userId));
