@@ -2,10 +2,10 @@ import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../transaction/mapUserLocation/userLocation.service";
 import { processorAPIService } from '../../api-processor';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 
 class AssetService {
-  async getAllAssets (match: any) {
+  async getAllAssets(match: any) {
     const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }]);
     const assetsIds = assetsData.map((asset: any) => `${asset._id}`);
     const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
@@ -24,18 +24,18 @@ class AssetService {
     });
     return result;
   }
-  
-  async buzzerAssetList (match: any): Promise<any> {
+
+  async buzzerAssetList(match: any): Promise<any> {
     return await AssetModel.find(match).select('id asset_name isBuzzerActive');
   }
-  
-  async updateBuzzerAssetList (body: any) {
+
+  async updateBuzzerAssetList(body: any) {
     await body.forEach(async (item: any) => {
       await AssetModel.updateOne({ _id: item.id }, { isBuzzerActive: item.isBuzzerActive });
     })
   }
-  
-  async getAllChildAssetIDs (assetId: any): Promise<string[]> {
+
+  async getAllChildAssetIDs(assetId: any): Promise<string[]> {
     const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id');
     if (!children || children.length === 0) {
       return [assetId];
@@ -47,24 +47,25 @@ class AssetService {
     }
     return [assetId, ...allChildIds];
   };
-  
-  async getAssetsTreeData (match: any): Promise<any> {
+
+  async getAssetsTreeData(match: any): Promise<any> {
     const asset_type_list: string[] = ["Rigid", "Flexible"];
     match.asset_type = { $nin: asset_type_list };
     const allAssets = await AssetModel.aggregate([
       { $match: match },
-      { $lookup: {
+      {
+        $lookup: {
           from: 'location_master',
           let: { locationId: '$locationId' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$locationId'] } }},
-            { $project: { _id: 1, location_name: 1, location_type: 1 }},
-            { $addFields: { id: '$_id' }}
+            { $match: { $expr: { $eq: ['$_id', '$$locationId'] } } },
+            { $project: { _id: 1, location_name: 1, location_type: 1 } },
+            { $addFields: { id: '$_id' } }
           ],
           as: 'locationData'
         }
       },
-      { $unwind: { path: '$locationData', preserveNullAndEmptyArrays: true }}
+      { $unwind: { path: '$locationData', preserveNullAndEmptyArrays: true } }
     ]);
     if (!allAssets.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
@@ -72,7 +73,7 @@ class AssetService {
     const data = await this.buildAssetsTree(allAssets);
     return data;
   };
-  
+
   buildAssetsTree = async (assets: any[]) => {
     if (!Array.isArray(assets) || !assets.length) return [];
     const childrenMap = new Map<string, any[]>();
@@ -98,12 +99,12 @@ class AssetService {
     };
     return rootNodes.map((root) => attachChildren(root));
   };
-  
-  async updateAssetImageById (id: any, image_path: string, user_id: any) {
+
+  async updateAssetImageById(id: any, image_path: string, user_id: any) {
     return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
   }
-  
-  async removeById (match: any, userID: any) {
+
+  async removeById(match: any, userID: any) {
     const childAssets = await AssetModel.find({ parent_id: match._id });
     if (childAssets && childAssets.length > 0) {
       await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID });
@@ -111,8 +112,8 @@ class AssetService {
     // await removeLocationMapping(req.params.id);
     return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { new: true });
   };
-  
-  async deleteAsset (id: string): Promise<any> {
+
+  async deleteAsset(id: string): Promise<any> {
     const childAssets = await AssetModel.find({ parent_id: id });
     if (childAssets && childAssets.length > 0) {
       for (const asset of childAssets) {
@@ -123,8 +124,8 @@ class AssetService {
     await mapUserToAssetService.removeAssetMapping(id);
     return await AssetModel.deleteOne({ _id: id });
   }
-  
-  async getAssetDataSensorList (match: any): Promise<any> {
+
+  async getAssetDataSensorList(match: any): Promise<any> {
     const data = await AssetModel.find(match).populate([
       { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
       { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
@@ -147,20 +148,20 @@ class AssetService {
     })
     return result;
   }
-  
-  async createAssetOld (body: any, account_id: any, user_id: any): Promise<any> {
+
+  async createAssetOld(body: any, account_id: any, user_id: any): Promise<any> {
     const data: any = new AssetModel({ ...body, account_id, createdBy: user_id });
     data.top_level_asset_id = data.top_level_asset_id ? data.top_level_asset_id : data._id;
     return await data.save();
   }
-  
-  async updateAssetOld (id: any, body: any, user_id: any): Promise<any> {
-    await mapUserToAssetService.updateUserMapping(id, body.userIdList);
-    await mapUserToAssetService.updateFlagOnAssetUpdate(id, body.userIdList, body.alarmType);
+
+  async updateAssetOld(id: any, body: any, user_id: any): Promise<any> {
+    await mapUserToAssetService.updateUserMapping(String(id), body.userIdList);
+    await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType);
     return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true });
   }
-  
-  async updateAllChildAssetsLocation (id: any, locationId: any, user_id: any): Promise<any> {
+
+  async updateAllChildAssetsLocation(id: any, locationId: any, user_id: any): Promise<any> {
     const childAssets = await AssetModel.find({ parent_id: id });
     if (childAssets && childAssets.length > 0) {
       for (const asset of childAssets) {
@@ -169,8 +170,8 @@ class AssetService {
       return await AssetModel.updateMany({ parent_id: id }, { locationId: locationId, updatedBy: user_id });
     }
   }
-  
-  async deleteAssetsById (assetId: any) {
+
+  async deleteAssetsById(assetId: any) {
     const childData = await AssetModel.find({ parent_id: assetId });
     if (childData.length > 0) {
       for (const asset of childData) {
@@ -181,8 +182,8 @@ class AssetService {
     await AssetModel.deleteMany({ _id: assetId });
     await mapUserToAssetService.removeAssetMapping(assetId);
   }
-  
-  async getAllChildAssetsRecursive (parentId: string, account_id: any): Promise<any[]> {
+
+  async getAllChildAssetsRecursive(parentId: string, account_id: any): Promise<any[]> {
     const children = await AssetModel.find({ parent_id: parentId, account_id, visible: true }).lean();
     const all: any[] = [];
     for (const child of children) {
@@ -193,8 +194,8 @@ class AssetService {
     }
     return all;
   };
-  
-  async makeAssetCopyByIdWithChildren (sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any): Promise<any> {
+
+  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any): Promise<any> {
     try {
       const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
       const cleanAsset = JSON.parse(JSON.stringify(rest));
@@ -228,7 +229,7 @@ class AssetService {
         updatedBy: undefined,
         account_id,
         visible: true,
-        parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
+        parent_id: newParentId ? helperService.validateObjectId(newParentId) : undefined,
         top_level_asset_id: topLevelRef
       };
       const newAsset = new AssetModel(newAssetData);
@@ -241,7 +242,7 @@ class AssetService {
       try {
         const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
         userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
-      } catch {}
+      } catch { }
       try {
         const endPointList: any = await processorAPIService.getEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
         if (endPointList?.data?.length > 0) {

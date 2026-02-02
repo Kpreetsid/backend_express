@@ -9,6 +9,7 @@ class MapUserToAssetService {
     alert: alarmType.includes("alert"),
     danger: alarmType.includes("danger"),
     critical: alarmType.includes("critical"),
+    sendMail: alarmType.includes("sendMail"),
   });
 
   getAssetsMappedData = async (userId: any) => {
@@ -131,11 +132,11 @@ class MapUserToAssetService {
     }
   };
 
- updateFlagOnAssetUpdate = async (assetId: any, userIdList: string[], alarmType: string[]) => {
+  updateFlagOnAssetUpdate = async (assetId: any, userIdList: string[], alarmType: string[]) => {
     if (!userIdList?.length) return { matched: 0, modified: 0 };
     const assetObjectId = helperService.validateObjectId(assetId);
     const userObjectIds = helperService.validateObjectIds(userIdList.join(','));
-    const newFlags = this.buildAlarmFlags(alarmType);
+    const newFlags: any = this.buildAlarmFlags(alarmType);
     const result: any = await MapUserAssetLocationModel.updateMany(
       {
         assetId: assetObjectId,
@@ -143,18 +144,25 @@ class MapUserToAssetService {
         $or: [
           { alert: { $ne: newFlags.alert } },
           { danger: { $ne: newFlags.danger } },
-          { critical: { $ne: newFlags.critical } }
+          { critical: { $ne: newFlags.critical } },
+          { sendMail: { $ne: newFlags.sendMail } },
         ]
       },
       { $set: newFlags }
     );
+
+    const assetChildList = await AssetModel.find({ parent_id: assetObjectId }).select("_id").lean();
+    for (const { _id } of assetChildList) {
+      await this.updateFlagOnAssetUpdate(String(_id), userIdList, alarmType);
+    }
+
     return {
       matched: result.matchedCount ?? result.n,
       modified: result.modifiedCount ?? result.nModified
     };
   };
 
-  addChildAssetMapping = async(id: string, userIdList: string[]) => {
+  addChildAssetMapping = async (id: string, userIdList: string[]) => {
     const assetId = helperService.validateObjectId(id);
     const userIds = helperService.validateObjectIds(userIdList.join(','));
     const queryArray = userIds.map((userId) => {
@@ -199,7 +207,7 @@ class MapUserToLocationService {
   getDataByLocationId = async (locationId: string) => {
     return await MapUserAssetLocationModel.find({ locationId: helperService.validateObjectId(locationId), userId: { $exists: true } }).lean();
   }
-  
+
   getDataByLocationIds = async (locationIds: string[]) => {
     return await MapUserAssetLocationModel.find({ locationId: { $in: helperService.validateObjectIds(locationIds.join(',')) }, userId: { $exists: true } }).lean();
   }
@@ -309,7 +317,7 @@ class MapUserToLocationService {
   removeLocationMapping = async (id: any) => {
     return await MapUserAssetLocationModel.deleteMany({ locationId: id });
   }
-  
+
   removeLocationListMapping = async (locationIdList: string[]) => {
     return await MapUserAssetLocationModel.deleteMany({ locationId: { $in: locationIdList } });
   }
@@ -332,7 +340,7 @@ class MapUserToLocationService {
     for (const { _id } of locationChildList) {
       const childExisting = await this.getDataByLocationId(String(_id));
       const childUserList = childExisting.map((d: any) => String(d.userId));
-      await this.updateUserMapping( String(_id), childUserList, effectiveAdded, effectiveRemoved );
+      await this.updateUserMapping(String(_id), childUserList, effectiveAdded, effectiveRemoved);
     }
   }
 
@@ -365,7 +373,7 @@ export const updateLocationAssetMapping = async (locationId: string, userIdList:
   }
   if (effectiveRemoved.length) {
     const effectiveRemovedIds = helperService.validateObjectIds(effectiveRemoved.join(','));
-    await MapUserAssetLocationModel.deleteMany({ locationId: locationObjectId, userId: { $in: effectiveRemovedIds }});
+    await MapUserAssetLocationModel.deleteMany({ locationId: locationObjectId, userId: { $in: effectiveRemovedIds } });
   }
   const assets = await AssetModel.find({ locationId: locationObjectId }).select('_id').lean();
   for (const asset of assets) {
@@ -376,7 +384,7 @@ export const updateLocationAssetMapping = async (locationId: string, userIdList:
     const assetRemoved = effectiveRemoved.filter(id => assetUsers.includes(id));
     if (assetAdded.length) {
       const assetAddedIds = helperService.validateObjectIds(assetAdded.join(','));
-      await MapUserAssetLocationModel.insertMany( assetAddedIds.map(userId => ({ assetId, userId: userId })), { ordered: false });
+      await MapUserAssetLocationModel.insertMany(assetAddedIds.map(userId => ({ assetId, userId: userId })), { ordered: false });
     }
     if (assetRemoved.length) {
       const assetRemovedIds = helperService.validateObjectIds(assetRemoved.join(','));
@@ -393,7 +401,7 @@ export const updateLocationAssetMapping = async (locationId: string, userIdList:
   const childLocations = await LocationModel.find({ parent_id: locationObjectId }).select('_id').lean();
   for (const child of childLocations) {
     const childLocationId = helperService.validateObjectId(String(child._id));
-    const childMappings = await MapUserAssetLocationModel.find({ locationId: childLocationId, userId: { $exists: true }}).lean();
+    const childMappings = await MapUserAssetLocationModel.find({ locationId: childLocationId, userId: { $exists: true } }).lean();
     const childUsers = childMappings.map(d => String(d.userId));
     await updateLocationAssetMapping(String(child._id), childUsers, effectiveAdded, effectiveRemoved);
   }
