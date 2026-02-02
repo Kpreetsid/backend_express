@@ -3,21 +3,29 @@ import { get } from 'lodash';
 import { postService } from './posts.service';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 class PostController {
 
   async getPosts(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const baseFilter: any = { account_id, visible: true };
       const { query: { postType, relatedTo } } = req;
       if (postType) {
-        match.postType = postType.toString().split(',');
+        baseFilter.postType = postType.toString().split(',');
       }
       if (relatedTo) {
-        match.relatedTo = relatedTo.toString().split(',');
+        baseFilter.relatedTo = relatedTo.toString().split(',');
       }
-      const data = await postService.getAllParts(match);
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        createdByField: "userId"
+      });
+      const data = await postService.getAllParts(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -29,20 +37,24 @@ class PostController {
 
   async getPost(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { id } = req.params;
-      const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
+      const baseFilter: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const { postType, relatedTo } = req.query;
       if (postType) {
-        match.postType = postType.toString().split(',');
+        baseFilter.postType = postType.toString().split(',');
       }
       if (relatedTo) {
-        match.relatedTo = relatedTo.toString().split(',');
+        baseFilter.relatedTo = relatedTo.toString().split(',');
       }
-      if (userRole !== 'admin') {
-        match.userId = user_id;
-      }
-      const data = await postService.getAllParts(match);
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        createdByField: "userId"
+      });
+      const data = await postService.getAllParts(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

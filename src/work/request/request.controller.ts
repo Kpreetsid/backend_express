@@ -4,35 +4,46 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../../models/workRequest.model';
 import { helperService } from '../../utils/helper';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 class RequestController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { query: { priority, location, status, assignedTo, assignedBy, approvedBy, rejectedBy } } = req;
-      let match: any = { account_id: account_id };
+      const baseFilter: any = { account_id: account_id, visible: true };
       if (priority) {
-        match.priority = priority.toString().split(",").map((p) => p.trim()).filter((p) => p !== "");
+        baseFilter.priority = priority.toString().split(",").map((p) => p.trim()).filter((p) => p !== "");
       }
       if (location) {
-        match.location_id = location.toString().split(",").map((l) => l.trim()).filter((l) => l !== "");
+        baseFilter.location_id = location.toString().split(",").map((l) => l.trim()).filter((l) => l !== "");
       }
       if (status) {
-        match.status = status.toString().split(",").map((s) => s.trim()).filter((s) => s !== "");
+        baseFilter.status = status.toString().split(",").map((s) => s.trim()).filter((s) => s !== "");
       }
       if (assignedTo) {
-        match.assigned_to = assignedTo.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+        baseFilter.assigned_to = assignedTo.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
       }
       if (assignedBy) {
-        match.createdBy = assignedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+        baseFilter.createdBy = assignedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
       }
       if (approvedBy) {
-        match.updatedBy = approvedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+        baseFilter.updatedBy = approvedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
       }
       if (rejectedBy) {
-        match.updatedBy = rejectedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+        baseFilter.updatedBy = rejectedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
       }
-      const data = await requestService.getAllRequests(match);
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location",
+        idField: "location_id"
+      });
+
+      const data = await requestService.getAllRequests(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -44,14 +55,24 @@ class RequestController {
 
   async getById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { params: { id }, query } = req;
       const requestId = helperService.validateObjectId(id);
-      let match: any = { _id: requestId, account_id: account_id };
+      let baseFilter: any = { _id: requestId, account_id: account_id, visible: true };
       if (query) {
-        match = { ...match, ...query };
+        baseFilter = { ...baseFilter, ...query };
       }
-      const data = await requestService.getAllRequests(match);
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location",
+        idField: "location_id"
+      });
+
+      const data = await requestService.getAllRequests(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

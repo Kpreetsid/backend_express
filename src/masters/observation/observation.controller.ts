@@ -5,25 +5,33 @@ import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { assetService } from '../asset/asset.service';
 import { processorAPIService } from '../../api-processor';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 class ObservationController {
 
   getObservations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
-      const match: any = { accountId: account_id };
+      const user = get(req, "user", {}) as IUser;
+      const baseFilter: any = {};
       const { query: { locationId, assetId, alarmId } } = req;
       if (locationId) {
-        match['locationId'] = helperService.validateObjectId(String(locationId));
+        baseFilter['locationId'] = helperService.validateObjectId(String(locationId));
       }
       if (assetId) {
         const childAssetIds = await assetService.getAllChildAssetIDs(helperService.validateObjectId(String(assetId)));
-        match['assetId'] = { $in: childAssetIds };
+        baseFilter['assetId'] = { $in: childAssetIds };
       }
       if (alarmId) {
-        match['alarmId'] = Number(alarmId);
+        baseFilter['alarmId'] = Number(alarmId);
       }
-      const data = await observationService.getAllObservation(match);
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "accountId",
+        mapping: "asset",
+        idField: "assetId"
+      });
+      const data = await observationService.getAllObservation(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -35,13 +43,18 @@ class ObservationController {
 
   getObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      const match: any = { _id: helperService.validateObjectId(String(id)), accountId: account_id };
-      if (userRole !== 'admin') {
-        match['userId'] = user_id;
-      }
-      const data = await observationService.getAllObservation(match);
+      const baseFilter: any = { _id: helperService.validateObjectId(String(id)) };
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "accountId",
+        mapping: "asset",
+        idField: "assetId",
+        createdByField: "userId"
+      });
+      const data = await observationService.getAllObservation(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

@@ -3,26 +3,32 @@ import { get } from "lodash";
 import { partsService } from './parts.service';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
-import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 class PartsController {
 
   async getParts(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const baseFilter: any = { account_id, visible: true };
       const { query: { id, location_id } } = req;
       if (id) {
-        match._id = { $in: helperService.validateObjectIds(String(id)) };
+        baseFilter._id = { $in: helperService.validateObjectIds(String(id)) };
       }
       if (location_id) {
-        match.location_id = { $in: helperService.validateObjectIds(String(location_id)) };
+        baseFilter.location_id = { $in: helperService.validateObjectIds(String(location_id)) };
       }
-      if (userRole !== 'admin') {
-        const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
-        match.location_id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
-      }
-      const data = await partsService.getAllParts(match);
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location",
+        idField: "location_id"
+      });
+
+      const data = await partsService.getAllParts(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -34,15 +40,20 @@ class PartsController {
 
   async getPart(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { params: { id } } = req;
-      match._id = helperService.validateObjectId(String(id));
-      if (userRole !== 'admin') {
-        const mappedUserList = await mapUserToLocationService.getLocationsMappedData(user_id);
-        match.location_id = { $in: mappedUserList.map((doc: any) => doc.locationId) };
-      }
-      const data = await partsService.getAllParts(match);
+      const baseFilter: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location",
+        idField: "location_id"
+      });
+
+      const data = await partsService.getAllParts(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

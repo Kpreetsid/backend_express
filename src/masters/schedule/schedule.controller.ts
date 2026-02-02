@@ -3,21 +3,30 @@ import { scheduleService } from './schedule.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
 import { helperService } from '../../utils/helper';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 class ScheduleController {
 
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const baseFilter: any = { account_id, visible: true };
       const { query: { priority, location_id, assignedUser } } = req;
-      if (priority) match["work_order.priority"] = { $in: priority.toString().split(',') };
-      if (location_id) match["work_order.wo_location_id"] = { $in: helperService.validateObjectIds(String(location_id)) };
-      if (assignedUser) match["work_order.userIdList"] = { $in: assignedUser.toString().split(",") };
-      if (userRole !== 'admin') {
-        match["work_order.userIdList"] = { $in: [`${user_id}`] };
-      }
-      const data = await scheduleService.getSchedules(match);
+      if (priority) baseFilter["work_order.priority"] = { $in: priority.toString().split(',') };
+      if (location_id) baseFilter["work_order.wo_location_id"] = { $in: helperService.validateObjectIds(String(location_id)) };
+      if (assignedUser) baseFilter["work_order.userIdList"] = { $in: assignedUser.toString().split(",") };
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location", // Schedules linked to location via work_order
+        idField: "work_order.wo_location_id",
+        createdByField: "work_order.userIdList" // Filter by "Assigned To Me" for users
+      });
+
+      const data = await scheduleService.getSchedules(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -29,13 +38,21 @@ class ScheduleController {
 
   async getDataById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { params: { id } } = req;
-      const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
-      if (userRole !== "admin") {
-        match.createdBy = user_id;
-      }
-      const data = await scheduleService.getSchedules(match);
+      const baseFilter: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location",
+        idField: "work_order.wo_location_id",
+        createdByField: "createdBy" // For single fetch, createdBy might be safer than assigned, or both? Original code checked createdBy.
+      });
+
+      const data = await scheduleService.getSchedules(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }

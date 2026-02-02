@@ -10,7 +10,14 @@ interface RoleFilterOptions {
   createdByField?: string;
   mapping?: MappingType;
 }
-export const applyRoleFilter = async ({user, baseFilter = {}, accountField = "account_id", createdByField = "createdBy", mapping = ""}: RoleFilterOptions): Promise<Record<string, any>> => {
+export const applyRoleFilter = async ({
+  user,
+  baseFilter = {},
+  accountField = "account_id",
+  createdByField = "createdBy",
+  mapping = "",
+  idField = "_id",
+}: RoleFilterOptions & { idField?: string }): Promise<Record<string, any>> => {
   const finalFilter: Record<string, any> = { ...baseFilter };
   switch (user.user_role) {
     case "super_admin":
@@ -26,14 +33,14 @@ export const applyRoleFilter = async ({user, baseFilter = {}, accountField = "ac
     case "manager":
     case "employee":
     case "customer": {
-      if (!finalFilter._id) {
+      if (!finalFilter[idField]) {
         if (mapping === "location") {
           const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
-          finalFilter._id = { $in: mappedLocations.map((doc: any) => doc.locationId) };
+          finalFilter[idField] = { $in: mappedLocations.map((doc: any) => doc.locationId) };
         }
         if (mapping === "asset") {
           const mappedAssets = await mapUserToAssetService.getAssetsMappedData(user._id);
-          finalFilter._id = { $in: mappedAssets.map((doc: any) => doc.assetId) };
+          finalFilter[idField] = { $in: mappedAssets.map((doc: any) => doc.assetId) };
         }
       }
       finalFilter[accountField] = user.account_id;

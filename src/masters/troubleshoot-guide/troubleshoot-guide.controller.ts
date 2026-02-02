@@ -3,14 +3,22 @@ import { troubleshootGuideService } from './troubleshoot-guide.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 class TroubleshootGuideController {
 
     async getAllData(req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
-            const { account_id } = get(req, "user", {}) as IUser;
-            const match: any = { account_id: account_id, visible: true };
-            const data = await troubleshootGuideService.getAllTroubleshootGuide(match);
+            const user = get(req, "user", {}) as IUser;
+            const { account_id } = user;
+            const baseFilter: any = { account_id: account_id, visible: true };
+            const filter = await applyRoleFilter({
+                user,
+                baseFilter,
+                accountField: "account_id",
+                // mapping: 'location' // Keeping simple for now as no query params suggested location usage
+            });
+            const data = await troubleshootGuideService.getAllTroubleshootGuide(filter);
             if (!data || data.length === 0) {
                 throw Object.assign(new Error('No data found'), { status: 404 });
             }
@@ -22,10 +30,16 @@ class TroubleshootGuideController {
 
     async getDataByID(req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
-            const { account_id } = get(req, "user", {}) as IUser;
+            const user = get(req, "user", {}) as IUser;
+            const { account_id } = user;
             const { params: { id } } = req;
-            const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true };
-            const data = await troubleshootGuideService.getAllTroubleshootGuide(match);
+            const baseFilter: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true };
+            const filter = await applyRoleFilter({
+                user,
+                baseFilter,
+                accountField: "account_id"
+            });
+            const data = await troubleshootGuideService.getAllTroubleshootGuide(filter);
             if (!data || data.length === 0) {
                 throw Object.assign(new Error('No data found'), { status: 404 });
             }

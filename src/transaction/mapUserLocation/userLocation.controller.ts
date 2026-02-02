@@ -49,12 +49,12 @@ class MapUserAssetLocationController {
       const { userId, assetId, populate } = req.query;
       const match: any = { assetId: { $exists: true } };
       if (userId) {
-        match.userId = helperService.validateObjectId(userId);
+        match.userId = helperService.validateObjectId(String(userId));
       }
       if (userRole === 'admin') {
         const assetMatch: any = { account_id, visible: true };
         if (assetId) {
-          assetMatch._id = helperService.validateObjectId(assetId);
+          assetMatch._id = helperService.validateObjectId(String(assetId));
         }
         const assetData = await assetService.getAllAssets(assetMatch);
         if (!assetData || assetData.length === 0) {
@@ -64,7 +64,7 @@ class MapUserAssetLocationController {
       } else {
         match.userId = user_id;
         if (assetId) {
-          match.assetId = helperService.validateObjectId(assetId);
+          match.assetId = helperService.validateObjectId(String(assetId));
         }
       }
       const data = await mapUserToAssetService.userAssets(match, populate);

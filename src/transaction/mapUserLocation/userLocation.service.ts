@@ -13,14 +13,14 @@ class MapUserToAssetService {
 
   getAssetsMappedData = async (userId: any) => {
     return await MapUserAssetLocationModel.find({
-      userId: helperService.validateObjectId(userId),
+      userId: userId,
       assetId: { $exists: true },
     }).lean();
   };
 
   getDataByAssetId = async (assetId: string) => {
     return await MapUserAssetLocationModel.find({
-      assetId: helperService.validateObjectId(assetId),
+      assetId: assetId,
       userId: { $exists: true },
     }).lean();
   };
@@ -200,11 +200,11 @@ export const mapUserToAssetService = new MapUserToAssetService();
 
 class MapUserToLocationService {
   getLocationsMappedData = async (userId: any) => {
-    return await MapUserAssetLocationModel.find({ userId: helperService.validateObjectId(userId), locationId: { $exists: true } });
+    return await MapUserAssetLocationModel.find({ userId: helperService.validateObjectId(String(userId)), locationId: { $exists: true } });
   }
 
   getDataByLocationId = async (locationId: string) => {
-    return await MapUserAssetLocationModel.find({ locationId: helperService.validateObjectId(locationId), userId: { $exists: true } }).lean();
+    return await MapUserAssetLocationModel.find({ locationId: helperService.validateObjectId(String(locationId)), userId: { $exists: true } }).lean();
   }
 
   getDataByLocationIds = async (locationIds: string[]) => {
