@@ -2,15 +2,15 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { postService } from './posts.service';
 import { IUser } from '../../models/user.model';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 
 class PostController {
 
-   async getPosts (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getPosts(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
-      const { query: { postType, relatedTo }} = req;
+      const { query: { postType, relatedTo } } = req;
       if (postType) {
         match.postType = postType.toString().split(',');
       }
@@ -26,15 +26,12 @@ class PostController {
       next(error);
     }
   }
-  
-   async getPost (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getPost(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
+      const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const { postType, relatedTo } = req.query;
       if (postType) {
         match.postType = postType.toString().split(',');
@@ -54,8 +51,8 @@ class PostController {
       next(error);
     }
   }
-  
-   async createPost (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async createPost(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       console.log({ account_id, user_id, userRole });
@@ -64,15 +61,12 @@ class PostController {
       next(error);
     }
   }
-  
-   async updatePost (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async updatePost(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
+      const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllParts(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -86,15 +80,12 @@ class PostController {
       next(error);
     }
   }
-  
-   async removePost (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async removePost(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
-      }
-      const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id };
+      const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllParts(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });

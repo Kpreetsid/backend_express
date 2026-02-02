@@ -3,33 +3,18 @@ import { locationService } from './location.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 import { applyRoleFilter } from '../../util/roleFilter';
 
 class LocationController {
 
-  validateObjectId = (id: string): mongoose.Types.ObjectId => {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error("Invalid ID"), { status: 400 });
-    }
-    return new mongoose.Types.ObjectId(id);
-  };
-
-  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
-    const idsArray = ids.split(",");
-    if (idsArray.length === 0) {
-      throw Object.assign(new Error("Invalid IDs"), { status: 400 });
-    }
-    return idsArray.map((id) => this.validateObjectId(id));
-  };
-
   getLocations = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const { query: { locationId, parent_id, account_id} } = req;
+      const { query: { locationId, parent_id, account_id } } = req;
       const baseFilter: any = {};
-      if(locationId) baseFilter._id = { $in: this.validateObjectIds(String(locationId)) };
-      if(parent_id) baseFilter.parent_id = { $in: this.validateObjectIds(String(parent_id)) };
-      if(account_id) baseFilter.account_id = { $in: this.validateObjectIds(String(account_id)) };
+      if (locationId) baseFilter._id = { $in: helperService.validateObjectIds(String(locationId)) };
+      if (parent_id) baseFilter.parent_id = { $in: helperService.validateObjectIds(String(parent_id)) };
+      if (account_id) baseFilter.account_id = { $in: helperService.validateObjectIds(String(account_id)) };
       const filter: any = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "account_id", mapping: "location" });
       let data = await locationService.getAllLocations(filter);
       if (!data || data.length === 0) {
@@ -87,7 +72,7 @@ class LocationController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      const match = { _id: this.validateObjectId(String(id)), account_id, visible: true };
+      const match = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
       const isDataExists = await locationService.getAllLocations(match);
       if (!isDataExists?.length) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -105,7 +90,7 @@ class LocationController {
 
   getChildLocationByRecursive = async (id: string): Promise<string[]> => {
     const locationIdList: string[] = [id];
-    const children = await locationService.getAllLocations({ parent_id: new mongoose.Types.ObjectId(String(id)), visible: true });
+    const children = await locationService.getAllLocations({ parent_id: helperService.validateObjectId(String(id)), visible: true });
     for (const child of children || []) {
       const childIds = await this.getChildLocationByRecursive(child.id.toString());
       locationIdList.push(...childIds);
@@ -144,7 +129,7 @@ class LocationController {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { params: { id }, query: { location_id, location_floor_map_tree } } = req;
-      let match: any = { _id: this.validateObjectId(String(id)), account_id, visible: true };
+      let match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
       if (location_floor_map_tree) {
         match.top_level = true;
         if (location_id) {
@@ -204,7 +189,7 @@ class LocationController {
       if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      const location = await locationService.getAllLocations({ _id: this.validateObjectId(String(id)), account_id: account_id, visible: true });
+      const location = await locationService.getAllLocations({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!location || location.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -214,7 +199,7 @@ class LocationController {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       data.id = data._id;
-      const updatedLocation = await locationService.getAllLocations({ _id: this.validateObjectId(String(id)), account_id: account_id, visible: true });
+      const updatedLocation = await locationService.getAllLocations({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       res.status(200).json({ status: true, message: "Data updated successfully", data: updatedLocation });
     } catch (error) {
       next(error);
@@ -225,12 +210,12 @@ class LocationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      const match = { _id: this.validateObjectId(String(id)), account_id: account_id, visible: true };
+      const match = { _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true };
       const location = await locationService.getAllLocations(match);
       if (!location || location.length === 0 || !location[0].visible) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
-      await locationService.removeLocationById(this.validateObjectId(String(id)), user_id);
+      await locationService.removeLocationById(helperService.validateObjectId(String(id)), user_id);
       res.status(200).json({ status: true, message: "Data deleted successfully" });
     } catch (error) {
       next(error);
@@ -268,12 +253,12 @@ class LocationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      let sourceLocation: any = await locationService.getLocationById(this.validateObjectId(String(id)), account_id);
+      let sourceLocation: any = await locationService.getLocationById(helperService.validateObjectId(String(id)), account_id);
       if (!sourceLocation) {
         throw Object.assign(new Error("Location not found"), { status: 404 });
       }
       sourceLocation = sourceLocation.toObject ? sourceLocation.toObject() : sourceLocation;
-      const allChildren: any[] = await locationService.getAllChildHierarchy(this.validateObjectId(String(id)), account_id);
+      const allChildren: any[] = await locationService.getAllChildHierarchy(helperService.validateObjectId(String(id)), account_id);
       const idMap: Record<string, any> = {};
       const parentForCopy = sourceLocation.parent_id ? sourceLocation.parent_id : undefined;
       const newParentId = await locationService.cloneLocationNode(sourceLocation, user_id, account_id, parentForCopy, idMap, null);

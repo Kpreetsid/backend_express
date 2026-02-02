@@ -2,25 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import { get } from "lodash";
 import { floorMapService } from './floorMap.service';
 import { IUser } from '../../models/user.model';
-import mongoose from 'mongoose';
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
+import { helperService } from "../../util/helper";
 import { applyRoleFilter } from "../../util/roleFilter";
 
 class FloorMapController {
-  validateObjectId = (id: string): mongoose.Types.ObjectId => {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error("Invalid ID"), { status: 400 });
-    }
-    return new mongoose.Types.ObjectId(id);
-  };
-
-  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
-    const idsArray = ids.split(",");
-    if (idsArray.length === 0) {
-      throw Object.assign(new Error("Invalid IDs"), { status: 400 });
-    }
-    return idsArray.map((id) => this.validateObjectId(id));
-  };
 
   getAllFloorMaps = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -45,7 +31,7 @@ class FloorMapController {
   getFloorMapByID = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const baseFilter = { _id: this.validateObjectId(String(id)) };
+      const baseFilter = { _id: helperService.validateObjectId(String(id)) };
       const filter = await applyRoleFilter({
         user: get(req, "user", {}) as IUser,
         baseFilter,
@@ -87,7 +73,7 @@ class FloorMapController {
       const { _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
       const data = await floorMapService.updateById(
-        this.validateObjectId(String(id)),
+        helperService.validateObjectId(String(id)),
         req.body,
         user_id,
       );
@@ -107,7 +93,7 @@ class FloorMapController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
       const check = await floorMapService.getFloorMaps({
-        _id: this.validateObjectId(String(id)),
+        _id: helperService.validateObjectId(String(id)),
         account_id,
       });
       if (!check.length) {
@@ -178,7 +164,7 @@ class FloorMapController {
       const data = await floorMapService.getFloorMaps({
         account_id,
         data_type: "asset",
-        locationId: this.validateObjectId(String(location_id)),
+        locationId: helperService.validateObjectId(String(location_id)),
       });
       if (!data.length) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -259,7 +245,7 @@ class FloorMapController {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
       const result = await floorMapService.deleteCoordinates({
-        _id: this.validateObjectId(String(id)),
+        _id: helperService.validateObjectId(String(id)),
         account_id,
       });
       if (!result) {

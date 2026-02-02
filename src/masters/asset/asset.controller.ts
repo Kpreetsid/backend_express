@@ -4,25 +4,11 @@ import { assetService } from './asset.service';
 import { IUser } from '../../models/user.model';
 import { mapUserToAssetService, mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { locationService } from '../location/location.service';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../util/roleFilter';
 
 class AssetController {
-  validateObjectId = (id: string): mongoose.Types.ObjectId => {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error("Invalid ID"), { status: 400 });
-    }
-    return new mongoose.Types.ObjectId(id);
-  };
-
-  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
-    const idsArray = ids.split(",");
-    if (idsArray.length === 0) {
-      throw Object.assign(new Error("Invalid IDs"), { status: 400 });
-    }
-    return idsArray.map((id) => this.validateObjectId(id));
-  };
 
   getAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
@@ -79,15 +65,15 @@ class AssetController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
-      const baseFilter: any = { _id: this.validateObjectId(String(id)) };
+      const baseFilter: any = { _id: helperService.validateObjectId(String(id)) };
       if (top_level_asset_id) {
-        baseFilter.top_level_asset_id = this.validateObjectIds(String(top_level_asset_id));
+        baseFilter.top_level_asset_id = helperService.validateObjectIds(String(top_level_asset_id));
       }
       if (top_level) {
         baseFilter.top_level = top_level == "true" ? true : false;
       }
       if (locationId) {
-        baseFilter.locationId = this.validateObjectId(String(locationId));
+        baseFilter.locationId = helperService.validateObjectId(String(locationId));
       }
       const filter = await applyRoleFilter({
         user,
@@ -111,7 +97,7 @@ class AssetController {
       const baseFilter: any = {};
       const { location_id } = req.query;
       if (location_id) {
-        baseFilter.locationId = this.validateObjectId(String(location_id));
+        baseFilter.locationId = helperService.validateObjectId(String(location_id));
       }
       const filter = await applyRoleFilter({
         user,
@@ -140,7 +126,7 @@ class AssetController {
       } = req;
       const baseFilter: any = {};
       if (location_id) {
-        baseFilter.locationId = this.validateObjectId(String(location_id));
+        baseFilter.locationId = helperService.validateObjectId(String(location_id));
       }
       const filter = await applyRoleFilter({
         user,
@@ -171,7 +157,7 @@ class AssetController {
         params: { id },
       } = req;
       const childIds = await assetService.getAllChildAssetIDs(
-        this.validateObjectId(String(id)),
+        helperService.validateObjectId(String(id)),
       );
       if (childIds.length === 0) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -201,13 +187,13 @@ class AssetController {
       const baseFilter: any = {};
       if (id) {
         baseFilter.$or = [
-          { _id: { $in: this.validateObjectIds(String(id)) } },
-          { parent_id: { $in: this.validateObjectIds(String(id)) } },
+          { _id: { $in: helperService.validateObjectIds(String(id)) } },
+          { parent_id: { $in: helperService.validateObjectIds(String(id)) } },
         ];
       }
       if (location_id) {
         baseFilter.locationId = {
-          $in: this.validateObjectIds(String(location_id)),
+          $in: helperService.validateObjectIds(String(location_id)),
         };
       }
       const filter = await applyRoleFilter({
@@ -336,7 +322,7 @@ class AssetController {
         });
       }
       const existingData: any = await assetService.getAllAssets({
-        _id: this.validateObjectId(String(id)),
+        _id: helperService.validateObjectId(String(id)),
         account_id,
         visible: true,
       });
@@ -345,13 +331,13 @@ class AssetController {
       }
       if (body.locationId !== existingData[0].locationId) {
         await assetService.updateAllChildAssetsLocation(
-          this.validateObjectId(String(id)),
+          helperService.validateObjectId(String(id)),
           body.locationId,
           user_id,
         );
       }
       const data = await assetService.updateAssetOld(
-        this.validateObjectId(String(id)),
+        helperService.validateObjectId(String(id)),
         body,
         user_id,
       );
@@ -359,7 +345,7 @@ class AssetController {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
       const insertedData: any = await assetService.getAllAssets({
-        _id: this.validateObjectId(String(id)),
+        _id: helperService.validateObjectId(String(id)),
       });
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error("No data found"), { status: 404 });
@@ -387,7 +373,7 @@ class AssetController {
         });
       }
       const dataExists: any = await assetService.getAllAssets({
-        _id: this.validateObjectId(String(id)),
+        _id: helperService.validateObjectId(String(id)),
         account_id,
         visible: true,
       });
@@ -395,7 +381,7 @@ class AssetController {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
       await assetService.updateAssetImageById(
-        this.validateObjectId(String(id)),
+        helperService.validateObjectId(String(id)),
         image_path,
         user_id,
       );
@@ -414,7 +400,7 @@ class AssetController {
         params: { id },
       } = req;
       const match: any = {
-        _id: this.validateObjectId(String(id)),
+        _id: helperService.validateObjectId(String(id)),
         account_id,
         visible: true,
       };
@@ -423,7 +409,7 @@ class AssetController {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
       await mapUserToLocationService.removeLocationMapping(
-        this.validateObjectId(String(id)),
+        helperService.validateObjectId(String(id)),
       );
       await assetService.removeById(match, user_id);
       res
@@ -444,7 +430,7 @@ class AssetController {
       const match: any = { account_id, visible: true };
       let { assetList } = req.query;
       if (assetList && assetList.toString().split(",").length > 0) {
-        match._id = this.validateObjectIds(String(assetList));
+        match._id = helperService.validateObjectIds(String(assetList));
       }
       if (userRole !== "admin") {
         const mapData =
@@ -475,7 +461,7 @@ class AssetController {
       const match: any = { account_id, visible: true };
       let { assetList } = req.body;
       if (assetList && assetList.length > 0) {
-        match._id = { $in: this.validateObjectIds(String(assetList)) };
+        match._id = { $in: helperService.validateObjectIds(String(assetList)) };
       }
       if (userRole !== "admin") {
         const mapData =
@@ -504,7 +490,7 @@ class AssetController {
         params: { id },
       } = req;
       const dataExists: any = await assetService.getAllAssets({
-        _id: this.validateObjectId(String(id)),
+        _id: helperService.validateObjectId(String(id)),
         account_id,
         visible: true,
       });

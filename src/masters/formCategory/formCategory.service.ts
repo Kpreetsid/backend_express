@@ -7,7 +7,7 @@ class FormCategoryService {
     return CategoryModel.find(match).sort({ _id: -1 });
   }
 
-  async getCategoryById(id: string, account_id: any): Promise<ICategory | null> {
+  async getCategoryById(id: any, account_id: any): Promise<ICategory | null> {
     return CategoryModel.findOne({ _id: id, account_id, visible: true });
   }
 
@@ -30,7 +30,7 @@ class FormCategoryService {
   }
 
   async updateById(id: string, body: any, user: IUser) {
-    return CategoryModel.findByIdAndUpdate(id, { name: body.name, description: body.description, updatedBy: user._id }, { new: true } );
+    return CategoryModel.findByIdAndUpdate(id, { name: body.name, description: body.description, updatedBy: user._id }, { new: true });
   }
 
   async removeById(id: string) {

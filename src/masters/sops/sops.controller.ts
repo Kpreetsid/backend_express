@@ -3,14 +3,14 @@ import { sopsService } from './sops.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
 import { applyRoleFilter } from '../../util/roleFilter';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 
 class SOPsController {
 
-  async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const baseFilter: any = { };
-      const { query: { category, location }} = req;
+      const baseFilter: any = {};
+      const { query: { category, location } } = req;
       if (category) {
         baseFilter.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
       }
@@ -27,19 +27,16 @@ class SOPsController {
       next(error);
     }
   }
-  
-  async getSop (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getSop(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { query: { category, location }, params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Id is required'), { status: 400 });
-      }
-      const baseFilter: any = { _id: new mongoose.Types.ObjectId(String(id)) };
+      const baseFilter: any = { _id: helperService.validateObjectId(String(id)) };
       if (category) {
         baseFilter.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
       }
       if (location) {
-        baseFilter.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+        baseFilter.locationId = { $in: helperService.validateObjectIds(String(location)) };
       }
       const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location' });
       let data = await sopsService.getSOPs(filter);
@@ -51,13 +48,13 @@ class SOPsController {
       next(error);
     }
   }
-  
-  async create (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       console.log({ account_id, user_id, userRole });
       const data = await sopsService.createSOPs(req.body, account_id, user_id);
-      if(!data) {
+      if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data created successfully", data });
@@ -65,20 +62,17 @@ class SOPsController {
       next(error);
     }
   }
-  
-  async update (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Id is required'), { status: 400 });
-      }
-      const existingData = await sopsService.getSOPs({ _id: id, account_id: account_id, visible: true });
+      const existingData = await sopsService.getSOPs({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       const data = await sopsService.updateSOPs(id, body, user_id);
-      if(!data) {
+      if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data updated successfully", data });
@@ -86,20 +80,17 @@ class SOPsController {
       next(error);
     }
   }
-  
-  async remove (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Id is required'), { status: 400 });
-      }
-      const existingData = await sopsService.getSOPs({ _id: id, account_id: account_id, visible: true });
+      const existingData = await sopsService.getSOPs({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       const data = await sopsService.removeSOPs(id, user_id);
-      if(!data) {
+      if (!data) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
       return res.status(200).json({ status: true, message: "Data deleted successfully" });

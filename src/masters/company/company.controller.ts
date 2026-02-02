@@ -2,24 +2,10 @@ import { get } from "lodash";
 import { USER_ROLES, IUser } from "../../models/user.model";
 import { NextFunction, Request, Response } from "express";
 import { companyService } from "./company.service";
-import mongoose from "mongoose";
+import { helperService } from "../../util/helper";
 import { applyRoleFilter } from "../../util/roleFilter";
 
 class CompanyController {
-  validateObjectId = (id: string): mongoose.Types.ObjectId => {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error("Invalid ID"), { status: 400 });
-    }
-    return new mongoose.Types.ObjectId(id);
-  };
-
-  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
-    const idsArray = ids.split(",");
-    if (idsArray.length === 0) {
-      throw Object.assign(new Error("Invalid IDs"), { status: 400 });
-    }
-    return idsArray.map((id) => this.validateObjectId(id));
-  };
 
   getCompanies = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -48,7 +34,7 @@ class CompanyController {
       if (USER_ROLES.includes(userRole) && `${account_id}` !== id) {
         throw Object.assign(new Error("Invalid ID"), { status: 400 });
       }
-      const baseFilter = { _id: this.validateObjectId(String(id)) };
+      const baseFilter = { _id: helperService.validateObjectId(String(id)) };
       const filter = await applyRoleFilter({
         user: get(req, "user", {}) as IUser,
         baseFilter,
@@ -95,7 +81,7 @@ class CompanyController {
         updatedBy: user_id,
       };
       const data = await companyService.updateById(
-        this.validateObjectId(String(id)),
+        helperService.validateObjectId(String(id)),
         updatedObj,
       );
       if (!data)
@@ -122,7 +108,7 @@ class CompanyController {
       }
       const updatedObj = { fileName, updatedBy: user_id };
       const data = await companyService.updateById(
-        this.validateObjectId(String(id)),
+        helperService.validateObjectId(String(id)),
         updatedObj,
       );
       if (!data)
@@ -138,7 +124,7 @@ class CompanyController {
       const { id } = req.params;
       const { _id: userId } = get(req, "user", {}) as IUser;
       const deleted = await companyService.removeById(
-        this.validateObjectId(String(id)),
+        helperService.validateObjectId(String(id)),
         userId,
       );
       if (!deleted) {

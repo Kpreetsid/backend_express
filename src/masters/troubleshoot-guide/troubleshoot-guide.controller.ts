@@ -2,11 +2,11 @@ import { Request, Response, NextFunction } from 'express';
 import { troubleshootGuideService } from './troubleshoot-guide.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 
 class TroubleshootGuideController {
-    
-    async getAllData (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+    async getAllData(req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
             const { account_id } = get(req, "user", {}) as IUser;
             const match: any = { account_id: account_id, visible: true };
@@ -19,15 +19,12 @@ class TroubleshootGuideController {
             next(error);
         }
     }
-    
-    async getDataByID (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+    async getDataByID(req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
             const { account_id } = get(req, "user", {}) as IUser;
             const { params: { id } } = req;
-            if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-                throw Object.assign(new Error('Bad request'), { status: 400 });
-            }
-            const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
+            const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true };
             const data = await troubleshootGuideService.getAllTroubleshootGuide(match);
             if (!data || data.length === 0) {
                 throw Object.assign(new Error('No data found'), { status: 404 });
@@ -37,8 +34,8 @@ class TroubleshootGuideController {
             next(error);
         }
     }
-    
-    async createData (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+    async createData(req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
             const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
             const data = await troubleshootGuideService.insertTroubleshootGuide(req.body, account_id, user_id);
@@ -50,15 +47,12 @@ class TroubleshootGuideController {
             next(error);
         }
     }
-    
-    async updateData (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+    async updateData(req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
             const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
             const { params: { id }, body } = req;
-            if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-                throw Object.assign(new Error('Bad request'), { status: 400 });
-            }
-            const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
+            const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true };
             const existingData = await troubleshootGuideService.getAllTroubleshootGuide(match);
             if (!existingData || existingData.length === 0) {
                 throw Object.assign(new Error('No data found'), { status: 404 });
@@ -72,15 +66,12 @@ class TroubleshootGuideController {
             next(error);
         }
     }
-    
-    async removeData (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+    async removeData(req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
             const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
             const { params: { id } } = req;
-            if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-                throw Object.assign(new Error('Bad request'), { status: 400 });
-            }
-            const match: any = { _id: new mongoose.Types.ObjectId(String(id)), account_id: account_id, visible: true };
+            const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true };
             const existingData = await troubleshootGuideService.getAllTroubleshootGuide(match);
             if (!existingData || existingData.length === 0) {
                 throw Object.assign(new Error('No data found'), { status: 404 });

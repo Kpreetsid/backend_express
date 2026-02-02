@@ -3,17 +3,17 @@ import { rolesService } from './roles.service';
 import { IUser } from '../../../models/user.model';
 import { usersService } from '../user.service';
 import { get } from 'lodash';
-import mongoose from 'mongoose';
+import { helperService } from '../../../util/helper';
 import { RoleManager } from '../../../_role/newUserRoles';
 
 class RolesController {
-  async getAll (req: Request, res: Response, next: NextFunction): Promise<any> {
+  async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { query: { user_id: queryUserId } } = req;
       const match: any = { account_id };
       if (queryUserId) {
-        match.user_id = new mongoose.Types.ObjectId(`${queryUserId}`);
+        match.user_id = helperService.validateObjectId(String(queryUserId));
       }
       const data = await rolesService.getRoles(match);
       if (!data || data.length === 0) {
@@ -24,8 +24,8 @@ class RolesController {
       next(error);
     }
   }
-  
-  async myRoleData (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async myRoleData(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id, user_id };
@@ -38,15 +38,12 @@ class RolesController {
       next(error);
     }
   }
-  
-  async getDataById (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async getDataById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 400 });
-      }
-      const match: any = { account_id: account_id, _id: id };
+      const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
       const data = await rolesService.getRoles(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -56,11 +53,11 @@ class RolesController {
       next(error);
     }
   }
-  
-  async createRole (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async createRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const userData: any = await usersService.getAllUsers({_id: new mongoose.Types.ObjectId(String(user_id))});
+      const userData: any = await usersService.getAllUsers({ _id: helperService.validateObjectId(String(user_id)) });
       if (!userData || userData.length === 0) {
         throw Object.assign(new Error('User not found'), { status: 404 });
       }
@@ -78,15 +75,12 @@ class RolesController {
       next(error);
     }
   }
-  
-  async updateRole (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async updateRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 400 });
-      }
-      const match: any = { account_id: account_id, _id: new mongoose.Types.ObjectId(`${id}`) };
+      const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
       const existingData = await rolesService.getRoles(match);
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
@@ -100,15 +94,12 @@ class RolesController {
       next(error);
     }
   }
-  
-  async removeRole (req: Request, res: Response, next: NextFunction): Promise<any> {
+
+  async removeRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('ID is required'), { status: 400 });
-      }
-      const match: any = { account_id: account_id, _id: new mongoose.Types.ObjectId(`${id}`) };
+      const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
       const existingData = await rolesService.getRoles(match);
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });

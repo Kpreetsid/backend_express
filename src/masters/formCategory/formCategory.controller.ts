@@ -2,23 +2,9 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { formCategoryService } from './formCategory.service';
 import { IUser } from '../../models/user.model';
-import mongoose from 'mongoose';
+import { helperService } from '../../util/helper';
 
 class FormCategoryController {
-  validateObjectId = (id: string): mongoose.Types.ObjectId => {
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      throw Object.assign(new Error("Invalid ID"), { status: 400 });
-    }
-    return new mongoose.Types.ObjectId(id);
-  };
-
-  validateObjectIds = (ids: string): mongoose.Types.ObjectId[] => {
-    const idsArray = ids.split(",");
-    if (idsArray.length === 0) {
-      throw Object.assign(new Error("Invalid IDs"), { status: 400 });
-    }
-    return idsArray.map((id) => this.validateObjectId(id));
-  };
 
   getAllFormCategories = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -38,10 +24,8 @@ class FormCategoryController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Invalid category ID'), { status: 400 });
-      }
-      const data = await formCategoryService.getCategoryById(String(id), account_id);
+
+      const data = await formCategoryService.getCategoryById(helperService.validateObjectId(String(id)), account_id);
       if (!data) {
         throw Object.assign(new Error('Category not found'), { status: 404 });
       }
@@ -73,10 +57,7 @@ class FormCategoryController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Invalid category ID'), { status: 400 });
-      }
-      const category = await formCategoryService.getCategoryById(String(id), user.account_id);
+      const category = await formCategoryService.getCategoryById(helperService.validateObjectId(String(id)), user.account_id);
       if (!category) {
         throw Object.assign(new Error('Category not found'), { status: 404 });
       }
@@ -95,10 +76,7 @@ class FormCategoryController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      if (!id || !mongoose.Types.ObjectId.isValid(String(id))) {
-        throw Object.assign(new Error('Invalid category ID'), { status: 400 });
-      }
-      const category = await formCategoryService.getCategoryById(String(id), account_id);
+      const category = await formCategoryService.getCategoryById(helperService.validateObjectId(String(id)), account_id);
       if (!category) {
         throw Object.assign(new Error('Category not found'), { status: 404 });
       }
