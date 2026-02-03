@@ -1,6 +1,5 @@
 import fs from "fs";
 import path from "path";
-import { v4 as uuidv4 } from "uuid";
 import { UploadModel } from '../models/upload.model';
 
 class UploadFilesService {
@@ -23,7 +22,25 @@ class UploadFilesService {
       const imageBuffer = Buffer.from(base64Data, "base64");
       const extension = mimeType.split("/")[1]; // png, jpg, etc.
 
-      const fileName = `${uuidv4()}.${extension}`;
+      const date = new Date();
+      const istDate = date.toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        hour12: false,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+
+      const formattedDate = istDate
+        .replace(/,/g, "")
+        .replace(/\//g, "-")
+        .replace(/:/g, "-")
+        .replace(/\s/g, "-");
+
+      const fileName = `${formattedDate}${folderName ? `_${folderName}` : ""}.${extension}`;
       let pathName = `../../uploadFiles`;
       if (folderName) {
         pathName = `../../uploadFiles/${folderName}`;
@@ -41,6 +58,7 @@ class UploadFilesService {
         originalName: fileName,
         type: mimeType,
         destination,
+        folderName,
         fileName,
         filePath,
         size: imageBuffer.length

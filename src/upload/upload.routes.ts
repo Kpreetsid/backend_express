@@ -21,9 +21,26 @@ const storage = multer.diskStorage({
     }
   },
   filename: function (req, file, cb) {
-    const timestamp = new Date().toISOString().replace(/:/g, '-');
+    const date = new Date();
+    const istDate = date.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    
+    const timestamp = istDate
+      .replace(/,/g, "")
+      .replace(/\//g, "-")
+      .replace(/:/g, "-")
+      .replace(/\s/g, "-");
+
     const ext = path.extname(file.originalname);
-    const baseName = path.basename(file.originalname, ext).replace(/\s+/g, '_');
+    const baseName = path.basename(file.originalname, ext).replace(/\s+/g, '-'); // User said replace space with -
     cb(null, `${timestamp}_${baseName}${ext}`);
   }
 });
@@ -42,6 +59,7 @@ const upload = multer({ storage, limits: { files: 12, fileSize: 5 * 1024 * 1024 
 export default (): express.Router => {
     router.post('/', upload.array('files', 12), uploadController.uploadController);
     router.post('/baseImage', uploadController.uploadBaseImage);
+    router.post('/baseImage/:folderName', uploadController.uploadBaseImage);
     router.post('/:folderName', upload.array('files', 12), uploadController.uploadController);
     return router;
 }

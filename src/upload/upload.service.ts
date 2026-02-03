@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { UploadModel } from '../models/upload.model';
-import { uploadFilesService } from '../utils/upload';
+import { uploadFilesService } from './upload.multer';
 
 class UploadService {
   async uploadService(req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -34,7 +34,9 @@ class UploadService {
   };
   async uploadBaseImageService(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      let { baseImage, folderName } = req.body;
+      let { baseImage, folderName: bodyFolderName } = req.body;
+      const { folderName: paramsFolderName } = req.params;
+      const folderName = paramsFolderName || bodyFolderName;
       if (!baseImage || typeof baseImage !== "string") {
         throw Object.assign(new Error('Base64 image data is required'), { status: 400 });
       }

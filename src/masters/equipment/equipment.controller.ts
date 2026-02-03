@@ -4,7 +4,7 @@ import { equipmentService } from './equipment.service';
 import { IUser } from '../../models/user.model';
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { mapUserToAssetService } from '../../transaction/mapUserLocation/userLocation.service';
-import { uploadFilesService } from '../../utils/upload';
+import { uploadFilesService } from '../../upload/upload.multer';
 import { locationService } from '../location/location.service';
 import { processorAPIService } from '../../api-processor';
 import { helperService } from '../../utils/helper';
