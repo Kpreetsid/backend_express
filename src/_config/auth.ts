@@ -8,6 +8,7 @@ import { IUserRoleMenu } from "../models/userRoleMenu.model";
 import { IUser, UserLoginPayload } from '../models/user.model';
 import { rolesService } from '../masters/user/role/roles.service';
 import { companyService } from '../masters/company/company.service';
+import { TokenModel } from '../models/userToken.model';
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -15,6 +16,10 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     const headerAccountID = req.headers.accountid;
     if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
+    }
+    const isTokenExist: any = await TokenModel.findOne({ _id: headerToken });
+    if (!isTokenExist) {
+      throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;

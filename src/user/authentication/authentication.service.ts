@@ -201,8 +201,11 @@ export const userLogOutService = async (req: Request, res: Response, next: NextF
   try {
     const user_id = get(req, 'user_id');
     const userToken = get(req, 'userToken');
-    const data = await TokenModel.deleteMany({ _id: userToken, userId: user_id });
-    console.log('Data:', data);
+    const [accessToken] = await Promise.all([
+      TokenModel.deleteMany({ _id: userToken, userId: { $exists: true } }),
+      // TokenModel.deleteMany({ _id: { $exists: true }, userId: helperService.validateObjectId(user_id) })
+    ]);
+    console.log({ accessToken, user_id });
     return res.status(200).json({ status: true, message: 'Logout successful' });
   } catch (error) {
     next(error);
