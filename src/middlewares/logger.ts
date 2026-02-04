@@ -41,7 +41,7 @@ class AppLogger {
         const headers: any = req.headers || {};
         const user: any = get(req, 'user', {});
         const userName = user?.username || 'Anonymous';
-        const userId = user?._id || null;
+        const userId = user?._id || user.id || null;
         const accountID = headers.accountid;
         const pageUrlHeader: string = (headers['page_url'] as string) || '';
         const origin: string = (headers['origin'] as string) || '';
