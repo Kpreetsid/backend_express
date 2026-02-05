@@ -1,5 +1,6 @@
 import { IUser } from "../models/user.model";
-import { mapUserToAssetService, mapUserToLocationService } from "../transaction/mapUserLocation/userLocation.service";
+import { mapUserToLocationService } from "../transaction/mapUserLocation/userLocation.service";
+import { mapUserToAssetService } from "../transaction/mapUserAsset/userAsset.service";
 
 type MappingType = "location" | "asset" | "";
 

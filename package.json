@@ -23,11 +23,11 @@
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.3",
     "lodash": "^4.17.23",
-    "mongoose": "^9.1.5",
+    "mongoose": "^9.1.6",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
-    "nodemailer": "^7.0.13",
+    "nodemailer": "^8.0.0",
     "object-assign": "^4.1.1"
   },
   "devDependencies": {

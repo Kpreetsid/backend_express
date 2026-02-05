@@ -2,7 +2,8 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { assetService } from './asset.service';
 import { IUser } from '../../models/user.model';
-import { mapUserToAssetService, mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
+import { mapUserToAssetService } from '../../transaction/mapUserAsset/userAsset.service';
+import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { locationService } from '../location/location.service';
 import { helperService } from '../../utils/helper';
 import { processorAPIService } from '../../api-processor';
@@ -325,7 +326,7 @@ class AssetController {
         _id: helperService.validateObjectId(String(id)),
         account_id,
         visible: true,
-      });
+        });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }

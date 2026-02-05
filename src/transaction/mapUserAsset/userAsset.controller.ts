@@ -3,7 +3,7 @@ import { mapUserToAssetService } from './userAsset.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
-import { assetService } from '../../masters/asset/asset.service';
+import { AssetModel } from '../../models/asset.model';
 
 class MapUserAssetController {
 
@@ -20,11 +20,11 @@ class MapUserAssetController {
         if (assetId) {
           assetMatch._id = helperService.validateObjectId(String(assetId));
         }
-        const assetData = await assetService.getAllAssets(assetMatch);
-        if (!assetData || assetData.length === 0) {
+        const assetIds = await AssetModel.find(assetMatch).distinct('_id');
+        if (!assetIds || assetIds.length === 0) {
           throw Object.assign(new Error('No assets found'), { status: 404 });
         }
-        match.assetId = { $in: assetData.map((doc: any) => doc._id || doc.id) };
+        match.assetId = { $in: assetIds };
       } else {
         match.userId = user_id;
         if (assetId) {

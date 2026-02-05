@@ -42,4 +42,10 @@ const MapUserLocationSchema = new Schema<IMapUserLocation>({
     }
 });
 
+MapUserLocationSchema.index({ userId: 1 });
+MapUserLocationSchema.index({ assetId: 1 });
+MapUserLocationSchema.index({ locationId: 1 });
+MapUserLocationSchema.index({ account_id: 1 });
+MapUserLocationSchema.index({ userId: 1, assetId: 1 });
+
 export const MapUserAssetLocationModel = mongoose.model<IMapUserLocation>('Schema_MapUserLocation', MapUserLocationSchema);

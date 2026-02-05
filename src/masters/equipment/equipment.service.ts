@@ -1,17 +1,42 @@
 import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
-import { mapUserToAssetService, mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
+import { mapUserToAssetService } from "../../transaction/mapUserAsset/userAsset.service";
+import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
 import { processorAPIService } from '../../api-processor';
 import { helperService } from '../../utils/helper';
 import mongoose from 'mongoose';
 
 class EquipmentService {
   async getAllEquipment(match: any) {
-    const assetsData = await AssetModel.find(match).populate([{ path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }]);
-    const assetsIds = assetsData.map((asset: any) => `${asset._id}`);
-    const mapData = await MapUserAssetLocationModel.find({ assetId: { $in: assetsIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
+    const assetsData = await AssetModel.find(match).populate([
+        { path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, 
+        { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }
+    ]);
+    
+    if (!assetsData.length) return [];
+
+    const assetsIds = assetsData.map((asset: any) => asset._id);
+    const mapData = await MapUserAssetLocationModel.find({ 
+        assetId: { $in: assetsIds }, 
+        userId: { $exists: true } 
+    }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
+
+    // Group mappings by assetId for O(1) lookup
+    const mappingsByAsset = new Map<string, any[]>();
+    mapData.forEach(map => {
+        const aId = String(map.assetId);
+        if (!mappingsByAsset.has(aId)) {
+            mappingsByAsset.set(aId, []);
+        }
+        if (map.userId) {
+            mappingsByAsset.get(aId)?.push(map.userId);
+        }
+    });
+
     const result: any = assetsData.map((doc: any) => {
-      const { _id: id, ...obj } = doc.toObject();
+      const obj = doc.toObject();
+      const id = String(obj._id);
+      
       if (obj.locationId) {
         obj.locationId.id = obj.locationId._id;
       }
@@ -19,10 +44,10 @@ class EquipmentService {
         obj.parent_id.id = obj.parent_id._id;
       }
       obj.id = id;
-      const mappedUser = mapData.filter(map => `${map.assetId}` === `${id}`);
-      obj.userList = mappedUser.length > 0 ? mappedUser.map((a: any) => a.userId).filter((user: any) => user) : [];
+      obj.userList = mappingsByAsset.get(id) || [];
       return obj;
     });
+
     return result;
   }
 

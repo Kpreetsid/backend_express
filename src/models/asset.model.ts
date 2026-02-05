@@ -205,4 +205,9 @@ const assetSchema = new Schema<IAsset>(
   },
 );
 
+assetSchema.index({ account_id: 1, visible: 1 });
+assetSchema.index({ parent_id: 1 });
+assetSchema.index({ locationId: 1 });
+assetSchema.index({ top_level_asset_id: 1 });
+
 export const AssetModel = mongoose.model<IAsset>('Schema_Asset', assetSchema);

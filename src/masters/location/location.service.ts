@@ -3,7 +3,8 @@ import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUse
 import { AssetModel } from "../../models/asset.model";
 import { helperService } from "../../utils/helper";
 import mongoose from "mongoose";
-import { mapUserToLocationService, mapUserToAssetService, updateLocationAssetMapping } from '../../transaction/mapUserLocation/userLocation.service';
+import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
+import { mapUserToAssetService, updateLocationAssetMapping } from '../../transaction/mapUserAsset/userAsset.service';
 import { getData } from "../../utils/queryBuilder";
 
 class LocationService {
