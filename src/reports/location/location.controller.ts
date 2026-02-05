@@ -54,6 +54,20 @@ class LocationReportController {
       next(error);
     }
   }
+
+  async updateReport(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const { id } = req.params;
+      const data = await locationReportService.updateLocationReport(helperService.validateObjectId(String(id)), req.body, user);
+      if (!data) {
+        throw Object.assign(new Error('Report not found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Report updated successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const locationReportController = new LocationReportController();

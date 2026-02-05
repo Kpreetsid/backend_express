@@ -3,7 +3,6 @@ import { userWorkOrderService } from './userWorkOrder.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
-import mongoose from 'mongoose';
 import { orderService } from '../../work/order/order.service';
 
 class UserWorkOrderController {
@@ -21,10 +20,9 @@ class UserWorkOrderController {
       } else {
         match.userId = user_id;
       }
-      if (workOrderId && mongoose.Types.ObjectId.isValid(String(workOrderId))) {
-        const woId = helperService.validateObjectId(workOrderId);
-        match.woId = woId;
-        const workOrderData: any = await orderService.getAllOrders({ _id: woId, account_id, visible: true });
+      if (workOrderId) {
+        match.woId = helperService.validateObjectId(workOrderId);
+        const workOrderData: any = await orderService.getAllOrders({ _id: match.woId, account_id, visible: true });
         if (!workOrderData || workOrderData.length === 0) {
           throw Object.assign(new Error('No data found'), { status: 404 });
         }
@@ -52,6 +50,45 @@ class UserWorkOrderController {
       next(error);
     }
   };
+
+  async create(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { body } = req;
+      if (!Array.isArray(body) || body.length === 0) {
+        throw Object.assign(new Error('Invalid request data'), { status: 400 });
+      }
+      const data = await userWorkOrderService.mapUsersWorkOrder(body);
+      res.status(200).json({ status: true, message: "Users mapped successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async update(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { workOrderId } = req.params;
+      const { userIds } = req.body;
+      const woId = helperService.validateObjectId(workOrderId);
+      if (!Array.isArray(userIds)) {
+        throw Object.assign(new Error('Invalid request data'), { status: 400 });
+      }
+      const data = await userWorkOrderService.updateMappedUsers(woId, userIds);
+      res.status(200).json({ status: true, message: "Mapping updated successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { workOrderId } = req.params;
+      const woId = helperService.validateObjectId(workOrderId);
+      const data = await userWorkOrderService.removeMappedUsers(woId);
+      res.status(200).json({ status: true, message: "Mapping removed successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const userWorkOrderController = new UserWorkOrderController();

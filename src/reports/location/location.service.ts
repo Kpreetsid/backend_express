@@ -164,6 +164,17 @@ class LocationReportService {
   async deleteLocationsReport(id: any, accountId: any, user_id: any) {
     return await ReportLocationModel.findOneAndUpdate({ _id: id, account_id: accountId, visible: true }, { visible: false, updatedBy: user_id }, { new: true });
   };
+
+  async updateLocationReport(id: any, data: any, user: any) {
+    // This is a basic update implementation. 
+    // Depending on requirements, we might need to regenerate the report or update specific fields.
+    // For now, allowing update of specific report fields provided in data.
+    return await ReportLocationModel.findOneAndUpdate(
+      { _id: id, account_id: user.account_id, visible: true },
+      { ...data, updatedBy: user._id },
+      { new: true }
+    );
+  };
 }
 
 export const locationReportService = new LocationReportService();

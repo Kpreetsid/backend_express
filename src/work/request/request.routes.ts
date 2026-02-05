@@ -10,6 +10,7 @@ export default (router: express.Router) => {
     requestRouter.patch('/approve/:id', requestController.approve);
     requestRouter.patch('/reject/:id', requestController.reject);
     requestRouter.patch('/:id/:status', requestController.update);
+    requestRouter.patch('/:id', requestController.update);
     requestRouter.delete('/:id', requestController.remove);
     router.use('/requests', requestRouter);
 }

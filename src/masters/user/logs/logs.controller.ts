@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { userLogsService } from './logs.service';
 import { get } from 'lodash';
 import { IUser } from '../../../models/user.model';
-import mongoose from 'mongoose';
+import { helperService } from '../../../utils/helper';
 
 class UserLogsController {
   async userLogs (req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -14,10 +14,7 @@ class UserLogsController {
         match.userId = user_id;
       }
       if (userId) {
-        if (!mongoose.Types.ObjectId.isValid(String(userId))) {
-          return next(Object.assign(new Error("Invalid userId"), { status: 400 }));
-        }
-        match.userId = new mongoose.Types.ObjectId(String(userId));
+        match.userId = helperService.validateObjectId(String(userId));
       }
       if (statusCode) {
         match.statusCode = statusCode;
