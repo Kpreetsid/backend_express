@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 
 export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
   _id: string | mongoose.Types.ObjectId;
+  token_id: mongoose.Types.ObjectId;
   ttl: number;
   created: Date;
   userId: ObjectId;
@@ -11,21 +12,11 @@ export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
 
 const userTokenSchema = new Schema<IUserToken>({
   _id: { type: String , trim: true, required: true },
+  token_id: { type: Schema.Types.ObjectId },
   ttl: { type: Number, required: true },
-  created: {
-    type: Date,
-    required: true,
-    default: Date.now
-  },
-  userId: {
-    type: Schema.Types.ObjectId,
-    required: true,
-    ref: 'UserModel'
-  },
-  principalType: {
-    type: String,
-    required: true
-  }
+  created: { type: Date, required: true, default: Date.now },
+  userId: { type: Schema.Types.ObjectId, required: true, ref: 'UserModel' },
+  principalType: { type: String, required: true },
 }, {
   collection: 'CustomAccessToken',
   versionKey: false,

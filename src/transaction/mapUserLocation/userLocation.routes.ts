@@ -6,9 +6,4 @@ export default (router: express.Router) => {
     router.post('/userToLocations', userLocationController.setUserLocations);
     router.put('/userToLocations', userLocationController.updateUserLocations);
     router.patch('/userToLocations', userLocationController.updateUserLocations);
-    router.get('/userToAssets', userLocationController.getUserAssets);
-    router.post('/userToAssets', userLocationController.setUserAssets);
-    router.put('/userToAssets/:assetId', userLocationController.updateUserAssets);
-    router.patch('/userToAssets/:assetId', userLocationController.updateUserAssets);
-    router.post('/updateAssetsFlags', userLocationController.updateSendMailFlag);
 }

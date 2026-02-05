@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { IUser, UserModel, UserLoginPayload } from "../../models/user.model";
 import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../utils/bcrypt';
@@ -55,14 +56,16 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!userRoleData) {
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
+    const token_id = new mongoose.Types.ObjectId();
     const userTokenData = new TokenModel({
       _id: token,
+      token_id: token_id,
       userId: user._id,
       principalType: 'user',
       ttl: parseInt(auth.expiresIn as string)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: { token, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu } });
+    res.status(200).json({ status: true, message: 'Login successful', data: { token, token_id, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu } });
   } catch (error) {
     next(error);
   }
