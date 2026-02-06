@@ -2,9 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
 export const STATUS = ['active', 'inactive'];
-export const ROLE = ['super_admin', 'super_employee', 'super_user', 'admin', 'manager', 'employee', 'customer', 'user'];
 export const USER_ROLES = ["admin", "manager", "employee", "customer", "user"];
-export const SUPER_ROLES = ["super_admin", "super_employee", "super_user"];
 
 export interface UserLoginPayload {
   id: string;
@@ -18,7 +16,7 @@ export interface IUser extends Document {
   password: string;
   email: string;
   user_status: 'active' | 'inactive' | string;
-  user_role: 'super_admin' | 'super_employee' | 'super_user' | 'admin' | 'manager' | 'employee' | 'customer' | 'user';
+  user_role: 'admin' | 'manager' | 'employee' | 'customer' | 'user';
   createdOn: Date;
   user_profile_img: string;
   account_id: ObjectId;
@@ -37,7 +35,7 @@ export const userSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   user_profile_img: { type: String },
   user_status: { type: String, enum: STATUS, default: 'active' },
-  user_role: { type: String, required: true, enum: ROLE, default: 'employee', trim: true, lowercase: true },
+  user_role: { type: String, required: true, enum: USER_ROLES, default: 'employee', trim: true, lowercase: true },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   phone_no: { type: Object, required: true },
   isFirstUser: { type: Boolean, default: false },
