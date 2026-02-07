@@ -2,6 +2,7 @@ import express from 'express';
 import { orderController } from './order.controller';
 import commentsRoutes from '../comments/comment.routes';
 import { hasRolePermission } from '../../middlewares';
+import { validateParamId } from '../../middlewares/validate';
 
 export default (router: express.Router) => {
     const orderRouter = express.Router();
@@ -13,12 +14,12 @@ export default (router: express.Router) => {
     orderRouter.get('/monthly-count', orderController.getMonthlyCount);
     orderRouter.get('/planned-unplanned', orderController.getPlannedUnplanned);
     orderRouter.get('/get-work-order', orderController.getAllWorkOrders);
-    orderRouter.get('/:id', orderController.getOrderById);
+    orderRouter.get('/:id', validateParamId, orderController.getOrderById);
     orderRouter.post('/', hasRolePermission('workOrder', 'create_work_order'), orderController.createOrder);
     orderRouter.put('/status/:id', hasRolePermission('workOrder', 'update_work_order_status'), orderController.statusUpdateOrder);
-    orderRouter.put('/:id', orderController.updateOrder);
-    orderRouter.patch('/:id', orderController.updateOrderSubmitData);
-    orderRouter.delete('/:id', hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
+    orderRouter.put('/:id', validateParamId, orderController.updateOrder);
+    orderRouter.patch('/:id', validateParamId, orderController.updateOrderSubmitData);
+    orderRouter.delete('/:id', validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));
     router.use('/orders', orderRouter);

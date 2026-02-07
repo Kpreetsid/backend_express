@@ -1,14 +1,13 @@
 import { Router } from 'express';
 import { commentController } from './comment.controller';
-import { validateId, validateBody } from '../../middlewares/validate';
-import { createCommentSchema, updateCommentSchema } from '../../models/comment.model';
+import { validateParamId } from '../../middlewares/validate';
 
 export default (router: Router) => {
   router.get("/", commentController.getAll);
-  router.get("/:commentId", validateId, commentController.getDataById);
-  router.post("/", validateBody(createCommentSchema), commentController.create);
-  router.put("/:commentId", validateId, validateBody(updateCommentSchema), commentController.update);
-  router.patch("/:commentId", validateId, validateBody(updateCommentSchema), commentController.update);
-  router.delete("/:commentId", validateId, commentController.remove);
+  router.get("/:commentId", validateParamId, commentController.getDataById);
+  router.post("/", commentController.create);
+  router.put("/:commentId", validateParamId, commentController.update);
+  router.patch("/:commentId", validateParamId, commentController.update);
+  router.delete("/:commentId", validateParamId, commentController.remove);
   return router;
 };

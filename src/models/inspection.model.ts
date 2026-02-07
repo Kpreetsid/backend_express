@@ -1,7 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
-import Joi from 'joi';
-const objectId = Joi.string().regex(/^[0-9a-fA-F]{24}$/);
 
 export interface IInspection extends Document {
   account_id: ObjectId;
@@ -61,33 +59,3 @@ const InspectionSchema = new Schema<IInspection>(
 );
 
 export const InspectionModel = mongoose.model<IInspection>('Schema_Inspection', InspectionSchema);
-
-export const createInspectionSchema = Joi.object({
-  title: Joi.string().min(2).required(),
-  description: Joi.string().allow("", null),
-  start_date: Joi.string().required(),
-  form_id: objectId.required(),
-  inspection_report: Joi.object().allow(null),
-  location_id: objectId.required(),
-  asset_id: objectId.required(),
-  assignedUser: Joi.array().items(objectId).required().min(1),
-  status: Joi.string().required(),
-  month: Joi.string(),
-  createdFrom: Joi.string().required(),
-  no_of_actions: Joi.number().min(0).default(0)
-});
-
-export const updateInspectionSchema = Joi.object({
-  title: Joi.string().min(2),
-  description: Joi.string().allow("", null),
-  start_date: Joi.string(),
-  form_id: objectId,
-  inspection_report: Joi.object(),
-  location_id: objectId,
-  asset_id: objectId,
-  assignedUser: Joi.array().items(objectId),
-  status: Joi.string(),
-  month: Joi.string(),
-  createdFrom: Joi.string(),
-  no_of_actions: Joi.number().min(0)
-});

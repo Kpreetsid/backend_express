@@ -1,13 +1,14 @@
 import express from 'express';
 import { companyController } from './company.controller';
+import { validateParamId } from '../../middlewares/validate';
 
 export default (router: express.Router) => {
     const companyRouter = express.Router();
     companyRouter.get('/', companyController.getCompanies);
-    companyRouter.get('/:id', companyController.getCompany);
+    companyRouter.get('/:id', validateParamId, companyController.getCompany);
     companyRouter.post('/', companyController.create);
-    companyRouter.put('/:id', companyController.updateCompany);
-    companyRouter.patch('/:id', companyController.updateImageCompany);
-    companyRouter.delete('/:id', companyController.removeCompany);
+    companyRouter.put('/:id', validateParamId, companyController.updateCompany);
+    companyRouter.patch('/:id', validateParamId, companyController.updateImageCompany);
+    companyRouter.delete('/:id', validateParamId, companyController.removeCompany);
     router.use('/companies', companyRouter);
 }
