@@ -5,15 +5,10 @@ import { IUser } from '../../models/user.model';
 import { resetPasswordService } from '../../user/resetPassword/resetPassword.service';
 import { passwordService } from '../../utils/bcrypt';
 import { applyRoleFilter } from '../../utils/roleFilter';
-import { MailerService } from '../../_config/mailer';
+import { mailerService } from '../../_config/mailer';
 import { helperService } from '../../utils/helper';
 
 class UserController {
-  private mailerService: MailerService;
-
-  constructor() {
-    this.mailerService = new MailerService();
-  }
 
   async getUsers(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
@@ -83,7 +78,7 @@ class UserController {
       body.createdBy = user_id;
 
       const data = await usersService.createNewUser(body, account_id);
-      await this.mailerService.sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email });
+      await mailerService.sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email });
       res.status(201).json({ status: true, message: "Data created successfully", data: data.userDetails, roleData: data.roleDetails });
     } catch (error) {
       next(error);

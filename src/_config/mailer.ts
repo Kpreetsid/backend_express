@@ -160,3 +160,5 @@ export class MailerService {
     await this.send({to: data.userEmail, subject: 'Welcome to Presage Insights - Your Account Is Ready', html});
   }
 }
+
+export const mailerService = new MailerService();
