@@ -12,7 +12,10 @@ class ResetPasswordController {
             }
             const emailCheck = await usersService.getAllUsers({ email: email });
             if(emailCheck.length === 0) {
-                throw Object.assign(new Error('Email not found'), { status: 404 });
+                throw Object.assign(new Error('User not registered. Please register first.'), { status: 404 });
+            }
+            if(emailCheck[0].user_status !== 'active') {
+                throw Object.assign(new Error('User is not active, Please contact admin.'), { status: 404 });
             }
             const match = { email: req.body.email, firstName: emailCheck[0].firstName, lastName: emailCheck[0].lastName };
             const data = await resetPasswordService.sendVerificationEmailCode(match);
@@ -33,7 +36,10 @@ class ResetPasswordController {
             }
             const emailCheck = await usersService.getAllUsers({ email });
             if (emailCheck.length === 0) {
-                throw Object.assign(new Error('Email not found'), { status: 404 });
+                throw Object.assign(new Error('User not registered. Please register first.'), { status: 404 });
+            }
+            if (emailCheck[0].user_status !== 'active') {
+                throw Object.assign(new Error('User is not active, Please contact admin.'), { status: 404 });
             }
             const match: any = { email: emailCheck[0].email };
             const otpExists = await resetPasswordService.verifyOTPExists(match);
