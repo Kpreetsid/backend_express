@@ -20,8 +20,6 @@ class EquipmentService {
         assetId: { $in: assetsIds }, 
         userId: { $exists: true } 
     }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
-
-    // Group mappings by assetId for O(1) lookup
     const mappingsByAsset = new Map<string, any[]>();
     mapData.forEach(map => {
         const aId = String(map.assetId);

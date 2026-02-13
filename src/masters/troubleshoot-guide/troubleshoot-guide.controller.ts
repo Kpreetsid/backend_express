@@ -16,13 +16,13 @@ class TroubleshootGuideController {
                 user,
                 baseFilter,
                 accountField: "account_id",
-                // mapping: 'location' // Keeping simple for now as no query params suggested location usage
+                // mapping: 'location'
             });
             const data = await troubleshootGuideService.getAllTroubleshootGuide(filter);
             if (!data || data.length === 0) {
-                throw Object.assign(new Error('No data found'), { status: 404 });
+                throw Object.assign(new Error('Troubleshoot guide not found'), { status: 404 });
             }
-            res.status(200).json({ status: true, message: "Data fetched successfully", data });
+            res.status(200).json({ status: true, message: "Troubleshoot guides fetched successfully", data });
         } catch (error) {
             next(error);
         }
@@ -41,9 +41,9 @@ class TroubleshootGuideController {
             });
             const data = await troubleshootGuideService.getAllTroubleshootGuide(filter);
             if (!data || data.length === 0) {
-                throw Object.assign(new Error('No data found'), { status: 404 });
+                throw Object.assign(new Error('Troubleshoot guide not found'), { status: 404 });
             }
-            res.status(200).json({ status: true, message: "Data fetched successfully", data });
+            res.status(200).json({ status: true, message: "Troubleshoot guide fetched successfully", data });
         } catch (error) {
             next(error);
         }
@@ -54,9 +54,9 @@ class TroubleshootGuideController {
             const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
             const data = await troubleshootGuideService.insertTroubleshootGuide(req.body, account_id, user_id);
             if (!data) {
-                throw Object.assign(new Error('No data found'), { status: 404 });
+                throw Object.assign(new Error('Troubleshoot guide not created'), { status: 404 });
             }
-            res.status(200).json({ status: true, message: "Data created successfully", data });
+            res.status(200).json({ status: true, message: "Troubleshoot guide created successfully", data });
         } catch (error) {
             next(error);
         }
@@ -69,13 +69,13 @@ class TroubleshootGuideController {
             const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true };
             const existingData = await troubleshootGuideService.getAllTroubleshootGuide(match);
             if (!existingData || existingData.length === 0) {
-                throw Object.assign(new Error('No data found'), { status: 404 });
+                throw Object.assign(new Error('Troubleshoot guide not found'), { status: 404 });
             }
             const data = await troubleshootGuideService.updateTroubleshootGuideById(id, body, user_id);
             if (!data) {
-                throw Object.assign(new Error('No data found'), { status: 404 });
+                throw Object.assign(new Error('Troubleshoot guide not updated'), { status: 404 });
             }
-            res.status(200).json({ status: true, message: "Data updated successfully", data });
+            res.status(200).json({ status: true, message: "Troubleshoot guide updated successfully", data });
         } catch (error) {
             next(error);
         }
@@ -88,13 +88,13 @@ class TroubleshootGuideController {
             const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true };
             const existingData = await troubleshootGuideService.getAllTroubleshootGuide(match);
             if (!existingData || existingData.length === 0) {
-                throw Object.assign(new Error('No data found'), { status: 404 });
+                throw Object.assign(new Error('Troubleshoot guide not found'), { status: 404 });
             }
             const data = await troubleshootGuideService.removeTroubleshootGuideById(id, user_id);
             if (!data) {
-                throw Object.assign(new Error('No data found'), { status: 404 });
+                throw Object.assign(new Error('Troubleshoot guide not deleted'), { status: 404 });
             }
-            res.status(200).json({ status: true, message: "Data deleted successfully" });
+           return res.status(200).json({ status: true, message: "Troubleshoot guide deleted successfully" });
         } catch (error) {
             next(error);
         }

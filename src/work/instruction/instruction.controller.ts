@@ -11,7 +11,7 @@ class InstructionController {
       const match: any = { account_id, visible: true };
       const data: any[] = await instructionService.getInstructions(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Instruction not found'), { status: 404 });
       }
       return res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
@@ -27,7 +27,7 @@ class InstructionController {
       const match: any = { _id: instructionId, account_id: account_id, visible: true };
       const data = await instructionService.getInstructions(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Instruction not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
@@ -41,7 +41,7 @@ class InstructionController {
       const body = req.body;
       const data = await instructionService.createInstructions(body, account_id, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Instruction not created'), { status: 404 });
       }
       res.status(201).json({ status: true, message: "Data created successfully", data });
     } catch (error) {
@@ -57,11 +57,11 @@ class InstructionController {
       const match: any = { _id: instructionId, account_id: account_id, visible: true };
       const existingRequest = await instructionService.getInstructions(match);
       if (!existingRequest || existingRequest.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Instruction not found'), { status: 404 });
       }
       const data = await instructionService.updateInstructions(String(id), body, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Instruction not updated'), { status: 404 });
       }
       res.status(200).send({ status: true, message: 'Work order updated successfully', data: body });
     } catch (error) {
@@ -77,7 +77,7 @@ class InstructionController {
       const match: any = { _id: instructionId, account_id: account_id, visible: true };
       const existingRequest = await instructionService.getInstructions(match);
       if (!existingRequest || existingRequest.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Instruction not found'), { status: 404 });
       }
       await instructionService.deleteInstructionsById(String(id), user_id);
       res.status(200).json({ status: true, message: "Data deleted successfully" });

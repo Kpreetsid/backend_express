@@ -21,16 +21,16 @@ class ScheduleController {
         user,
         baseFilter,
         accountField: "account_id",
-        mapping: "location", // Schedules linked to location via work_order
+        mapping: "location",
         idField: "work_order.wo_location_id",
-        createdByField: "work_order.userIdList" // Filter by "Assigned To Me" for users
+        createdByField: "work_order.userIdList"
       });
 
       const data = await scheduleService.getSchedules(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Schedule not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Schedules fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -49,14 +49,14 @@ class ScheduleController {
         accountField: "account_id",
         mapping: "location",
         idField: "work_order.wo_location_id",
-        createdByField: "createdBy" // For single fetch, createdBy might be safer than assigned, or both? Original code checked createdBy.
+        createdByField: "createdBy"
       });
 
       const data = await scheduleService.getSchedules(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Schedule not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Schedule fetched successfully", data });
     } catch (error) {
       console.error(error);
       next(error);
@@ -68,7 +68,7 @@ class ScheduleController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const body = req.body;
       const data = await scheduleService.createSchedules(body, account_id, user_id);
-      res.status(201).json({ status: true, message: "Data created successfully", data });
+      res.status(201).json({ status: true, message: "Schedule created successfully", data });
     } catch (error) {
       next(error);
     }
@@ -80,10 +80,10 @@ class ScheduleController {
       const { params: { id }, body } = req;
       const existingData = await scheduleService.getSchedules({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Schedule not found'), { status: 404 });
       }
       const data = await scheduleService.updateSchedules(id, body, user_id);
-      res.status(200).json({ status: true, message: "Data updated successfully", data });
+      res.status(200).json({ status: true, message: "Schedule updated successfully", data });
     } catch (error) {
       next(error);
     }
@@ -95,13 +95,13 @@ class ScheduleController {
       const { id } = req.params;
       const existingData = await scheduleService.getSchedules({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Schedule not found'), { status: 404 });
       }
       const data = await scheduleService.removeSchedules(id, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Schedule not deleted'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data deleted successfully" });
+      res.status(200).json({ status: true, message: "Schedule deleted successfully" });
     } catch (error) {
       next(error);
     }

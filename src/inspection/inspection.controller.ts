@@ -24,7 +24,7 @@ class InspectionController {
     }
     const data = await inspectionService.getAllInspection(match);
     if (!data.length) {
-      throw Object.assign(new Error('No inspections data found'), { status: 404 });
+      throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Inspections fetched successfully", data });
   } catch (error) {
@@ -51,7 +51,7 @@ class InspectionController {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const data: any = await inspectionService.createInspection(req.body, account_id, user_id);
     if (!data) {
-      throw Object.assign(new Error('Inspection not found'), { status: 404 });
+      throw Object.assign(new Error('Inspection not created'), { status: 404 });
     }
     const result = await inspectionService.getAllInspection({ _id: data._id, account_id, visible: true });
     if (!result.length) {
@@ -69,7 +69,7 @@ class InspectionController {
     const { id } = req.params;
     const data = await inspectionService.updateInspection(id, req.body, account_id, user_id);
     if (!data) {
-      throw Object.assign(new Error('Inspection not found'), { status: 404 });
+      throw Object.assign(new Error('Inspection not updated'), { status: 404 });
     }
     const result = await inspectionService.getAllInspection({ _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true });
     if (!result.length) {
@@ -91,7 +91,7 @@ class InspectionController {
     }
     const result = await inspectionService.removeInspection(id, account_id, user_id);
     if (!result) {
-      throw Object.assign(new Error('Inspection not found'), { status: 404 });
+      throw Object.assign(new Error('Inspection not deleted'), { status: 404 });
     }
     res.status(200).json({ status: true, message: "Inspection deleted successfully" });
   } catch (error) {

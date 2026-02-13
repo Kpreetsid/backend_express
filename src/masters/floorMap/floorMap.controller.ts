@@ -18,11 +18,11 @@ class FloorMapController {
       delete filter.visible;
       const data = await floorMapService.getFloorMaps(filter);
       if (!data.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Floor Map not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully", data });
+        .json({ status: true, message: "Floor maps fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -39,11 +39,11 @@ class FloorMapController {
       delete filter.visible;
       const data = await floorMapService.getFloorMaps(filter);
       if (!data.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Floor Map not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully", data });
+        .json({ status: true, message: "Floor map fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -58,11 +58,11 @@ class FloorMapController {
         user_id,
       );
       if (!data) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Floor Map not created"), { status: 404 });
       }
       res
         .status(201)
-        .json({ status: true, message: "Data inserted successfully", data });
+        .json({ status: true, message: "Floor map created successfully", data });
     } catch (error) {
       next(error);
     }
@@ -78,11 +78,11 @@ class FloorMapController {
         user_id,
       );
       if (!data) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Floor Map not updated"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data updated successfully", data });
+        .json({ status: true, message: "Floor map updated successfully", data });
     } catch (error) {
       next(error);
     }
@@ -97,15 +97,15 @@ class FloorMapController {
         account_id,
       });
       if (!check.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Floor Map not found"), { status: 404 });
       }
       const result = await floorMapService.removeById(id, user_id);
       if (!result) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Floor Map not deleted"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data deleted successfully" });
+        .json({ status: true, message: "Floor map deleted successfully" });
     } catch (error) {
       next(error);
     }
@@ -147,11 +147,11 @@ class FloorMapController {
         userRole,
       );
       if (!data.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Floor Map coordinates not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: `Data found Successfully.`, data });
+        .json({ status: true, message: `Floor map coordinates fetched successfully.`, data });
     } catch (error) {
       next(error);
     }
@@ -167,11 +167,11 @@ class FloorMapController {
         locationId: helperService.validateObjectId(String(location_id)),
       });
       if (!data.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Floor Map asset coordinates not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: `Data found Successfully.`, data });
+        .json({ status: true, message: `Floor map asset coordinates fetched successfully.`, data });
     } catch (error) {
       next(error);
     }
@@ -224,7 +224,7 @@ class FloorMapController {
         user_id,
       );
       if (!data) {
-        throw Object.assign(new Error("Failed to insert coordinates"), {
+        throw Object.assign(new Error("Failed to insert floor map coordinates"), {
           status: 500,
         });
       }
@@ -249,11 +249,11 @@ class FloorMapController {
         account_id,
       });
       if (!result) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Floor Map coordinate not deleted"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Coordinate removed successfully" });
+        .json({ status: true, message: "Floor map coordinate deleted successfully" });
     } catch (error) {
       next(error);
     }

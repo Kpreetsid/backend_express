@@ -45,9 +45,9 @@ class EquipmentController {
 
       let data = await equipmentService.getAllEquipment(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Equipment fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -79,9 +79,9 @@ class EquipmentController {
 
       const data = await equipmentService.getAllEquipment(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Equipment fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -93,14 +93,14 @@ class EquipmentController {
       const { params: { id } } = req;
       const childIds = await equipmentService.getAllChildEquipmentIDs(helperService.validateObjectId(id));
       if (childIds.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
       const match: any = { _id: { $in: childIds }, account_id: account_id, visible: true };
       const data = await equipmentService.getAllEquipment(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Child equipment fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -118,7 +118,7 @@ class EquipmentController {
       }
       const isAssetExists = await equipmentService.checkEquipment(assetQuery);
       if (!isAssetExists || isAssetExists.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
       if (id) {
         const assetIds = helperService.validateObjectIds(id);
@@ -129,9 +129,9 @@ class EquipmentController {
       }
       const data = await equipmentService.getEquipmentTreeData(assetQuery);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Equipment tree fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -151,13 +151,13 @@ class EquipmentController {
       }
       const isAssetExists = await equipmentService.checkEquipment(assetQuery);
       if (!isAssetExists || isAssetExists.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
       const data = await equipmentService.getEquipmentTreeDataById(assetQuery);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Equipment tree fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -232,7 +232,7 @@ class EquipmentController {
       });
       await mapUserToAssetService.createMapUserAssets(assetsMapData);
       await processorAPIService.setAssetHealthStatus(assetsMapData, account_id, user_id, userToken);
-      res.status(200).json({ status: true, message: "Data created successfully", data: equipmentData._id });
+      res.status(200).json({ status: true, message: "Equipment created successfully", data: equipmentData._id });
     } catch (error) {
       if (equipmentId) {
         await equipmentService.deleteAssetsById(equipmentId);
@@ -347,7 +347,7 @@ class EquipmentController {
         await processorAPIService.setAssetHealthStatus(newlyCreatedAssetList, account_id, user_id, userToken);
       }
       const data = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
-      res.status(200).json({ status: true, message: "Asset updated successfully", data });
+      res.status(200).json({ status: true, message: "Equipment updated successfully", data });
     } catch (error) {
       next(error);
     }
@@ -363,10 +363,10 @@ class EquipmentController {
       }
       const dataExists: any = await equipmentService.getAllEquipment({ _id: helperService.validateObjectId(id), account_id: account_id, visible: true });
       if (!dataExists || dataExists.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
       await equipmentService.updateEquipmentImageById(String(id), image_path, `${user_id}`);
-      res.status(200).json({ status: true, message: "Data updated successfully" });
+      res.status(200).json({ status: true, message: "Equipment image updated successfully" });
     } catch (error) {
       next(error);
     }
@@ -379,11 +379,11 @@ class EquipmentController {
       const match: any = { _id: helperService.validateObjectId(id), account_id: account_id, visible: true };
       const dataExists: any = await equipmentService.getAllEquipment(match);
       if (!dataExists || dataExists.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
       await mapUserToLocationService.removeLocationMapping(String(id));
       await equipmentService.removeEquipmentById(match, user_id);
-      res.status(200).json({ status: true, message: "Data deleted successfully" });
+      res.status(200).json({ status: true, message: "Equipment deleted successfully" });
     } catch (error) {
       next(error);
     }
@@ -396,7 +396,7 @@ class EquipmentController {
       const { params: { id } } = req;
       const dataExists: any = await equipmentService.getAllEquipment({ _id: helperService.validateObjectId(id), account_id, visible: true });
       if (!dataExists || dataExists.length === 0) {
-        throw Object.assign(new Error("Asset not found"), { status: 404 });
+        throw Object.assign(new Error("Equipment not found"), { status: 404 });
       }
       const sourceAsset = dataExists[0];
       const allChildren: any[] = await equipmentService.getAllChildEquipmentRecursive(String(id), account_id);
@@ -413,7 +413,7 @@ class EquipmentController {
       }
       await processorAPIService.setAssetHealthStatus([{ assetId: newParentId }, ...allChildren.map(c => ({ assetId: idMap[c._id.toString()] }))], account_id, user_id, userToken);
       const copiedData: any = await equipmentService.getAllEquipment({ _id: newParentId, account_id, visible: true });
-      res.status(201).json({ status: true, message: "Asset hierarchy copied successfully", data: copiedData });
+      res.status(201).json({ status: true, message: "Equipment hierarchy copied successfully", data: copiedData });
     } catch (error) {
       next(error);
     }

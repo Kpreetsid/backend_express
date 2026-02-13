@@ -18,9 +18,9 @@ class LocationController {
       const filter: any = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "account_id", mapping: "location" });
       let data = await locationService.getAllLocations(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Location not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Locations fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -47,7 +47,7 @@ class LocationController {
         const mapData = await mapUserToLocationService.getLocationsMappedData(user_id);
         allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
         if (allowedLocationIds.length === 0) {
-          throw Object.assign(new Error("No data found"), { status: 404 });
+          throw Object.assign(new Error("Location Tree not found"), { status: 404 });
         }
         if (match._id) {
           const isAllowed = allowedLocationIds.includes(match._id.toString());
@@ -60,9 +60,9 @@ class LocationController {
       }
       const data = await locationService.getTree(match, location_id, allowedLocationIds, userRole);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Location Tree not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Location tree fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -75,14 +75,14 @@ class LocationController {
       const match = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
       const isDataExists = await locationService.getAllLocations(match);
       if (!isDataExists?.length) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Location not found'), { status: 404 });
       }
       const childIds = await this.getChildLocationByRecursive(String(id));
       const data = await locationService.getAllLocations({ _id: { $in: childIds }, account_id, visible: true });
       if (!data?.length) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Child location not found'), { status: 404 });
       }
-      return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      return res.status(200).json({ status: true, message: "Child locations fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -103,9 +103,9 @@ class LocationController {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const data = await locationService.kpiFilterLocations(account_id, user_id, userRole);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('KPI filter locations not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "KPI filter locations fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -117,9 +117,9 @@ class LocationController {
       const { levelOneLocations, levelTwoLocations } = req.body;
       const data = await locationService.childAssetsAgainstLocation(levelOneLocations, levelTwoLocations, account_id, user_id, userRole);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Child assets against location not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Child assets against location fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -144,7 +144,7 @@ class LocationController {
         const mapData = await mapUserToLocationService.getLocationsMappedData(user_id);
         const allowedLocationIds = mapData?.map(doc => doc.locationId?.toString()) || [];
         if (allowedLocationIds.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
+          throw Object.assign(new Error("Location not found"), { status: 404 });
         }
         if (match._id) {
           const isAllowed = allowedLocationIds.includes(match._id.toString());
@@ -157,9 +157,9 @@ class LocationController {
       }
       const data = await locationService.getAllLocations(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Location not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Location fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -176,7 +176,7 @@ class LocationController {
       body.createdBy = user_id;
       const data: any = await locationService.insertLocation(body);
       await mapUserToLocationService.mapUserLocationData(data._id, body.userIdList, account_id);
-      res.status(201).json({ status: true, message: "Data created successfully", data: [data] });
+      res.status(201).json({ status: true, message: "Location created successfully", data: [data] });
     } catch (error) {
       next(error);
     }
@@ -191,16 +191,16 @@ class LocationController {
       }
       const location = await locationService.getAllLocations({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!location || location.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Location not found'), { status: 404 });
       }
       body.updatedBy = user_id;
       const data: any = await locationService.updateById(String(id), body);
       if (!data || !data.visible) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Location not updated'), { status: 404 });
       }
       data.id = data._id;
       const updatedLocation = await locationService.getAllLocations({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
-      res.status(200).json({ status: true, message: "Data updated successfully", data: updatedLocation });
+      res.status(200).json({ status: true, message: "Location updated successfully", data: updatedLocation });
     } catch (error) {
       next(error);
     }
@@ -213,10 +213,10 @@ class LocationController {
       const match = { _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true };
       const location = await locationService.getAllLocations(match);
       if (!location || location.length === 0 || !location[0].visible) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Location not found'), { status: 404 });
       }
       await locationService.removeLocationById(helperService.validateObjectId(String(id)), user_id);
-      res.status(200).json({ status: true, message: "Data deleted successfully" });
+      res.status(200).json({ status: true, message: "Location deleted successfully" });
     } catch (error) {
       next(error);
     }
@@ -230,7 +230,7 @@ class LocationController {
       }
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       await locationService.updateFloorMapImage(String(id), account_id, user_id, top_level_location_image);
-      res.status(200).json({ status: true, message: "Data updated successfully" });
+      res.status(200).json({ status: true, message: "Location floor map image updated successfully" });
     } catch (error) {
       next(error);
     }
@@ -241,9 +241,9 @@ class LocationController {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const data = await locationService.getLocationSensor(account_id, user_id, userRole);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Location sensor list not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Location sensor list fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -273,7 +273,7 @@ class LocationController {
       }
       const getData = await locationService.getAllLocations({ _id: newParentId, account_id, visible: true });
       if (!getData || getData.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Child Location not found"), { status: 404 });
       }
       res.status(201).json({ status: true, message: "Location hierarchy copied successfully", data: getData });
     } catch (error) {

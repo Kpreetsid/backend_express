@@ -13,7 +13,7 @@ class AssetReportController {
       const populateFilter = [{ path: 'locationId', select: 'id location_name' }, { path: 'assetId', select: 'id asset_name' }, { path: 'userId', select: 'id firstName lastName' }];
       const data = await assetReportService.getAllAssetReports(match, populateFilter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
@@ -31,7 +31,7 @@ class AssetReportController {
       const populateFilter = [{ path: 'locationId', model: "Schema_Location", select: 'id location_name' }, { path: 'assetId', model: "Schema_Asset", select: 'id asset_name' }, { path: 'userId', model: "Schema_User", select: 'id firstName lastName' }];
       const data = await assetReportService.getAllAssetReports(match, populateFilter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
@@ -49,7 +49,7 @@ class AssetReportController {
       const selectedFields = `Observations Recommendations faultData`;
       const data = await assetReportService.getLatest(match, selectedFields);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
@@ -64,7 +64,7 @@ class AssetReportController {
       const userToken = get(req, "userToken", {}) as string;
       const data = await assetReportService.createAssetReportWithWorkOrder(reportBody, user, userToken, reportBody.CreateWorkRequest, workOrder);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Asset report not created'), { status: 404 });
       }
       res.status(201).json({ status: true, message: "Data created successfully", data });
     } catch (error) {
@@ -80,7 +80,7 @@ class AssetReportController {
       body.updatedBy = user_id;
       const data = await assetReportService.updateAssetReport(helperService.validateObjectId(String(id)), body, account_id, user_id, userToken);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Asset report not updated'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data updated successfully", data });
     } catch (error) {
@@ -95,11 +95,11 @@ class AssetReportController {
       const match = { _id: helperService.validateObjectId(String(id)), accountId: account_id };
       const isDataExists = await assetReportService.getAllAssetReports(match);
       if (!isDataExists || isDataExists.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
       const data = await assetReportService.removeAssetReportById(helperService.validateObjectId(String(id)), user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Asset report not deleted'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data deleted successfully" });
     } catch (error) {

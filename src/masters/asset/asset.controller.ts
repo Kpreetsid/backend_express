@@ -52,11 +52,11 @@ class AssetController {
       });
       let data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully", data });
+        .json({ status: true, message: "Assets fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -84,9 +84,9 @@ class AssetController {
       });
       const data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Asset fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -108,11 +108,11 @@ class AssetController {
       });
       const data = await assetService.buzzerAssetList(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Buzzer asset list not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully", data });
+        .json({ status: true, message: "Buzzer asset list fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -137,7 +137,7 @@ class AssetController {
       });
       const data = await assetService.buzzerAssetList(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       if (data.length !== body.length) {
         throw Object.assign(new Error("Bad Request"), { status: 400 });
@@ -145,7 +145,7 @@ class AssetController {
       await assetService.updateBuzzerAssetList(body);
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully" });
+        .json({ status: true, message: "Buzzer asset list updated successfully" });
     } catch (error) {
       next(error);
     }
@@ -161,7 +161,7 @@ class AssetController {
         helperService.validateObjectId(String(id)),
       );
       if (childIds.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       const filter = await applyRoleFilter({
         user,
@@ -171,11 +171,11 @@ class AssetController {
       });
       const data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully", data });
+        .json({ status: true, message: "Child assets fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -205,11 +205,11 @@ class AssetController {
       });
       const data = await assetService.getAssetsTreeData(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully", data });
+        .json({ status: true, message: "Asset tree fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -228,7 +228,7 @@ class AssetController {
         const mapData =
           await mapUserToAssetService.getAssetsMappedData(user_id);
         if (!mapData || mapData.length === 0) {
-          throw Object.assign(new Error("No data found"), { status: 404 });
+          throw Object.assign(new Error("Asset not found"), { status: 404 });
         }
         match._id = { $in: mapData.map((doc) => doc.assetId) };
       }
@@ -248,11 +248,11 @@ class AssetController {
       }
       const data = await assetService.getAllAssets(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully", data });
+        .json({ status: true, message: "Filtered assets fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -271,7 +271,7 @@ class AssetController {
       }
       data = await assetService.createAssetOld(body, account_id, user_id);
       if (!data) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       const assetsMapData = body.userIdList.map((user: any) => {
         return {
@@ -295,11 +295,11 @@ class AssetController {
         _id: data._id,
       });
       if (!insertedData || insertedData.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       res.status(201).json({
         status: true,
-        message: "Data created successfully",
+        message: "Asset created successfully",
         data: insertedData,
       });
     } catch (error) {
@@ -328,7 +328,7 @@ class AssetController {
         visible: true,
         });
       if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       if (body.locationId !== existingData[0].locationId) {
         await assetService.updateAllChildAssetsLocation(
@@ -343,17 +343,17 @@ class AssetController {
         user_id,
       );
       if (!data) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       const insertedData: any = await assetService.getAllAssets({
         _id: helperService.validateObjectId(String(id)),
       });
       if (!insertedData || insertedData.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       res.status(200).json({
         status: true,
-        message: "Data updated successfully",
+        message: "Asset updated successfully",
         data: insertedData,
       });
     } catch (error) {
@@ -379,7 +379,7 @@ class AssetController {
         visible: true,
       });
       if (!dataExists || dataExists.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       await assetService.updateAssetImageById(
         helperService.validateObjectId(String(id)),
@@ -388,7 +388,7 @@ class AssetController {
       );
       res
         .status(200)
-        .json({ status: true, message: "Data updated successfully" });
+        .json({ status: true, message: "Asset image updated successfully" });
     } catch (error) {
       next(error);
     }
@@ -407,7 +407,7 @@ class AssetController {
       };
       const dataExists: any = await assetService.getAllAssets(match);
       if (!dataExists || dataExists.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       await mapUserToLocationService.removeLocationMapping(
         helperService.validateObjectId(String(id)),
@@ -415,7 +415,7 @@ class AssetController {
       await assetService.removeById(match, user_id);
       res
         .status(200)
-        .json({ status: true, message: "Data deleted successfully" });
+        .json({ status: true, message: "Asset deleted successfully" });
     } catch (error) {
       next(error);
     }
@@ -442,11 +442,11 @@ class AssetController {
       }
       const data = await assetService.getAssetDataSensorList(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset sensor list not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully", data });
+        .json({ status: true, message: "Asset sensor list fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -473,11 +473,11 @@ class AssetController {
       }
       const data = await assetService.getAssetDataSensorList(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Asset sensor list not found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Data fetched successfully", data });
+        .json({ status: true, message: "Asset sensor list fetched successfully", data });
     } catch (error) {
       next(error);
     }

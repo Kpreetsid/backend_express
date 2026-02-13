@@ -45,7 +45,7 @@ class RequestController {
 
       const data = await requestService.getAllRequests(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
@@ -74,7 +74,7 @@ class RequestController {
 
       const data = await requestService.getAllRequests(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data: data[0] });
     } catch (error) {
@@ -88,7 +88,7 @@ class RequestController {
       const body = req.body;
       const data = await requestService.createRequest(body, user);
       if (!data) {
-        throw Object.assign(new Error('No data created'), { status: 404 });
+        throw Object.assign(new Error('Work request not created'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data created successfully", data });
     } catch (error) {
@@ -117,7 +117,7 @@ class RequestController {
       }
       const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
       if (!existingRequest || existingRequest.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
       if (body.remarks !== existingRequest[0].remarks) {
         const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
@@ -131,7 +131,7 @@ class RequestController {
       }
       const data = await requestService.updateRequest(String(id), body, user_id);
       if (!data || data.modifiedCount === 0) {
-        throw Object.assign(new Error('No data updated'), { status: 404 });
+        throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data updated successfully" });
     } catch (error) {
@@ -146,14 +146,14 @@ class RequestController {
       const requestId = helperService.validateObjectId(id);
       const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
       if (!existingRequest || existingRequest.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
       if (existingRequest[0].status === 'Approved') {
         throw Object.assign(new Error('Request is already approved'), { status: 400 });
       }
       const data = await requestService.updateRequest(String(id), { status: 'Approved', updatedBy: user_id }, user_id);
       if (!data || data.modifiedCount === 0) {
-        throw Object.assign(new Error('No data updated'), { status: 404 });
+        throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data updated successfully" });
     } catch (error) {
@@ -171,7 +171,7 @@ class RequestController {
       }
       const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
       if (!existingRequest || existingRequest.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
       if (existingRequest[0].status === 'Rejected') {
         throw Object.assign(new Error('Request is already rejected'), { status: 400 });
@@ -180,7 +180,7 @@ class RequestController {
       const updatedRemarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${remarks} by ${firstName} ${lastName} on ${dateTime}` : `${remarks} by ${firstName} ${lastName} on ${dateTime}`;
       const data = await requestService.updateRequest(String(id), { status: 'Rejected', remarks: updatedRemarks }, user_id);
       if (!data || data.modifiedCount === 0) {
-        throw Object.assign(new Error('No data updated'), { status: 404 });
+        throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data updated successfully" });
     } catch (error) {
@@ -196,7 +196,7 @@ class RequestController {
       const match: any = { _id: requestId, account_id: account_id };
       const existingRequest = await requestService.getAllRequests(match);
       if (!existingRequest || existingRequest.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
       await requestService.deleteRequestById(id, user_id);
       res.status(200).json({ status: true, message: "Data deleted successfully" });

@@ -19,9 +19,9 @@ class CompanyController {
       });
       const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Company not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Companies fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -42,9 +42,9 @@ class CompanyController {
       });
       const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Company not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Company fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -60,7 +60,7 @@ class CompanyController {
       const data = await companyService.createCompany(newCompany);
       if (!data)
         throw Object.assign(new Error("Data creation failed"), { status: 500 });
-      res.status(201).json({ status: true, message: "Data created successfully", data });
+      res.status(201).json({ status: true, message: "Company created successfully", data });
     } catch (error) {
       next(error);
     }
@@ -86,7 +86,7 @@ class CompanyController {
       );
       if (!data)
         throw Object.assign(new Error("Data update failed"), { status: 500 });
-      res.status(200).json({ status: true, message: "Data updated successfully", data });
+      res.status(200).json({ status: true, message: "Company updated successfully", data });
     } catch (error) {
       next(error);
     }
@@ -113,7 +113,7 @@ class CompanyController {
       );
       if (!data)
         throw Object.assign(new Error("Data update failed"), { status: 500 });
-      res.status(200).json({ status: true, message: "Data updated successfully", data });
+      res.status(200).json({ status: true, message: "Company updated successfully", data });
     } catch (error) {
       next(error);
     }
@@ -128,9 +128,9 @@ class CompanyController {
         userId,
       );
       if (!deleted) {
-        return next(Object.assign(new Error("No data found"), { status: 404 }));
+        return next(Object.assign(new Error("Company not found"), { status: 404 }));
       }
-      return res.status(200).json({ status: true, message: "Data deleted successfully" });
+      return res.status(200).json({ status: true, message: "Company deleted successfully" });
     } catch (error) {
       return next(error);
     }

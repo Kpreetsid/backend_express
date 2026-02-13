@@ -16,7 +16,7 @@ class CommentController {
       const match: any = { account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true };
       const data = await commentService.getAllComments(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
@@ -33,7 +33,7 @@ class CommentController {
       const match: any = { account_id: account_id, order_id: orderObjectId, _id: commentObjectId, visible: true };
       const data = await commentService.getAllComments(match);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {
@@ -54,7 +54,7 @@ class CommentController {
       body.order_id = orderId;
       const data = await commentService.createComment(body, account_id, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Comment not created'), { status: 404 });
       }
       const result = await commentService.getAllComments({ _id: data._id, parentCommentId: data.parentCommentId, account_id: account_id, order_id: helperService.validateObjectId(orderId) });
       res.status(201).json({ status: true, message: "Data created successfully", data: result[0] });
@@ -75,12 +75,12 @@ class CommentController {
       }
       const existingComment = await commentService.getAllComments({ _id: helperService.validateObjectId(commentId), account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true });
       if (!existingComment) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
       body.order_id = orderId;
       const data = await commentService.updateComment(String(commentId), body.comments, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Comment not updated'), { status: 404 });
       }
       res.status(201).json({ status: true, message: "Data created successfully", data });
     } catch (error) {
@@ -100,11 +100,11 @@ class CommentController {
       }
       const existingComment = await commentService.getComments({ _id: helperService.validateObjectId(commentId), account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true });
       if (!existingComment) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
       const data = await commentService.removeComment(String(commentId), user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Comment not deleted'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data deleted successfully" });
     } catch (error) {

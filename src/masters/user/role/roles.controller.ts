@@ -17,9 +17,9 @@ class RolesController {
       }
       const data = await rolesService.getRoles(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Role not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Roles fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -31,9 +31,9 @@ class RolesController {
       const match: any = { account_id, user_id };
       const data = await rolesService.getRoles(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Role not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Role fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -46,9 +46,9 @@ class RolesController {
       const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
       const data = await rolesService.getRoles(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Role not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Role fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -68,9 +68,9 @@ class RolesController {
       req.body.roleMenu = newRoleMenu;
       const data = await rolesService.insertRole(req.body, account_id, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Role not created'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data created successfully", data });
+      res.status(200).json({ status: true, message: "Role created successfully", data });
     } catch (error) {
       next(error);
     }
@@ -83,13 +83,13 @@ class RolesController {
       const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
       const existingData = await rolesService.getRoles(match);
       if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Role not found'), { status: 404 });
       }
       const data = await rolesService.updateById(id, req.body, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Role not updated'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully", data });
+      res.status(200).json({ status: true, message: "Role updated successfully", data });
     } catch (error) {
       next(error);
     }
@@ -102,13 +102,13 @@ class RolesController {
       const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
       const existingData = await rolesService.getRoles(match);
       if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Role not found'), { status: 404 });
       }
       const data = await rolesService.removeById(id, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Role not deleted'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data deleted successfully" });
+      res.status(200).json({ status: true, message: "Role deleted successfully" });
     } catch (error) {
       next(error);
     }

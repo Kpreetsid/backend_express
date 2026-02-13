@@ -30,7 +30,7 @@ class UserLogsController {
       match.createdAt = { $gte: startDate, $lte: `${new Date(endDate).toISOString().split('T')[0]}T23:59:59.999Z` };
       const data = await userLogsService.getAllUserLogs(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Log data not found"), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {

@@ -33,9 +33,9 @@ class ObservationController {
       });
       const data = await observationService.getAllObservation(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Observations fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -56,9 +56,9 @@ class ObservationController {
       });
       const data = await observationService.getAllObservation(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Observation fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -72,15 +72,15 @@ class ObservationController {
       const { body } = req;
       data = await observationService.insertObservation(body, account_id, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
       const match: any = { _id: data._id };
       const insertedData = await observationService.getAllObservation(match);
       if (!insertedData || insertedData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
       await processorAPIService.updateAssetHealthStatus(body, account_id, user_id, userToken);
-      res.status(201).json({ status: true, message: "Data created successfully", data: insertedData });
+      res.status(201).json({ status: true, message: "Observation created successfully", data: insertedData });
     } catch (error) {
       if (data) {
         await observationService.deleteObservationById(data._id);
@@ -95,18 +95,18 @@ class ObservationController {
       const { params: { id }, body } = req;
       const existingData = await observationService.getAllObservation({ _id: helperService.validateObjectId(String(id)), accountId: account_id });
       if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
       const data = await observationService.updateObservationById(helperService.validateObjectId(String(id)), body, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
       const match: any = { _id: helperService.validateObjectId(String(id)) };
       const insertedData = await observationService.getAllObservation(match);
       if (!insertedData || insertedData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully", data: insertedData });
+      res.status(200).json({ status: true, message: "Observation updated successfully", data: insertedData });
     } catch (error) {
       next(error);
     }
@@ -118,13 +118,13 @@ class ObservationController {
       const { params: { id } } = req;
       const existingData = await observationService.getAllObservation({ _id: helperService.validateObjectId(String(id)), accountId: account_id });
       if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
       const data = await observationService.removeObservationById(helperService.validateObjectId(String(id)), user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully" });
+      res.status(200).json({ status: true, message: "Observation deleted successfully" });
     } catch (error) {
       next(error);
     }

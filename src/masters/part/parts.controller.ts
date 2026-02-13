@@ -30,9 +30,9 @@ class PartsController {
 
       const data = await partsService.getAllParts(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Parts fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -55,9 +55,9 @@ class PartsController {
 
       const data = await partsService.getAllParts(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Part fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -67,7 +67,7 @@ class PartsController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const data = await partsService.insert(req.body, account_id, user_id);
-      res.status(201).json({ status: true, message: "Data created successfully", data });
+      res.status(201).json({ status: true, message: "Part created successfully", data });
     } catch (error) {
       next(error);
     }
@@ -80,13 +80,13 @@ class PartsController {
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
       const isDataExists = await partsService.getAllParts(match);
       if (!isDataExists || isDataExists.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Part not found'), { status: 404 });
       }
       const data = await partsService.updatePartById(String(id), body, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully", data });
+      res.status(200).json({ status: true, message: "Part updated successfully", data });
     } catch (error) {
       next(error);
     }
@@ -98,14 +98,14 @@ class PartsController {
       const { params: { id }, body: { quantity } } = req;
       const part = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)), account_id, visible: true });
       if (!part || part.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Part not found'), { status: 404 });
       }
       part[0].quantity = Number(part[0].quantity) + Number(quantity);
       const updatedPart = await partsService.updatePartStock(String(id), part[0], user_id);
       if (!updatedPart) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully", data: updatedPart });
+      res.status(200).json({ status: true, message: "Part stock updated successfully", data: updatedPart });
     } catch (error) {
       next(error);
     }
@@ -118,13 +118,13 @@ class PartsController {
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
       const isDataExists = await partsService.getAllParts(match);
       if (!isDataExists || isDataExists.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Part not found'), { status: 404 });
       }
       const data = await partsService.removeById(String(id), user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data deleted successfully" });
+      res.status(200).json({ status: true, message: "Part deleted successfully" });
     } catch (error) {
       next(error);
     }

@@ -25,9 +25,9 @@ class PostController {
       });
       const data = await postService.getAllPosts(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Posts not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Posts fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -54,9 +54,9 @@ class PostController {
       });
       const data = await postService.getAllPosts(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Post not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Post fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -68,13 +68,13 @@ class PostController {
       const { body } = req;
       const data = await postService.insertPost({ ...body, account_id, createdBy: user_id });
       if (!data) {
-        throw Object.assign(new Error('No data created'), { status: 404 });
+        throw Object.assign(new Error('Post not created'), { status: 404 });
       }
       const createdData = await postService.getAllPosts({ _id: data._id, account_id: account_id });
       if (!createdData || createdData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Post not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data created successfully", data: createdData[0] });
+      res.status(200).json({ status: true, message: "Post created successfully", data: createdData[0] });
     } catch (error) {
       next(error);
     }
@@ -87,17 +87,17 @@ class PostController {
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllPosts(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Post not found'), { status: 404 });
       }
       const result = await postService.updatePostById(id, body, user_id);
       if (!result) {
-        throw Object.assign(new Error('No data updated'), { status: 404 });
+        throw Object.assign(new Error('Post not updated'), { status: 404 });
       }
       const updatedData = await postService.getAllPosts({ _id: id, account_id: account_id });
       if (!updatedData || updatedData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Post not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully", data: updatedData[0] });
+      res.status(200).json({ status: true, message: "Post updated successfully", data: updatedData[0] });
     } catch (error) {
       next(error);
     }
@@ -110,18 +110,18 @@ class PostController {
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllPosts(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Post not found'), { status: 404 });
       }
       const updatedBody = { ...data[0], ...body };
       const result = await postService.updatePostById(id, updatedBody, user_id);
       if (!result) {
-        throw Object.assign(new Error('No data updated'), { status: 404 });
+        throw Object.assign(new Error('Post not updated'), { status: 404 });
       }
       const updatedData = await postService.getAllPosts({ _id: id, account_id: account_id });
       if (!updatedData || updatedData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Post not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully", data: updatedData[0] });
+      res.status(200).json({ status: true, message: "Post updated successfully", data: updatedData[0] });
     } catch (error) {
       next(error);
     }
@@ -134,13 +134,13 @@ class PostController {
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllPosts(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Post not found'), { status: 404 });
       }
       const result = await postService.removePostById(id, user_id);
       if (!result) {
-        throw Object.assign(new Error('No data deleted'), { status: 404 });
+        throw Object.assign(new Error('Post not deleted'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data deleted successfully" });
+      res.status(200).json({ status: true, message: "Post deleted successfully" });
     } catch (error) {
       next(error);
     }

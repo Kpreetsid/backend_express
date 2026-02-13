@@ -33,7 +33,7 @@ class OrderController {
       }
       const data = await orderService.getAllOrders(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Work orders fetched successfully.", data });
     } catch (error) {
@@ -124,7 +124,7 @@ class OrderController {
       const orderId = helperService.validateObjectId(id);
       const data = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Work order fetched successfully.", data });
     } catch (error) {
@@ -244,7 +244,7 @@ class OrderController {
       const orderId = helperService.validateObjectId(id);
       const data = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       await orderService.removeOrder(req.params.id, user_id);
       res.status(200).send({ status: true, message: 'Work order removed successfully' });
@@ -266,7 +266,7 @@ class OrderController {
       }
       const data = await orderService.orderStatus(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Work order status fetched successfully.", data });
     } catch (error) {
@@ -287,7 +287,7 @@ class OrderController {
       }
       const data = await orderService.orderPriority(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Work order priority fetched successfully.", data });
     } catch (error) {
@@ -308,7 +308,7 @@ class OrderController {
       }
       const data = await orderService.monthlyCount(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Work order monthly count fetched successfully.", data });
     } catch (error) {
@@ -331,7 +331,7 @@ class OrderController {
       }
       const data = await orderService.plannedUnplanned(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: 'Work order planned/unplanned fetched successfully.', data });
     } catch (error) {
@@ -357,13 +357,13 @@ class OrderController {
       if (userRole !== 'admin') {
         const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
         if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
+          throw Object.assign(new Error('Work order not found'), { status: 404 });
         }
         workOrderMatch._id = { $in: userWorkOrderIdList };
       }
       const data = await orderService.summaryData(workOrderMatch);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Work order summary data fetched successfully.", data });
     } catch (error) {
@@ -385,14 +385,14 @@ class OrderController {
       if (userRole !== 'admin') {
         const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
         if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
+          throw Object.assign(new Error('Work order not found'), { status: 404 });
         }
         match._id = { $in: userWorkOrderIdList };
       }
       match.status = { $in: ['Open', 'In-Progress', 'On-Hold'] };
       const data = await orderService.getAllOrders(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Work order pending orders not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Work order pending orders fetched successfully.", data });
     } catch (error) {

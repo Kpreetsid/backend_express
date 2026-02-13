@@ -17,7 +17,7 @@ class MapUserLocationController {
         const locationMatch = { account_id, visible: true };
         const locationData = await locationService.getLocationsList(locationMatch);
         if (!locationData?.length) {
-          throw Object.assign(new Error("No data found"), { status: 404 });
+          throw Object.assign(new Error("Location not found"), { status: 404 });
         }
         match.locationId = { $in: locationData.map((doc) => doc._id) };
       }
@@ -26,7 +26,7 @@ class MapUserLocationController {
         match.locationId = locationId;
         const locationData = await locationService.getLocationsList({ _id: locationId, account_id });
         if (!locationData) {
-          throw Object.assign(new Error("No data found"), { status: 404 });
+          throw Object.assign(new Error("Location not found"), { status: 404 });
         }
       }
       if (query?.populate) {
@@ -34,9 +34,9 @@ class MapUserLocationController {
       }
       const data = await mapUserToLocationService.userLocations(match, filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("User location mapping not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "User location mappings fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -51,7 +51,7 @@ class MapUserLocationController {
         throw Object.assign(new Error('Invalid data'), { status: 400 });
       }
       await mapUserToLocationService.mapUserLocations(data, account_id);
-      res.status(201).json({ message: 'Locations mapped successfully' });
+      res.status(201).json({ message: 'User locations mapped successfully' });
     } catch (error) {
       next(error);
     }
@@ -63,9 +63,9 @@ class MapUserLocationController {
       const body = req.body;
       const data = await mapUserToLocationService.mapUserLocations(body, account_id);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Location mapping not updated'), { status: 404 });
       }
-      res.status(201).json({ status: true, message: 'Locations mapped successfully' });
+      res.status(201).json({ status: true, message: 'User location mappings updated successfully' });
     } catch (error) {
       next(error);
     }

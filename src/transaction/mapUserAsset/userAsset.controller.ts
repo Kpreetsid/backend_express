@@ -33,9 +33,9 @@ class MapUserAssetController {
       }
       const data = await mapUserToAssetService.userAssets(match, populate);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('User asset mapping not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "User asset mappings fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -49,7 +49,7 @@ class MapUserAssetController {
         throw Object.assign(new Error('Invalid data'), { status: 400 });
       }
       await mapUserToAssetService.createMapUserAssets(body);
-      res.status(201).json({ message: 'Assets mapped successfully' });
+      res.status(201).json({ message: 'User assets mapped successfully' });
     } catch (error) {
       next(error);
     }
@@ -62,7 +62,7 @@ class MapUserAssetController {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
       await mapUserToAssetService.updateUserMapping(String(assetId), body.userIdList);
-      res.status(201).json({ status: true, message: 'Assets mapped successfully' });
+      res.status(201).json({ status: true, message: 'User asset mappings updated successfully' });
     } catch (error) {
       next(error);
     }

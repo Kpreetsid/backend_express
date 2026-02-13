@@ -19,7 +19,6 @@ class AssetService {
         userId: { $exists: true } 
     }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
 
-    // Group mappings by assetId for O(1) lookup
     const mappingsByAsset = new Map<string, any[]>();
     mapData.forEach(map => {
         const aId = String(map.assetId);
@@ -54,7 +53,6 @@ class AssetService {
   }
 
   async updateBuzzerAssetList(body: any) {
-    // Optimization: Use bulkWrite for multiple updates instead of loop with await
     if (!body.length) return;
     const bulkOps = body.map((item: any) => ({
         updateOne: {
@@ -139,7 +137,6 @@ class AssetService {
     if (childAssets && childAssets.length > 0) {
       await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID });
     }
-    // await removeLocationMapping(req.params.id);
     return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { new: true });
   };
 

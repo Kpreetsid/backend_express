@@ -16,7 +16,7 @@ class LocationReportController {
       }
       const data = await locationReportService.getAll(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Location report not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Data fetched successfully", data });
     } catch (error) {

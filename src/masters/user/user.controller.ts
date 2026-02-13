@@ -28,7 +28,7 @@ class UserController {
       delete filter.visible;
       const data = await usersService.getAllUsers(filter);
       if (!data.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("Users not found"), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Users fetched successfully", data });
     } catch (error) {
@@ -48,9 +48,9 @@ class UserController {
       delete filter.visible;
       const data = await usersService.getAllUsers(filter);
       if (!data.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("User not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "User fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -79,7 +79,7 @@ class UserController {
 
       const data = await usersService.createNewUser(body, account_id);
       await mailerService.sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email });
-      res.status(201).json({ status: true, message: "Data created successfully", data: data.userDetails, roleData: data.roleDetails });
+      res.status(201).json({ status: true, message: "User created successfully", data: data.userDetails, roleData: data.roleDetails });
     } catch (error) {
       next(error);
     }
@@ -97,11 +97,11 @@ class UserController {
       delete filter.visible;
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("User not found"), { status: 404 });
       }
       const data = await usersService.updateUserDetails(String(id), { ...userData[0].toObject(), ...body, updatedBy: user._id });
       if (!data) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("User not updated"), { status: 404 });
       }
       res.status(200).json({ status: true, message: "User updated successfully", data });
     } catch (error) {
@@ -125,7 +125,7 @@ class UserController {
       if (!isCorrect) throw Object.assign(new Error("Incorrect current password"), { status: 400 });
       userData.password = newPassword;
       await usersService.updateUserPassword(user_id, userData);
-      res.status(200).json({ status: true, message: "User updated successfully" });
+      res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
       next(error);
     }
@@ -146,7 +146,7 @@ class UserController {
       userData[0].password = newPassword;
       await usersService.updateUserPassword(`${userData[0]._id}`, userData[0]);
       await resetPasswordService.deleteVerificationCode({ email });
-      res.status(200).json({ status: true, message: "Password updated successfully" });
+      res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
       next(error);
     }
@@ -161,7 +161,7 @@ class UserController {
       delete filter.visible;
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length)
-        throw Object.assign(new Error("No data found or already deleted"), { status: 404 });
+        throw Object.assign(new Error("User not found or already deleted"), { status: 404 });
       await usersService.removeById(String(id));
       res.status(200).json({ status: true, message: "User deleted successfully" });
     } catch (error) {

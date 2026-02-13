@@ -20,9 +20,9 @@ class SOPsController {
       const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location' });
       let data = await sopsService.getSOPs(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('SOPs not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "SOPs fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -41,9 +41,9 @@ class SOPsController {
       const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location' });
       let data = await sopsService.getSOPs(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('SOP not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "SOP fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -55,9 +55,9 @@ class SOPsController {
       console.log({ account_id, user_id, userRole });
       const data = await sopsService.createSOPs(req.body, account_id, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('SOP not created'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data created successfully", data });
+      res.status(200).json({ status: true, message: "SOP created successfully", data });
     } catch (error) {
       next(error);
     }
@@ -69,13 +69,13 @@ class SOPsController {
       const { params: { id }, body } = req;
       const existingData = await sopsService.getSOPs({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('SOP not found'), { status: 404 });
       }
       const data = await sopsService.updateSOPs(id, body, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('SOP not updated'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully", data });
+      res.status(200).json({ status: true, message: "SOP updated successfully", data });
     } catch (error) {
       next(error);
     }
@@ -87,13 +87,13 @@ class SOPsController {
       const { id } = req.params;
       const existingData = await sopsService.getSOPs({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('SOP not found'), { status: 404 });
       }
       const data = await sopsService.removeSOPs(id, user_id);
       if (!data) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('SOP not deleted'), { status: 404 });
       }
-      return res.status(200).json({ status: true, message: "Data deleted successfully" });
+      return res.status(200).json({ status: true, message: "SOP deleted successfully" });
     } catch (error) {
       next(error);
     }

@@ -14,7 +14,7 @@ class UserWorkOrderController {
       if (userRole === 'admin') {
         const workOrderData: any = await orderService.getAllOrders({ account_id, visible: true });
         if (!workOrderData || workOrderData.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
+          throw Object.assign(new Error('Work order not found'), { status: 404 });
         }
         match.woId = { $in: workOrderData.map((doc: any) => doc._id) };
       } else {
@@ -24,14 +24,14 @@ class UserWorkOrderController {
         match.woId = helperService.validateObjectId(workOrderId);
         const workOrderData: any = await orderService.getAllOrders({ _id: match.woId, account_id, visible: true });
         if (!workOrderData || workOrderData.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
+          throw Object.assign(new Error('Work order not found'), { status: 404 });
         }
       }
       const data = await userWorkOrderService.getAll(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('User work order mapping not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "User work order mappings fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -43,9 +43,9 @@ class UserWorkOrderController {
       const woId = helperService.validateObjectId(workOrderId);
       const data = await userWorkOrderService.mappedData({ woId: woId });
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('Mapped data not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Mapped data fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -58,7 +58,7 @@ class UserWorkOrderController {
         throw Object.assign(new Error('Invalid request data'), { status: 400 });
       }
       const data = await userWorkOrderService.mapUsersWorkOrder(body);
-      res.status(200).json({ status: true, message: "Users mapped successfully", data });
+      res.status(200).json({ status: true, message: "Users mapped to work order successfully", data });
     } catch (error) {
       next(error);
     }
@@ -73,7 +73,7 @@ class UserWorkOrderController {
         throw Object.assign(new Error('Invalid request data'), { status: 400 });
       }
       const data = await userWorkOrderService.updateMappedUsers(woId, userIds);
-      res.status(200).json({ status: true, message: "Mapping updated successfully", data });
+      res.status(200).json({ status: true, message: "User work order mapping updated successfully", data });
     } catch (error) {
       next(error);
     }
@@ -84,7 +84,7 @@ class UserWorkOrderController {
       const { workOrderId } = req.params;
       const woId = helperService.validateObjectId(workOrderId);
       const data = await userWorkOrderService.removeMappedUsers(woId);
-      res.status(200).json({ status: true, message: "Mapping removed successfully", data });
+      res.status(200).json({ status: true, message: "User work order mapping removed successfully", data });
     } catch (error) {
       next(error);
     }

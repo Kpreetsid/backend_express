@@ -139,17 +139,14 @@ const userLogSchema = new Schema<IUserLog>({
     }
 });
 
-// Virtual field: isSuccess
 userLogSchema.virtual('isSuccess').get(function () {
     return this.statusCode >= 200 && this.statusCode < 300;
 });
 
-// Instance method
 userLogSchema.methods.isFromMobile = function () {
     return this.deviceInfo?.isMobile || false;
 };
 
-// Static method
 userLogSchema.statics.findByUserId = function (userId: string) {
     return this.find({ userId: new mongoose.Types.ObjectId(userId) });
 };
