@@ -257,7 +257,7 @@ class OrderController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id: account_id, visible: true };
-      const { wo_asset_id, fromDate, toDate } = req.query;
+      const { wo_asset_id, fromDate, toDate } = req.body;
       if (wo_asset_id) {
         match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       }
@@ -278,7 +278,7 @@ class OrderController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id: account_id };
-      const { wo_asset_id, fromDate, toDate } = req.query;
+      const { wo_asset_id, fromDate, toDate } = req.body;
       if (wo_asset_id) {
         match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       }
