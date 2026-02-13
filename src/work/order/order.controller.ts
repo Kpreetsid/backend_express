@@ -299,7 +299,7 @@ class OrderController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match: any = { account_id: account_id };
-      const { wo_asset_id, fromDate, toDate } = req.query;
+      const { wo_asset_id, fromDate, toDate } = req.body;
       if (wo_asset_id) {
         match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       }
@@ -320,7 +320,7 @@ class OrderController {
     try {
       const { account_id } = get(req, 'user', {}) as IUser;
       const match: any = { account_id, visible: true };
-      const { wo_asset_id, fromDate, toDate, order_no } = req.query;
+      const { wo_asset_id, fromDate, toDate, order_no } = req.body;
       if (wo_asset_id) {
         const ids = helperService.validateObjectIds(wo_asset_id.toString());
         match.wo_asset_id = { $in: ids };
@@ -342,7 +342,7 @@ class OrderController {
   async getSummaryData(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const { wo_asset_id, fromDate, toDate } = req.query;
+      const { wo_asset_id, fromDate, toDate } = req.body;
       const workOrderMatch: any = { account_id, visible: true };
       if (wo_asset_id) {
         const assetIds = helperService.validateObjectIds(wo_asset_id.toString());
@@ -375,7 +375,7 @@ class OrderController {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
-      const { wo_asset_id, fromDate, toDate } = req.query;
+      const { wo_asset_id, fromDate, toDate } = req.body;
       if (wo_asset_id) {
         match.wo_asset_id = { $in: helperService.validateObjectIds(wo_asset_id.toString()) };
       }
