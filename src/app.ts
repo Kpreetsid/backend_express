@@ -51,6 +51,14 @@ app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });
 });
 
+app.get('/health', (req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: Date.now(),
+  });
+});
+
 const apiRouter: Router = Router();
 apiRouter.use('/', routerIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());

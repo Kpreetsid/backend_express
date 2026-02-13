@@ -1,7 +1,7 @@
 import { getExternalData } from "../utils/externalAPI";
 
 class ProcessorAPIService {
-    private assetHealthArray = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
+    private assetHealthArray: Record<any, string> = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
 
     setAssetHealthStatus = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {
         const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);

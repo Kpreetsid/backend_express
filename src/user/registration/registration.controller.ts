@@ -10,11 +10,11 @@ class RegistrationController {
             if (!email || !username || !firstName) {
                 throw Object.assign(new Error('Email and Username are required'), { status: 400 });
             }
-            const isEmailExists = await usersService.getAllUsers({ email: email });
+            const isEmailExists: any = await usersService.getAllUsers({ email: email });
             if (isEmailExists.length > 0) {
                 throw Object.assign(new Error('Email already exists'), { status: 403 });
             }
-            const isUserNameExists = await usersService.getAllUsers({ username: username });
+            const isUserNameExists: any = await usersService.getAllUsers({ username: username });
             if (isUserNameExists.length > 0) {
                 throw Object.assign(new Error('Username already exists'), { status: 403 });
             }

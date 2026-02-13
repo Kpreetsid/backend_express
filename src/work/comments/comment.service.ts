@@ -26,7 +26,7 @@ class CommentService {
     return comments.map((comment: any, index) => ({ ...comment, id: comment._id, replies: replies[index] }));
   };
 
-  async getNestedComments (parentId: any) {
+  async getNestedComments (parentId: any): Promise<any> {
     const childComments = await CommentsModel.find({ parentCommentId: parentId, visible: true }).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email user_role user_profile_img' }]).lean();
       return await Promise.all(
         childComments.map(async (comment: any) => ({

@@ -10,7 +10,7 @@ class CompanyController {
   getCompanies = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { type } = req.query;
-      const baseFilter = {};
+      const baseFilter: any = {};
       if (type) baseFilter["type"] = type;
       const filter = await applyRoleFilter({
         user: get(req, "user", {}) as IUser,

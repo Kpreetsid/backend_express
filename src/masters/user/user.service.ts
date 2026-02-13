@@ -9,11 +9,8 @@ import { RoleManager } from "../../_role/newUserRoles";
 import { RoleMenuModel } from "../../models/userRoleMenu.model";
 
 class UsersService {
-  private mailerService: MailerService;
 
-  constructor() {
-    this.mailerService = new MailerService();
-  }
+  constructor(private mailerService: MailerService) {}
 
   async getAllUsers(match: any) {
     return await UserModel.find(match).select('-password');
@@ -85,4 +82,4 @@ class UsersService {
   };
 }
 
-export const usersService = new UsersService();
+export const usersService = new UsersService(new MailerService());

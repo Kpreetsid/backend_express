@@ -1,6 +1,10 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+export const environment = {
+  type: process.env.NODE_ENV
+}
+
 export const database = {
   host: process.env.DB_HOST!,
   port: parseInt(process.env.DB_PORT!),

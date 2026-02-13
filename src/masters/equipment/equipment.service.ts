@@ -88,7 +88,7 @@ class EquipmentService {
       if (!assetUsersMap.has(assetId)) assetUsersMap.set(assetId, []);
       assetUsersMap.get(assetId)?.push(String(m.userId));
     });
-    const buildTree = (asset: any) => {
+    const buildTree: any = (asset: any) => {
       const assetId = String(asset._id);
       return {
         ...asset,

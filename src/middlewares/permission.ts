@@ -7,7 +7,7 @@ export const hasRolePermission = (moduleName: string, action: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       const user = get(req, "user", {}) as IUser;
-      const roleMenu = get(req, "role", {}) as IUserRoleMenu;
+      const roleMenu: any = get(req, "role", {}) as IUserRoleMenu;
       if (!user?.user_role) {
         throw Object.assign(new Error("Unauthorized access"), { status: 403 });
       }

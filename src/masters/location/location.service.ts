@@ -100,11 +100,11 @@ class LocationService {
         throw Object.assign(new Error("No data found"), { status: 404 });
       }
       const idMap: Record<string, any> = {};
-      locations.forEach((loc) => {
+      locations.forEach((loc: any) => {
         idMap[`${loc._id}`] = { ...loc, children: [] };
       });
       const rootNodes: any[] = [];
-      locations.forEach((loc) => {
+      locations.forEach((loc: any) => {
         const parentId = loc.parent_id ? loc.parent_id.toString() : null;
         if (parentId && idMap[parentId]) {
           idMap[parentId].children.push(idMap[`${loc._id}`]);

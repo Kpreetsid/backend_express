@@ -10,7 +10,7 @@ class ResetPasswordController {
             if (!email) {
                 throw Object.assign(new Error('Email is required'), { status: 400 });
             }
-            const emailCheck = await usersService.getAllUsers({ email: email });
+            const emailCheck: any = await usersService.getAllUsers({ email: email });
             if(emailCheck.length === 0) {
                 throw Object.assign(new Error('User not registered. Please register first.'), { status: 404 });
             }
@@ -34,7 +34,7 @@ class ResetPasswordController {
             if (!email || !verificationCode) {
                 throw Object.assign(new Error('Email and OTP are required'), { status: 400 });
             }
-            const emailCheck = await usersService.getAllUsers({ email });
+            const emailCheck: any = await usersService.getAllUsers({ email });
             if (emailCheck.length === 0) {
                 throw Object.assign(new Error('User not registered. Please register first.'), { status: 404 });
             }

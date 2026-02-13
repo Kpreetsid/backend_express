@@ -10,7 +10,7 @@ class VerificationController {
             if (!email) {
                 throw Object.assign(new Error('Email is required'), { status: 400 });
             }
-            const emailCheck = await usersService.getAllUsers({ $or: [{ username: email }, { email: email }], user_status: 'active' });
+            const emailCheck: any = await usersService.getAllUsers({ $or: [{ username: email }, { email: email }], user_status: 'active' });
             if(emailCheck.length === 0) {
                 throw Object.assign(new Error('Email not found'), { status: 404 });
             }
@@ -31,7 +31,7 @@ class VerificationController {
             if (!email || !verificationCode) {
                 throw Object.assign(new Error('Email and OTP are required'), { status: 400 });
             }
-            const emailCheck = await usersService.getAllUsers({ $or: [{ username: email }, { email: email }], user_status: 'active' });
+            const emailCheck: any = await usersService.getAllUsers({ $or: [{ username: email }, { email: email }], user_status: 'active' });
             if (emailCheck.length === 0) {
                 throw Object.assign(new Error('Email not found'), { status: 404 });
             }
