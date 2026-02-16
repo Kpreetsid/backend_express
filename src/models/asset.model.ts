@@ -11,6 +11,7 @@ export interface IAsset extends Document {
   asset_orient?: string;
   asset_behavior?: string;
   asset_frequency?: string;
+  asset_class?: string;
   asset_timezone: string;
   asset_build_type: string;
   isNewFlow: boolean;
@@ -93,6 +94,7 @@ const assetSchema = new Schema<IAsset>(
     asset_orient: { type: String, trim: true },
     asset_behavior: { type: String, trim: true },
     asset_frequency: { type: String, trim: true },
+    asset_class: { type: String, trim: true },
     asset_timezone: {
       type: String,
       trim: true,

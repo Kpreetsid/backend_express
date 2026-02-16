@@ -8,6 +8,9 @@ export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
   created: Date;
   userId: ObjectId;
   principalType: string;
+  isExternal: boolean;
+  isInternal: boolean;
+  expiresAt: Date;
 }
 
 const userTokenSchema = new Schema<IUserToken>({
@@ -17,6 +20,9 @@ const userTokenSchema = new Schema<IUserToken>({
   created: { type: Date, required: true, default: Date.now },
   userId: { type: Schema.Types.ObjectId, required: true, ref: 'UserModel' },
   principalType: { type: String, required: true },
+  isExternal: { type: Boolean, default: false },
+  isInternal: { type: Boolean, default: false },
+  expiresAt: { type: Date, required: true }
 }, {
   collection: 'CustomAccessToken',
   versionKey: false,
