@@ -256,7 +256,7 @@ class AssetService {
         updatedBy: undefined,
         account_id,
         visible: true,
-        parent_id: newParentId ? helperService.validateObjectId(newParentId) : undefined,
+        parent_id: newParentId ? helperService.validateObjectId(String(newParentId)) : undefined,
         top_level_asset_id: topLevelRef
       };
       const newAsset = new AssetModel(newAssetData);

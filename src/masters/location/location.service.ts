@@ -297,7 +297,7 @@ class LocationService {
     const newBody: any = {
       ...cleanSource,
       location_name: newName,
-      parent_id: newParentId ? helperService.validateObjectId(newParentId) : undefined,
+      parent_id: newParentId ? helperService.validateObjectId(String(newParentId)) : undefined,
       account_id,
       createdBy: user_id,
       updatedBy: undefined,

@@ -81,7 +81,7 @@ class MapUserToAssetService {
       }
       return {
         updateOne: {
-          filter: { _id: helperService.validateObjectId(doc._id) },
+          filter: { _id: helperService.validateObjectId(String(doc._id)) },
           update: {
             $set: {
               sendMail: doc.sendMail,

@@ -93,7 +93,7 @@ class PartsService {
   async assignPartToWorkOrder(body: any, user: any) {
     await Promise.all(
       body.map(async (doc: any) => {
-        const data = await PartsModel.findOne({ _id: helperService.validateObjectId(doc.part_id) });
+        const data = await PartsModel.findOne({ _id: helperService.validateObjectId(String(doc.part_id)) });
         if (!data) return;
         data.quantity = data.quantity - doc.estimatedQuantity;
         data.updatedBy = user._id;
