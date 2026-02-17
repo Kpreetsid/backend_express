@@ -81,6 +81,8 @@ export interface IAsset extends Document {
   stage_8th_driving_teeth?: number,
   stage_8th_driven_teeth?: number,
   isBuzzerActive: boolean,
+  snoozeAlarm?: boolean,
+  snoozeValue?: number,
   createdBy: ObjectId;
   updatedBy: ObjectId;
 }
@@ -158,7 +160,6 @@ const assetSchema = new Schema<IAsset>(
     qr_code: { type: String, trim: true },
     assigned_to: { type: Number, default: 1 },
     image_path: { type: String, trim: true },
-    visible: { type: Boolean, default: true },
     brandMake: { type: String, trim: true },
     powerRating: { type: String, trim: true },
     noStages: { type: Number },
@@ -179,6 +180,9 @@ const assetSchema = new Schema<IAsset>(
     stage_8th_driving_teeth: { type: Number },
     stage_8th_driven_teeth: { type: Number },
     isBuzzerActive: { type: Boolean, default: false },
+    snoozeAlarm: { type: Boolean, default: false },
+    snoozeValue: { type: Number, default: 0 },
+    visible: { type: Boolean, default: true },
     createdBy: {
       type: Schema.Types.ObjectId,
       ref: "UserModel",

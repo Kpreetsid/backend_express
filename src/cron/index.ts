@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import { schedulerService } from "./scheduler.service";
+import { snoozeAlarmService } from "./assetAlarmSnooze.service";
 
 export async function initJobScheduler() {
     console.log("----> Initializing unified job scheduler...");
@@ -8,6 +9,7 @@ export async function initJobScheduler() {
         cron.schedule("15 0 * * *", async () => {
             console.log(`${new Date().toISOString()} → Running unified scheduler tick...`);
             await schedulerService.runUnifiedScheduler();
+            await snoozeAlarmService.runSnoozeAlarm();
         });
         console.log("✅ Unified Scheduler initialized (daily at 00:15 AM).");
     } catch (error) {
