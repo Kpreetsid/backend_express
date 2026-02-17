@@ -220,7 +220,7 @@ class EquipmentService {
 
   async createMotor(motor: any, equipment: any, account_id: any, user_id: any) {
     motor = this.removeExtraFields(motor);
-    const parentId = equipment._id ? equipment._id : equipment.id;
+    const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
       parent_id: helperService.validateObjectId(parentId),
       asset_name: motor.asset_name,
@@ -251,7 +251,7 @@ class EquipmentService {
 
   async createFlexible(flexible: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     flexible = this.removeExtraFields(flexible);
-    const parentId = equipment._id ? equipment._id : equipment.id;
+    const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
       parent_id: helperService.validateObjectId(parentId),
       asset_name: flexible.asset_name,
@@ -277,7 +277,7 @@ class EquipmentService {
 
   async createRigid(rigid: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     rigid = this.removeExtraFields(rigid);
-    const parentId = equipment._id ? equipment._id : equipment.id;
+    const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
       parent_id: helperService.validateObjectId(parentId),
       asset_name: rigid.asset_name,
@@ -304,7 +304,7 @@ class EquipmentService {
 
   async createBeltPulley(beltPulley: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     beltPulley = this.removeExtraFields(beltPulley);
-    const parentId = equipment._id ? equipment._id : equipment.id;
+    const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
       parent_id: helperService.validateObjectId(parentId),
       asset_name: beltPulley.asset_name,
@@ -333,7 +333,7 @@ class EquipmentService {
 
   async createGearbox(gearbox: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     gearbox = this.removeExtraFields(gearbox);
-    const parentId = equipment._id ? equipment._id : equipment.id;
+    const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
       parent_id: helperService.validateObjectId(parentId),
       asset_name: gearbox.asset_name,
@@ -381,7 +381,7 @@ class EquipmentService {
 
   async createFanBlower(fanBlower: any, equipment: any, account_id: any, user_id: any): Promise<any> {
     fanBlower = this.removeExtraFields(fanBlower);
-    const parentId = equipment._id ? equipment._id : equipment.id;
+    const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
       parent_id: helperService.validateObjectId(parentId),
       asset_name: fanBlower.asset_name,
