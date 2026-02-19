@@ -57,8 +57,7 @@ class MapUserToLocationService {
             let: { userId: "$userId" },
             pipeline: [
               { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-              { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-              { $addFields: { id: '$_id' } }
+              { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
             ],
             as: "user"
           }

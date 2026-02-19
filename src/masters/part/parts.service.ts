@@ -22,8 +22,7 @@ class PartsService {
           let: { location_id: "$location_id" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$location_id"] } } },
-            { $project: { _id: 1, location_name: 1, location_type: 1 } },
-            { $addFields: { id: "$_id" } }
+            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } },
           ],
           as: "location"
         }
@@ -35,8 +34,7 @@ class PartsService {
           let: { user_id: "$createdBy" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$user_id"] } } },
-            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-            { $addFields: { id: "$_id" } }
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
           ],
           as: "createdUser"
         }
@@ -48,8 +46,7 @@ class PartsService {
           let: { user_id: "$updatedBy" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$user_id"] } } },
-            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-            { $addFields: { id: "$_id" } }
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
           ],
           as: "updatedUser"
         }

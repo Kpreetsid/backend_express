@@ -10,8 +10,7 @@ class ObservationService {
           let: { assetId: "$assetId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$assetId"] } } },
-            { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
-            { $addFields: { id: "$_id" } }
+            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1 } },
           ],
           as: "asset"
         }
@@ -23,8 +22,7 @@ class ObservationService {
           let: { locationId: "$locationId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$locationId"] } } },
-            { $project: { _id: 1, location_name: 1, location_type: 1 } },
-            { $addFields: { id: "$_id" } }
+            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } },
           ],
           as: "location"
         }
@@ -36,8 +34,7 @@ class ObservationService {
           let: { userId: "$userId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-            { $addFields: { id: "$_id" } }
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
           ],
           as: "user"
         }

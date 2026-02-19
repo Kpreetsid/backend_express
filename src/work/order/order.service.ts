@@ -24,8 +24,7 @@ class OrderService {
           let: { wo_asset_id: '$wo_asset_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
-            { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $project: { _id: 1, id: '$_id', asset_name: 1, asset_type: 1 } },
           ],
           as: "asset"
         }
@@ -37,8 +36,7 @@ class OrderService {
           let: { wo_location_id: '$wo_location_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
-            { $project: { _id: 1, location_name: 1, location_type: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $project: { _id: 1, id: '$_id', location_name: 1, location_type: 1 } },
           ],
           as: "location"
         }
@@ -50,8 +48,7 @@ class OrderService {
           let: { createdBy: '$createdBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, user_role: 1 } },
           ],
           as: "createdBy"
         }
@@ -63,8 +60,7 @@ class OrderService {
           let: { updatedBy: '$updatedBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, user_role: 1 } },
           ],
           as: "updatedBy"
         }
@@ -109,8 +105,7 @@ class OrderService {
           let: { wo_asset_id: '$wo_asset_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] } } },
-            { $project: { _id: 1, asset_name: 1, asset_type: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1 } },
           ],
           as: "asset"
         }
@@ -122,8 +117,7 @@ class OrderService {
           let: { wo_location_id: '$wo_location_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] } } },
-            { $project: { _id: 1, location_name: 1, location_type: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } },
           ],
           as: "location"
         }
@@ -135,8 +129,7 @@ class OrderService {
           let: { createdBy: '$createdBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
           ],
           as: "createdBy"
         }
@@ -148,8 +141,7 @@ class OrderService {
           let: { updatedBy: '$updatedBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-            { $project: { _id: 1, firstName: 1, lastName: 1, user_role: 1 } },
-            { $addFields: { id: '$_id' } }
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
           ],
           as: "updatedBy"
         }
