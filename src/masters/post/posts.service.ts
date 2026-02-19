@@ -14,6 +14,18 @@ class PostService {
         }
       },
       { $unwind: "$user" },
+      {
+        $lookup: {
+          from: "location_master",
+          let: { publishTo: "$publishTo" },
+          pipeline: [
+            { $addFields: { strId: { $toString: "$_id" } } },
+            { $match: { $expr: { $in: ["$strId", { $ifNull: ["$$publishTo", []] }] } } },
+            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } }
+          ],
+          as: "locations"
+        }
+      },
       { $addFields: { id: "$_id" } },
       { $sort: { _id: -1 } },
       { $project: { "user.password": 0 } }

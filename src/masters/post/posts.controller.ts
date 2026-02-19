@@ -89,11 +89,11 @@ class PostController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
-      const result = await postService.updatePostById(id, body, user_id);
+      const result = await postService.updatePostById(helperService.validateObjectId(String(id)), body, user_id);
       if (!result) {
         throw Object.assign(new Error('Post not updated'), { status: 404 });
       }
-      const updatedData = await postService.getAllPosts({ _id: id, account_id: account_id });
+      const updatedData = await postService.getAllPosts({ _id: helperService.validateObjectId(String(id)), account_id: account_id });
       if (!updatedData || updatedData.length === 0) {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
@@ -113,11 +113,11 @@ class PostController {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
       const updatedBody = { ...data[0], ...body };
-      const result = await postService.updatePostById(id, updatedBody, user_id);
+      const result = await postService.updatePostById(helperService.validateObjectId(String(id)), updatedBody, user_id);
       if (!result) {
         throw Object.assign(new Error('Post not updated'), { status: 404 });
       }
-      const updatedData = await postService.getAllPosts({ _id: id, account_id: account_id });
+      const updatedData = await postService.getAllPosts({ _id: helperService.validateObjectId(String(id)), account_id: account_id });
       if (!updatedData || updatedData.length === 0) {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
@@ -136,7 +136,7 @@ class PostController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
-      const result = await postService.removePostById(id, user_id);
+      const result = await postService.removePostById(helperService.validateObjectId(String(id)), user_id);
       if (!result) {
         throw Object.assign(new Error('Post not deleted'), { status: 404 });
       }
@@ -150,7 +150,7 @@ class PostController {
     try {
       const { _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      const result = await postService.likePost(id, user_id);
+      const result = await postService.likePost(helperService.validateObjectId(String(id)), user_id);
       res.status(200).json({ status: true, message: "Post like updated successfully", data: result });
     } catch (error) {
       next(error);
@@ -161,7 +161,7 @@ class PostController {
     try {
       const { _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      const result = await postService.dislikePost(id, user_id);
+      const result = await postService.dislikePost(helperService.validateObjectId(String(id)), user_id);
       res.status(200).json({ status: true, message: "Post dislike updated successfully", data: result });
     } catch (error) {
       next(error);
