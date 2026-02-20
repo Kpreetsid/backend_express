@@ -126,7 +126,7 @@ class OrderController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Work order fetched successfully.", data });
+      res.status(200).json({ status: true, message: "Work order fetched.", data });
     } catch (error) {
       next(error);
     }
@@ -141,9 +141,9 @@ class OrderController {
       }
       const data = await orderService.createWorkOrder(body, user);
       if (!data) {
-        throw Object.assign(new Error('Failed to create work order'), { status: 400 });
+        throw Object.assign(new Error('Work order not created'), { status: 400 });
       }
-      res.status(201).send({ status: true, message: 'Work order created successfully', data });
+      res.status(201).send({ status: true, message: 'Work order created.', data });
     } catch (error) {
       next(error);
     }
@@ -162,7 +162,7 @@ class OrderController {
         throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       await orderService.updateById(String(id), body, user);
-      res.status(200).send({ status: true, message: 'Work order updated successfully', data: body });
+      res.status(200).send({ status: true, message: 'Work order updated successfully.', data: body });
     } catch (error) {
       next(error);
     }
@@ -190,7 +190,7 @@ class OrderController {
         isWorkOrderExist[0].sop_form_data = body.sop_form_data;
       }
       await orderService.updateDataById(String(id), body, user);
-      res.status(200).send({ status: true, message: 'Work order updated successfully', data: body });
+      res.status(200).send({ status: true, message: 'Work order updated successfully.', data: body });
     } catch (error) {
       next(error);
     }
@@ -231,7 +231,7 @@ class OrderController {
       isWorkOrderExist[0]?.status_details.push(status_details);
       const body = { status, updatedBy: user_id, status_details: isWorkOrderExist[0].status_details, parts: isWorkOrderExist[0].parts };
       await orderService.orderStatusChange(id, body);
-      res.status(200).send({ status: true, message: 'Work order updated successfully' });
+      res.status(200).send({ status: true, message: 'Work order updated successfully.' });
     } catch (error) {
       next(error);
     }
@@ -247,7 +247,7 @@ class OrderController {
         throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       await orderService.removeOrder(req.params.id, user_id);
-      res.status(200).send({ status: true, message: 'Work order removed successfully' });
+      res.status(200).send({ status: true, message: 'Work order deleted successfully.' });
     } catch (error) {
       next(error);
     }
@@ -365,7 +365,7 @@ class OrderController {
       if (!data) {
         throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Work order summary data fetched successfully.", data });
+      res.status(200).json({ status: true, message: "Work order summary fetched successfully.", data });
     } catch (error) {
       next(error);
     }
@@ -392,7 +392,7 @@ class OrderController {
       match.status = { $in: ['Open', 'In-Progress', 'On-Hold'] };
       const data = await orderService.getAllOrders(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('Work order pending orders not found'), { status: 404 });
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
       res.status(200).json({ status: true, message: "Work order pending orders fetched successfully.", data });
     } catch (error) {

@@ -18,7 +18,7 @@ class CommentController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Comments fetched successfully.", data });
     } catch (error) {
       next(error);
     }
@@ -35,7 +35,7 @@ class CommentController {
       if (!data) {
         throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Comment fetched successfully.", data });
     } catch (error) {
       next(error);
     }
@@ -57,7 +57,7 @@ class CommentController {
         throw Object.assign(new Error('Comment not created'), { status: 404 });
       }
       const result = await commentService.getAllComments({ _id: data._id, parentCommentId: data.parentCommentId, account_id: account_id, order_id: helperService.validateObjectId(orderId) });
-      res.status(201).json({ status: true, message: "Data created successfully", data: result[0] });
+      res.status(201).json({ status: true, message: "Comment created.", data: result[0] });
     } catch (error) {
       next(error);
     }
@@ -82,7 +82,7 @@ class CommentController {
       if (!data) {
         throw Object.assign(new Error('Comment not updated'), { status: 404 });
       }
-      res.status(201).json({ status: true, message: "Data created successfully", data });
+      res.status(201).json({ status: true, message: "Comment updated successfully.", data });
     } catch (error) {
       next(error);
     }
@@ -106,7 +106,7 @@ class CommentController {
       if (!data) {
         throw Object.assign(new Error('Comment not deleted'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data deleted successfully" });
+      res.status(200).json({ status: true, message: "Comment deleted successfully." });
     } catch (error) {
       next(error);
     }

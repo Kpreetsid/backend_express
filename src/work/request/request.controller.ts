@@ -47,7 +47,7 @@ class RequestController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Work requests fetched successfully.", data });
     } catch (error) {
       next(error);
     }
@@ -76,7 +76,7 @@ class RequestController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data: data[0] });
+      res.status(200).json({ status: true, message: "Work request fetched successfully.", data: data[0] });
     } catch (error) {
       next(error);
     }
@@ -90,7 +90,7 @@ class RequestController {
       if (!data) {
         throw Object.assign(new Error('Work request not created'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data created successfully", data });
+      res.status(200).json({ status: true, message: "Work request created successfully.", data });
     } catch (error) {
       next(error);
     }
@@ -133,7 +133,7 @@ class RequestController {
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully" });
+      res.status(200).json({ status: true, message: "Work request updated successfully." });
     } catch (error) {
       next(error);
     }
@@ -155,7 +155,7 @@ class RequestController {
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully" });
+      res.status(200).json({ status: true, message: "Work request approved successfully." });
     } catch (error) {
       next(error);
     }
@@ -182,7 +182,7 @@ class RequestController {
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data updated successfully" });
+      res.status(200).json({ status: true, message: "Work request rejected successfully." });
     } catch (error) {
       next(error);
     }
@@ -199,7 +199,7 @@ class RequestController {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
       await requestService.deleteRequestById(id, user_id);
-      res.status(200).json({ status: true, message: "Data deleted successfully" });
+      res.status(200).json({ status: true, message: "Work request deleted successfully." });
     } catch (error) {
       next(error);
     }

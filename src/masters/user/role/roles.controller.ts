@@ -15,9 +15,18 @@ class RolesController {
       if (queryUserId) {
         match.user_id = helperService.validateObjectId(String(queryUserId));
       }
-      const data = await rolesService.getRoles(match);
+      const data: any = await rolesService.getRoles(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('Role not found'), { status: 404 });
+        const getAllUsers = await usersService.getAllUsers({ account_id, _id: helperService.validateObjectId(String(queryUserId)) });
+        if (!getAllUsers || getAllUsers.length === 0) {
+          throw Object.assign(new Error('User not found'), { status: 404 });
+        }
+        const roleData = await rolesService.createUserRole(getAllUsers[0].user_role, getAllUsers[0]);
+        if (!roleData) {
+          throw Object.assign(new Error('Role not created'), { status: 404 });
+        }
+        console.log(`----------------------------->User: ${getAllUsers[0].username} with Role: ${getAllUsers[0].user_role} menu is created.`);
+        data.push(roleData);
       }
       res.status(200).json({ status: true, message: "Roles fetched successfully", data });
     } catch (error) {

@@ -13,7 +13,7 @@ class InstructionController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Instruction not found'), { status: 404 });
       }
-      return res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      return res.status(200).json({ status: true, message: "Instructions fetched successfully.", data });
     } catch (error) {
       next(error);
     }
@@ -29,7 +29,7 @@ class InstructionController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Instruction not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Data fetched successfully", data });
+      res.status(200).json({ status: true, message: "Instruction fetched successfully.", data });
     } catch (error) {
       next(error);
     }
@@ -43,7 +43,7 @@ class InstructionController {
       if (!data) {
         throw Object.assign(new Error('Instruction not created'), { status: 404 });
       }
-      res.status(201).json({ status: true, message: "Data created successfully", data });
+      res.status(201).json({ status: true, message: "Instruction created successfully.", data });
     } catch (error) {
       next(error);
     }
@@ -63,7 +63,7 @@ class InstructionController {
       if (!data) {
         throw Object.assign(new Error('Instruction not updated'), { status: 404 });
       }
-      res.status(200).send({ status: true, message: 'Work order updated successfully', data: body });
+      res.status(200).send({ status: true, message: 'Instruction updated successfully.', data: body });
     } catch (error) {
       next(error);
     }
@@ -80,7 +80,7 @@ class InstructionController {
         throw Object.assign(new Error('Instruction not found'), { status: 404 });
       }
       await instructionService.deleteInstructionsById(String(id), user_id);
-      res.status(200).json({ status: true, message: "Data deleted successfully" });
+      res.status(200).json({ status: true, message: "Instruction deleted successfully." });
     } catch (error) {
       next(error);
     }
