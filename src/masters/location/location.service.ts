@@ -14,9 +14,9 @@ class LocationService {
   };
 
   async getAllLocations(match: any) {
-    const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name' }]);
+    const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", match: { visible: true }, select: 'id location_name' }]);
     const locationIds = locationData.map(doc => `${doc._id}`);
-    const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName user_role' }]);
+    const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", match: { visible: true }, select: 'id firstName lastName user_role' }]);
     const result: any = locationData.map((doc: any) => {
       const { _id: id, ...obj } = doc.toObject();
       obj.id = id;
@@ -191,17 +191,34 @@ class LocationService {
     }
   }
 
+  private sanitizeLocationBody(body: any) {
+    const sanitized = { ...body };
+    const objectIdFields = ['parent_id', 'top_level_location_id', 'account_id'];
+    objectIdFields.forEach(field => {
+      if (sanitized[field] === "" || sanitized[field] === null) {
+        delete sanitized[field];
+      }
+    });
+    if (sanitized.top_level === "" || sanitized.top_level === null) {
+      delete sanitized.top_level;
+    } else if (typeof sanitized.top_level === 'string') {
+      sanitized.top_level = sanitized.top_level === 'true';
+    }
+    return sanitized;
+  }
+
   async insertLocation(body: any) {
-    const newLocation: any = new LocationModel(body);
-    newLocation.top_level_location_id = newLocation.top_level ? newLocation._id as mongoose.Types.ObjectId : body.top_level_location_id;
-    body.parent_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
+    const sanitizedBody = this.sanitizeLocationBody(body);
+    const newLocation: any = new LocationModel(sanitizedBody);
+    newLocation.top_level_location_id = newLocation.top_level ? newLocation._id as mongoose.Types.ObjectId : sanitizedBody.top_level_location_id;
     return await newLocation.save();
   };
 
   async updateById(id: string, body: any) {
+    const sanitizedBody = this.sanitizeLocationBody(body);
     // await mapUserToLocationService.updateUserMapping(id, body.userIdList);
     await updateLocationAssetMapping(id, body.userIdList);
-    await LocationModel.updateOne({ _id: id }, body);
+    await LocationModel.updateOne({ _id: id }, sanitizedBody);
     return await LocationModel.findById(id);
   };
 
@@ -237,7 +254,7 @@ class LocationService {
         }
         match._id = { $in: mappedData.map(doc => doc.locationId) };
       }
-      const data = await LocationModel.find(match).populate([{ path: 'account_id', model: "Schema_Account", select: 'id account_name' }, { path: 'top_level_location_id', model: "Schema_Location", select: 'id location_name' }]);
+      const data = await LocationModel.find(match).populate([{ path: 'account_id', model: "Schema_Account", match: { visible: true }, select: 'id account_name' }, { path: 'top_level_location_id', model: "Schema_Location", match: { visible: true }, select: 'id location_name' }]);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

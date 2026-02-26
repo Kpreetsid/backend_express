@@ -9,8 +9,8 @@ import mongoose from 'mongoose';
 class EquipmentService {
   async getAllEquipment(match: any) {
     const assetsData = await AssetModel.find(match).populate([
-        { path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to' }, 
-        { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name' }
+        { path: 'locationId', model: "Schema_Location", match: { visible: true }, select: 'id location_name assigned_to' }, 
+        { path: 'parent_id', model: "Schema_Asset", match: { visible: true }, select: 'id asset_name' }
     ]);
     
     if (!assetsData.length) return [];
@@ -19,7 +19,7 @@ class EquipmentService {
     const mapData = await MapUserAssetLocationModel.find({ 
         assetId: { $in: assetsIds }, 
         userId: { $exists: true } 
-    }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
+    }).populate([{ path: 'userId', model: "Schema_User", match: { visible: true }, select: 'id firstName lastName' }]);
     const mappingsByAsset = new Map<string, any[]>();
     mapData.forEach(map => {
         const aId = String(map.assetId);
@@ -184,7 +184,7 @@ class EquipmentService {
   }
 
   removeExtraFields(obj: Record<string, any>) {
-    return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null));
+    return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null && value !== ""));
   }
 
   async createEquipment(equipment: any, account_id: any, user_id: any) {

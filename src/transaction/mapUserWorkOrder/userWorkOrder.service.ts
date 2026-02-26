@@ -30,7 +30,7 @@ class UserWorkOrderService {
   };
   
   async getAll (match: any): Promise<any> {
-    return await WorkOrderAssigneeModel.find(match).populate([{ path: 'woId', model: "Schema_WorkOrder" }])
+    return await WorkOrderAssigneeModel.find(match).populate([{ path: 'woId', model: "Schema_WorkOrder", match: { visible: true } }])
   };
 }
 

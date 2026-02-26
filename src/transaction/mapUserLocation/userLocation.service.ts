@@ -41,7 +41,7 @@ class MapUserToLocationService {
             from: "location_master",
             let: { locId: "$locationId" },
             pipeline: [
-              { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
+              { $match: { visible: true, $expr: { $eq: ["$_id", "$$locId"] } } },
               { $addFields: { id: '$_id' } }
             ],
             as: "location"
@@ -56,7 +56,7 @@ class MapUserToLocationService {
             from: "users",
             let: { userId: "$userId" },
             pipeline: [
-              { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+              { $match: { visible: true, $expr: { $eq: ["$_id", "$$userId"] } } },
               { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
             ],
             as: "user"
