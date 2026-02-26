@@ -131,10 +131,11 @@ class MapUserToLocationService {
     const existingUsers = locationUserMappings.map((u: any) => String(u.userId));
     const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
     const removedUsers = existingUsers.filter(id => !userIdList.includes(id));
-    const effectiveAdded = Array.from([...new Set([...addedUsers, ...inheritedAdded])]);
-    const effectiveRemoved = Array.from([...new Set([...removedUsers, ...inheritedRemoved])]);
+    const effectiveAdded = Array.from([...new Set([...addedUsers, ...inheritedAdded])]).filter(id => !existingUsers.includes(id));
+    const effectiveRemoved = Array.from([...new Set([...removedUsers, ...inheritedRemoved])]).filter(id => existingUsers.includes(id));
     if (effectiveAdded.length > 0) {
-      await this.addChildLocationMapping(locationId, effectiveAdded);
+      const location = await LocationModel.findById(locationId).select('account_id').lean();
+      await this.addChildLocationMapping(locationId, effectiveAdded, location?.account_id);
     }
     if (effectiveRemoved.length > 0) {
       await this.removeChildLocationMapping(locationId, effectiveRemoved);
@@ -148,10 +149,11 @@ class MapUserToLocationService {
     }
   }
 
-  addChildLocationMapping = async (locationId: string, userIdList: string[]) => {
+  addChildLocationMapping = async (locationId: string, userIdList: string[], account_id?: any) => {
+    if (!userIdList.length) return;
     const locationObjectId = helperService.validateObjectId(locationId);
     const userIds = helperService.validateObjectIds(userIdList.join(','));
-    await MapUserAssetLocationModel.insertMany(userIds.map(userId => ({ locationId: locationObjectId, userId: userId })));
+    await MapUserAssetLocationModel.insertMany(userIds.map(userId => ({ locationId: locationObjectId, userId: userId, account_id })));
   }
 
   removeChildLocationMapping = async (locationId: string, userIdList: string[]) => {

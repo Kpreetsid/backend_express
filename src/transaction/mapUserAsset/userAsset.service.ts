@@ -113,10 +113,11 @@ class MapUserToAssetService {
     const existingUsers = assetUserMappings.map((u: any) => String(u.userId));
     const addedUsers = userIdList.filter((id: any) => !existingUsers.includes(id));
     const removedUsers = existingUsers.filter((id: any) => !userIdList.includes(id));
-    const effectiveAdded = Array.from([...new Set([...addedUsers, ...inheritedAdded])]);
-    const effectiveRemoved = Array.from([...new Set([...removedUsers, ...inheritedRemoved])]);
+    const effectiveAdded = Array.from([...new Set([...addedUsers, ...inheritedAdded])]).filter(id => !existingUsers.includes(id));
+    const effectiveRemoved = Array.from([...new Set([...removedUsers, ...inheritedRemoved])]).filter(id => existingUsers.includes(id));
     if (effectiveAdded.length > 0) {
-      await this.addChildAssetMapping(assetId, effectiveAdded);
+      const asset = await AssetModel.findById(assetId).select('account_id').lean();
+      await this.addChildAssetMapping(assetId, effectiveAdded, asset?.account_id);
     }
     if (effectiveRemoved.length > 0) {
       await this.removeChildAssetMapping(assetId, effectiveRemoved);
@@ -159,13 +160,15 @@ class MapUserToAssetService {
     };
   };
 
-  addChildAssetMapping = async (id: string, userIdList: string[]) => {
+  addChildAssetMapping = async (id: string, userIdList: string[], account_id?: any) => {
+    if (!userIdList.length) return;
     const assetId = helperService.validateObjectId(id);
     const userIds = helperService.validateObjectIds(userIdList.join(','));
     const queryArray = userIds.map((userId) => {
       const mapData: any = {
         assetId: assetId,
         userId: userId,
+        account_id
       };
       return mapData;
     });
@@ -198,15 +201,17 @@ export const mapUserToAssetService = new MapUserToAssetService();
 
 export const updateLocationAssetMapping = async (locationId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = []) => {
   const locationObjectId = helperService.validateObjectId(locationId);
+  const location = await LocationModel.findById(locationObjectId).select('account_id').lean();
+  const account_id = location?.account_id;
   const locationMappings = await MapUserAssetLocationModel.find({ locationId: locationObjectId, userId: { $exists: true } }).lean();
   const existingUsers = locationMappings.map(d => String(d.userId));
   const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
   const removedUsers = existingUsers.filter(id => !userIdList.includes(id));
-  const effectiveAdded = [...new Set([...addedUsers, ...inheritedAdded])];
-  const effectiveRemoved = [...new Set([...removedUsers, ...inheritedRemoved])];
+  const effectiveAdded = [...new Set([...addedUsers, ...inheritedAdded])].filter(id => !existingUsers.includes(id));
+  const effectiveRemoved = [...new Set([...removedUsers, ...inheritedRemoved])].filter(id => existingUsers.includes(id));
   if (effectiveAdded.length) {
     const effectiveAddedIds = helperService.validateObjectIds(effectiveAdded.join(','));
-    await MapUserAssetLocationModel.insertMany(effectiveAddedIds.map(userId => ({ locationId: locationObjectId, userId: userId })), { ordered: false });
+    await MapUserAssetLocationModel.insertMany(effectiveAddedIds.map(userId => ({ locationId: locationObjectId, userId: userId, account_id })), { ordered: false });
   }
   if (effectiveRemoved.length) {
     const effectiveRemovedIds = helperService.validateObjectIds(effectiveRemoved.join(','));
@@ -221,7 +226,7 @@ export const updateLocationAssetMapping = async (locationId: string, userIdList:
     const assetRemoved = effectiveRemoved.filter(id => assetUsers.includes(id));
     if (assetAdded.length) {
       const assetAddedIds = helperService.validateObjectIds(assetAdded.join(','));
-      await MapUserAssetLocationModel.insertMany(assetAddedIds.map(userId => ({ assetId, userId: userId })), { ordered: false });
+      await MapUserAssetLocationModel.insertMany(assetAddedIds.map(userId => ({ assetId, userId: userId, account_id })), { ordered: false });
     }
     if (assetRemoved.length) {
       const assetRemovedIds = helperService.validateObjectIds(assetRemoved.join(','));
@@ -232,7 +237,7 @@ export const updateLocationAssetMapping = async (locationId: string, userIdList:
       const childAssetId = helperService.validateObjectId(String(child._id));
       const childMappings = await MapUserAssetLocationModel.find({ assetId: childAssetId, userId: { $exists: true } }).lean();
       const childUsers = childMappings.map(d => String(d.userId));
-      await updateLocationAssetMapping(String(child._id), childUsers, assetAdded, assetRemoved);
+      await mapUserToAssetService.updateUserMapping(String(child._id), childUsers, assetAdded, assetRemoved);
     }
   }
   const childLocations = await LocationModel.find({ parent_id: locationObjectId }).select('_id').lean();
