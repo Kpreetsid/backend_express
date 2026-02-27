@@ -16,7 +16,7 @@ export default (router: express.Router) => {
     orderRouter.post('/priority', orderController.getOrderPriority);
     orderRouter.post('/monthly-count', orderController.getMonthlyCount);
     orderRouter.post('/planned-unplanned', orderController.getPlannedUnplanned);
-    orderRouter.put('/status/:id', hasRolePermission('workOrder', 'update_work_order_status'), orderController.statusUpdateOrder);
+    orderRouter.put('/status/:id', validateParamId, hasRolePermission('workOrder', 'update_work_order_status'), orderController.statusUpdateOrder);
     orderRouter.put('/:id', validateParamId, orderController.updateOrder);
     orderRouter.patch('/:id', validateParamId, orderController.updateOrderSubmitData);
     orderRouter.delete('/:id', validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);

@@ -10,7 +10,7 @@ export default (router: express.Router) => {
     userLogRouters(userRouter);
     userRouter.get('/', userController.getUsers);
     userRouter.get('/:id', validateParamId, userController.getUser);
-    userRouter.get('/location/:id', userController.getLocationWiseUsers);
+    userRouter.get('/location/:id', validateParamId, userController.getLocationWiseUsers);
     userRouter.post('/', userController.createUser);
     userRouter.post('/change-password', userController.updatePasswordUser);
     userRouter.put('/:id', validateParamId, userController.updateUser);

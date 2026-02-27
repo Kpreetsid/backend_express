@@ -4,7 +4,6 @@ import { orderService } from "../../work/order/order.service";
 
 class AssetReportService {
   async getAllAssetReports(match: any, populateFilter?: any) {
-    match.$or = [{ visible: true }, { visible: { $exists: false } }];
     return await ReportAssetModel.find(match).sort({ _id: -1 }).populate(populateFilter);
   };
 

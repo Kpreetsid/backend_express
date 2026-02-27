@@ -8,8 +8,8 @@ export default (router: express.Router) => {
     requestRouter.get('/:id', validateParamId, requestController.getById);
     requestRouter.post('/', requestController.create);
     requestRouter.put('/:id', validateParamId, requestController.update);
-    requestRouter.patch('/approve/:id', requestController.approve);
-    requestRouter.patch('/reject/:id', requestController.reject);
+    requestRouter.patch('/approve/:id', validateParamId, requestController.approve);
+    requestRouter.patch('/reject/:id', validateParamId, requestController.reject);
     requestRouter.patch('/:id/:status', requestController.update);
     requestRouter.patch('/:id', validateParamId, requestController.update);
     requestRouter.delete('/:id', validateParamId, requestController.remove);

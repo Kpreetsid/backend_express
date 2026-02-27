@@ -6,7 +6,7 @@ import { validateParamId } from '../../middlewares/validate';
 export default (router: express.Router) => {
     const assetReportRouter = express.Router();
     assetReportRouter.get('/', assetReportController.getAssetsReport);
-    assetReportRouter.get('/latest/:id', assetReportController.getLatestReport);
+    assetReportRouter.get('/latest/:id', validateParamId, assetReportController.getLatestReport);
     assetReportRouter.get('/:id', validateParamId, assetReportController.getAssetsReportById);
     assetReportRouter.post('/', hasRolePermission('asset', 'create_report'), assetReportController.createAssetsReport);
     assetReportRouter.put('/:id', validateParamId, hasRolePermission('asset', 'edit_report'), assetReportController.updateAssetsReport);
