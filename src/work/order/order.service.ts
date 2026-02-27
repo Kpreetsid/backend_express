@@ -202,7 +202,7 @@ class OrderService {
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    let priorityLevels = ['High', 'Medium', 'Low', 'None'];
+    let priorityLevels = ['Urgent', 'High', 'Medium', 'Low'];
     let result = priorityLevels.map((level: any) => {
       const found: any = data.find((d: any) => d.key === level);
       return { key: level, value: found ? found.value : 0 };

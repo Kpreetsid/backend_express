@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { IUpload } from './upload.model';
 
 export const WORK_REQUEST_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected'];
-export const WORK_REQUEST_PRIORITIES = ['None', 'Low', 'Medium', 'High'];
+export const WORK_REQUEST_PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 
 export interface IWorkRequest extends Document {
   account_id: ObjectId;
@@ -28,7 +28,7 @@ const WorkRequestSchema = new Schema<IWorkRequest>({
   title: { type: String, trim: true },
   description: { type: String, trim: true },
   problemType: { type: String, trim: true, required: true },
-  priority: { type: String, trim: true, enum: WORK_REQUEST_PRIORITIES, default: 'None' },
+  priority: { type: String, trim: true, enum: WORK_REQUEST_PRIORITIES, default: 'Low' },
   files: { type: [Object], default: [] },
   status: { type: String, trim: true, enum: WORK_REQUEST_STATUSES, default: 'Open' },
   location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },

@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
 export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
-export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High'];
+export const WORK_ORDER_PRIORITIES = ['Low', 'Medium', 'High', "Urgent"];
 
 export interface IParts {
   part_id: ObjectId;
@@ -72,7 +72,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   description: { type: String, trim: true },
   estimated_time: { type: Number },
   createdFrom: { type: String, trim: true, enum: [ 'Asset Report', 'Work Request', 'Work Order', 'Preventive'], default: "Work Order" },
-  priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: "None" },
+  priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: "Low" },
   status: { type: String, trim: true, enum: WORK_ORDER_STATUSES, default: "Open" },
   status_details: { type: [StatusDetailsSchema], default: [] },
   type: { type: String, trim: true },
