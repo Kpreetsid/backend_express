@@ -183,11 +183,7 @@ const assetSchema = new Schema<IAsset>(
     snoozeAlarm: { type: Boolean, default: false },
     snoozeValue: { type: Number, default: 0 },
     visible: { type: Boolean, default: true },
-    createdBy: {
-      type: Schema.Types.ObjectId,
-      ref: "UserModel",
-      required: true,
-    },
+    createdBy: { type: Schema.Types.ObjectId, ref: "UserModel" },
     updatedBy: { type: Schema.Types.ObjectId, ref: "UserModel" },
   },
   {
