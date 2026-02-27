@@ -23,7 +23,7 @@ class LocationService {
   async getAllLocations(match: any) {
     const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name', match: { visible: true } }]);
     const locationIds = locationData.map(doc => `${doc._id}`);
-    const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName user_role' }]);
+    const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email user_role user_status' }]);
     const result: any = locationData.map((doc: any) => {
       const { _id: id, ...obj } = doc.toObject();
       obj.id = id;
@@ -164,7 +164,7 @@ class LocationService {
       }
       const locationData = await LocationModel.aggregate([
         { $match: { _id: { $in: locationObjectIds }, visible: true } },
-        { $project: { location_name: 1, _id: 1 } },
+        { $project: { location_name: 1, _id: 1, visible: 1 } },
         { $addFields: { id: { $toString: '$_id' }, name: '$location_name' } }
       ]);
       if (!locationData || locationData.length === 0) {

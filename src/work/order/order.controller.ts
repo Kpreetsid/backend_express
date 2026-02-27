@@ -242,12 +242,12 @@ class OrderController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      const orderId = helperService.validateObjectId(id);
+      const orderId = helperService.validateObjectId(String(id));
       const data = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Work order not found'), { status: 404 });
       }
-      await orderService.removeOrder(req.params.id, user_id);
+      await orderService.removeOrder(orderId, user_id);
       res.status(200).send({ status: true, message: 'Work order deleted successfully.' });
     } catch (error) {
       next(error);

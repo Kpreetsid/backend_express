@@ -13,7 +13,7 @@ class InspectionService {
             $lookup: {
               from: "users", let: { uId: "$user_id" }, pipeline: [
                 { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
-                { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1 } }
+                { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1, user_role: 1, email: 1, user_status: 1 } }
               ],
               as: "assignedUser"
             }
@@ -31,7 +31,7 @@ class InspectionService {
             $lookup: {
               from: "form_category", let: { catId: "$categoryId" }, pipeline: [
                 { $match: { $expr: { $eq: ["$_id", "$$catId"] }, visible: true } },
-                { $project: { _id: 1, id: "$_id", name: 1 } }
+                { $project: { _id: 1, id: "$_id", name: 1, visible: 1 } }
               ],
               as: "categoryId"
             }
@@ -45,7 +45,7 @@ class InspectionService {
       $lookup: {
         from: "location_master", let: { locId: "$location_id" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$locId"] }, visible: true } },
-          { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } }
+          { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, visible: 1 } }
         ],
         as: "location_id"
       }
@@ -55,7 +55,7 @@ class InspectionService {
       $lookup: {
         from: "asset_master", let: { assetId: "$asset_id" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
-          { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1 } }
+          { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, visible: 1 } }
         ],
         as: "asset_id"
     }},
@@ -64,7 +64,7 @@ class InspectionService {
       $lookup: {
         from: "users", let: { uId: "$createdBy" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
-          { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1 } }
+          { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1, user_role: 1, email: 1, user_status: 1 } }
         ],
         as: "createdBy"
       }
@@ -74,7 +74,7 @@ class InspectionService {
       $lookup: {
         from: "users", let: { uId: "$updatedBy" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
-          { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1 } }
+          { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1, user_role: 1, email: 1, user_status: 1 } }
         ],
         as: "updatedBy"
       }

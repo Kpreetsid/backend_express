@@ -19,7 +19,7 @@ class EquipmentService {
     const mapData = await MapUserAssetLocationModel.find({ 
         assetId: { $in: assetsIds }, 
         userId: { $exists: true } 
-    }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
+    }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email user_role user_status' }]);
     const mappingsByAsset = new Map<string, any[]>();
     mapData.forEach(map => {
         const aId = String(map.assetId);
@@ -109,7 +109,7 @@ class EquipmentService {
           let: { locationId: '$locationId' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$locationId'] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } },
+            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, visible: 1 } },
           ],
           as: 'locationData'
         }
@@ -124,7 +124,7 @@ class EquipmentService {
       { $match: { assetId: { $in: assetIds }, userId: { $exists: true } } },
       { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
-      { $project: { assetId: 1, user: { id: '$user._id', firstName: '$user.firstName', lastName: '$user.lastName', user_role: '$user.user_role' } } }
+      { $project: { assetId: 1, user: { id: '$user._id', firstName: '$user.firstName', lastName: '$user.lastName', user_role: '$user.user_role', email: '$user.email', user_status: '$user.user_status' } } }
     ]);
     return this.buildEquipmentTree(assets, assetUsers);
   };

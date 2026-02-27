@@ -24,7 +24,7 @@ class OrderService {
           let: { wo_asset_id: '$wo_asset_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] }, visible: true } },
-            { $project: { _id: 1, id: '$_id', asset_name: 1, asset_type: 1 } },
+            { $project: { _id: 1, id: '$_id', asset_name: 1, asset_type: 1, visible: 1 } },
           ],
           as: "asset"
         }
@@ -36,7 +36,7 @@ class OrderService {
           let: { wo_location_id: '$wo_location_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] }, visible: true } },
-            { $project: { _id: 1, id: '$_id', location_name: 1, location_type: 1 } },
+            { $project: { _id: 1, id: '$_id', location_name: 1, location_type: 1, visible: 1 } },
           ],
           as: "location"
         }
@@ -48,7 +48,7 @@ class OrderService {
           let: { createdBy: '$createdBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, user_role: 1 } },
+            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 } },
           ],
           as: "createdBy"
         }
@@ -60,7 +60,7 @@ class OrderService {
           let: { updatedBy: '$updatedBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, user_role: 1 } },
+            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 } },
           ],
           as: "updatedBy"
         }
@@ -73,14 +73,14 @@ class OrderService {
     }
     const result = await Promise.all(data.map(async (item: any) => {
       item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username user_profile_img');
+        const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username email user_role user_profile_img user_status');
         mapItem.user = user.length > 0 ? user[0] : {};
         mapItem.id = mapItem._id;
         return mapItem;
       }));
       if (item?.status_details?.length > 0) {
         item.status_details = await Promise.all(item.status_details.map(async (statusItem: any) => {
-          const user = await UserModel.find({ _id: statusItem.createdBy }).select('id firstName lastName username user_profile_img');
+          const user = await UserModel.find({ _id: statusItem.createdBy }).select('id firstName lastName username email user_role user_profile_img user_status');
           statusItem.createdBy = user.length > 0 ? user[0] : {};
           return statusItem;
         }));
@@ -105,7 +105,7 @@ class OrderService {
           let: { wo_asset_id: '$wo_asset_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1 } },
+            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, visible: 1 } },
           ],
           as: "asset"
         }
@@ -117,7 +117,7 @@ class OrderService {
           let: { wo_location_id: '$wo_location_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } },
+            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, visible: 1 } },
           ],
           as: "location"
         }
@@ -129,7 +129,7 @@ class OrderService {
           let: { createdBy: '$createdBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 } },
           ],
           as: "createdBy"
         }
@@ -141,7 +141,7 @@ class OrderService {
           let: { updatedBy: '$updatedBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 } },
           ],
           as: "updatedBy"
         }
@@ -157,14 +157,14 @@ class OrderService {
     }
     const result = await Promise.all(data.map(async (item: any) => {
       item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username user_profile_img');
+        const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username email user_role user_profile_img user_status');
         mapItem.user = user.length > 0 ? user[0] : {};
         mapItem.id = mapItem._id;
         return mapItem;
       }));
       if (item?.status_details?.length > 0) {
         item.status_details = await Promise.all(item.status_details.map(async (statusItem: any) => {
-          const user = await UserModel.find({ _id: statusItem.createdBy }).select('id firstName lastName username user_profile_img');
+          const user = await UserModel.find({ _id: statusItem.createdBy }).select('id firstName lastName username email user_role user_profile_img user_status');
           statusItem.createdBy = user.length > 0 ? user[0] : {};
           return statusItem;
         }));

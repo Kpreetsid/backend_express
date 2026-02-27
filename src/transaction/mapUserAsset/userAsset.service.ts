@@ -38,7 +38,7 @@ class MapUserToAssetService {
           let: { assetId: "$assetId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1 } },
+            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, visible: 1 } },
           ],
           as: "asset",
         },
@@ -52,7 +52,7 @@ class MapUserToAssetService {
           let: { userId: "$userId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_role: 1 } },
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 } },
           ],
           as: "user",
         },

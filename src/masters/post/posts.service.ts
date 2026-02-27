@@ -8,7 +8,7 @@ class PostService {
         $lookup: {
           from: "users", let: { uId: "$createdBy" }, pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
-            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1 } }
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_role: 1, user_profile_img: 1, username: 1, user_status: 1 } }
           ],
           as: "user"
         }
@@ -21,7 +21,7 @@ class PostService {
           pipeline: [
             { $addFields: { strId: { $toString: "$_id" } } },
             { $match: { $expr: { $in: ["$strId", { $ifNull: ["$$publishTo", []] }] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", location_name: 1, name: "$location_name", location_type: 1, type: "$location_type" } }
+            { $project: { _id: 1, id: "$_id", location_name: 1, name: "$location_name", location_type: 1, type: "$location_type", visible: 1 } }
           ],
           as: "locations"
         }

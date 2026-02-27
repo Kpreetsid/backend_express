@@ -13,7 +13,7 @@ class ScheduleService {
                     let: { assetId: "$work_order.wo_asset_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
-                        { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1 } },
+                        { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, visible: 1 } },
                     ],
                     as: "work_order.asset"
                 }
@@ -25,7 +25,7 @@ class ScheduleService {
                     let: { locId: "$work_order.wo_location_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$_id", "$$locId"] }, visible: true } },
-                        { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } },
+                        { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, visible: 1 } },
                     ],
                     as: "work_order.location"
                 }
@@ -37,7 +37,7 @@ class ScheduleService {
                     let: { userId: "$createdBy" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-                        { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_profile_img: 1, user_role: 1 } },
+                        { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_profile_img: 1, user_role: 1, user_status: 1 } },
                     ],
                     as: "createdBy"
                 }
@@ -49,7 +49,7 @@ class ScheduleService {
                     let: { userId: "$updatedBy" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
-                        { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_profile_img: 1, user_role: 1 } },
+                        { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_profile_img: 1, user_role: 1, user_status: 1 } },
                     ],
                     as: "updatedBy"
                 }
@@ -65,7 +65,7 @@ class ScheduleService {
             data.map(async (item: any) => {
                 if (item.work_order?.userIdList?.length) {
                     const validUserIds = item.work_order.userIdList.filter((id: string) => !!id);
-                    const users = await UserModel.find({ _id: { $in: validUserIds } }).select("id firstName lastName username user_profile_img").lean();
+                    const users = await UserModel.find({ _id: { $in: validUserIds } }).select("id firstName lastName username email user_role user_profile_img user_status").lean();
                     item.work_order.users = users;
                 } else {
                     item.work_order.users = [];

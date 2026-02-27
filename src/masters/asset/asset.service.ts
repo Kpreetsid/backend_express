@@ -22,7 +22,7 @@ class AssetService {
     const mapData = await MapUserAssetLocationModel.find({ 
         assetId: { $in: assetsIds }, 
         userId: { $exists: true } 
-    }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
+    }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email user_role user_status' }]);
 
     const mappingsByAsset = new Map<string, any[]>();
     mapData.forEach(map => {
@@ -92,7 +92,7 @@ class AssetService {
           let: { locationId: '$locationId' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$locationId'] } } },
-            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } },
+            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, visible: 1 } },
           ],
           as: 'locationData'
         }

@@ -8,8 +8,8 @@ class SOPsService {
             { path: 'account_id', model: "Schema_Account", select: 'id account_name' },
             { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type', match: { visible: true } },
             { path: 'categoryId', model: "Schema_Category", select: 'id name', match: { visible: true } },
-            { path: 'createdBy', model: "Schema_User", select: 'id firstName lastName' },
-            { path: 'updatedBy', model: "Schema_User", select: 'id firstName lastName' }
+            { path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email user_role user_status' },
+            { path: 'updatedBy', model: "Schema_User", select: 'id firstName lastName email user_role user_status' }
         ];
         return await SOPsModel.find(match).populate(populateList).sort({ _id: -1 });
     };
