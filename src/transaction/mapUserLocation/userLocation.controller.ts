@@ -46,11 +46,14 @@ class MapUserLocationController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const body = req.body;
-      const data = body.filter((doc: any) => doc.locationId && doc.userId);
-      if (data.length === 0) {
+      const validatedData = body.filter((doc: any) => doc.locationId && doc.userId).map((doc: any) => ({
+        locationId: helperService.validateObjectId(String(doc.locationId)),
+        userId: helperService.validateObjectId(String(doc.userId))
+      }));
+      if (validatedData.length === 0) {
         throw Object.assign(new Error('Invalid data'), { status: 400 });
       }
-      await mapUserToLocationService.mapUserLocations(data, account_id);
+      await mapUserToLocationService.mapUserLocations(validatedData, account_id);
       res.status(201).json({ message: 'User locations mapped successfully' });
     } catch (error) {
       next(error);
@@ -60,8 +63,11 @@ class MapUserLocationController {
   async updateUserLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const body = req.body;
-      const data = await mapUserToLocationService.mapUserLocations(body, account_id);
+      const validatedBody = req.body.map((doc: any) => ({
+        locationId: helperService.validateObjectId(String(doc.locationId)),
+        userId: helperService.validateObjectId(String(doc.userId))
+      }));
+      const data = await mapUserToLocationService.mapUserLocations(validatedBody, account_id);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Location mapping not updated'), { status: 404 });
       }

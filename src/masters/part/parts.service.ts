@@ -21,7 +21,7 @@ class PartsService {
           from: "location_master",
           let: { location_id: "$location_id" },
           pipeline: [
-            { $match: { $expr: { $eq: ["$_id", "$$location_id"] } } },
+            { $match: { $expr: { $eq: ["$_id", "$$location_id"] }, visible: true } },
             { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } },
           ],
           as: "location"

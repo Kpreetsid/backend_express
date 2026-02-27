@@ -54,10 +54,12 @@ class UserWorkOrderController {
   async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { body } = req;
-      if (!Array.isArray(body) || body.length === 0) {
-        throw Object.assign(new Error('Invalid request data'), { status: 400 });
-      }
-      const data = await userWorkOrderService.mapUsersWorkOrder(body);
+      const validatedBody = body.map((item: any) => ({
+        userId: helperService.validateObjectId(String(item.userId)),
+        woId: helperService.validateObjectId(String(item.woId)),
+        account_id: helperService.validateObjectId(String(item.account_id))
+      }));
+      const data = await userWorkOrderService.mapUsersWorkOrder(validatedBody);
       res.status(200).json({ status: true, message: "Users mapped to work order successfully", data });
     } catch (error) {
       next(error);
@@ -72,7 +74,8 @@ class UserWorkOrderController {
       if (!Array.isArray(userIds)) {
         throw Object.assign(new Error('Invalid request data'), { status: 400 });
       }
-      const data = await userWorkOrderService.updateMappedUsers(woId, userIds);
+      const validatedUserIds = helperService.validateObjectIds(userIds.join(','));
+      const data = await userWorkOrderService.updateMappedUsers(woId, validatedUserIds);
       res.status(200).json({ status: true, message: "User work order mapping updated successfully", data });
     } catch (error) {
       next(error);

@@ -43,12 +43,14 @@ class MapUserAssetController {
 
   async setUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const body = req.body;
-      const data = body.filter((doc: any) => doc.assetId && doc.userId);
-      if (data.length === 0) {
+      const validatedBody = req.body.filter((doc: any) => doc.assetId && doc.userId).map((doc: any) => ({
+        assetId: helperService.validateObjectId(String(doc.assetId)),
+        userId: helperService.validateObjectId(String(doc.userId))
+      }));
+      if (validatedBody.length === 0) {
         throw Object.assign(new Error('Invalid data'), { status: 400 });
       }
-      await mapUserToAssetService.createMapUserAssets(body);
+      await mapUserToAssetService.createMapUserAssets(validatedBody);
       res.status(201).json({ message: 'User assets mapped successfully' });
     } catch (error) {
       next(error);
@@ -61,7 +63,9 @@ class MapUserAssetController {
       if (!assetId || body.length === 0) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
-      await mapUserToAssetService.updateUserMapping(String(assetId), body.userIdList);
+      const validatedAssetId = helperService.validateObjectId(String(assetId));
+      const validatedUserIds = helperService.validateObjectIds(body.userIdList.join(','));
+      await mapUserToAssetService.updateUserMapping(String(validatedAssetId), validatedUserIds);
       res.status(201).json({ status: true, message: 'User asset mappings updated successfully' });
     } catch (error) {
       next(error);
@@ -70,11 +74,11 @@ class MapUserAssetController {
 
   async updateSendMailFlag(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const body: { _id: string; sendMail: boolean, alert: boolean, danger: boolean, critical: boolean }[] = req.body;
-      if (!Array.isArray(body) || body.length === 0) {
-        throw Object.assign(new Error('Invalid input: body must be a non-empty array'), { status: 400 });
-      }
-      await mapUserToAssetService.updateMappedUserFlags(body);
+      const validatedBody = req.body.map((item: any) => ({
+        ...item,
+        _id: helperService.validateObjectId(String(item._id))
+      }));
+      await mapUserToAssetService.updateMappedUserFlags(validatedBody);
       return res.status(200).json({ status: true, message: 'Asset mail notification settings updated successfully' });
     } catch (error) {
       next(error);

@@ -9,8 +9,8 @@ class AssetReportController {
   async getAssetsReport(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const match = { accountId: account_id, visible: true };
-      const populateFilter = [{ path: 'locationId', select: 'id location_name' }, { path: 'assetId', select: 'id asset_name' }, { path: 'userId', select: 'id firstName lastName' }];
+      const match = { accountId: account_id };
+      const populateFilter = [{ path: 'locationId', select: 'id location_name', match: { visible: true } }, { path: 'assetId', select: 'id asset_name', match: { visible: true } }, { path: 'userId', select: 'id firstName lastName' }];
       const data = await assetReportService.getAllAssetReports(match, populateFilter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
@@ -24,7 +24,10 @@ class AssetReportController {
   async getAssetsReportById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const match = { accountId: account_id, top_level_asset_id: helperService.validateObjectId(String(req.params.id)), visible: true };
+      if (!req.params.id) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      const match = { accountId: account_id, top_level_asset_id: helperService.validateObjectId(String(req.params.id)) };
       const populateFilter = [{ path: 'locationId', model: "Schema_Location", select: 'id location_name' }, { path: 'assetId', model: "Schema_Asset", select: 'id asset_name' }, { path: 'userId', model: "Schema_User", select: 'id firstName lastName' }];
       const data = await assetReportService.getAllAssetReports(match, populateFilter);
       if (!data || data.length === 0) {
@@ -39,7 +42,10 @@ class AssetReportController {
   async getLatestReport(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const match: any = { accountId: account_id, top_level_asset_id: helperService.validateObjectId(String(req.params.id)), visible: true };
+      if (!req.params.id) {
+        throw Object.assign(new Error('Bad request'), { status: 400 });
+      }
+      const match: any = { accountId: account_id, top_level_asset_id: helperService.validateObjectId(String(req.params.id)) };
       const selectedFields = `Observations Recommendations faultData`;
       const data = await assetReportService.getLatest(match, selectedFields);
       if (!data) {
@@ -85,12 +91,13 @@ class AssetReportController {
   async deleteAssetsReport(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const match = { _id: helperService.validateObjectId(String(req.params.id)), accountId: account_id, visible: true };
+      const { params: { id } } = req;
+      const match = { _id: helperService.validateObjectId(String(id)), accountId: account_id };
       const isDataExists = await assetReportService.getAllAssetReports(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
-      const data = await assetReportService.removeAssetReportById(helperService.validateObjectId(String(req.params.id)), user_id);
+      const data = await assetReportService.removeAssetReportById(helperService.validateObjectId(String(id)), user_id);
       if (!data) {
         throw Object.assign(new Error('Asset report not deleted'), { status: 404 });
       }

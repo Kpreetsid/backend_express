@@ -3,12 +3,17 @@ import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../transaction/mapUserAsset/userAsset.service";
 import { processorAPIService } from '../../api-processor';
 import { helperService } from '../../utils/helper';
+import { WorkOrderModel } from '../../models/workOrder.model';
+import { ObservationModel } from '../../models/observation.model';
+import { ReportAssetModel } from '../../models/assetReport.model';
+import { InspectionModel } from '../../models/inspection.model';
+import { WorkRequestModel } from '../../models/workRequest.model';
 
 class AssetService {
   async getAllAssets(match: any) {
     const assetsData = await AssetModel.find(match).populate([
-        { path: 'locationId', model: "Schema_Location", match: { visible: true }, select: 'id location_name assigned_to' }, 
-        { path: 'parent_id', model: "Schema_Asset", match: { visible: true }, select: 'id asset_name' }
+        { path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to', match: { visible: true } }, 
+        { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name', match: { visible: true } }
     ]);
     
     if (!assetsData.length) return [];
@@ -17,7 +22,7 @@ class AssetService {
     const mapData = await MapUserAssetLocationModel.find({ 
         assetId: { $in: assetsIds }, 
         userId: { $exists: true } 
-    }).populate([{ path: 'userId', model: "Schema_User", match: { visible: true }, select: 'id firstName lastName' }]);
+    }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }]);
 
     const mappingsByAsset = new Map<string, any[]>();
     mapData.forEach(map => {
@@ -56,7 +61,7 @@ class AssetService {
     if (!body.length) return;
     const bulkOps = body.map((item: any) => ({
         updateOne: {
-            filter: { _id: item.id },
+            filter: { _id: helperService.validateObjectId(String(item.id)) },
             update: { isBuzzerActive: item.isBuzzerActive }
         }
     }));
@@ -132,11 +137,23 @@ class AssetService {
   }
 
   async removeById(match: any, userID: any) {
-    const childAssets = await AssetModel.find({ parent_id: match._id });
-    if (childAssets && childAssets.length > 0) {
-      await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID });
-    }
-    return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { new: true });
+    const parentId = String(match._id);
+    const account_id = match.account_id;
+    const childAssets = await this.getAllChildAssetsRecursive(parentId, account_id);
+    const totalIds = [parentId, ...childAssets.map(a => String(a._id))];
+    const objectIds = helperService.validateObjectIds(totalIds);
+    
+    const updateQuery = { $set: { visible: false, updatedBy: userID } };
+    
+    await AssetModel.updateMany({ _id: { $in: objectIds } }, updateQuery);
+    await WorkOrderModel.updateMany({ wo_asset_id: { $in: objectIds } }, updateQuery);
+    await ObservationModel.updateMany({ assetId: { $in: objectIds } }, updateQuery);
+    await ReportAssetModel.updateMany({ assetId: { $in: objectIds } }, updateQuery);
+    await InspectionModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery);
+    await WorkRequestModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery);
+    
+    await mapUserToAssetService.removeAssetListMapping(totalIds);
+    return true;
   };
 
   async deleteAsset(id: string): Promise<any> {
@@ -153,9 +170,9 @@ class AssetService {
 
   async getAssetDataSensorList(match: any): Promise<any> {
     const data = await AssetModel.find(match).populate([
-      { path: 'locationId', model: "Schema_Location", match: { visible: true }, select: 'id location_name' },
-      { path: 'top_level_asset_id', model: "Schema_Asset", match: { visible: true }, select: 'id asset_name' },
-      { path: 'account_id', model: "Schema_Account", match: { visible: true }, select: 'id account_name' }
+      { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
+      { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
+      { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
     ]);
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -175,59 +192,16 @@ class AssetService {
     return result;
   }
 
-  private sanitizeAssetBody(body: any) {
-    const sanitized = { ...body };
-    const objectIdFields = ['top_level_asset_id', 'parent_id', 'locationId'];
-    const booleanFields = ['isBuzzerActive', 'snoozeAlarm', 'visible', 'isNewFlow', 'top_level'];
-    const numberFields = [
-      'noStages', 'snoozeValue', 
-      'stage_1st_driving_teeth', 'stage_1st_driven_teeth',
-      'stage_2nd_driving_teeth', 'stage_2nd_driven_teeth',
-      'stage_3rd_driving_teeth', 'stage_3rd_driven_teeth',
-      'stage_4th_driving_teeth', 'stage_4th_driven_teeth',
-      'stage_5th_driving_teeth', 'stage_5th_driven_teeth',
-      'stage_6th_driving_teeth', 'stage_6th_driven_teeth',
-      'stage_7th_driving_teeth', 'stage_7th_driven_teeth',
-      'stage_8th_driving_teeth', 'stage_8th_driven_teeth'
-    ];
-
-    objectIdFields.forEach(field => {
-      if (sanitized[field] === "" || sanitized[field] === null) {
-        delete sanitized[field];
-      }
-    });
-
-    booleanFields.forEach(field => {
-      if (sanitized[field] === "" || sanitized[field] === null) {
-        delete sanitized[field];
-      } else if (typeof sanitized[field] === 'string') {
-        sanitized[field] = sanitized[field].toLowerCase() === 'true';
-      }
-    });
-
-    numberFields.forEach(field => {
-      if (sanitized[field] === "" || sanitized[field] === null) {
-        delete sanitized[field];
-      } else if (typeof sanitized[field] === 'string') {
-        sanitized[field] = Number(sanitized[field]);
-      }
-    });
-
-    return sanitized;
-  }
-
   async createAssetOld(body: any, account_id: any, user_id: any): Promise<any> {
-    const sanitizedBody = this.sanitizeAssetBody(body);
-    const data: any = new AssetModel({ ...sanitizedBody, account_id, createdBy: user_id });
+    const data: any = new AssetModel({ ...body, account_id, createdBy: user_id });
     data.top_level_asset_id = data.top_level_asset_id ? data.top_level_asset_id : data._id;
     return await data.save();
   }
 
   async updateAssetOld(id: any, body: any, user_id: any): Promise<any> {
-    const sanitizedBody = this.sanitizeAssetBody(body);
     await mapUserToAssetService.updateUserMapping(String(id), body.userIdList);
     await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType);
-    return await AssetModel.findOneAndUpdate({ _id: id }, { ...sanitizedBody, updatedBy: user_id }, { new: true });
+    return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true });
   }
 
   async updateAllChildAssetsLocation(id: any, locationId: any, user_id: any): Promise<any> {

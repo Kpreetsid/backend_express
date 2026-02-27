@@ -12,10 +12,10 @@ class SOPsController {
       const baseFilter: any = {};
       const { query: { category, location } } = req;
       if (category) {
-        baseFilter.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
+        baseFilter.categoryId = { $in: helperService.validateObjectIds(category.toString()) };
       }
       if (location) {
-        baseFilter.locationId = { $in: location.toString().split(',').filter((loc) => loc && loc.trim() !== '') };
+        baseFilter.locationId = { $in: helperService.validateObjectIds(location.toString()) };
       }
       const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location' });
       let data = await sopsService.getSOPs(filter);
@@ -33,10 +33,10 @@ class SOPsController {
       const { query: { category, location }, params: { id } } = req;
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)) };
       if (category) {
-        baseFilter.categoryId = { $in: category.toString().split(',').filter((cat) => cat && cat.trim() !== '') };
+        baseFilter.categoryId = { $in: helperService.validateObjectIds(category.toString()) };
       }
       if (location) {
-        baseFilter.locationId = { $in: helperService.validateObjectIds(String(location)) };
+        baseFilter.locationId = { $in: helperService.validateObjectIds(location.toString()) };
       }
       const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location' });
       let data = await sopsService.getSOPs(filter);

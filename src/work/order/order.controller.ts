@@ -18,8 +18,9 @@ class OrderController {
       if (wo_location_id) match.wo_location_id = { $in: helperService.validateObjectIds(wo_location_id.toString()) };
       const workOrderIds: any = [];
       if (assignedUser) {
-        for (let i = 0; i < assignedUser.toString().split(',').length; i++) {
-          workOrderIds.push(await userWorkOrderService.getMappedWorkOrderIDs(assignedUser.toString().split(',')[i]));
+        const validatedAssignedUsers = helperService.validateObjectIds(assignedUser.toString());
+        for (const uid of validatedAssignedUsers) {
+          workOrderIds.push(await userWorkOrderService.getMappedWorkOrderIDs(uid));
         }
         match._id = { $in: workOrderIds.flat() };
       }

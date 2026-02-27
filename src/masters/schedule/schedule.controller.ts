@@ -15,7 +15,7 @@ class ScheduleController {
       const { query: { priority, location_id, assignedUser } } = req;
       if (priority) baseFilter["work_order.priority"] = { $in: priority.toString().split(',') };
       if (location_id) baseFilter["work_order.wo_location_id"] = { $in: helperService.validateObjectIds(String(location_id)) };
-      if (assignedUser) baseFilter["work_order.userIdList"] = { $in: assignedUser.toString().split(",") };
+      if (assignedUser) baseFilter["work_order.userIdList"] = { $in: helperService.validateObjectIds(assignedUser.toString()) };
 
       const filter = await applyRoleFilter({
         user,

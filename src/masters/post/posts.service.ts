@@ -20,7 +20,7 @@ class PostService {
           let: { publishTo: "$publishTo" },
           pipeline: [
             { $addFields: { strId: { $toString: "$_id" } } },
-            { $match: { $expr: { $in: ["$strId", { $ifNull: ["$$publishTo", []] }] } } },
+            { $match: { $expr: { $in: ["$strId", { $ifNull: ["$$publishTo", []] }] }, visible: true } },
             { $project: { _id: 1, id: "$_id", location_name: 1, name: "$location_name", location_type: 1, type: "$location_type" } }
           ],
           as: "locations"

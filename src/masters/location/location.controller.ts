@@ -34,11 +34,11 @@ class LocationController {
       let allowedLocationIds: any = [];
       if (location_floor_map_tree) {
         if (location_id) {
-          match._id = location_id;
+          match._id = helperService.validateObjectId(String(location_id));
         }
       } else {
         if (location_id) {
-          match._id = location_id;
+          match._id = helperService.validateObjectId(String(location_id));
         } else {
           match.parent_id = { $exists: false };
         }
@@ -133,11 +133,11 @@ class LocationController {
       if (location_floor_map_tree) {
         match.top_level = true;
         if (location_id) {
-          match._id = location_id;
+          match._id = helperService.validateObjectId(String(location_id));
         }
       } else {
         if (location_id) {
-          match._id = location_id;
+          match._id = helperService.validateObjectId(String(location_id));
         }
       }
       if (userRole !== 'admin') {

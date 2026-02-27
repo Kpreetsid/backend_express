@@ -130,12 +130,13 @@ class FloorMapController {
         }
       }
       if (location_id) {
+        const validatedLocationId = helperService.validateObjectId(String(location_id));
         const allChildren = await floorMapService.getAllChildLocationsRecursive(
-          [location_id],
+          [String(validatedLocationId)],
           user_id,
           userRole,
         );
-        match.locationId = { $in: [location_id, ...allChildren] };
+        match.locationId = { $in: [validatedLocationId, ...allChildren.map(id => helperService.validateObjectId(id))] };
         match.data_type = "location";
       } else {
         match.data_type = "kpi";
@@ -209,7 +210,8 @@ class FloorMapController {
             status: 400,
           });
         }
-        match.locationId = body.locationId;
+        match.locationId = helperService.validateObjectId(String(body.locationId));
+        body.locationId = match.locationId;
       }
       const existing = await floorMapService.getFloorMaps(match);
       if (existing && existing.length > 0) {

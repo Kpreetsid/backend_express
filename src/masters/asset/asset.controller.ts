@@ -18,30 +18,25 @@ class AssetController {
       const {
         query: { top_level_asset_id, top_level, locationId, parent_id },
       }: any = req;
-      if (top_level_asset_id && top_level_asset_id.split(",").length > 0) {
-        baseFilter.top_level_asset_id = { $in: top_level_asset_id.split(",") };
+      if (top_level_asset_id) {
+        baseFilter.top_level_asset_id = { $in: helperService.validateObjectIds(String(top_level_asset_id)) };
       }
-      if (parent_id && parent_id.split(",").length > 0) {
-        baseFilter._id = { $in: parent_id.split(",") };
-        baseFilter.parent_id = { $in: parent_id.split(",") };
+      if (parent_id) {
+        const validatedParentIds = helperService.validateObjectIds(String(parent_id));
+        baseFilter._id = { $in: validatedParentIds };
+        baseFilter.parent_id = { $in: validatedParentIds };
       }
       if (top_level) {
         baseFilter.top_level = top_level == "true" ? true : false;
       }
       if (locationId) {
-        const childIds =
-          await locationService.getAllChildLocationIds(locationId);
+        const validatedLocationId = helperService.validateObjectId(String(locationId));
+        const childIds = await locationService.getAllChildLocationIds(String(validatedLocationId));
         if (user.user_role !== "admin") {
-          const mappedData =
-            await mapUserToLocationService.getDataByLocationIds([
-              locationId,
-              ...childIds,
-            ]);
-          baseFilter.locationId = {
-            $in: mappedData.map((doc) => doc.locationId),
-          };
+          const mappedData = await mapUserToLocationService.getDataByLocationIds([String(validatedLocationId), ...childIds]);
+          baseFilter.locationId = { $in: mappedData.map((doc) => doc.locationId) };
         } else {
-          baseFilter.locationId = { $in: [locationId, ...childIds] };
+          baseFilter.locationId = { $in: [validatedLocationId, ...childIds.map(id => helperService.validateObjectId(id))] };
         }
       }
       const filter: any = await applyRoleFilter({

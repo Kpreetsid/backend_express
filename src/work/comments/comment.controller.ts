@@ -49,9 +49,9 @@ class CommentController {
         throw Object.assign(new Error('Order ID is required'), { status: 400 });
       }
       if (body.parentCommentId) {
-        body.parentCommentId = helperService.validateObjectId(body.parentCommentId);
+        body.parentCommentId = helperService.validateObjectId(String(body.parentCommentId));
       }
-      body.order_id = orderId;
+      body.order_id = helperService.validateObjectId(String(orderId));
       const data = await commentService.createComment(body, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('Comment not created'), { status: 404 });
@@ -77,7 +77,7 @@ class CommentController {
       if (!existingComment) {
         throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
-      body.order_id = orderId;
+      body.order_id = helperService.validateObjectId(String(orderId));
       const data = await commentService.updateComment(String(commentId), body.comments, user_id);
       if (!data) {
         throw Object.assign(new Error('Comment not updated'), { status: 404 });

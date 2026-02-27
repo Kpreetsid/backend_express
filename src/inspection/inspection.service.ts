@@ -26,11 +26,11 @@ class InspectionService {
     {
       $lookup: {
         from: "sops", let: { formId: "$form_id" }, pipeline: [
-          { $match: { $expr: { $eq: ["$_id", "$$formId"] } } },
+          { $match: { $expr: { $eq: ["$_id", "$$formId"] }, visible: true } },
           {
             $lookup: {
               from: "form_category", let: { catId: "$categoryId" }, pipeline: [
-                { $match: { $expr: { $eq: ["$_id", "$$catId"] } } },
+                { $match: { $expr: { $eq: ["$_id", "$$catId"] }, visible: true } },
                 { $project: { _id: 1, id: "$_id", name: 1 } }
               ],
               as: "categoryId"
@@ -44,7 +44,7 @@ class InspectionService {
     {
       $lookup: {
         from: "location_master", let: { locId: "$location_id" }, pipeline: [
-          { $match: { $expr: { $eq: ["$_id", "$$locId"] } } },
+          { $match: { $expr: { $eq: ["$_id", "$$locId"] }, visible: true } },
           { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1 } }
         ],
         as: "location_id"
@@ -54,7 +54,7 @@ class InspectionService {
     {
       $lookup: {
         from: "asset_master", let: { assetId: "$asset_id" }, pipeline: [
-          { $match: { $expr: { $eq: ["$_id", "$$assetId"] } } },
+          { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
           { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1 } }
         ],
         as: "asset_id"

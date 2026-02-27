@@ -10,7 +10,7 @@ class FloorMapService {
   }
 
   async getCoordinates(match: any, account_id: any, user_id?: any, userRole?: any): Promise<any> {
-    const floorMaps = await EndpointLocationModel.find(match).populate([{ path: "locationId", model: "Schema_Location", match: { visible: true }, select: "location_name parent_id" }]);
+    const floorMaps = await EndpointLocationModel.find(match).populate([{ path: "locationId", model: "Schema_Location", select: "location_name parent_id", match: { visible: true } }]);
     if (!floorMaps.length) {
       throw Object.assign(new Error("No coordinates found"), { status: 404 });
     }

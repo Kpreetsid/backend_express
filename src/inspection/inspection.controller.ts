@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../models/user.model';
 import { inspectionService } from './inspection.service';
-import mongoose from 'mongoose';
 import { mapInspectionService } from '../transaction/mapUserInspection/userInspection.service';
+import { helperService } from '../utils/helper';
 
 class InspectionController {
 
@@ -13,10 +13,10 @@ class InspectionController {
     const match: any = { account_id, visible: true };
     const { query: { location_id, asset_id } } = req;
     if (location_id) {
-      match.location_id = location_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id)));
+      match.location_id = { $in: helperService.validateObjectIds(location_id.toString()) };
     }
     if (asset_id) {
-      match.asset_id = asset_id.toString().split(',').map((id: string) => new mongoose.Types.ObjectId(String(id)));
+      match.asset_id = { $in: helperService.validateObjectIds(asset_id.toString()) };
     }
     if (userRole !== 'admin') {
       const inspectionMappedData: any = await mapInspectionService.getInspectionByUserId(account_id, user_id);
@@ -36,7 +36,7 @@ class InspectionController {
   try {
     const { account_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const data = await inspectionService.getAllInspection({ _id: id, account_id, visible: true });
+    const data = await inspectionService.getAllInspection({ _id: helperService.validateObjectId(id), account_id, visible: true });
     if (!data.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
@@ -67,11 +67,11 @@ class InspectionController {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const data = await inspectionService.updateInspection(id, req.body, account_id, user_id);
+    const data = await inspectionService.updateInspection(helperService.validateObjectId(id), req.body, account_id, user_id);
     if (!data) {
       throw Object.assign(new Error('Inspection not updated'), { status: 404 });
     }
-    const result = await inspectionService.getAllInspection({ _id: new mongoose.Types.ObjectId(String(id)), account_id, visible: true });
+    const result = await inspectionService.getAllInspection({ _id: helperService.validateObjectId(id), account_id, visible: true });
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
@@ -85,11 +85,11 @@ class InspectionController {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const data = await inspectionService.getAllInspection({ _id: id, account_id, visible: true });
+    const data = await inspectionService.getAllInspection({ _id: helperService.validateObjectId(id), account_id, visible: true });
     if (!data.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
-    const result = await inspectionService.removeInspection(id, account_id, user_id);
+    const result = await inspectionService.removeInspection(helperService.validateObjectId(id), account_id, user_id);
     if (!result) {
       throw Object.assign(new Error('Inspection not deleted'), { status: 404 });
     }

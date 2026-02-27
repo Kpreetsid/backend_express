@@ -7,7 +7,7 @@ class LocationReportService {
 
   async getAll(match: any): Promise<ILocationReport[]> {
     match.visible = true;
-    const populateFilter = [{ path: 'userId', model: "Schema_User", match: { visible: true }, select: 'id firstName lastName' }, { path: 'location_id', model: "Schema_Location", match: { visible: true }, select: '' }];
+    const populateFilter = [{ path: 'userId', model: "Schema_User", select: 'id firstName lastName' }, { path: 'location_id', model: "Schema_Location", select: '', match: { visible: true } }];
     return await ReportLocationModel.find(match).populate(populateFilter).sort({ _id: -1 });
   };
 
@@ -51,7 +51,7 @@ class LocationReportService {
       throw Object.assign(new Error('No asset found under this location.'), { status: 404 });
     }
     const reportList = await Promise.all(assets.map(async (asset: any) => {
-      const [latestReport] = await ReportAssetModel.find({ top_level_asset_id: asset._id, accountId: user.account_id }).sort({ createdOn: -1 }).populate([{ path: 'userId', model: "Schema_User", match: { visible: true }, select: 'firstName lastName' }, { path: 'locationId', model: "Schema_Location", match: { visible: true }, select: '' }, { path: 'assetId', model: "Schema_Asset", match: { visible: true }, select: '' }]).limit(1);
+      const [latestReport] = await ReportAssetModel.find({ top_level_asset_id: asset._id, accountId: user.account_id }).sort({ createdOn: -1 }).populate([{ path: 'userId', model: "Schema_User", select: 'firstName lastName' }, { path: 'locationId', model: "Schema_Location", select: '' }, { path: 'assetId', model: "Schema_Asset", select: '' }]).limit(1);
       return latestReport || null;
     }));
     const validReports = reportList.filter(Boolean);

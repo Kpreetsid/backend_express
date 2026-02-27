@@ -19,19 +19,21 @@ class EquipmentController {
       const baseFilter: any = { account_id, visible: true };
       const { query: { top_level_asset_id, top_level, locationId, parent_id } }: any = req;
 
-      if (top_level_asset_id && top_level_asset_id.split(',').length > 0) {
-        baseFilter.top_level_asset_id = { $in: top_level_asset_id.split(',') };
+      if (top_level_asset_id) {
+        baseFilter.top_level_asset_id = { $in: helperService.validateObjectIds(String(top_level_asset_id)) };
       }
-      if (parent_id && parent_id.split(',').length > 0) {
-        baseFilter._id = { $in: parent_id.split(',') };
-        baseFilter.parent_id = { $in: parent_id.split(',') };
+      if (parent_id) {
+        const validatedParentIds = helperService.validateObjectIds(String(parent_id));
+        baseFilter._id = { $in: validatedParentIds };
+        baseFilter.parent_id = { $in: validatedParentIds };
       }
       if (top_level) {
         baseFilter.top_level = top_level == 'true' ? true : false;
       }
       if (locationId) {
-        const childIds = await locationService.getAllChildLocationIds(locationId);
-        const mappedData = await mapUserToLocationService.getDataByLocationIds([locationId, ...childIds]);
+        const validatedLocationId = helperService.validateObjectId(String(locationId));
+        const childIds = await locationService.getAllChildLocationIds(String(validatedLocationId));
+        const mappedData = await mapUserToLocationService.getDataByLocationIds([String(validatedLocationId), ...childIds]);
         baseFilter.locationId = { $in: mappedData.map(doc => doc.locationId) };
       }
 
@@ -116,16 +118,12 @@ class EquipmentController {
         const assetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : []);
         assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
       }
-      const isAssetExists = await equipmentService.checkEquipment(assetQuery);
-      if (!isAssetExists || isAssetExists.length === 0) {
-        throw Object.assign(new Error('Equipment not found'), { status: 404 });
-      }
       if (id) {
-        const assetIds = helperService.validateObjectIds(id);
+        const assetIds = helperService.validateObjectIds(String(id));
         assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
       }
       if (location_id) {
-        assetQuery.locationId = helperService.validateObjectIds(location_id);
+        assetQuery.locationId = { $in: helperService.validateObjectIds(String(location_id)) };
       }
       const data = await equipmentService.getEquipmentTreeData(assetQuery);
       if (!data || data.length === 0) {

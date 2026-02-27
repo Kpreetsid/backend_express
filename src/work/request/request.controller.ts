@@ -17,22 +17,22 @@ class RequestController {
         baseFilter.priority = priority.toString().split(",").map((p) => p.trim()).filter((p) => p !== "");
       }
       if (location) {
-        baseFilter.location_id = location.toString().split(",").map((l) => l.trim()).filter((l) => l !== "");
+        baseFilter.location_id = { $in: helperService.validateObjectIds(location.toString()) };
       }
       if (status) {
         baseFilter.status = status.toString().split(",").map((s) => s.trim()).filter((s) => s !== "");
       }
       if (assignedTo) {
-        baseFilter.assigned_to = assignedTo.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+        baseFilter.assigned_to = { $in: helperService.validateObjectIds(assignedTo.toString()) };
       }
       if (assignedBy) {
-        baseFilter.createdBy = assignedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+        baseFilter.createdBy = { $in: helperService.validateObjectIds(assignedBy.toString()) };
       }
       if (approvedBy) {
-        baseFilter.updatedBy = approvedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+        baseFilter.updatedBy = { $in: helperService.validateObjectIds(approvedBy.toString()) };
       }
       if (rejectedBy) {
-        baseFilter.updatedBy = rejectedBy.toString().split(",").map((a) => a.trim()).filter((a) => a !== "");
+        baseFilter.updatedBy = { $in: helperService.validateObjectIds(rejectedBy.toString()) };
       }
 
       const filter = await applyRoleFilter({

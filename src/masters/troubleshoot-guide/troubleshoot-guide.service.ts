@@ -2,7 +2,12 @@ import { TroubleshootGuideModel } from "../../models/troubleshootGuide.model";
 
 class TroubleshootGuideService {
     async getAllTroubleshootGuide (match: any): Promise<any> {
-        return await TroubleshootGuideModel.find(match).sort({ _id: -1 });
+        match.visible = true;
+        const populateList = [
+            { path: 'locationId', model: 'Schema_Location', select: 'id location_name', match: { visible: true } },
+            { path: 'assetId', model: 'Schema_Asset', select: 'id asset_name', match: { visible: true } }
+        ];
+        return await TroubleshootGuideModel.find(match).populate(populateList).sort({ _id: -1 });
     };
     
     async insertTroubleshootGuide (body: any, account_id: any, user_id: any): Promise<any> {

@@ -12,7 +12,7 @@ class LocationReportController {
       const match: any = { account_id };
       const { locationId } = req.query;
       if (locationId) {
-        match.location_id = locationId;
+        match.location_id = helperService.validateObjectId(String(locationId));
       }
       const data = await locationReportService.getAll(match);
       if (!data || data.length === 0) {
@@ -31,7 +31,8 @@ class LocationReportController {
       if (!location_id) {
         throw Object.assign(new Error('Invalid request data'), { status: 400 });
       }
-      const data = await locationReportService.createLocationReport(location_id, user);
+      const validatedLocationId = helperService.validateObjectId(String(location_id));
+      const data = await locationReportService.createLocationReport(String(validatedLocationId), user);
       if (!data) {
         throw Object.assign(new Error('Report not found'), { status: 404 });
       }
