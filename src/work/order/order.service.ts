@@ -322,6 +322,7 @@ class OrderService {
       title: body.title,
       description: body.description,
       estimated_time: body.estimated_time,
+      parentId: body.parentId,
       priority: body.priority,
       status: body.status,
       type: body.type,
@@ -380,7 +381,9 @@ class OrderService {
       existingOrder.inventoryWarnings = inventoryResult.warnings;
     }
     existingOrder.updatedBy = user._id;
-    await userWorkOrderService.updateMappedUsers(id, body.userIdList);
+    if (body.hasOwnProperty('userIdList')) {
+      await userWorkOrderService.updateMappedUsers(id, body.userIdList);
+    }
     const data = await WorkOrderModel.findByIdAndUpdate(id, existingOrder, { new: true });
     if (!data) {
       throw Object.assign(new Error('Failed to update work order'), { status: 400 });

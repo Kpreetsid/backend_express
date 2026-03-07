@@ -3,6 +3,7 @@ import { assetReportService } from './asset.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
+import { processorAPIService } from '../../api-processor';
 
 class AssetReportController {
 
@@ -53,6 +54,7 @@ class AssetReportController {
   };
 
   async createAssetsReport(req: Request, res: Response, next: NextFunction): Promise<any> {
+    let assetReportId: any;
     try {
       const user = get(req, "user", {}) as IUser;
       const { body: { workOrder, ...reportBody } } = req;
@@ -61,8 +63,19 @@ class AssetReportController {
       if (!data) {
         throw Object.assign(new Error('Asset report not created'), { status: 404 });
       }
+      assetReportId = data?._id;
+      if(reportBody.alarmId){
+        const payload = {
+          alarm_id: reportBody.alarmId,
+          report_id: data?._id
+        }
+        await processorAPIService.updateAlarmHistoryData(payload, user._id, userToken);
+      }
       res.status(201).json({ status: true, message: "Data created successfully", data });
     } catch (error) {
+      if (assetReportId) {
+        await assetReportService.deleteAssetReport(helperService.validateObjectId(String(assetReportId)));
+      }
       next(error);
     }
   };

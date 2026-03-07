@@ -45,7 +45,7 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage, limits: { files: 12, fileSize: 5 * 1024 * 1024 },
+export const upload = multer({ storage, limits: { files: 12, fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = ['.png', '.jpg', '.jpeg', '.pdf'];
     const ext = path.extname(file.originalname).toLowerCase();

@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
+const Created_From_Enum = ["Asset Report", "Asset Alarm"];
+
 interface FaultData {
   value: number;
   name: string;
@@ -57,6 +59,9 @@ export interface IReportAsset extends Document {
   EquipmentHealth: string;
   files: object[];
   user: any;
+  alarmId?: number;
+  createdFrom?: string;
+  chartDetail?: object[];
   userId: ObjectId;
   createdOn: Date;
   assetName?: string;
@@ -88,6 +93,9 @@ const reportAssetSchema = new Schema<IReportAsset>({
   files: { type: [Object], required: true },
   user: { type: Schema.Types.Mixed },
   userId: { type: Schema.Types.ObjectId, ref: 'UserModel' },
+  alarmId: { type: Number },
+  createdFrom: { type: String, enum: Created_From_Enum, trim: true, default: Created_From_Enum[0] },
+  chartDetail: { type: [Object] },
   createdOn: { type: Date, default: Date.now },
   assetName: { type: String, trim: true },
   locationId: { type: Schema.Types.ObjectId, ref: 'LocationModel' },

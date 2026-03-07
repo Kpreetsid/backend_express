@@ -3,6 +3,7 @@ import { orderController } from './order.controller';
 import commentsRoutes from '../comments/comment.routes';
 import { hasRolePermission } from '../../middlewares';
 import { validateParamId } from '../../middlewares/validate';
+import { upload } from '../../upload/upload.routes';
 
 export default (router: express.Router) => {
     const orderRouter = express.Router();
@@ -20,6 +21,7 @@ export default (router: express.Router) => {
     orderRouter.put('/:id', validateParamId, orderController.updateOrder);
     orderRouter.patch('/:id', validateParamId, orderController.updateOrderSubmitData);
     orderRouter.delete('/:id', validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
+    orderRouter.post('/:id/attachments', validateParamId, upload.array('files', 12), orderController.uploadAttachments);
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));
     router.use('/orders', orderRouter);
