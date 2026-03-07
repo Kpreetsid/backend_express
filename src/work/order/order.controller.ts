@@ -154,7 +154,7 @@ class OrderController {
     try {
       const user: any = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      if (!body?.userIdList || body.userIdList?.length === 0) {
+      if (body.hasOwnProperty('userIdList') && (!body.userIdList || body.userIdList.length === 0)) {
         throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
       }
       const orderId = helperService.validateObjectId(id);
@@ -249,6 +249,45 @@ class OrderController {
       }
       await orderService.removeOrder(orderId, user_id);
       res.status(200).send({ status: true, message: 'Work order deleted successfully.' });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async uploadAttachments(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { params: { id } } = req;
+      const orderId = helperService.validateObjectId(String(id));
+      
+      const files: any = req.files;
+      if (!files || files.length === 0) {
+        throw Object.assign(new Error('No files uploaded'), { status: 400 });
+      }
+      
+      const isWorkOrderExist: any = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
+      if (!isWorkOrderExist || isWorkOrderExist.length === 0) {
+        throw Object.assign(new Error('Work order not found'), { status: 404 });
+      }
+
+      const fileDataList = files.map((file: any) => {
+        return {
+          originalName: file.originalname,
+          type: file.mimetype,
+          destination: file.destination,
+          fileName: file.filename,
+          fileUrl: `${req.protocol}://${req.get('host')}/${file.filename}`,
+          filePath: file.path,
+          size: file.size
+        };
+      });
+
+      const currentFiles = isWorkOrderExist[0].files || [];
+      const newFiles = [...currentFiles, ...fileDataList];
+      
+      await orderService.updateDataById(String(id), { files: newFiles }, { _id: user_id } as any);
+      
+      res.status(200).send({ status: true, message: 'Attachments uploaded successfully.', data: newFiles });
     } catch (error) {
       next(error);
     }
