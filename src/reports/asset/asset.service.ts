@@ -45,7 +45,7 @@ class AssetReportService {
     return await ReportAssetModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
   }
 
-  async deleteAssetReport(id: string) {
+  async deleteAssetReport(id: any) {
     return await ReportAssetModel.findByIdAndDelete(id);
   };
 }

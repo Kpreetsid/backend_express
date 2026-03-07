@@ -29,6 +29,10 @@ class ProcessorAPIService {
     getEndPoints = async (asset_id: string[], token: string, user_id: any) => {
         return await getExternalData(`/getAllEndPoints/`, 'POST', { asset_id }, token, `${user_id}`);
     }
+
+    updateAlarmHistoryData = async (body: any, user_id: any, token: any) => {
+        return await getExternalData(`/get_alarm_history_data/`, 'PATCH', body, token, user_id);
+    }
 }
 
 export const processorAPIService = new ProcessorAPIService();
