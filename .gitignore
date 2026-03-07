@@ -2,6 +2,7 @@ node_modules
 dist
 uploadFiles
 .vscode
+.agent
 package-lock.json
 *.log
 *.env
