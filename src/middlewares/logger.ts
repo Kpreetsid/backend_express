@@ -7,25 +7,50 @@ import morgan from 'morgan';
 
 class AppLogger {
   private logDir: string;
-  private accessLogStream: fs.WriteStream;
-  private fileLogger: RequestHandler;
+  private accessLogStream!: fs.WriteStream;
+  private fileLogger!: RequestHandler;
   private consoleLogger: RequestHandler;
+  private currentLogFile: string = '';
 
   constructor() {
     this.logDir = path.join(process.cwd(), 'logs');
     if (!fs.existsSync(this.logDir)) {
       fs.mkdirSync(this.logDir, { recursive: true });
     }
-    this.accessLogStream = fs.createWriteStream(path.join(this.logDir, 'access.log'), { flags: 'a' });
     this.registerMorganTokens();
-    const fileFormat = ':date_ist | :userId | :userName | :action | :method | :url | :module | :status | :res[content-length] | :response-time ms | IP: :remote-addr | Device: :device';
+    this.refreshFileLogger();
     const consoleFormat = ':date_ist | :status | :userId | :userName | :action | :method | :response-time ms | :url';
-    this.fileLogger = morgan(fileFormat, { stream: this.accessLogStream });
     this.consoleLogger = morgan(consoleFormat);
+  }
+
+  private getMonthlyLogFileName(): string {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + istOffset);
+    const month = istDate.toLocaleString('en-US', { month: 'long' });
+    const year = istDate.getFullYear();
+    return `${month}_${year}.log`;
+  }
+
+  private refreshFileLogger(): void {
+    const fileName = this.getMonthlyLogFileName();
+    if (this.currentLogFile === fileName && this.accessLogStream) {
+      return;
+    }
+
+    if (this.accessLogStream) {
+      this.accessLogStream.end();
+    }
+    this.currentLogFile = fileName;
+    const logFilePath = path.join(this.logDir, fileName);
+    this.accessLogStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+    const fileFormat = ':date_ist | :userId | :userName | :action | :method | :url | :module | :status | :res[content-length] | :response-time ms | IP: :remote-addr | Device: :device';
+    this.fileLogger = morgan(fileFormat, { stream: this.accessLogStream });
   }
 
   public logMiddleware(): RequestHandler {
     return (req: Request, res: Response, next: NextFunction) => {
+      this.refreshFileLogger();
       this.consoleLogger(req, res, () => {
       });
       this.fileLogger(req, res, () => {
