@@ -48,7 +48,7 @@ class OrderService {
           let: { createdBy: '$createdBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 } },
+            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
           ],
           as: "createdBy"
         }
@@ -60,7 +60,7 @@ class OrderService {
           let: { updatedBy: '$updatedBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 } },
+            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
           ],
           as: "updatedBy"
         }
@@ -129,7 +129,7 @@ class OrderService {
           let: { createdBy: '$createdBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 } },
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
           ],
           as: "createdBy"
         }
@@ -141,7 +141,7 @@ class OrderService {
           let: { updatedBy: '$updatedBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 } },
+            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
           ],
           as: "updatedBy"
         }

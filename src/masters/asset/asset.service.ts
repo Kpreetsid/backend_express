@@ -22,7 +22,7 @@ class AssetService {
     const mapData = await MapUserAssetLocationModel.find({ 
         assetId: { $in: assetsIds }, 
         userId: { $exists: true } 
-    }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email user_role user_status' }]);
+    }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }]);
 
     const mappingsByAsset = new Map<string, any[]>();
     mapData.forEach(map => {

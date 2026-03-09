@@ -8,8 +8,8 @@ class RequestService {
       { path: "location_id", model: "Schema_Location", select: "id location_name location_type", match: { visible: true } },
       { path: "asset_id", model: "Schema_Asset", select: "id asset_name asset_type", match: { visible: true } },
       { path: "account_id", model: "Schema_Account", select: "id account_name" },
-      { path: "createdBy", model: "Schema_User", select: "id firstName lastName email user_role user_status" },
-      { path: "updatedBy", model: "Schema_User", select: "id firstName lastName email user_role user_status" }
+      { path: "createdBy", model: "Schema_User", select: "id firstName lastName email username user_role user_profile_img user_status" },
+      { path: "updatedBy", model: "Schema_User", select: "id firstName lastName email username user_role user_profile_img user_status" }
     ];
     return await WorkRequestModel.find(match).populate(populateList);
   };
