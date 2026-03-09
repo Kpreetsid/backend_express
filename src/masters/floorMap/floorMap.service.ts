@@ -10,7 +10,7 @@ class FloorMapService {
   }
 
   async getCoordinates(match: any, account_id: any, user_id?: any, userRole?: any): Promise<any> {
-    const floorMaps = await EndpointLocationModel.find(match).populate([{ path: "locationId", model: "Schema_Location", select: "location_name parent_id", match: { visible: true } }]);
+    const floorMaps = await EndpointLocationModel.find(match).populate([{ path: "locationId", model: "Schema_Location", select: "id location_name location_type top_level parent_id visible", match: { visible: true } }]);
     if (!floorMaps.length) {
       throw Object.assign(new Error("No coordinates found"), { status: 404 });
     }
@@ -35,7 +35,7 @@ class FloorMapService {
         if (userRole !== "admin") {
           assetMatch._id = { $in: mappedAssetIds };
         }
-        const assetList = await AssetModel.find(assetMatch).select("asset_name asset_type");
+        const assetList = await AssetModel.find(assetMatch).select("id asset_name asset_type asset_model top_level parent_id visible");
         return { item, assetList };
       })
     );

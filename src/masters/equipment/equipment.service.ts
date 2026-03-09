@@ -9,8 +9,8 @@ import mongoose from 'mongoose';
 class EquipmentService {
   async getAllEquipment(match: any) {
     const assetsData = await AssetModel.find(match).populate([
-        { path: 'locationId', model: "Schema_Location", select: 'id location_name assigned_to', match: { visible: true } }, 
-        { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name', match: { visible: true } }
+        { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible assigned_to', match: { visible: true } }, 
+        { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level parent_id visible', match: { visible: true } }
     ]);
     
     if (!assetsData.length) return [];

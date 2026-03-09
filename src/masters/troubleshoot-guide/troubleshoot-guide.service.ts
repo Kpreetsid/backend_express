@@ -4,8 +4,8 @@ class TroubleshootGuideService {
     async getAllTroubleshootGuide (match: any): Promise<any> {
         match.visible = true;
         const populateList = [
-            { path: 'locationId', model: 'Schema_Location', select: 'id location_name', match: { visible: true } },
-            { path: 'assetId', model: 'Schema_Asset', select: 'id asset_name', match: { visible: true } }
+            { path: 'locationId', model: 'Schema_Location', select: 'id location_name location_type top_level parent_id visible', match: { visible: true } },
+            { path: 'assetId', model: 'Schema_Asset', select: 'id asset_name asset_type asset_model top_level parent_id visible', match: { visible: true } }
         ];
         return await TroubleshootGuideModel.find(match).populate(populateList).sort({ _id: -1 });
     };

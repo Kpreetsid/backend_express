@@ -21,7 +21,7 @@ class LocationService {
   };
 
   async getAllLocations(match: any) {
-    const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name', match: { visible: true } }]);
+    const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible', match: { visible: true } }]);
     const locationIds = locationData.map(doc => `${doc._id}`);
     const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }]);
     const result: any = locationData.map((doc: any) => {

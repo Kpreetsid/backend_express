@@ -7,7 +7,7 @@ class LocationReportService {
 
   async getAll(match: any): Promise<ILocationReport[]> {
     match.visible = true;
-    const populateFilter = [{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }, { path: 'location_id', model: "Schema_Location", select: '', match: { visible: true } }];
+    const populateFilter = [{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }, { path: 'location_id', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible', match: { visible: true } }];
     return await ReportLocationModel.find(match).populate(populateFilter).sort({ _id: -1 });
   };
 
@@ -51,7 +51,7 @@ class LocationReportService {
       throw Object.assign(new Error('No asset found under this location.'), { status: 404 });
     }
     const reportList = await Promise.all(assets.map(async (asset: any) => {
-      const [latestReport] = await ReportAssetModel.find({ top_level_asset_id: asset._id, accountId: user.account_id }).sort({ createdOn: -1 }).populate([{ path: 'userId', model: "Schema_User", select: 'firstName lastName email username user_role user_profile_img user_status' }, { path: 'locationId', model: "Schema_Location", select: '' }, { path: 'assetId', model: "Schema_Asset", select: '' }]).limit(1);
+      const [latestReport] = await ReportAssetModel.find({ top_level_asset_id: asset._id, accountId: user.account_id }).sort({ createdOn: -1 }).populate([{ path: 'userId', model: "Schema_User", select: 'firstName lastName email username user_role user_profile_img user_status' }, { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible' }, { path: 'assetId', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level parent_id visible' }]).limit(1);
       return latestReport || null;
     }));
     const validReports = reportList.filter(Boolean);

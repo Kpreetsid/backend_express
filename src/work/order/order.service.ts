@@ -24,7 +24,7 @@ class OrderService {
           let: { wo_asset_id: '$wo_asset_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] }, visible: true } },
-            { $project: { _id: 1, id: '$_id', asset_name: 1, asset_type: 1, visible: 1 } },
+            { $project: { _id: 1, id: '$_id', asset_name: 1, asset_type: 1, asset_model: 1, top_level: 1, parent_id: 1, visible: 1 } },
           ],
           as: "asset"
         }
@@ -36,7 +36,7 @@ class OrderService {
           let: { wo_location_id: '$wo_location_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] }, visible: true } },
-            { $project: { _id: 1, id: '$_id', location_name: 1, location_type: 1, visible: 1 } },
+            { $project: { _id: 1, id: '$_id', location_name: 1, location_type: 1, top_level: 1, parent_id: 1, visible: 1 } },
           ],
           as: "location"
         }
@@ -105,7 +105,7 @@ class OrderService {
           let: { wo_asset_id: '$wo_asset_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, visible: 1 } },
+            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, asset_model: 1, top_level: 1, parent_id: 1, visible: 1 } },
           ],
           as: "asset"
         }
@@ -117,7 +117,7 @@ class OrderService {
           let: { wo_location_id: '$wo_location_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, visible: 1 } },
+            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, top_level: 1, parent_id: 1, visible: 1 } },
           ],
           as: "location"
         }

@@ -11,7 +11,7 @@ class AssetReportController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match = { accountId: account_id, visible: true };
-      const populateFilter = [{ path: 'locationId', select: 'id location_name', match: { visible: true } }, { path: 'assetId', select: 'id asset_name', match: { visible: true } }, { path: 'userId', select: 'id firstName lastName email username user_role user_profile_img user_status' }];
+      const populateFilter = [{ path: 'locationId', select: 'id location_name location_type top_level parent_id visible', match: { visible: true } }, { path: 'assetId', select: 'id asset_name asset_type asset_model top_level parent_id visible', match: { visible: true } }, { path: 'userId', select: 'id firstName lastName email username user_role user_profile_img user_status' }];
       const data = await assetReportService.getAllAssetReports(match, populateFilter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
@@ -26,7 +26,7 @@ class AssetReportController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match = { accountId: account_id, top_level_asset_id: helperService.validateObjectId(String(req.params.id)) };
-      const populateFilter = [{ path: 'locationId', model: "Schema_Location", select: 'id location_name' }, { path: 'assetId', model: "Schema_Asset", select: 'id asset_name' }, { path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }];
+      const populateFilter = [{ path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible' }, { path: 'assetId', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level parent_id visible' }, { path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }];
       const data = await assetReportService.getAllAssetReports(match, populateFilter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });

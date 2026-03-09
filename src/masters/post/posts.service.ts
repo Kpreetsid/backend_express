@@ -21,7 +21,7 @@ class PostService {
           pipeline: [
             { $addFields: { strId: { $toString: "$_id" } } },
             { $match: { $expr: { $in: ["$strId", { $ifNull: ["$$publishTo", []] }] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", location_name: 1, name: "$location_name", location_type: 1, type: "$location_type", visible: 1 } }
+            { $project: { _id: 1, id: "$_id", location_name: 1, name: "$location_name", location_type: 1, type: "$location_type", top_level: 1, parent_id: 1, visible: 1 } }
           ],
           as: "locations"
         }

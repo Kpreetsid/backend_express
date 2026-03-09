@@ -5,8 +5,8 @@ class RequestService {
   async getAllRequests (match: any): Promise<IWorkRequest[]> {
     match.visible = true;
     const populateList = [
-      { path: "location_id", model: "Schema_Location", select: "id location_name location_type", match: { visible: true } },
-      { path: "asset_id", model: "Schema_Asset", select: "id asset_name asset_type", match: { visible: true } },
+      { path: "location_id", model: "Schema_Location", select: "id location_name location_type top_level parent_id visible", match: { visible: true } },
+      { path: "asset_id", model: "Schema_Asset", select: "id asset_name asset_type asset_model top_level parent_id visible", match: { visible: true } },
       { path: "account_id", model: "Schema_Account", select: "id account_name" },
       { path: "createdBy", model: "Schema_User", select: "id firstName lastName email username user_role user_profile_img user_status" },
       { path: "updatedBy", model: "Schema_User", select: "id firstName lastName email username user_role user_profile_img user_status" }

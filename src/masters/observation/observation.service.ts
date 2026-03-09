@@ -10,7 +10,7 @@ class ObservationService {
           let: { assetId: "$assetId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, visible: 1 } },
+            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, asset_model: 1, top_level: 1, parent_id: 1, visible: 1 } },
           ],
           as: "asset"
         }
@@ -22,7 +22,7 @@ class ObservationService {
           let: { locationId: "$locationId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$locationId"] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, visible: 1 } },
+            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, top_level: 1, parent_id: 1, visible: 1 } },
           ],
           as: "location"
         }

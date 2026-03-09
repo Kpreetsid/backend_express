@@ -6,7 +6,7 @@ class SOPsService {
         match.visible = true;
         const populateList = [
             { path: 'account_id', model: "Schema_Account", select: 'id account_name' },
-            { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type', match: { visible: true } },
+            { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible', match: { visible: true } },
             { path: 'categoryId', model: "Schema_Category", select: 'id name', match: { visible: true } },
             { path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' },
             { path: 'updatedBy', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }
