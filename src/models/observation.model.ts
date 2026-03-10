@@ -8,6 +8,7 @@ export interface IObservation extends Document {
   files: Array<Object>;
   createdOn: Date;
   assetId: ObjectId;
+  report_id?: ObjectId;
   accountId: ObjectId;
   status: string;
   userId: ObjectId;
@@ -26,6 +27,7 @@ const ObservationSchema = new Schema<IObservation>({
   files: { type: [Object] },
   createdOn: { type: Date, default: Date.now },
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  report_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ReportAssetModel' },
   accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   status: { type: String, trim: true, required: true },
   alarmId: { type: Number },
