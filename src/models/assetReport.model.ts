@@ -64,6 +64,7 @@ export interface IReportAsset extends Document {
   status: string;
   status_details: IStatusDetails[];
   Observations: string;
+  observationId?: ObjectId;
   Recommendations: string;
   CreateWorkRequest: string;
   FaultDetected: string;
@@ -97,6 +98,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
   assetId: { type: Schema.Types.ObjectId, ref: 'AssetModel' },
   work_order_id: { type: Schema.Types.ObjectId, ref: 'WorkOrderModel' },
   Observations: { type: String, trim: true },
+  observationId: { type: Schema.Types.ObjectId, ref: 'ObservationModel' },
   Recommendations: { type: String, trim: true },
   CreateWorkRequest: { type: String, trim: true },
   FaultDetected: { type: String, trim: true },
