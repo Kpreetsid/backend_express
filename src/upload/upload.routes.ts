@@ -3,45 +3,21 @@ const router = express.Router();
 import { uploadController } from './upload.controller';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
-
-const uploadRoot = path.join(__dirname, '../../uploadFiles');
+import { uploadFilesService } from './upload.multer';
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const folderName = JSON.parse(JSON.stringify(req.params)).folderName;
-    if (folderName) {
-      const targetDir = path.join(uploadRoot, folderName);
-      if (!fs.existsSync(targetDir)) {
-        fs.mkdirSync(targetDir, { recursive: true });
-      }
-      cb(null, targetDir);
-    } else {
-      cb(null, uploadRoot)
-    }
+    const { folderName } = req.params as { folderName?: string };
+    const destination = uploadFilesService.getDestinationPath(folderName);
+    cb(null, destination);
   },
   filename: function (req, file, cb) {
-    const date = new Date();
-    const istDate = date.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      hour12: false,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-    
-    const timestamp = istDate
-      .replace(/,/g, "")
-      .replace(/\//g, "-")
-      .replace(/:/g, "-")
-      .replace(/\s/g, "-");
-
+    const { folderName } = req.params as { folderName?: string };
+    const accountId = (req as any).user?.account_id;
     const ext = path.extname(file.originalname);
-    const baseName = path.basename(file.originalname, ext).replace(/\s+/g, '-'); // User said replace space with -
-    cb(null, `${timestamp}_${baseName}${ext}`);
+    
+    const fileName = uploadFilesService.generateFileName(ext, folderName, accountId);
+    cb(null, fileName);
   }
 });
 

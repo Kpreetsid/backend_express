@@ -1,9 +1,40 @@
 import fs from "fs";
 import path from "path";
-import { UploadModel } from '../models/upload.model';
 
 class UploadFilesService {
-  async uploadBase64Image(base64Image: string, folderName?: string) {
+  getFormattedDate(): string {
+    const date = new Date();
+    const istDate = date.toLocaleString("en-IN", {
+      timeZone: "Asia/Kolkata",
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    return istDate.replace(/,/g, "").replace(/\//g, "").replace(/:/g, "").replace(/\s/g, "");
+  }
+
+  generateFileName(extension: string, folderName?: string, accountId?: string): string {
+    const timestamp = this.getFormattedDate();
+    let nameParts = [timestamp];
+    if (accountId) nameParts.push(accountId);
+    if (folderName) nameParts.push(folderName);
+    return `${nameParts.join('-')}${extension.startsWith('.') ? extension : `.${extension}`}`;
+  }
+
+  getDestinationPath(folderName?: string): string {
+    const uploadRoot = path.join(__dirname, '../../uploadFiles');
+    const destination = folderName ? path.join(uploadRoot, folderName) : uploadRoot;
+    if (!fs.existsSync(destination)) {
+      fs.mkdirSync(destination, { recursive: true });
+    }
+    return destination;
+  }
+
+  async uploadBase64Image(base64Image: string, folderName?: string, accountId?: string) {
     try {
       if (!base64Image || typeof base64Image !== "string") {
         throw Object.assign(new Error('Base64 image data is required'), { status: 400 });
@@ -22,39 +53,13 @@ class UploadFilesService {
       const imageBuffer = Buffer.from(base64Data, "base64");
       const extension = mimeType.split("/")[1]; // png, jpg, etc.
 
-      const date = new Date();
-      const istDate = date.toLocaleString("en-IN", {
-        timeZone: "Asia/Kolkata",
-        hour12: false,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      });
-
-      const formattedDate = istDate
-        .replace(/,/g, "")
-        .replace(/\//g, "-")
-        .replace(/:/g, "-")
-        .replace(/\s/g, "-");
-
-      const fileName = `${formattedDate}${folderName ? `_${folderName}` : ""}.${extension}`;
-      let pathName = `../../uploadFiles`;
-      if (folderName) {
-        pathName = `../../uploadFiles/${folderName}`;
-      }
-      const destination = path.join(__dirname, pathName);
+      const fileName = this.generateFileName(extension, folderName, accountId);
+      const destination = this.getDestinationPath(folderName);
       const filePath = path.join(destination, fileName);
-
-      if (!fs.existsSync(destination)) {
-        fs.mkdirSync(destination, { recursive: true });
-      }
 
       fs.writeFileSync(filePath, imageBuffer);
 
-      return new UploadModel({
+      return {
         originalName: fileName,
         type: mimeType,
         destination,
@@ -62,7 +67,7 @@ class UploadFilesService {
         fileName,
         filePath,
         size: imageBuffer.length
-      });
+      };
     } catch (error) {
       console.error("Image upload error:", error);
       throw error;
@@ -71,12 +76,11 @@ class UploadFilesService {
 
   async deleteBase64Image(fileName: string, folderName?: string) {
     try {
-      let pathName = `../../uploadFiles`;
-      if (folderName) {
-        pathName = `../../uploadFiles/${folderName}`;
+      const destination = this.getDestinationPath(folderName);
+      const filePath = path.join(destination, fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
       }
-      const filePath = path.join(__dirname, pathName, fileName);
-      fs.unlinkSync(filePath);
     } catch (error) {
       console.error("Image delete error:", error);
       throw error;
