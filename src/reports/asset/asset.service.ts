@@ -41,6 +41,12 @@ class AssetReportService {
     return await ReportAssetModel.findByIdAndUpdate(id, body, { new: true });
   };
 
+  async partialUpdateAssetReport(id: any, body: IReportAsset) {
+    const oldData = await ReportAssetModel.findById(id);
+    const newBody = { ...oldData?.toObject(), ...body };
+    return await ReportAssetModel.findByIdAndUpdate(id, newBody, { new: true });
+  };
+
   async removeAssetReportById(id: any, user_id: any) {
     return await ReportAssetModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
   }
