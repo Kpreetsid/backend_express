@@ -1,4 +1,4 @@
-import { ReportAssetModel, IReportAsset } from "../../models/assetReport.model";
+import { ReportAssetModel, IReportAsset, ASSET_REPORT_STATUS } from "../../models/assetReport.model";
 import { processorAPIService } from "../../api-processor";
 import { orderService } from "../../work/order/order.service";
 
@@ -41,9 +41,13 @@ class AssetReportService {
     return await ReportAssetModel.findByIdAndUpdate(id, body, { new: true });
   };
 
-  async partialUpdateAssetReport(id: any, body: IReportAsset) {
+  async partialUpdateAssetReport(id: any, body: IReportAsset, user_id: any, token: string) {
     const oldData = await ReportAssetModel.findById(id);
     const newBody = { ...oldData?.toObject(), ...body };
+    if(body.status === ASSET_REPORT_STATUS[3]) {
+      const payload = { asset_id: body.top_level_asset_id, freeze_score: false };
+      await processorAPIService.assetHealthFreezeStatus(payload, user_id, token);
+    }
     return await ReportAssetModel.findByIdAndUpdate(id, newBody, { new: true });
   };
 

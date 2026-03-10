@@ -33,6 +33,10 @@ class ProcessorAPIService {
     updateAlarmHistoryData = async (body: any, user_id: any, token: any) => {
         return await getExternalData(`/get_alarm_history_data/`, 'PATCH', body, token, user_id);
     }
+
+    assetHealthFreezeStatus = async (body: any, user_id: any, token: any) => {
+        return await getExternalData(`/asset_health_freeze_status/`, 'POST', body, token, user_id);
+    }
 }
 
 export const processorAPIService = new ProcessorAPIService();

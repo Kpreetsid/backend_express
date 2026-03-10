@@ -100,12 +100,13 @@ class AssetReportController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
+      const userToken = get(req, "userToken", {}) as string;
       const isAssetReportExists = await assetReportService.getAllAssetReports({ _id: helperService.validateObjectId(String(id)), accountId: account_id, visible: true});
       if (!isAssetReportExists || isAssetReportExists.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
       body.updatedBy = user_id;
-      const data = await assetReportService.partialUpdateAssetReport(helperService.validateObjectId(String(id)), body);
+      const data = await assetReportService.partialUpdateAssetReport(helperService.validateObjectId(String(id)), body, user_id, userToken);
       if (!data) {
         throw Object.assign(new Error('Asset report not updated'), { status: 404 });
       }

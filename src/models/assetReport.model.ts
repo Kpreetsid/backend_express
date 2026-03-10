@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
 const Created_From_Enum = ["Asset Report", "Asset Alarm"];
+export const ASSET_REPORT_STATUS = ['Open', 'On-Hold', 'In-Progress', 'Completed'];
 
 interface FaultData {
   value: number;
@@ -43,11 +44,25 @@ interface EndpointRMS {
   asset_name: string;
 }
 
+interface IStatusDetails {
+  status: string;
+  createdBy: ObjectId;
+  createdAt: Date;
+}
+
+const StatusDetailsSchema = new Schema<IStatusDetails>({
+  status: { type: String, required: true },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  createdAt: { type: Date, required: true, default: Date.now }
+}, { _id: false, versionKey: false });
+
 export interface IReportAsset extends Document {
   accountId: ObjectId;
   top_level_asset_id: ObjectId;
   assetId: ObjectId;
   work_order_id: ObjectId;
+  status: string;
+  status_details: IStatusDetails[];
   Observations: string;
   Recommendations: string;
   CreateWorkRequest: string;
@@ -86,6 +101,8 @@ const reportAssetSchema = new Schema<IReportAsset>({
   CreateWorkRequest: { type: String, trim: true },
   FaultDetected: { type: String, trim: true },
   Severity: { type: String, trim: true },
+  status: { type: String, trim: true, enum: ASSET_REPORT_STATUS, default: ASSET_REPORT_STATUS[0] },
+  status_details: { type: [StatusDetailsSchema], default: [] },
   NewFault: { type: String, trim: true },
   ISO: { type: Schema.Types.Mixed },
   TrendOfAlarm: { type: String, trim: true },
