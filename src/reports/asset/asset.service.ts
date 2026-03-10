@@ -43,7 +43,10 @@ class AssetReportService {
 
   async partialUpdateAssetReport(id: any, body: IReportAsset, user_id: any, token: string) {
     const oldData = await ReportAssetModel.findById(id);
-    const newBody = { ...oldData?.toObject(), ...body };
+    const newBody: any = { ...oldData?.toObject(), ...body };
+    if (body.status) {
+      newBody.status_details = [...newBody.status_details, { status: body.status, createdBy: user_id }];
+    }
     if(body.status === ASSET_REPORT_STATUS[3]) {
       const payload = { asset_id: body.top_level_asset_id, freeze_score: false };
       await processorAPIService.assetHealthFreezeStatus(payload, user_id, token);
