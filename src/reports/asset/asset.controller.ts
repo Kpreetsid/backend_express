@@ -25,7 +25,14 @@ class AssetReportController {
   async getAssetsReportById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const match = { accountId: account_id, top_level_asset_id: helperService.validateObjectId(String(req.params.id)) };
+      const { params: {id }, query: { top_level_asset_id } } = req;
+      const match: any = { accountId: account_id, visible: true };
+      if (id) {
+        match._id = helperService.validateObjectId(String(id));
+      }
+      if (top_level_asset_id) {
+        match.top_level_asset_id = helperService.validateObjectId(String(top_level_asset_id));
+      }
       const populateFilter = [{ path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible' }, { path: 'assetId', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level parent_id visible' }, { path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }];
       const data = await assetReportService.getAllAssetReports(match, populateFilter);
       if (!data || data.length === 0) {
