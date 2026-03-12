@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 
 class PasswordOperations {
 
-  async hashPassword (password: string): Promise<string> {
+  async hashPassword(password: string): Promise<string> {
     try {
       const salt = await bcrypt.genSalt(10);
       return await bcrypt.hash(password, salt);
@@ -10,8 +10,8 @@ class PasswordOperations {
       throw new Error('Failed to hash password');
     }
   };
-  
-  async comparePassword (plainPassword: string, hashedPassword: string): Promise<boolean> {
+
+  async comparePassword(plainPassword: string, hashedPassword: string): Promise<boolean> {
     try {
       return await bcrypt.compare(plainPassword, hashedPassword);
     } catch (error) {

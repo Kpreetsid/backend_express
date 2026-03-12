@@ -122,7 +122,7 @@ class AssetReportController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      const match = { _id: helperService.validateObjectId(String(id)), accountId: account_id };
+      const match = { _id: helperService.validateObjectId(String(id)), accountId: account_id, visible: true };
       const isDataExists = await assetReportService.getAllAssetReports(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
