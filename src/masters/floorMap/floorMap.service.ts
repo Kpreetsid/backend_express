@@ -19,7 +19,7 @@ class FloorMapService {
       const mappedAssets = await mapUserToAssetService.getAssetsMappedData(String(user_id));
       mappedAssetIds = mappedAssets.map((m) => String(m.assetId));
     }
-    return Promise.all(
+    const results: any = await Promise.all(
       floorMaps.map(async (item) => {
         if (!item.locationId?._id) return null;
         const locationId = String(item.locationId._id);
@@ -39,6 +39,7 @@ class FloorMapService {
         return { item, assetList };
       })
     );
+    return results.filter((item: any) => item !== null);
   }
 
   async getAllChildLocationsRecursive(parentIds: string[], user_id?: any, userRole?: any): Promise<string[]> {

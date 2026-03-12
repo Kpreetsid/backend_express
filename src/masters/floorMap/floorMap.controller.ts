@@ -11,18 +11,13 @@ class FloorMapController {
   getAllFloorMaps = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const baseFilter = {};
-      const filter = await applyRoleFilter({
-        user: get(req, "user", {}) as IUser,
-        baseFilter,
-      });
+      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter });
       delete filter.visible;
       const data = await floorMapService.getFloorMaps(filter);
       if (!data.length) {
         throw Object.assign(new Error("Floor Map not found"), { status: 404 });
       }
-      res
-        .status(200)
-        .json({ status: true, message: "Floor maps fetched successfully", data });
+      res.status(200).json({ status: true, message: "Floor maps fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -41,9 +36,7 @@ class FloorMapController {
       if (!data.length) {
         throw Object.assign(new Error("Floor Map not found"), { status: 404 });
       }
-      res
-        .status(200)
-        .json({ status: true, message: "Floor map fetched successfully", data });
+      res.status(200).json({ status: true, message: "Floor map fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -113,17 +106,11 @@ class FloorMapController {
 
   getFloorMapCoordinates = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const {
-        account_id,
-        _id: user_id,
-        user_role: userRole,
-      } = get(req, "user", {}) as IUser;
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { location_id } = req.query as { location_id?: string };
       const match: any = { account_id };
       if (userRole !== "admin") {
-        const mapped = await mapUserToLocationService.getLocationsMappedData(
-          String(user_id),
-        );
+        const mapped = await mapUserToLocationService.getLocationsMappedData(String(user_id));
         const mappedIds = mapped.map((m) => String(m.locationId));
         if (!location_id) {
           match.locationId = { $in: mappedIds };
@@ -131,28 +118,17 @@ class FloorMapController {
       }
       if (location_id) {
         const validatedLocationId = helperService.validateObjectId(String(location_id));
-        const allChildren = await floorMapService.getAllChildLocationsRecursive(
-          [String(validatedLocationId)],
-          user_id,
-          userRole,
-        );
+        const allChildren = await floorMapService.getAllChildLocationsRecursive([String(validatedLocationId)], user_id, userRole );
         match.locationId = { $in: [validatedLocationId, ...allChildren.map(id => helperService.validateObjectId(id))] };
         match.data_type = "location";
       } else {
         match.data_type = "kpi";
       }
-      const data = await floorMapService.getCoordinates(
-        match,
-        account_id,
-        user_id,
-        userRole,
-      );
+      const data = await floorMapService.getCoordinates( match, account_id, user_id, userRole );
       if (!data.length) {
         throw Object.assign(new Error("Floor Map coordinates not found"), { status: 404 });
       }
-      res
-        .status(200)
-        .json({ status: true, message: `Floor map coordinates fetched successfully.`, data });
+      res.status(200).json({ status: true, message: `Floor map coordinates fetched successfully.`, data });
     } catch (error) {
       next(error);
     }
