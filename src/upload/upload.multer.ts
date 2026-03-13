@@ -1,28 +1,28 @@
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 
 class UploadFilesService {
-  getFormattedDate(): string {
-    const date = new Date();
-    const istDate = date.toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-      hour12: false,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-    return istDate.replace(/,/g, "").replace(/\//g, "").replace(/:/g, "").replace(/\s/g, "");
+  private getFormattedDate(): string {
+    const iso = new Date().toISOString();
+    const [datePart, timePart] = iso.split("T");
+    const date = datePart.replace(/-/g, "");
+    const time = timePart.replace(/[:.Z]/g, "");
+    return `${date}-${time}`;
   }
 
-  generateFileName(extension: string, folderName?: string, accountId?: string): string {
+  generateFileName(extension: any, folderName?: string, companyId?: string): string {
     const timestamp = this.getFormattedDate();
-    let nameParts = [timestamp];
-    if (accountId) nameParts.push(accountId);
-    if (folderName) nameParts.push(folderName);
-    return `${nameParts.join('-')}${extension.startsWith('.') ? extension : `.${extension}`}`;
+    const randomId = crypto.randomBytes(4).toString("hex");
+    const parts: string[] = [timestamp];
+    if (folderName) {
+      parts.push(folderName.trim().replace(/\s+/g, "-").toLowerCase());
+    }
+    if (companyId) {
+      parts.push(String(companyId));
+    }
+    parts.push(randomId);
+    return `${parts.join("-")}${extension.startsWith('.') ? extension : `.${extension}`}`;
   }
 
   getDestinationPath(folderName?: string): string {
