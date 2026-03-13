@@ -92,6 +92,7 @@ class ObservationController {
   updateObservation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const userToken = get(req, "userToken", {}) as string;
       const { params: { id }, body } = req;
       const existingData = await observationService.getAllObservation({ _id: helperService.validateObjectId(String(id)), accountId: account_id });
       if (!existingData || existingData.length === 0) {
@@ -106,6 +107,7 @@ class ObservationController {
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
+      await processorAPIService.updateAssetHealthStatus(body, account_id, user_id, userToken);
       res.status(200).json({ status: true, message: "Observation updated successfully", data: insertedData });
     } catch (error) {
       next(error);
