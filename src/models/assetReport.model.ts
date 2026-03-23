@@ -74,6 +74,7 @@ export interface IReportAsset extends Document {
   TrendOfAlarm?: string;
   EquipmentHealth: string;
   files: object[];
+  harmonicIndex: object[];
   user: any;
   alarmId?: number;
   createdFrom?: string;
@@ -110,6 +111,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
   TrendOfAlarm: { type: String, trim: true },
   EquipmentHealth: { type: String, trim: true },
   files: { type: [Object], required: true },
+  harmonicIndex: { type: [Object] },
   user: { type: Schema.Types.Mixed },
   userId: { type: Schema.Types.ObjectId, ref: 'UserModel' },
   alarmId: { type: Number },
