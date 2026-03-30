@@ -19,7 +19,7 @@ export const applyRoleFilter = async ({
   mapping = "",
   idField = "_id",
 }: RoleFilterOptions & { idField?: string }): Promise<Record<string, any>> => {
-  const finalFilter: Record<string, any> = { ...baseFilter };
+  const finalFilter: any = { ...baseFilter };
   switch (user.user_role) {
     case "admin":
       return { ...finalFilter, [accountField]: user.account_id, visible: true };

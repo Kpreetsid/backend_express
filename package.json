@@ -2,16 +2,16 @@
   "name": "project_api_javascript",
   "version": "1.0.0",
   "description": "",
-  "main": "ts-node src/server.js",
+  "main": "dist/server.js",
   "scripts": {
-    "start": "rm -rf dist && npx tsc && cp -r src/public dist/public && node dist/server.js"
+    "start": "npx shx rm -rf dist && npx tsc && npx shx mkdir -p dist/public && npx shx cp -r src/public/* dist/public/ && node dist/server.js"
   },
   "keywords": [],
   "author": "Pawan Kumar Gautam",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "axios": "^1.13.6",
+    "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
@@ -23,11 +23,11 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "lodash": "^4.17.23",
-    "mongoose": "^9.3.0",
+    "mongoose": "^9.3.3",
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
-    "nodemailer": "^8.0.2"
+    "nodemailer": "^8.0.4"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
@@ -42,6 +42,6 @@
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^7.0.11",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.2"
   }
 }

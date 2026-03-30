@@ -24,7 +24,7 @@ class UserController {
       if (user.user_role === "admin") {
         delete baseFilter.user_status;
       }
-      const filter = await applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
+      const filter: any = await applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
       delete filter.visible;
       const data = await usersService.getAllUsers(filter);
       if (!data.length) {
@@ -44,7 +44,7 @@ class UserController {
       if (user.user_role === "admin") {
         delete baseFilter.user_status;
       }
-      const filter = await applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
+      const filter: any = await applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
       delete filter.visible;
       const data = await usersService.getAllUsers(filter);
       if (!data.length) {
@@ -93,7 +93,7 @@ class UserController {
       if (user.user_role === 'admin') {
         delete baseFilter.user_status;
       }
-      const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
+      const filter: any = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
       delete filter.visible;
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length) {
@@ -157,7 +157,7 @@ class UserController {
       const user = get(req, "user", {}) as IUser;
       const { id } = req.params;
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)), user_status: 'active' };
-      const filter = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
+      const filter: any = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
       delete filter.visible;
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length)

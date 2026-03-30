@@ -139,11 +139,11 @@ const userLogSchema = new Schema<IUserLog>({
     }
 });
 
-userLogSchema.virtual('isSuccess').get(function () {
+userLogSchema.virtual('isSuccess').get(function (this: IUserLog) {
     return this.statusCode >= 200 && this.statusCode < 300;
 });
 
-userLogSchema.methods.isFromMobile = function () {
+userLogSchema.methods.isFromMobile = function (this: IUserLog) {
     return this.deviceInfo?.isMobile || false;
 };
 

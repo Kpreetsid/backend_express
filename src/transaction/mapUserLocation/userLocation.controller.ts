@@ -10,7 +10,7 @@ class MapUserLocationController {
   async getUserLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const query = req.query;
+      const query: any = req.query;
       const match: any = { locationId: { $exists: true } };
       const filter: any = { populate: "userId" };
       if (userRole === "admin") {

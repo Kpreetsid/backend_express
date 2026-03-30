@@ -11,7 +11,7 @@ class FloorMapController {
   getAllFloorMaps = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const baseFilter = {};
-      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter });
+      const filter: any = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter });
       delete filter.visible;
       const data = await floorMapService.getFloorMaps(filter);
       if (!data.length) {
@@ -27,10 +27,7 @@ class FloorMapController {
     try {
       const { id } = req.params;
       const baseFilter = { _id: helperService.validateObjectId(String(id)) };
-      const filter = await applyRoleFilter({
-        user: get(req, "user", {}) as IUser,
-        baseFilter,
-      });
+      const filter: any = await applyRoleFilter({user: get(req, "user", {}) as IUser, baseFilter});
       delete filter.visible;
       const data = await floorMapService.getFloorMaps(filter);
       if (!data.length) {
