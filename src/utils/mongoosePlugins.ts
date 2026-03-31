@@ -1,24 +1,31 @@
 import { Schema } from 'mongoose';
 
 /**
- * Standardizes the 'id' field to mirror '_id' in all database results.
- * Handles recursion for nested objects inside aggregation pipelines.
+ * Standardizes the 'id' field to mirror '_id' in database results.
+ * Optimized to safely handle both plain objects and Mongoose documents.
  */
 function standardizeObject(doc: any) {
-  if (!doc || typeof doc !== 'object') return;
+  // Only process standard objects, exclude null, primitives, and Mongoose internal types like Buffers/ObjectIds
+  if (!doc || typeof doc !== 'object' || doc instanceof Date || Buffer.isBuffer(doc)) return;
 
   // Add 'id' mirroring '_id' if not already present
   if (doc._id && !doc.hasOwnProperty('id')) {
-    doc.id = typeof doc._id === 'object' ? doc._id.toString() : doc._id;
+    // Keep it a string representation for the 'id' field
+    doc.id = doc._id.toString();
   }
 
-  // Recurse through all properties to handle nested lookups/populate results
+  // If this is a Mongoose document, we should not recurse into its internal structure.
+  // The virtuals/transformers will handle documents.
+  // We only recurse into POJOs (like from .lean() or aggregation).
+  if (typeof doc.toObject === 'function') return;
+
+  // Recurse through all properties to handle nested lookups/populate results (for POJOs only)
   for (const key in doc) {
-    if (doc.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(doc, key)) {
       const value = doc[key];
       if (Array.isArray(value)) {
         value.forEach(item => standardizeObject(item));
-      } else if (value && typeof value === 'object' && !(value instanceof Date)) {
+      } else if (value && typeof value === 'object') {
         standardizeObject(value);
       }
     }
@@ -29,7 +36,8 @@ function standardizeObject(doc: any) {
  * Global Mongoose plugin to ensure 'id' is always available as the string representation of '_id'.
  */
 export const idStandardizationPlugin = (schema: Schema) => {
-  schema.set('toJSON', {
+  // Handle documents during serialization
+  const options = {
     virtuals: true,
     versionKey: false,
     transform: (doc: any, ret: any) => {
@@ -38,21 +46,12 @@ export const idStandardizationPlugin = (schema: Schema) => {
       }
       return ret;
     }
-  });
+  };
 
-  schema.set('toObject', {
-    virtuals: true,
-    versionKey: false,
-    transform: (doc: any, ret: any) => {
-      if (ret._id && !ret.id) {
-        ret.id = ret._id.toString();
-      }
-      return ret;
-    }
-  });
+  schema.set('toJSON', options);
+  schema.set('toObject', options);
 
   // Handle queries using .lean() or manual results.
-  // We use post hooks to ensure results handled via lean() also get the id field.
   schema.post(/^(find|findOne|findOneAndUpdate|findById)/, function(res: any) {
     if (!res) return;
     
@@ -63,7 +62,7 @@ export const idStandardizationPlugin = (schema: Schema) => {
     }
   });
 
-  // Handle aggregation results with recursive object processing.
+  // Handle aggregation results with safe recursive object processing.
   schema.post('aggregate', function(res: any) {
     if (!res || !Array.isArray(res)) return;
     res.forEach(standardizeObject);
