@@ -130,11 +130,6 @@ class AssetReportController {
           await processorAPIService.assetHealthFreezeStatus(payload, user_id, userToken);
         }
       }
-      const alarmId = body.alarmId || isAssetReportExists[0].alarmId;
-      if (alarmId) {
-        const payload = { alarm_id: alarmId, report_id: data?._id, action_type: "updated" };
-        await processorAPIService.updateAlarmHistoryData(payload, user_id, userToken);
-      }
       res.status(200).json({ status: true, message: "Data updated successfully", data });
     } catch (error) {
       next(error);
