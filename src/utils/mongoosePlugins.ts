@@ -2,31 +2,28 @@ import { Schema } from 'mongoose';
 
 /**
  * Standardizes the 'id' field to mirror '_id' in database results.
- * Optimized to safely handle both plain objects and Mongoose documents.
+ * Only processes plain JavaScript objects (POJOs) for deep recursion to avoid corrupting internal types.
  */
 function standardizeObject(doc: any) {
-  // Only process standard objects, exclude null, primitives, and Mongoose internal types like Buffers/ObjectIds
+  // Exit if null, primitive, or not a "standard" JavaScript object
   if (!doc || typeof doc !== 'object' || doc instanceof Date || Buffer.isBuffer(doc)) return;
 
   // Add 'id' mirroring '_id' if not already present
-  if (doc._id && !doc.hasOwnProperty('id')) {
-    // Keep it a string representation for the 'id' field
+  if (doc._id && !Object.prototype.hasOwnProperty.call(doc, 'id')) {
     doc.id = doc._id.toString();
   }
 
-  // If this is a Mongoose document, we should not recurse into its internal structure.
-  // The virtuals/transformers will handle documents.
-  // We only recurse into POJOs (like from .lean() or aggregation).
-  if (typeof doc.toObject === 'function') return;
-
-  // Recurse through all properties to handle nested lookups/populate results (for POJOs only)
-  for (const key in doc) {
-    if (Object.prototype.hasOwnProperty.call(doc, key)) {
-      const value = doc[key];
-      if (Array.isArray(value)) {
-        value.forEach(item => standardizeObject(item));
-      } else if (value && typeof value === 'object') {
-        standardizeObject(value);
+  // ONLY recurse into plain objects or arrays
+  // This prevents corrupting Mongoose Internal types, Buffers, or other complex objects
+  if (doc.constructor === Object || Array.isArray(doc)) {
+    for (const key in doc) {
+      if (Object.prototype.hasOwnProperty.call(doc, key)) {
+        const value = doc[key];
+        if (Array.isArray(value)) {
+          value.forEach(item => standardizeObject(item));
+        } else if (value && typeof value === 'object') {
+          standardizeObject(value);
+        }
       }
     }
   }
@@ -36,7 +33,6 @@ function standardizeObject(doc: any) {
  * Global Mongoose plugin to ensure 'id' is always available as the string representation of '_id'.
  */
 export const idStandardizationPlugin = (schema: Schema) => {
-  // Handle documents during serialization
   const options = {
     virtuals: true,
     versionKey: false,
@@ -51,14 +47,22 @@ export const idStandardizationPlugin = (schema: Schema) => {
   schema.set('toJSON', options);
   schema.set('toObject', options);
 
-  // Handle queries using .lean() or manual results.
+  // Handle lean find() queries
   schema.post(/^(find|findOne|findOneAndUpdate|findById)/, function(res: any) {
     if (!res) return;
     
+    // In post-find, if it's not lean, it's a document. If lean, it's a POJO.
+    // We only need to manually standardize if it's Not a document (POJO).
     if (Array.isArray(res)) {
-      res.forEach(standardizeObject);
+      res.forEach(doc => {
+        if (doc && typeof doc.toObject !== 'function') {
+           standardizeObject(doc);
+        }
+      });
     } else {
-      standardizeObject(res);
+      if (res && typeof res.toObject !== 'function') {
+         standardizeObject(res);
+      }
     }
   });
 
