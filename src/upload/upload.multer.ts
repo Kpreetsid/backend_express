@@ -1,6 +1,7 @@
-import fs from "fs";
 import path from "path";
+import fs from "fs";
 import crypto from "crypto";
+import { storageProvider } from "../_config/storage";
 
 class UploadFilesService {
   private getFormattedDate(): string {
@@ -22,12 +23,13 @@ class UploadFilesService {
       parts.push(String(companyId));
     }
     parts.push(randomId);
-    return `${parts.join("-")}${extension.startsWith('.') ? extension : `.${extension}`}`;
+    let ext = (extension || '').startsWith('.') ? extension : `.${extension}`;
+    return `${parts.join("-")}${ext}`;
   }
 
   getDestinationPath(folderName?: string): string {
-    const uploadRoot = path.join(__dirname, '../../uploadFiles');
-    const destination = folderName ? path.join(uploadRoot, folderName) : uploadRoot;
+    const root = (storageProvider as any).getRootPath ? (storageProvider as any).getRootPath() : path.resolve(__dirname, '../../uploadFiles');
+    const destination = folderName ? path.join(root, folderName) : root;
     if (!fs.existsSync(destination)) {
       fs.mkdirSync(destination, { recursive: true });
     }
@@ -51,22 +53,21 @@ class UploadFilesService {
       }
 
       const imageBuffer = Buffer.from(base64Data, "base64");
-      const extension = mimeType.split("/")[1]; // png, jpg, etc.
+      const extension = mimeType.split("/")[1];
 
       const fileName = this.generateFileName(extension, folderName, accountId);
-      const destination = this.getDestinationPath(folderName);
-      const filePath = path.join(destination, fileName);
-
-      fs.writeFileSync(filePath, imageBuffer);
+      
+      const file = await storageProvider.upload(imageBuffer, fileName, mimeType, folderName);
 
       return {
         originalName: fileName,
         type: mimeType,
-        destination,
+        destination: file.path,
         folderName,
         fileName,
-        filePath,
-        size: imageBuffer.length
+        filePath: file.path,
+        fileURL: file.url,
+        size: file.size
       };
     } catch (error) {
       console.error("Image upload error:", error);
@@ -76,11 +77,7 @@ class UploadFilesService {
 
   async deleteBase64Image(fileName: string, folderName?: string) {
     try {
-      const destination = this.getDestinationPath(folderName);
-      const filePath = path.join(destination, fileName);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+      await storageProvider.delete(fileName, folderName);
     } catch (error) {
       console.error("Image delete error:", error);
       throw error;
@@ -88,4 +85,4 @@ class UploadFilesService {
   };
 }
 
-export const uploadFilesService = new UploadFilesService();
+export const uploadFilesService = new UploadFilesService();

@@ -14,25 +14,10 @@ import masterRoutes from './masters/master.routes';
 import inspectionRoutes from './inspection/inspection.routes';
 import { logger, errorMiddleware } from './middlewares';
 
-import { server as serverConfig, environment } from './configDB';
 const app: Express = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
-
-const corsOptions: cors.CorsOptions = {
-  origin: (origin, callback) => {
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (serverConfig.allowedOrigins.indexOf(origin) !== -1 || environment.type === 'development') {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
-};
-app.use(cors(corsOptions));
+app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(logger.logMiddleware());

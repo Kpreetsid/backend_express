@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { UploadModel } from '../models/upload.model';
+import { storageProvider } from '../_config/storage';
 import { uploadFilesService } from './upload.multer';
 
 class UploadService {
   private formatUploadResponse(file: any, req: Request, folderName?: string) {
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
     const fileName = file.filename || file.fileName;
-    const fileURL = folderName ? `${baseUrl}/${folderName}/${fileName}` : `${baseUrl}/${fileName}`;
+    const fileURL = storageProvider.getURL(fileName, folderName);
     
     return new UploadModel({
       originalName: file.originalname || file.originalName || fileName,
