@@ -14,7 +14,7 @@ class RateLimiterService {
 
   public readonly authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 25,
+    max: 1000,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
