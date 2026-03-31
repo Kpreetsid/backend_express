@@ -66,10 +66,11 @@ class AssetReportController {
         throw Object.assign(new Error('Asset report not created'), { status: 404 });
       }
       assetReportId = data?._id;
-      if(reportBody.alarmId){
+      if (reportBody.alarmId) {
         const payload = {
           alarm_id: reportBody.alarmId,
-          report_id: data?._id
+          report_id: data?._id,
+          action_type: "created"
         }
         await processorAPIService.updateAlarmHistoryData(payload, user._id, userToken);
       }
@@ -97,13 +98,13 @@ class AssetReportController {
       next(error);
     }
   };
-  
+
   partialUpdateAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
       const userToken = get(req, "userToken", {}) as string;
-      const isAssetReportExists = await assetReportService.getAllAssetReports({ _id: helperService.validateObjectId(String(id)), accountId: account_id, visible: true});
+      const isAssetReportExists = await assetReportService.getAllAssetReports({ _id: helperService.validateObjectId(String(id)), accountId: account_id, visible: true });
       if (!isAssetReportExists || isAssetReportExists.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
@@ -126,6 +127,15 @@ class AssetReportController {
       const isDataExists = await assetReportService.getAllAssetReports(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
+      }
+      if (isDataExists[0].alarmId) {
+        const userToken = get(req, "userToken", {}) as string;
+        const payload = {
+          alarm_id: isDataExists[0].alarmId,
+          report_id: isDataExists[0]._id,
+          action_type: "deleted"
+        }
+        await processorAPIService.updateAlarmHistoryData(payload, user_id, userToken);
       }
       const data = await assetReportService.removeAssetReportById(helperService.validateObjectId(String(id)), user_id);
       if (!data) {
