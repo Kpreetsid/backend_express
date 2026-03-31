@@ -12,7 +12,6 @@ import { helperService } from "../../utils/helper";
 import mongoose from "mongoose";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { mapUserToAssetService, updateLocationAssetMapping } from '../../transaction/mapUserAsset/userAsset.service';
-import { getData } from "../../utils/queryBuilder";
 
 class LocationService {
 
@@ -36,9 +35,10 @@ class LocationService {
 
   async buildLocationTree(parentId: string | null, account_id: any, allowedLocationIds: string[], userRole: string): Promise<any[]> {
     const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false } };
-    const nodes = await getData(LocationModel, { filter: match });
+    const nodes = await LocationModel.find(match).lean();
+    const result = nodes.map(doc => ({ ...doc, id: doc._id }));
     return Promise.all(
-      nodes.map(async (node: any) => {
+      result.map(async (node: any) => {
         if (userRole !== "admin" && !allowedLocationIds.includes(node._id.toString())) {
           return null;
         }
@@ -62,7 +62,7 @@ class LocationService {
   };
 
   async getTree(match: any, location_id: any, allowedLocationIds: string[], userRole: string): Promise<any> {
-    const rootLocations: ILocationMaster[] = await getData(LocationModel, { filter: match });
+    const rootLocations: any[] = await LocationModel.find(match).lean();
     if (!rootLocations?.length) {
       throw Object.assign(new Error("No data found"), { status: 404 });
     }

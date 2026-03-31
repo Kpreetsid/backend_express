@@ -8,6 +8,27 @@ import { requestService } from "../request/request.service";
 import { helperService } from "../../utils/helper";
 import { CommentsModel } from "../../models/comment.model";
 
+export interface WorkOrderSearchParams {
+  account_id: any;
+  user_id: string;
+  user_role: string;
+  query: {
+    status?: any;
+    priority?: any;
+    wo_asset_id?: any;
+    wo_location_id?: any;
+    assignedUser?: any;
+    pageTYPE?: string; // assignedToMe, createdByMe, openToAll
+    order_no?: string;
+    fromDate?: string;
+    toDate?: string;
+  };
+  pagination?: {
+    skip: number;
+    limit: number;
+  };
+}
+
 class OrderService {
   private mailerService: MailerService;
   private userProjection = {
@@ -183,6 +204,63 @@ class OrderService {
     }));
     return result;
   };
+
+  async buildSearchMatch(params: WorkOrderSearchParams): Promise<any> {
+    const { account_id, user_id, user_role, query } = params;
+    const match: any = { account_id, visible: true };
+
+    if (query.status) match.status = { $in: query.status.toString().split(',') };
+    if (query.priority) match.priority = { $in: query.priority.toString().split(',') };
+    if (query.wo_asset_id) match.wo_asset_id = { $in: helperService.validateObjectIds(query.wo_asset_id.toString()) };
+    if (query.wo_location_id) match.wo_location_id = { $in: helperService.validateObjectIds(query.wo_location_id.toString()) };
+    if (query.order_no) match.order_no = query.order_no;
+    
+    if (query.fromDate && query.toDate) {
+      match.createdAt = { $gte: new Date(query.fromDate), $lte: new Date(query.toDate) };
+    }
+
+    if (query.assignedUser) {
+      const assignedIds = helperService.validateObjectIds(query.assignedUser.toString());
+      const workOrderIds = [];
+      for (const uid of assignedIds) {
+        workOrderIds.push(await userWorkOrderService.getMappedWorkOrderIDs(uid));
+      }
+      match._id = { $in: workOrderIds.flat() };
+    }
+
+    // Role and PageType Logic
+    if (query.pageTYPE) {
+      switch (query.pageTYPE) {
+        case "assignedToMe": {
+          const ids = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
+          match._id = { $in: ids || [] };
+          break;
+        }
+        case "createdByMe": {
+          match.createdBy = user_id;
+          break;
+        }
+        case "openToAll": {
+          match.createdBy = { $ne: user_id };
+          if (!query.status) {
+            match.status = { $in: ["Open", "In-Progress", "On-Hold"] };
+          }
+          const ids = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
+          if (ids?.length) match._id = { $nin: ids };
+          break;
+        }
+      }
+    } else if (user_role !== 'admin') {
+      const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
+      if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
+        match.createdBy = user_id;
+      } else {
+        match.$or = [{ _id: { $in: userWorkOrderIdList } }, { createdBy: user_id }];
+      }
+    }
+
+    return match;
+  }
 
   async countOrders(match: any) {
     return await WorkOrderModel.countDocuments(match);
@@ -438,8 +516,37 @@ class OrderService {
     return await WorkOrderModel.findByIdAndUpdate(id, { ...body, updatedBy: user._id }, { new: true });
   };
 
-  async orderStatusChange(id: any, body: any): Promise<any> {
-    return await WorkOrderModel.findByIdAndUpdate(id, body, { new: true });
+  async orderStatusChange(id: string, status: string, user: IUser): Promise<any> {
+    const orderId = helperService.validateObjectId(id);
+    const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
+    const existingOrder = orders[0];
+
+    if (status === 'Completed') {
+      if (existingOrder.tasks?.length > 0 && !existingOrder.task_submitted) {
+        throw Object.assign(new Error('Task is not completed'), { status: 400 });
+      }
+      if (existingOrder.sop_form_id && !existingOrder.sop_form_submitted) {
+        throw Object.assign(new Error('Form is not completed'), { status: 400 });
+      }
+      if (existingOrder.parts?.length > 0) {
+        existingOrder.parts = existingOrder.parts.map((part: any) => ({
+          ...part,
+          actualQuantity: part.actualQuantity || part.estimatedQuantity
+        }));
+      }
+    } else if (status === 'Open') {
+      existingOrder.task_submitted = false;
+      existingOrder.sop_form_submitted = false;
+    }
+
+    const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
+    const statusDetails = [...(existingOrder.status_details || []), statusEntry];
+
+    return await WorkOrderModel.findByIdAndUpdate(
+      id,
+      { status, updatedBy: user._id, status_details: statusDetails, parts: existingOrder.parts, task_submitted: existingOrder.task_submitted, sop_form_submitted: existingOrder.sop_form_submitted },
+      { new: true }
+    );
   }
 
   async removeOrder(id: any, user_id: any): Promise<any> {
