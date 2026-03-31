@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 import { database } from "../configDB";
+import { idStandardizationPlugin } from "../utils/mongoosePlugins";
+
+mongoose.plugin(idStandardizationPlugin);
 
 export class MongoConnection {
   private static instance: typeof mongoose | null = null;
