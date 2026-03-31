@@ -5,6 +5,7 @@ import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { processorAPIService } from '../../api-processor';
 import { ASSET_REPORT_STATUS } from '../../models/assetReport.model';
+import { observationService } from '../../masters/observation/observation.service';
 
 class AssetReportController {
   private assetHealthArray: any = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
@@ -158,6 +159,7 @@ class AssetReportController {
         const payload = { alarm_id: isDataExists[0].alarmId, report_id: id, action_type: "delete" }
         await processorAPIService.updateAlarmHistoryData(payload, user_id, userToken);
       }
+      await observationService.updateObservation({ report_id: helperService.validateObjectId(String(id)), accountId: account_id, visible: true }, { report_id: null, updatedBy: user_id });
       const data = await assetReportService.removeAssetReportById(helperService.validateObjectId(String(id)), user_id);
       if (!data) {
         throw Object.assign(new Error('Asset report not deleted'), { status: 404 });
