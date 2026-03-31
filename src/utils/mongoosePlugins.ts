@@ -1,29 +1,43 @@
-import { Schema } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
 /**
  * Standardizes the 'id' field to mirror '_id' in database results.
- * Only processes plain JavaScript objects (POJOs) for deep recursion to avoid corrupting internal types.
+ * Only processes plain JavaScript objects (POJOs) for deep recursion to avoid corrupting internal types like ObjectId or Buffer.
  */
 function standardizeObject(doc: any) {
-  // Exit if null, primitive, or not a "standard" JavaScript object
-  if (!doc || typeof doc !== 'object' || doc instanceof Date || Buffer.isBuffer(doc)) return;
+  // 1. Basic type check: Only proceed for actual objects
+  if (!doc || typeof doc !== 'object') return;
 
-  // Add 'id' mirroring '_id' if not already present
+  // 2. Safety filter: Skip sensitive or pre-typed objects that shouldn't be recursed or modified
+  if (
+    doc instanceof Date || 
+    Buffer.isBuffer(doc) || 
+    doc instanceof mongoose.Types.ObjectId ||
+    doc instanceof mongoose.Types.Decimal128 ||
+    (doc.constructor && doc.constructor.name === 'ObjectID')
+  ) {
+    return;
+  }
+
+  // 3. Document check: Mongoose documents handle virtuals natively, so we don't manually touch them or recurse internals.
+  if (typeof doc.toObject === 'function' || doc.$__) {
+    return;
+  }
+
+  // 4. Mirror _id to id if it exists and hasn't been added yet
   if (doc._id && !Object.prototype.hasOwnProperty.call(doc, 'id')) {
     doc.id = doc._id.toString();
   }
 
-  // ONLY recurse into plain objects or arrays
-  // This prevents corrupting Mongoose Internal types, Buffers, or other complex objects
-  if (doc.constructor === Object || Array.isArray(doc)) {
+  // 5. Deep Recursion: ONLY for plain objects or arrays
+  if (Array.isArray(doc)) {
+    for (let i = 0; i < doc.length; i++) {
+      standardizeObject(doc[i]);
+    }
+  } else if (doc.constructor && doc.constructor.name === 'Object') {
     for (const key in doc) {
       if (Object.prototype.hasOwnProperty.call(doc, key)) {
-        const value = doc[key];
-        if (Array.isArray(value)) {
-          value.forEach(item => standardizeObject(item));
-        } else if (value && typeof value === 'object') {
-          standardizeObject(value);
-        }
+        standardizeObject(doc[key]);
       }
     }
   }
@@ -31,12 +45,14 @@ function standardizeObject(doc: any) {
 
 /**
  * Global Mongoose plugin to ensure 'id' is always available as the string representation of '_id'.
+ * Handles documents via serialization transforms and POJOs (lean/aggregate) via safe recursive post-hooks.
  */
 export const idStandardizationPlugin = (schema: Schema) => {
   const options = {
     virtuals: true,
     versionKey: false,
     transform: (doc: any, ret: any) => {
+      // Standardize the top level
       if (ret._id && !ret.id) {
         ret.id = ret._id.toString();
       }
@@ -47,28 +63,20 @@ export const idStandardizationPlugin = (schema: Schema) => {
   schema.set('toJSON', options);
   schema.set('toObject', options);
 
-  // Handle lean find() queries
+  // Handle results from find/findOne/etc. (specifically lean() queries)
   schema.post(/^(find|findOne|findOneAndUpdate|findById)/, function(res: any) {
     if (!res) return;
     
-    // In post-find, if it's not lean, it's a document. If lean, it's a POJO.
-    // We only need to manually standardize if it's Not a document (POJO).
     if (Array.isArray(res)) {
-      res.forEach(doc => {
-        if (doc && typeof doc.toObject !== 'function') {
-           standardizeObject(doc);
-        }
-      });
+      res.forEach(item => standardizeObject(item));
     } else {
-      if (res && typeof res.toObject !== 'function') {
-         standardizeObject(res);
-      }
+      standardizeObject(res);
     }
   });
 
-  // Handle aggregation results with safe recursive object processing.
+  // Handle results from aggregation pipelines
   schema.post('aggregate', function(res: any) {
     if (!res || !Array.isArray(res)) return;
-    res.forEach(standardizeObject);
+    res.forEach(item => standardizeObject(item));
   });
 };
