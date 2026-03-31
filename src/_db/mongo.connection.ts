@@ -14,8 +14,8 @@ export class MongoConnection {
       await mongoose.connect(mongoUri, {
         autoIndex: true,
         connectTimeoutMS: 10000,
-        maxPoolSize: 20,
-        minPoolSize: 5,
+        maxPoolSize: database.maxPoolSize,
+        minPoolSize: database.minPoolSize,
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
       });
