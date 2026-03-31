@@ -1,5 +1,4 @@
-import { ReportAssetModel, IReportAsset, ASSET_REPORT_STATUS } from "../../models/assetReport.model";
-import { processorAPIService } from "../../api-processor";
+import { ReportAssetModel, IReportAsset } from "../../models/assetReport.model";
 import { orderService } from "../../work/order/order.service";
 
 class AssetReportService {
@@ -28,7 +27,6 @@ class AssetReportService {
         assetReport.work_order_id = workOrder._id;
         await assetReport.save();
       }
-      await processorAPIService.updateAssetHealthStatusOld(body, user.account_id, user._id, token);
       return assetReport;
     } catch (error) {
       if (workOrder?._id) {
@@ -42,7 +40,6 @@ class AssetReportService {
   };
 
   async updateAssetReport(id: any, body: IReportAsset, account_id: any, user_id: any, token: any) {
-    await processorAPIService.updateAssetHealthStatusOld(body, account_id, user_id, token);
     return await ReportAssetModel.findByIdAndUpdate(id, body, { new: true });
   };
 
@@ -51,13 +48,6 @@ class AssetReportService {
     const newBody: any = { ...oldData?.toObject(), ...body };
     if (body.status) {
       newBody.status_details = [...(newBody.status_details || []), { status: body.status, createdBy: user_id }];
-    }
-    const getAllIncompleteReport: any = await ReportAssetModel.find({ top_level_asset_id: body.top_level_asset_id, status: { $ne: ASSET_REPORT_STATUS[3] }, visible: true });
-    if (getAllIncompleteReport && getAllIncompleteReport.length === 0) {
-      if(body.status === ASSET_REPORT_STATUS[3]) {
-        const payload = { asset_id: body.top_level_asset_id, freeze_score: false };
-        await processorAPIService.assetHealthFreezeStatus(payload, user_id, token);
-      }
     }
     return await ReportAssetModel.findByIdAndUpdate(id, newBody, { new: true });
   };

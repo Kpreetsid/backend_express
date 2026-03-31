@@ -4,10 +4,12 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { processorAPIService } from '../../api-processor';
+import { ASSET_REPORT_STATUS } from '../../models/assetReport.model';
 
 class AssetReportController {
+  private assetHealthArray: any = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
 
-  async getAssetsReport(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const match = { accountId: account_id, visible: true };
@@ -21,7 +23,7 @@ class AssetReportController {
     }
   };
 
-  async getAssetsReportById(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getAssetsReportById = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
@@ -39,7 +41,7 @@ class AssetReportController {
     }
   };
 
-  async getLatestReport(req: Request, res: Response, next: NextFunction): Promise<any> {
+  getLatestReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
@@ -55,7 +57,7 @@ class AssetReportController {
     }
   };
 
-  async createAssetsReport(req: Request, res: Response, next: NextFunction): Promise<any> {
+  createAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     let assetReportId: any;
     try {
       const user = get(req, "user", {}) as IUser;
@@ -74,6 +76,13 @@ class AssetReportController {
         }
         await processorAPIService.updateAlarmHistoryData(payload, user._id, userToken);
       }
+      const payload: any = {
+        asset_id: reportBody.assetId,
+        health_created_from: 'report',
+        asset_status: this.assetHealthArray[reportBody.EquipmentHealth],
+        org_id: user.account_id
+      };
+      await processorAPIService.updateAssetHealthStatusOld(payload, userToken, user._id);
       res.status(201).json({ status: true, message: "Data created successfully", data });
     } catch (error) {
       if (assetReportId) {
@@ -83,7 +92,7 @@ class AssetReportController {
     }
   };
 
-  async updateAssetsReport(req: Request, res: Response, next: NextFunction): Promise<any> {
+  updateAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
@@ -113,28 +122,45 @@ class AssetReportController {
       if (!data) {
         throw Object.assign(new Error('Asset report not updated'), { status: 404 });
       }
+      if (body.status === ASSET_REPORT_STATUS[3] && isAssetReportExists[0].status !== ASSET_REPORT_STATUS[3]) {
+        const topLevelAssetId = isAssetReportExists[0].top_level_asset_id;
+        const getAllIncompleteReport: any = await assetReportService.getAllAssetReports({ top_level_asset_id: topLevelAssetId, status: { $ne: ASSET_REPORT_STATUS[3] }, visible: true, _id: { $ne: helperService.validateObjectId(String(id)) } });
+        if (getAllIncompleteReport && getAllIncompleteReport.length === 0) {
+          const payload = { asset_id: topLevelAssetId, freeze_score: false };
+          await processorAPIService.assetHealthFreezeStatus(payload, user_id, userToken);
+        }
+      }
+      const alarmId = body.alarmId || isAssetReportExists[0].alarmId;
+      if (alarmId) {
+        const payload = { alarm_id: alarmId, report_id: data?._id, action_type: "updated" };
+        await processorAPIService.updateAlarmHistoryData(payload, user_id, userToken);
+      }
       res.status(200).json({ status: true, message: "Data updated successfully", data });
     } catch (error) {
       next(error);
     }
   };
 
-  async deleteAssetsReport(req: Request, res: Response, next: NextFunction): Promise<any> {
+  deleteAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const userToken = get(req, "userToken", {}) as string;
       const { params: { id } } = req;
       const match = { _id: helperService.validateObjectId(String(id)), accountId: account_id, visible: true };
       const isDataExists = await assetReportService.getAllAssetReports(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
-      if (isDataExists[0].alarmId) {
-        const userToken = get(req, "userToken", {}) as string;
-        const payload = {
-          alarm_id: isDataExists[0].alarmId,
-          report_id: isDataExists[0]._id,
-          action_type: "deleted"
+      if (isDataExists[0].status !== ASSET_REPORT_STATUS[3]) {
+        const topLevelAssetId = isDataExists[0].top_level_asset_id;
+        const getAllIncompleteReport: any = await assetReportService.getAllAssetReports({ top_level_asset_id: topLevelAssetId, status: { $ne: ASSET_REPORT_STATUS[3] }, visible: true });
+        if (getAllIncompleteReport && getAllIncompleteReport.length === 1 && String(getAllIncompleteReport[0]._id) === String(id)) {
+          const payload = { asset_id: topLevelAssetId, freeze_score: false };
+          await processorAPIService.assetHealthFreezeStatus(payload, user_id, userToken);
         }
+      }
+      if (isDataExists[0].alarmId) {
+        const payload = { alarm_id: isDataExists[0].alarmId, report_id: id, action_type: "delete" }
         await processorAPIService.updateAlarmHistoryData(payload, user_id, userToken);
       }
       const data = await assetReportService.removeAssetReportById(helperService.validateObjectId(String(id)), user_id);

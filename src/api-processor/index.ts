@@ -1,8 +1,6 @@
 import { getExternalData } from "../utils/externalAPI";
 
 class ProcessorAPIService {
-    private assetHealthArray: Record<any, string> = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
-
     setAssetHealthStatus = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {
         const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);
         const match = { org_id: `${account_id}`, asset_status: "Not Defined", asset_id: [...new Set(assetIdList)] };
@@ -10,15 +8,14 @@ class ProcessorAPIService {
     }
 
     updateAssetHealthStatus = async (body: any, account_id: any, user_id: any, token: any) => {
-        const payload: any = { "asset_id": body.assetId, "asset_status": body.status, "org_id": account_id };
+        const payload: any = { "asset_id": body.assetId, health_created_from: 'observation', "asset_status": body.status, "org_id": account_id };
         if (body.alarmId) {
             payload.alarm_id = body.alarmId;
         }
         await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);
     }
 
-    updateAssetHealthStatusOld = async (body: any, account_id: any, user_id: any, token: any) => {
-        const payload: any = { "asset_id": body.assetId, "asset_status": this.assetHealthArray[body.EquipmentHealth], "org_id": account_id };
+    updateAssetHealthStatusOld = async (payload: any, token: any, user_id: any) => {
         await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);
     }
 
