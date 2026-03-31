@@ -106,25 +106,25 @@ class SchedulerService {
             const schedules = await SchedulerModel.find({ visible: true, "schedule.enabled": true });
             console.log(`🗓️ Scheduler started | ${schedules.length} active schedules`);
             for (const schedule of schedules) {
-                const s = schedule.schedule;
-                if (!this.shouldRun(schedule)) continue;
-                if (this.shouldSkipToday(schedule)) continue;
-                if (this.alreadyExecutedToday(schedule)) continue;
-                if (s.mode === "daily") {
-                    await this.executeSchedule(schedule);
-                    continue;
-                }
-                if (s.mode === "weekly") {
-                    if (s.weekly.days.includes(todayName)) {
+                try {
+                    const s = schedule.schedule;
+                    if (!this.shouldRun(schedule)) continue;
+                    if (this.shouldSkipToday(schedule)) continue;
+                    if (this.alreadyExecutedToday(schedule)) continue;
+                    
+                    if (s.mode === "daily") {
                         await this.executeSchedule(schedule);
+                    } else if (s.mode === "weekly") {
+                        if (s.weekly.days.includes(todayName)) {
+                            await this.executeSchedule(schedule);
+                        }
+                    } else if (s.mode === "monthly") {
+                        if (s.monthly.monthDays.includes(todayDate)) {
+                            await this.executeSchedule(schedule);
+                        }
                     }
-                    continue;
-                }
-                if (s.mode === "monthly") {
-                    if (s.monthly.monthDays.includes(todayDate)) {
-                        await this.executeSchedule(schedule);
-                    }
-                    continue;
+                } catch (indivError) {
+                    console.error(`❌ Schedule execution failed for "${schedule.title}":`, indivError);
                 }
             }
             console.log("✅ Scheduler completed successfully");

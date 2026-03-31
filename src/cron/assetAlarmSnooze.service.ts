@@ -6,12 +6,16 @@ class SnoozeAlarmService {
             const assets = await AssetModel.find({ snoozeAlarm: true, snoozeValue: { $gt: 0 } });
             console.log(`${new Date().toISOString()} → Running snooze alarm tick for ${assets.length} assets`);
             for (const asset of assets) {
-                asset.snoozeValue!--;
-                if (asset.snoozeValue === 0) {
-                    asset.snoozeAlarm = false;
+                try {
+                    asset.snoozeValue!--;
+                    if (asset.snoozeValue === 0) {
+                        asset.snoozeAlarm = false;
+                    }
+                    await asset.save();
+                    console.log(`${new Date().toISOString()} → Snooze alarm tick for asset: ${asset.asset_name}`);
+                } catch (indivError) {
+                    console.error(`❌ Snooze tick failed for asset "${asset.asset_name}":`, indivError);
                 }
-                await asset.save();
-                console.log(`${new Date().toISOString()} → Snooze alarm tick for asset: ${asset.asset_name}`);
             }
             console.log(`${new Date().toISOString()} → Snooze alarm tick completed`);
         } catch (error) {

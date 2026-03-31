@@ -16,21 +16,7 @@ const userSchema = new Schema<IUser>({
 }, {
   collection: 'map_users',
   timestamps: true,
-  versionKey: false,
-  toJSON: { 
-      virtuals: true,
-      transform(doc: any, ret: any) {
-        ret.id = ret._id;
-        return ret;
-      }
-    },
-    toObject: { 
-      virtuals: true,
-      transform(doc: any, ret: any) {
-        ret.id = ret._id;
-        return ret;
-      }
-    }
+  versionKey: false
 });
 
 export const ExternalUserModel = mongoose.model<IUser>('Schema_External_User', userSchema);
