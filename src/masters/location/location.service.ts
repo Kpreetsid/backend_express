@@ -36,9 +36,8 @@ class LocationService {
   async buildLocationTree(parentId: string | null, account_id: any, allowedLocationIds: string[], userRole: string): Promise<any[]> {
     const match: any = { account_id, visible: true, parent_id: parentId ? parentId : { $exists: false } };
     const nodes = await LocationModel.find(match).lean();
-    const result = nodes.map(doc => ({ ...doc, id: doc._id }));
     return Promise.all(
-      result.map(async (node: any) => {
+      nodes.map(async (node: any) => {
         if (userRole !== "admin" && !allowedLocationIds.includes(node._id.toString())) {
           return null;
         }

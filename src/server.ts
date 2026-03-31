@@ -1,3 +1,7 @@
+import mongoose from "mongoose";
+import { idStandardizationPlugin } from "./utils/mongoosePlugins";
+mongoose.plugin(idStandardizationPlugin);
+
 import app from "./app";
 import { server as hostDetails } from './configDB';
 import { connectDB, disconnectDB } from "./_db";
