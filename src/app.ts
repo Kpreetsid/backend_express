@@ -3,7 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import helmet from 'helmet';
 import compression from 'compression';
-import rateLimit from 'express-rate-limit';
+import { rateLimiter } from './middlewares/rateLimits';
 import { isAuthenticated } from './_config/auth';
 import routerIndex from './nonAuthRoutes';
 import workRoutes from './work/work.routes';
@@ -21,11 +21,7 @@ app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELE
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(logger.logMiddleware());
-app.use(rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  message: 'Too many requests, please try again later.'
-}));
+app.use(rateLimiter.globalLimiter);
 app.use(compression({
   level: 9,
   threshold: 0,

@@ -1,4 +1,5 @@
 import express from 'express';
+import { rateLimiter } from '../middlewares/rateLimits';
 const router = express.Router();
 import { uploadController } from './upload.controller';
 import multer from 'multer';
@@ -33,6 +34,7 @@ export const upload = multer({ storage, limits: { files: 12, fileSize: 5 * 1024 
 });
 
 export default (): express.Router => {
+    router.use(rateLimiter.uploadLimiter);
     router.post('/', upload.array('files', 12), uploadController.uploadController);
     router.post('/baseImage', uploadController.uploadBaseImage);
     router.post('/baseImage/:folderName', uploadController.uploadBaseImage);
