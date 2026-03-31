@@ -51,4 +51,8 @@ const locationMasterSchema = new Schema<ILocationMaster>({
     }
 });
 
+locationMasterSchema.index({ account_id: 1, visible: 1 });
+locationMasterSchema.index({ parent_id: 1 });
+locationMasterSchema.index({ top_level_location_id: 1 });
+
 export const LocationModel = mongoose.model<ILocationMaster>('Schema_Location', locationMasterSchema);

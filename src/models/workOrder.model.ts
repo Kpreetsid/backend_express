@@ -109,4 +109,13 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   }
 });
 
+WorkOrderSchema.index({ account_id: 1, visible: 1, createdAt: -1 });
+WorkOrderSchema.index({ account_id: 1, visible: 1, status: 1 });
+WorkOrderSchema.index({ account_id: 1, visible: 1, priority: 1 });
+WorkOrderSchema.index({ wo_asset_id: 1, visible: 1 });
+WorkOrderSchema.index({ wo_location_id: 1, visible: 1 });
+WorkOrderSchema.index({ parentId: 1 });
+WorkOrderSchema.index({ order_no: 1 });
+WorkOrderSchema.index({ createdBy: 1 });
+
 export const WorkOrderModel = mongoose.model<IWorkOrder>('Schema_WorkOrder', WorkOrderSchema);

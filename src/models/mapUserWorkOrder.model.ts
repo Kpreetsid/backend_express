@@ -34,4 +34,7 @@ const workOrderAssigneeSchema = new Schema<IWorkOrderAssignee>(
   }
 );
 
+workOrderAssigneeSchema.index({ woId: 1, userId: 1 }, { unique: true });
+workOrderAssigneeSchema.index({ userId: 1 });
+
 export const WorkOrderAssigneeModel = model<IWorkOrderAssignee>('Schema_WorkOrderAssignee', workOrderAssigneeSchema);
