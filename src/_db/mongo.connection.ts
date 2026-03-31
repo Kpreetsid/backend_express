@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { database } from "../configDB";
-import { idStandardizationPlugin } from "../utils/mongoosePlugins";
+import { idStandardizationPlugin } from "./mongoosePlugins";
 
 mongoose.plugin(idStandardizationPlugin);
 

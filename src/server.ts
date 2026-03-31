@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { idStandardizationPlugin } from "./utils/mongoosePlugins";
+import { idStandardizationPlugin } from "./_db/mongoosePlugins";
 mongoose.plugin(idStandardizationPlugin);
 
 import app from "./app";
