@@ -18,6 +18,7 @@ export const server = {
   port: parseInt(process.env.SERVER_PORT || '3000'),
   host: process.env.SERVER_HOST || 'localhost',
   protocol: process.env.SERVER_PROTOCOL || 'http',
+  allowedOrigins: (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean)
 };
 
 export const auth = {

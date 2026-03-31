@@ -6,18 +6,67 @@ import { partsService } from "../../masters/part/parts.service";
 import { commentService } from "../comments/comment.service";
 import { requestService } from "../request/request.service";
 import { helperService } from "../../utils/helper";
+import { CommentsModel } from "../../models/comment.model";
 
 class OrderService {
   private mailerService: MailerService;
+  private userProjection = {
+    _id: 1,
+    id: "$_id",
+    firstName: 1,
+    lastName: 1,
+    email: 1,
+    username: 1,
+    user_role: 1,
+    user_status: 1,
+    user_profile_img: 1
+  };
 
   constructor() {
     this.mailerService = new MailerService();
   }
 
-  async getAllOrders(match: any): Promise<any> {
-    let data = await WorkOrderModel.aggregate([
+  private getWorkOrderPipeline(match: any): any[] {
+    return [
       { $match: match },
-      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" } },
+      {
+        $lookup: {
+          from: "wo_user_mapping",
+          let: { woId: "$_id" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$woId", "$$woId"] } } },
+            {
+              $lookup: {
+                from: "users",
+                localField: "userId",
+                foreignField: "_id",
+                as: "user"
+              }
+            },
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+            {
+              $project: {
+                _id: 1,
+                id: "$_id",
+                userId: 1,
+                woId: 1,
+                user: {
+                  _id: "$user._id",
+                  id: "$user._id",
+                  firstName: "$user.firstName",
+                  lastName: "$user.lastName",
+                  email: "$user.email",
+                  username: "$user.username",
+                  user_role: "$user.user_role",
+                  user_status: "$user.user_status",
+                  user_profile_img: "$user.user_profile_img"
+                }
+              }
+            }
+          ],
+          as: "assignedUsers"
+        }
+      },
       {
         $lookup: {
           from: "asset_master",
@@ -48,7 +97,7 @@ class OrderService {
           let: { createdBy: '$createdBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
+            { $project: this.userProjection },
           ],
           as: "createdBy"
         }
@@ -60,32 +109,76 @@ class OrderService {
           let: { updatedBy: '$updatedBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-            { $project: { _id: 1, id: '$_id', firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
+            { $project: this.userProjection },
           ],
           as: "updatedBy"
         }
       },
       { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } },
-      { $addFields: { id: "$_id" } }
-    ]);
+      {
+        $lookup: {
+          from: "users",
+          localField: "status_details.createdBy",
+          foreignField: "_id",
+          as: "statusUsers"
+        }
+      },
+      {
+        $addFields: {
+          id: "$_id",
+          status_details: {
+            $map: {
+              input: "$status_details",
+              as: "status",
+              in: {
+                status: "$$status.status",
+                createdAt: "$$status.createdAt",
+                createdBy: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: "$statusUsers",
+                        as: "u",
+                        cond: { $eq: ["$$u._id", "$$status.createdBy"] }
+                      }
+                    },
+                    0
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      { $project: { statusUsers: 0 } }
+    ];
+  }
+
+  async getAllOrders(match: any): Promise<any> {
+    const pipeline = this.getWorkOrderPipeline(match);
+    const data = await WorkOrderModel.aggregate(pipeline);
+
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
+
+    const orderIds = data.map((d: any) => d._id);
+    // Bulk fetch all comments for all returned orders to avoid N+1 inside the loop
+    const allComments = await CommentsModel.find({ order_id: { $in: orderIds }, visible: true, parentCommentId: null })
+      .populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }])
+      .lean();
+
     const result = await Promise.all(data.map(async (item: any) => {
-      item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username email user_role user_profile_img user_status');
-        mapItem.user = user.length > 0 ? user[0] : {};
-        mapItem.id = mapItem._id;
-        return mapItem;
-      }));
-      if (item?.status_details?.length > 0) {
-        item.status_details = await Promise.all(item.status_details.map(async (statusItem: any) => {
-          const user = await UserModel.find({ _id: statusItem.createdBy }).select('id firstName lastName username email user_role user_profile_img user_status');
-          statusItem.createdBy = user.length > 0 ? user[0] : {};
-          return statusItem;
-        }));
-      }
-      item.comments = await commentService.getAllCommentsForWorkOrder({ work_order_id: item._id });
+      // Map comments from the bulk fetch
+      const itemComments = allComments.filter((c: any) => String(c.order_id) === String(item._id));
+      
+      // Still need the recursive replies (which could be improved in CommentService)
+      item.comments = await Promise.all(itemComments.map(async (c: any) => ({
+        ...c,
+        id: c._id,
+        replies: await commentService.getNestedComments(c._id)
+      })));
+      
       return item;
     }));
     return result;
@@ -96,80 +189,30 @@ class OrderService {
   }
 
   async getAllWorkOrders(match: any, skip: number = 0, limit: number = 25) {
-    let data = await WorkOrderModel.aggregate([
-      { $match: match },
-      { $lookup: { from: "wo_user_mapping", localField: "_id", foreignField: "woId", as: "assignedUsers" } },
-      {
-        $lookup: {
-          from: "asset_master",
-          let: { wo_asset_id: '$wo_asset_id' },
-          pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$wo_asset_id'] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, asset_model: 1, top_level: 1, parent_id: 1, visible: 1 } },
-          ],
-          as: "asset"
-        }
-      },
-      { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "location_master",
-          let: { wo_location_id: '$wo_location_id' },
-          pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$wo_location_id'] }, visible: true } },
-            { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, top_level: 1, parent_id: 1, visible: 1 } },
-          ],
-          as: "location"
-        }
-      },
-      { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "users",
-          let: { createdBy: '$createdBy' },
-          pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
-            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
-          ],
-          as: "createdBy"
-        }
-      },
-      { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
-      {
-        $lookup: {
-          from: "users",
-          let: { updatedBy: '$updatedBy' },
-          pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
-            { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
-          ],
-          as: "updatedBy"
-        }
-      },
-      { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } },
-      { $addFields: { id: "$_id" } },
-      { $sort: { createdAt: -1 } },
-      { $skip: skip },
-      { $limit: limit }
-    ]);
+    const pipeline: any[] = this.getWorkOrderPipeline(match);
+    pipeline.push({ $sort: { createdAt: -1 } });
+    pipeline.push({ $skip: skip });
+    pipeline.push({ $limit: limit });
+
+    const data = await WorkOrderModel.aggregate(pipeline);
+
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
+
+    const orderIds = data.map((d: any) => d._id);
+    const allComments = await CommentsModel.find({ order_id: { $in: orderIds }, visible: true, parentCommentId: null })
+      .populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }])
+      .lean();
+
     const result = await Promise.all(data.map(async (item: any) => {
-      item.assignedUsers = await Promise.all(item.assignedUsers.map(async (mapItem: any) => {
-        const user = await UserModel.find({ _id: mapItem.userId }).select('id firstName lastName username email user_role user_profile_img user_status');
-        mapItem.user = user.length > 0 ? user[0] : {};
-        mapItem.id = mapItem._id;
-        return mapItem;
-      }));
-      if (item?.status_details?.length > 0) {
-        item.status_details = await Promise.all(item.status_details.map(async (statusItem: any) => {
-          const user = await UserModel.find({ _id: statusItem.createdBy }).select('id firstName lastName username email user_role user_profile_img user_status');
-          statusItem.createdBy = user.length > 0 ? user[0] : {};
-          return statusItem;
-        }));
-      }
-      item.comments = await commentService.getAllCommentsForWorkOrder({ work_order_id: item._id });
+      const itemComments = allComments.filter((c: any) => String(c.order_id) === String(item._id));
+      
+      item.comments = await Promise.all(itemComments.map(async (c: any) => ({
+        ...c,
+        id: c._id,
+        replies: await commentService.getNestedComments(c._id)
+      })));
       return item;
     }));
     return result;
