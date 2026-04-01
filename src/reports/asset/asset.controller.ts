@@ -103,6 +103,13 @@ class AssetReportController {
       if (!data) {
         throw Object.assign(new Error('Asset report not updated'), { status: 404 });
       }
+      const payload: any = {
+        asset_id: body.assetId,
+        health_created_from: 'report',
+        asset_status: this.assetHealthArray[body.EquipmentHealth],
+        org_id: account_id
+      };
+      await processorAPIService.updateAssetHealthStatusOld(payload, userToken, user_id);
       res.status(200).json({ status: true, message: "Data updated successfully", data });
     } catch (error) {
       next(error);
