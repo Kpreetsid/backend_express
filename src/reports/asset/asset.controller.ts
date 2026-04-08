@@ -126,6 +126,9 @@ class AssetReportController {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
       body.updatedBy = user_id;
+      if (body.status === ASSET_REPORT_STATUS[3] && isAssetReportExists[0].status !== ASSET_REPORT_STATUS[3]) {
+        body.chartDetail = body.chartDetail?.length > 0 ? body.chartDetail.map((item: any) => ({ ...item, compare_time: Math.floor(Date.now() / 1000) })) : null;
+      }
       const data = await assetReportService.partialUpdateAssetReport(helperService.validateObjectId(String(id)), body, user_id, userToken);
       if (!data) {
         throw Object.assign(new Error('Asset report not updated'), { status: 404 });
