@@ -44,6 +44,7 @@ class AssetController {
         baseFilter,
         accountField: "account_id",
         mapping: "asset",
+        idField: "_id",
       });
       let data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
@@ -76,6 +77,7 @@ class AssetController {
         baseFilter,
         accountField: "account_id",
         mapping: "asset",
+        idField: "_id",
       });
       const data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
@@ -100,6 +102,7 @@ class AssetController {
         baseFilter,
         accountField: "account_id",
         mapping: "asset",
+        idField: "_id",
       });
       const data = await assetService.buzzerAssetList(filter);
       if (!data || data.length === 0) {
@@ -129,6 +132,7 @@ class AssetController {
         baseFilter,
         accountField: "account_id",
         mapping: "asset",
+        idField: "_id",
       });
       const data = await assetService.buzzerAssetList(filter);
       if (!data || data.length === 0) {
@@ -163,6 +167,7 @@ class AssetController {
         baseFilter: { _id: { $in: childIds } },
         accountField: "account_id",
         mapping: "asset",
+        idField: "_id",
       });
       const data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
@@ -197,6 +202,7 @@ class AssetController {
         baseFilter,
         accountField: "account_id",
         mapping: "asset",
+        idField: "_id",
       });
       const data = await assetService.getAssetsTreeData(filter);
       if (!data || data.length === 0) {

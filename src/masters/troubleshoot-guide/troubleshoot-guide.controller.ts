@@ -16,7 +16,8 @@ class TroubleshootGuideController {
                 user,
                 baseFilter,
                 accountField: "account_id",
-                // mapping: 'location'
+                mapping: 'location',
+                idField: 'locationId'
             });
             const data = await troubleshootGuideService.getAllTroubleshootGuide(filter);
             if (!data || data.length === 0) {
@@ -37,7 +38,9 @@ class TroubleshootGuideController {
             const filter = await applyRoleFilter({
                 user,
                 baseFilter,
-                accountField: "account_id"
+                accountField: "account_id",
+                mapping: 'location',
+                idField: 'locationId'
             });
             const data = await troubleshootGuideService.getAllTroubleshootGuide(filter);
             if (!data || data.length === 0) {

@@ -17,7 +17,7 @@ class SOPsController {
       if (location) {
         baseFilter.locationId = { $in: helperService.validateObjectIds(location.toString()) };
       }
-      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location' });
+      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location', idField: "locationId" });
       let data = await sopsService.getSOPs(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('SOPs not found'), { status: 404 });
@@ -38,7 +38,7 @@ class SOPsController {
       if (location) {
         baseFilter.locationId = { $in: helperService.validateObjectIds(location.toString()) };
       }
-      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location' });
+      const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location', idField: "locationId" });
       let data = await sopsService.getSOPs(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('SOP not found'), { status: 404 });
