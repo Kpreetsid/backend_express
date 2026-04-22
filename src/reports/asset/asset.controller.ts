@@ -6,8 +6,10 @@ import { helperService } from '../../utils/helper';
 import { processorAPIService } from '../../api-processor';
 import { ASSET_REPORT_STATUS } from '../../models/assetReport.model';
 import { observationService } from '../../masters/observation/observation.service';
+import { PdfService } from './asset-pdf.service';
 
 class AssetReportController {
+  private pdfService = new PdfService();
   private assetHealthArray: any = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
 
   getAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -176,6 +178,19 @@ class AssetReportController {
       }
       res.status(200).json({ status: true, message: "Data deleted successfully" });
     } catch (error) {
+      next(error);
+    }
+  };
+
+  generateAssetReportPdf = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+      const payload = req.body;
+      const pdfBuffer = await this.pdfService.generateAssetReportPdf(payload);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'inline; filename=asset-report.pdf');
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error('PDF Generation Error:', error);
       next(error);
     }
   };

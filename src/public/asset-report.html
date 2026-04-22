@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+      font-size: 12px;
+      color: #000069;
+      margin: 0;
+      padding: 0;
+    }
+
+    .main-container {
+      padding: 20px;
+      background-color: #ffffff;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+    }
+
+    .report-title {
+      font-size: 22px;
+      color: #000069;
+      font-weight: bold;
+    }
+
+    .hr-tag {
+      border: 0;
+      height: 2px;
+      background: #f4ccb0;
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-weight: bold;
+      color: #000069;
+      font-size: 18px;
+      padding: 8px;
+      background: #d8dae2;
+      text-align: center;
+      margin-top: 25px;
+      margin-bottom: 15px;
+    }
+
+    .detail-section {
+      background-color: #f3ddd3;
+      padding: 20px;
+      border-radius: 12px;
+      display: table;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 20px;
+    }
+
+    .info-table-wrapper {
+      display: table-cell;
+      width: 65%;
+      vertical-align: top;
+    }
+
+    .info-image-wrapper {
+      display: table-cell;
+      width: 35%;
+      text-align: right;
+      vertical-align: top;
+    }
+
+    .info-image-wrapper img {
+      max-width: 100%;
+      height: 180px;
+      border-radius: 12px;
+      object-fit: cover;
+    }
+
+    .asset-initials {
+      width: 100%;
+      height: 180px;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: bold;
+      color: #000069;
+      border-radius: 12px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    .inspection-table,
+    .inspection-table th,
+    .inspection-table td {
+      border: 1px solid #dadada;
+    }
+
+    .inspection-table th,
+    .inspection-table td {
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #000069;
+    }
+
+    .inspection-table th {
+      background-color: #f8f9fa;
+      font-weight: bold;
+    }
+
+    .summary-table {
+      background: transparent;
+      border: none;
+    }
+
+    .summary-table td {
+      border: 1px solid #dadada;
+      padding: 8px 12px;
+      background: white;
+      font-weight: bold;
+    }
+
+    .font-semibold {
+      font-weight: bold;
+      color: #000069;
+    }
+
+    .health-badge {
+      padding: 5px 15px;
+      border-radius: 6px;
+      font-weight: bold;
+      text-align: center;
+      display: inline-block;
+      font-size: 13px;
+    }
+
+    .critical {
+      background-color: #fb565a;
+      color: white;
+    }
+
+    .danger {
+      background-color: #fa8349;
+      color: white;
+    }
+
+    .alert {
+      background-color: #f7fa4b;
+      color: #000069;
+    }
+
+    .healthy {
+      background-color: #51fc4c;
+      color: #000069;
+    }
+
+    .not_available {
+      background-color: #d8dae2;
+      color: #000069;
+    }
+
+    .iso-container {
+      display: flex;
+      margin-top: 15px;
+      gap: 15px;
+    }
+
+    .iso-chart {
+      width: 50%;
+      text-align: center;
+    }
+
+    .iso-chart img {
+      width: 100%;
+      border-radius: 8px;
+    }
+
+    .iso-table {
+      width: 50%;
+    }
+
+    .health-history-container {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .health-history-table {
+      width: 100%;
+      border-spacing: 10px;
+    }
+
+    .health-history-table th {
+      font-size: 10px;
+      font-weight: 600;
+      color: #000069;
+      text-align: center;
+      background: none;
+    }
+
+    .health-history-table td {
+      font-size: 10px;
+      text-align: center;
+    }
+
+    .health-status-dot {
+      height: 12px;
+      width: 100%;
+      border-radius: 7px;
+      margin: 0;
+    }
+
+    .readings-table th {
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .readings-table td {
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .fault-bar-container {
+      width: 100%;
+      height: 20px;
+      background: transparent;
+    }
+
+    .fault-bar {
+      height: 100%;
+      width: 100%;
+    }
+
+    .chart-container {
+      margin-bottom: 25px;
+      border: 1px solid #000069;
+      padding: 10px;
+      background: white;
+      border-radius: 8px;
+      page-break-inside: avoid;
+    }
+
+    .chart-title {
+      font-size: 14px;
+      color: #000069;
+      font-weight: bold;
+      border-bottom: 1px solid #dadada;
+      padding-bottom: 5px;
+      margin-bottom: 10px;
+    }
+
+    .chart-box {
+      width: 100%;
+      height: 350px;
+      overflow: hidden;
+    }
+
+    .attachments-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .attachment-card {
+      width: 31%;
+      margin-bottom: 10px;
+    }
+
+    .attachment-card img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #dadada;
+    }
+
+    .content-area {
+      background-color: #f7f8f9;
+      padding: 16px;
+      border-radius: 10px;
+      min-height: 80px;
+      color: #000069;
+      margin: 15px 0;
+      font-size: 14px;
+    }
+
+    .page-break {
+      page-break-after: always;
+    }
+
+    .no-data-msg {
+      text-align: center;
+      padding: 30px;
+      font-weight: bold;
+      color: #000069;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="main-container">
+    <div class="header">
+      <div class="report-title">{{diagnosticsReportLabel}}</div>
+      <div style="color: #666; font-size: 11px;">{{generatedOnLabel}}: {{generatedDate}}</div>
+    </div>
+    <hr class="hr-tag" />
+
+    <div class="detail-section">
+      <div class="info-table-wrapper">
+        <table class="summary-table">
+          <tr>
+            <td class="font-semibold">{{assetNameLabel}}</td>
+            <td>{{assetName}}</td>
+          </tr>
+          <tr>
+            <td class="font-semibold">{{analysisDateLabel}}</td>
+            <td>{{analysisDate}}</td>
+          </tr>
+          <tr>
+            <td class="font-semibold">{{locationLabel}}</td>
+            <td>{{location}}</td>
+          </tr>
+          <tr>
+            <td class="font-semibold">{{sensorsMappedLabel}}</td>
+            <td>{{sensorsMapped}}</td>
+          </tr>
+          <tr>
+            <td class="font-semibold">{{assetConditionLabel}}</td>
+            <td><span class="health-badge {{conditionClass}}">{{assetCondition}}</span></td>
+          </tr>
+          <tr>
+            <td class="font-semibold">{{createdFromLabel}}</td>
+            <td>{{createdFrom}}</td>
+          </tr>
+        </table>
+      </div>
+      <div class="info-image-wrapper">
+        {{assetImageHtml}}
+      </div>
+    </div>
+
+    {{isoSection}}
+
+    {{healthHistorySection}}
+
+    <div class="section-title">{{latestReadingsLabel}}</div>
+    {{readingsTable}}
+
+    <div class="section-title">{{faultsDetectedLabel}}</div>
+    {{faultsTable}}
+
+    <div class="section-title">{{chartDataLabel}}</div>
+    <div id="charts-root"></div>
+
+    <div class="section-title">{{attachmentsLabel}}</div>
+    <div class="attachments-grid">
+      {{attachmentsHtml}}
+    </div>
+
+    <div class="section-title">{{observationsLabel}}</div>
+    <div class="content-area">
+      {{observations}}
+    </div>
+
+    <div class="section-title">{{recommendationsLabel}}</div>
+    <div class="content-area">
+      {{recommendations}}
+    </div>
+  </div>
+
+  <script id="chart-data" type="application/json">{{chartDataJson}}</script>
+  <script id="chart-images" type="application/json">{{chartImagesJson}}</script>
+  <script id="readings-data" type="application/json">{{readingsJson}}</script>
+
+  <script>
+    window.PDF_READY = false;
+
+    function renderCharts() {
+      console.log('Starting chart rendering...');
+      try {
+        const chartData = JSON.parse(document.getElementById('chart-data').textContent);
+        const chartImages = JSON.parse(document.getElementById('chart-images').textContent);
+        const readings = JSON.parse(document.getElementById('readings-data').textContent);
+
+        const root = document.getElementById('charts-root');
+        if (!chartData || Object.keys(chartData).length === 0) {
+          root.innerHTML = '<div class="no-data-msg">No chart data available for this report.</div>';
+          return;
+        }
+
+        Object.entries(chartData).forEach(([key, device], deviceIdx) => {
+          const [endpointId] = key.split('-');
+          const endpoint = readings.find(item => item.point && item.point.includes(endpointId));
+          const endpointName = endpoint ? endpoint.point : endpointId;
+
+          ['acceleration-spectrum', 'velocity-spectrum', 'acceleration-twf', 'velocity-twf'].forEach(baseType => {
+            const type = baseType;
+            const compType = 'compare-' + baseType;
+
+            if ((device[type] && Object.keys(device[type]).length > 0) ||
+              (device[compType] && Object.keys(device[compType]).length > 0)) {
+
+              const container = document.createElement('div');
+              container.className = 'chart-container';
+
+              const title = document.createElement('div');
+              title.className = 'chart-title';
+              title.innerText = endpointName + ' - ' + (device[type]?.chartName || device[compType]?.chartName || baseType);
+              container.appendChild(title);
+
+              const chartBox = document.createElement('div');
+              chartBox.className = 'chart-box';
+              const chartId = 'chart-' + deviceIdx + '-' + baseType.replace(/-/g, '');
+              chartBox.id = chartId;
+              container.appendChild(chartBox);
+
+              root.appendChild(container);
+
+              // Check if we have a pre-captured image from frontend (captures zoom, harmonics, etc.)
+              const capturedImg = chartImages[key] ? chartImages[key][type] : null;
+
+              if (capturedImg) {
+                if (capturedImg.startsWith('<svg')) {
+                  chartBox.innerHTML = capturedImg;
+                  const svgEl = chartBox.querySelector('svg');
+                  if (svgEl) {
+                    svgEl.removeAttribute('width');
+                    svgEl.removeAttribute('height');
+                    svgEl.style.width = '100%';
+                    svgEl.style.height = '100%';
+                    svgEl.style.display = 'block';
+                    svgEl.setAttribute('preserveAspectRatio', 'none');
+                  }
+                } else {
+                  chartBox.innerHTML = `<img src="${capturedImg}" style="width:100%; height:100%; display:block; object-fit:fill;" />`;
+                }
+              } else {
+                // Fallback to local rendering if no image captured
+                try {
+                  if (baseType.includes('spectrum')) {
+                    renderHighchart(chartId, device[type], device[compType]);
+                  } else {
+                    renderEchart(chartId, device[type], device[compType]);
+                  }
+                } catch (err) {
+                  console.error('Error rendering chart', chartId, err);
+                  chartBox.innerHTML = '<div class="no-data-msg">Error rendering this chart.</div>';
+                }
+              }
+            }
+          });
+        });
+      } catch (globalErr) {
+        console.error('Global rendering error:', globalErr);
+      } finally {
+        setTimeout(() => {
+          window.PDF_READY = true;
+          console.log('Charts rendered, PDF_READY set to true');
+        }, 2000);
+      }
+    }
+
+    function renderHighchart(id, data, compData) {
+      if (typeof Highcharts === 'undefined') {
+        console.error('Highcharts not loaded');
+        return;
+      }
+      const series = [];
+      if (data && data.yData) {
+        data.yData.forEach(s => series.push({ name: s.name, data: s.data, color: s.lineStyle?.color || '#000069' }));
+      }
+      if (compData && compData.yData) {
+        compData.yData.forEach(s => series.push({ name: 'Compare ' + s.name, data: s.data, dashStyle: 'dash', color: '#ff0000' }));
+      }
+
+      Highcharts.chart(id, {
+        chart: { type: 'line', height: 300, animation: false },
+        title: { text: null },
+        xAxis: { categories: data?.xData || compData?.xData || [] },
+        yAxis: { title: { text: data?.yLabel || compData?.yLabel || '' } },
+        series: series,
+        credits: { enabled: false },
+        plotOptions: { line: { marker: { enabled: false } } }
+      });
+    }
+
+    function renderEchart(id, data, compData) {
+      if (typeof echarts === 'undefined') {
+        console.error('ECharts not loaded');
+        return;
+      }
+      const chart = echarts.init(document.getElementById(id));
+      const series = [];
+      if (data && data.yData) {
+        data.yData.forEach(s => series.push({
+          name: s.name,
+          data: s.data,
+          type: 'line',
+          showSymbol: false,
+          lineStyle: { color: s.itemStyle?.color || '#000069' }
+        }));
+      }
+      if (compData && compData.yData) {
+        compData.yData.forEach(s => series.push({
+          name: 'Compare ' + s.name,
+          data: s.data,
+          type: 'line',
+          showSymbol: false,
+          lineStyle: { type: 'dashed', color: '#ff0000' }
+        }));
+      }
+
+      chart.setOption({
+        animation: false,
+        grid: { top: 30, bottom: 40, left: 50, right: 20 },
+        xAxis: { type: 'category', data: data?.xData || compData?.xData || [] },
+        yAxis: { type: 'value', name: data?.yLabel || compData?.yLabel || '' },
+        series: series
+      });
+    }
+
+    // window.onload = renderCharts; // Triggered manually by service
+  </script>
+</body>
+
+</html>
