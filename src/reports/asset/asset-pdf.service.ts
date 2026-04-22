@@ -4,10 +4,19 @@ import * as path from 'path';
 
 export class PdfService {
   public async generateAssetReportPdf(data: any): Promise<Buffer> {
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    console.log(`[PdfService] Generating PDF for asset: ${data.assetName || 'Unknown'}`);
+
+    let browser;
+    try {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+      });
+    } catch (launchError: any) {
+      console.error(`[PdfService] Browser launch failed: ${launchError.message}`);
+      throw new Error(`Failed to launch PDF browser: ${launchError.message}`);
+    }
+
     try {
       const page = await browser.newPage();
 
@@ -24,12 +33,22 @@ export class PdfService {
 
       // Inject chart libraries locally from node_modules
       const appNodeModules = path.join(process.cwd(), 'node_modules');
-      await page.addScriptTag({ path: path.join(appNodeModules, 'highcharts', 'highcharts.js') });
-      await page.addScriptTag({ path: path.join(appNodeModules, 'echarts', 'dist', 'echarts.min.js') });
+
+      const scripts = [
+        { path: path.join(appNodeModules, 'highcharts', 'highcharts.js'), name: 'highcharts' },
+        { path: path.join(appNodeModules, 'echarts', 'dist', 'echarts.min.js'), name: 'echarts' }
+      ];
+
+      for (const script of scripts) {
+        if (fs.existsSync(script.path)) {
+          await page.addScriptTag({ path: script.path });
+        } else {
+          console.warn(`[PdfService] Script not found at ${script.path}. Chart ${script.name} may not render.`);
+        }
+      }
 
       // Wait for charts to be rendered with a more generous timeout
       try {
-        // Trigger rendering manually after scripts are loaded
         await page.evaluate(() => {
           if (typeof (globalThis as any).renderCharts === 'function') {
             (globalThis as any).renderCharts();
@@ -40,7 +59,7 @@ export class PdfService {
           timeout: 60000
         });
       } catch (e) {
-        console.warn('PDF_READY timeout exceeded, generating PDF with available content');
+        console.warn('[PdfService] PDF_READY timeout exceeded, generating PDF with available content');
       }
 
       const pdfBuffer = await page.pdf({
@@ -59,16 +78,21 @@ export class PdfService {
           </div>
         `,
         margin: {
-          top: '60px',    // Increased to accommodate header
-          bottom: '60px', // Increased to accommodate footer
+          top: '60px',
+          bottom: '60px',
           left: '20px',
           right: '20px'
         }
       });
 
       return Buffer.from(pdfBuffer);
+    } catch (error: any) {
+      console.error(`[PdfService] PDF generation failed: ${error.stack}`);
+      throw error;
     } finally {
-      await browser.close();
+      if (browser) {
+        await browser.close();
+      }
     }
   }
 
