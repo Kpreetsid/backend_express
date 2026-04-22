@@ -8,66 +8,68 @@ export class PdfService {
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
-    const page = await browser.newPage();
-
-    // Enable console and error logging for debugging
-    page.on('console', (msg: any) => console.log('PAGE LOG:', msg.text()));
-    page.on('pageerror', (err: any) => console.log('PAGE ERROR:', err.message));
-
-    const html = this.buildHtml(data);
-
-    await page.setContent(html, {
-      waitUntil: 'networkidle0',
-      timeout: 60000
-    });
-
-    // Inject chart libraries locally from node_modules
-    const appNodeModules = path.join(__dirname, '..', '..', '..', '..', 'CMMS_APP_DEV', 'node_modules');
-    await page.addScriptTag({ path: path.join(appNodeModules, 'highcharts', 'highcharts.js') });
-    await page.addScriptTag({ path: path.join(appNodeModules, 'echarts', 'dist', 'echarts.min.js') });
-
-    // Wait for charts to be rendered with a more generous timeout
     try {
-      // Trigger rendering manually after scripts are loaded
-      await page.evaluate(() => {
-        if (typeof (globalThis as any).renderCharts === 'function') {
-          (globalThis as any).renderCharts();
+      const page = await browser.newPage();
+
+      // Enable console and error logging for debugging
+      page.on('console', (msg: any) => console.log('PAGE LOG:', msg.text()));
+      page.on('pageerror', (err: any) => console.log('PAGE ERROR:', err.message));
+
+      const html = this.buildHtml(data);
+
+      await page.setContent(html, {
+        waitUntil: 'networkidle0',
+        timeout: 60000
+      });
+
+      // Inject chart libraries locally from node_modules
+      const appNodeModules = path.join(process.cwd(), 'node_modules');
+      await page.addScriptTag({ path: path.join(appNodeModules, 'highcharts', 'highcharts.js') });
+      await page.addScriptTag({ path: path.join(appNodeModules, 'echarts', 'dist', 'echarts.min.js') });
+
+      // Wait for charts to be rendered with a more generous timeout
+      try {
+        // Trigger rendering manually after scripts are loaded
+        await page.evaluate(() => {
+          if (typeof (globalThis as any).renderCharts === 'function') {
+            (globalThis as any).renderCharts();
+          }
+        });
+
+        await page.waitForFunction(() => (globalThis as any).PDF_READY === true, {
+          timeout: 60000
+        });
+      } catch (e) {
+        console.warn('PDF_READY timeout exceeded, generating PDF with available content');
+      }
+
+      const pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        displayHeaderFooter: true,
+        headerTemplate: `
+          <div style="font-size: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; color: #666; font-family: sans-serif; border-bottom: 0.5px solid #eee;">
+            <span>Asset: ${data.assetName || 'NA'}</span>
+            <span>Report Date: ${data.analysisDate ? new Date(data.analysisDate).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+          </div>
+        `,
+        footerTemplate: `
+          <div style="font-size: 10px; width: 100%; display: flex; justify-content: flex-end; padding: 0 20px; color: #666; font-family: sans-serif;">
+            <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
+          </div>
+        `,
+        margin: {
+          top: '60px',    // Increased to accommodate header
+          bottom: '60px', // Increased to accommodate footer
+          left: '20px',
+          right: '20px'
         }
       });
 
-      await page.waitForFunction(() => (globalThis as any).PDF_READY === true, {
-        timeout: 60000
-      });
-    } catch (e) {
-      console.warn('PDF_READY timeout exceeded, generating PDF with available content');
+      return Buffer.from(pdfBuffer);
+    } finally {
+      await browser.close();
     }
-
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      displayHeaderFooter: true,
-      headerTemplate: `
-        <div style="font-size: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; color: #666; font-family: sans-serif; border-bottom: 0.5px solid #eee;">
-          <span>Asset: ${data.assetName || 'NA'}</span>
-          <span>Report Date: ${data.analysisDate ? new Date(data.analysisDate).toLocaleDateString() : new Date().toLocaleDateString()}</span>
-        </div>
-      `,
-      footerTemplate: `
-        <div style="font-size: 10px; width: 100%; display: flex; justify-content: flex-end; padding: 0 20px; color: #666; font-family: sans-serif;">
-          <span>Page <span class="pageNumber"></span> of <span class="totalPages"></span></span>
-        </div>
-      `,
-      margin: {
-        top: '60px',    // Increased to accommodate header
-        bottom: '60px', // Increased to accommodate footer
-        left: '20px',
-        right: '20px'
-      }
-    });
-
-    await browser.close();
-
-    return Buffer.from(pdfBuffer);
   }
 
   private buildHtml(data: any): string {
