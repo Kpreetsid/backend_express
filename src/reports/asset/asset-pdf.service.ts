@@ -102,8 +102,8 @@ export class PdfService {
           </div>
         `,
         margin: {
-          top: '60px',
-          bottom: '60px',
+          top: '40px',
+          bottom: '40px',
           left: '20px',
           right: '20px'
         }
