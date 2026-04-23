@@ -31,19 +31,39 @@ export class PdfService {
         timeout: 60000
       });
 
-      // Inject chart libraries locally from node_modules
-      const appNodeModules = path.join(process.cwd(), 'node_modules');
+      // Inject chart libraries
+      const possibleNodeModules = [
+        path.join(process.cwd(), 'node_modules'),
+        path.join(__dirname, '..', '..', '..', 'node_modules'),
+        '/home/ubuntu/express_cmms/node_modules' // specific path from logs
+      ];
 
       const scripts = [
-        { path: path.join(appNodeModules, 'highcharts', 'highcharts.js'), name: 'highcharts' },
-        { path: path.join(appNodeModules, 'echarts', 'dist', 'echarts.min.js'), name: 'echarts' }
+        { 
+          name: 'highcharts', 
+          localPaths: possibleNodeModules.map(p => path.join(p, 'highcharts', 'highcharts.js')),
+          cdn: 'https://code.highcharts.com/highcharts.js'
+        },
+        { 
+          name: 'echarts', 
+          localPaths: possibleNodeModules.map(p => path.join(p, 'echarts', 'dist', 'echarts.min.js')),
+          cdn: 'https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js'
+        }
       ];
 
       for (const script of scripts) {
-        if (fs.existsSync(script.path)) {
-          await page.addScriptTag({ path: script.path });
-        } else {
-          console.warn(`[PdfService] Script not found at ${script.path}. Chart ${script.name} may not render.`);
+        let loaded = false;
+        for (const localPath of script.localPaths) {
+          if (fs.existsSync(localPath)) {
+            await page.addScriptTag({ path: localPath });
+            loaded = true;
+            break;
+          }
+        }
+        
+        if (!loaded) {
+          console.warn(`[PdfService] Local ${script.name} not found, falling back to CDN: ${script.cdn}`);
+          await page.addScriptTag({ url: script.cdn });
         }
       }
 
