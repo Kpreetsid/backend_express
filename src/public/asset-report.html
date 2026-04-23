@@ -401,19 +401,23 @@
           const endpoint = readings.find(item => item.point && item.point.includes(endpointId));
           const endpointName = endpoint ? endpoint.point : endpointId;
 
-          ['acceleration-spectrum', 'velocity-spectrum', 'acceleration-twf', 'velocity-twf'].forEach(baseType => {
-            const type = baseType;
-            const compType = 'compare-' + baseType;
+          // Dynamically iterate over all available chart types for this device
+          Object.keys(device).forEach(type => {
+            // Skip non-chart keys and 'compare-' versions (handled with base type)
+            if (type === 'meta' || type.startsWith('compare-')) return;
+            
+            const baseType = type;
+            const compType = 'compare-' + type;
 
-            if ((device[type] && Object.keys(device[type]).length > 0) ||
-              (device[compType] && Object.keys(device[compType]).length > 0)) {
+            if ((device[baseType] && Object.keys(device[baseType]).length > 0) ||
+                (device[compType] && Object.keys(device[compType]).length > 0)) {
 
               const container = document.createElement('div');
               container.className = 'chart-container';
 
               const title = document.createElement('div');
               title.className = 'chart-title';
-              title.innerText = endpointName + ' - ' + (device[type]?.chartName || device[compType]?.chartName || baseType);
+              title.innerText = endpointName + ' - ' + (device[baseType]?.chartName || device[compType]?.chartName || baseType);
               container.appendChild(title);
 
               const chartBox = document.createElement('div');
@@ -425,7 +429,7 @@
               root.appendChild(container);
 
               // Check if we have a pre-captured image from frontend (captures zoom, harmonics, etc.)
-              const capturedImg = chartImages[key] ? chartImages[key][type] : null;
+              const capturedImg = chartImages[key] ? chartImages[key][baseType] : null;
 
               if (capturedImg) {
                 if (capturedImg.startsWith('<svg')) {
@@ -446,9 +450,9 @@
                 // Fallback to local rendering if no image captured
                 try {
                   if (baseType.includes('spectrum')) {
-                    renderHighchart(chartId, device[type], device[compType]);
+                    renderHighchart(chartId, device[baseType], device[compType]);
                   } else {
-                    renderEchart(chartId, device[type], device[compType]);
+                    renderEchart(chartId, device[baseType], device[compType]);
                   }
                 } catch (err) {
                   console.error('Error rendering chart', chartId, err);
