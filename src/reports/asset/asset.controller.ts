@@ -186,8 +186,14 @@ class AssetReportController {
     try {
       const payload = req.body;
       const pdfBuffer = await this.pdfService.generateAssetReportPdf(payload);
+      
+      const assetName = payload.assetName || 'Asset';
+      const cleanName = assetName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `Asset_Report_${cleanName}_${dateStr}.pdf`;
+
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', 'inline; filename=asset-report.pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
       res.send(pdfBuffer);
     } catch (error: any) {
       console.error('PDF Generation Error:', error);
