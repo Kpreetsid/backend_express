@@ -24,6 +24,9 @@ export class PdfService {
       page.on('console', (msg: any) => console.log('PAGE LOG:', msg.text()));
       page.on('pageerror', (err: any) => console.log('PAGE ERROR:', err.message));
 
+      // Set a real User-Agent to avoid 403 errors from some CDNs
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36');
+
       const html = this.buildHtml(data);
 
       await page.setContent(html, {
@@ -31,39 +34,40 @@ export class PdfService {
         timeout: 60000
       });
 
-      // Inject chart libraries
-      const possibleNodeModules = [
-        path.join(process.cwd(), 'node_modules'),
-        path.join(__dirname, '..', '..', '..', 'node_modules'),
-        '/home/ubuntu/express_cmms/node_modules' // specific path from logs
-      ];
-
+      // Inject chart libraries - prioritizing local node_modules
+      const appNodeModules = path.join(process.cwd(), 'node_modules');
+      
       const scripts = [
         { 
           name: 'highcharts', 
-          localPaths: possibleNodeModules.map(p => path.join(p, 'highcharts', 'highcharts.js')),
+          path: path.join(appNodeModules, 'highcharts', 'highcharts.js'),
           cdn: 'https://code.highcharts.com/highcharts.js'
         },
         { 
           name: 'echarts', 
-          localPaths: possibleNodeModules.map(p => path.join(p, 'echarts', 'dist', 'echarts.min.js')),
+          path: path.join(appNodeModules, 'echarts', 'dist', 'echarts.min.js'),
           cdn: 'https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js'
         }
       ];
 
       for (const script of scripts) {
         let loaded = false;
-        for (const localPath of script.localPaths) {
-          if (fs.existsSync(localPath)) {
-            await page.addScriptTag({ path: localPath });
+        if (fs.existsSync(script.path)) {
+          try {
+            await page.addScriptTag({ path: script.path });
             loaded = true;
-            break;
+          } catch (e: any) {
+            console.warn(`[PdfService] Failed to load local ${script.name} from ${script.path}: ${e.message}`);
           }
         }
         
         if (!loaded) {
-          console.warn(`[PdfService] Local ${script.name} not found, falling back to CDN: ${script.cdn}`);
-          await page.addScriptTag({ url: script.cdn });
+          console.warn(`[PdfService] Local ${script.name} not found or failed, falling back to CDN: ${script.cdn}`);
+          try {
+            await page.addScriptTag({ url: script.cdn });
+          } catch (e: any) {
+            console.error(`[PdfService] CRITICAL: Could not load ${script.name} from any source.`);
+          }
         }
       }
 
