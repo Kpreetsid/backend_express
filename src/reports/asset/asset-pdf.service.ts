@@ -298,7 +298,7 @@ export class PdfService {
 
     const rows = faultData.map(row => {
       const getDot = (val: number, target: number, color: string) => {
-        return val == target ? `<div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${color}; margin: 0 auto; box-shadow: 0 0 4px ${color};"></div>` : '';
+        return val == target ? `<div style="width: 50px; height: 12px; border-radius: 5%; background-color: ${color}; margin: 0 auto; box-shadow: 0 0 4px ${color};"></div>` : '';
       };
 
       return `
@@ -321,7 +321,7 @@ export class PdfService {
       <table class="inspection-table">
         <thead>
           <tr style="background: #000069 !important; color: white !important;">
-            <th style="width:40%; text-align: left; padding-left: 15px; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Fault Condition</th>
+            <th style="width:30%; text-align: left; padding-left: 15px; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Fault Condition</th>
             <th style="text-align: center; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Good</th>
             <th style="text-align: center; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Satisfactory</th>
             <th style="text-align: center; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Unsatisfactory</th>
