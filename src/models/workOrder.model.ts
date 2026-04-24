@@ -4,7 +4,7 @@ import { historyPlugin } from './plugins/history.plugin';
 import { HistoryWorkOrderModel } from './history-work-order.model';
 
 export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
-export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High', "Urgent"];
+export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High', 'Urgent'];
 export const TASK_STATUSES = ['Open', 'In-Progress', 'On-Hold', 'Completed'];
 
 export interface ITask {

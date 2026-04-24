@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { IUpload } from './upload.model';
 
 export const WORK_REQUEST_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected'];
-export const WORK_REQUEST_PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
+export const WORK_REQUEST_PRIORITIES = ['None', 'Low', 'Medium', 'High', 'Urgent'];
 
 export interface IWorkRequest extends Document {
   account_id: ObjectId;
