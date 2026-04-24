@@ -94,7 +94,7 @@ export class PdfService {
         headerTemplate: `
           <div style="font-size: 10px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; color: #666; font-family: sans-serif; border-bottom: 0.5px solid #eee;">
             <span>Asset: ${data.assetName || 'NA'}</span>
-            <span>Report Date: ${data.analysisDate ? new Date(data.analysisDate).toLocaleDateString() : new Date().toLocaleDateString()}</span>
+            <span>Report Date: ${this.formatDate(data.analysisDate || new Date(), data.timezone, true)}</span>
           </div>
         `,
         footerTemplate: `
@@ -126,9 +126,9 @@ export class PdfService {
     let template = fs.readFileSync(templatePath, 'utf8');
 
     const replacements: any = {
-      generatedDate: new Date().toLocaleString(),
+      generatedDate: this.formatDate(new Date(), data.timezone),
       assetName: data.assetName || 'NA',
-      analysisDate: data.analysisDate ? new Date(data.analysisDate).toLocaleDateString() : 'NA',
+      analysisDate: this.formatDate(data.analysisDate || new Date(), data.timezone, true),
       location: data.location || 'NA',
       sensorsMapped: data.sensorsMapped || '0',
       assetCondition: data.assetCondition || 'NA',
@@ -139,7 +139,7 @@ export class PdfService {
       assetImageHtml: this.buildAssetImage(data),
       isoSection: this.buildIsoSection(data),
       healthHistorySection: this.buildHealthHistorySection(data),
-      readingsTable: this.buildReadingsTable(data.readings),
+      readingsTable: this.buildReadingsTable(data),
       faultsTable: this.buildFaultsTable(data.faultData),
       attachmentsHtml: this.buildAttachments(data.attachments),
       chartDataJson: JSON.stringify(data.chartData || {}),
@@ -239,22 +239,13 @@ export class PdfService {
     `;
   }
 
-  private buildReadingsTable(readings: any[]): string {
+  private buildReadingsTable(data: any): string {
+    const readings = data.readings;
     if (!readings || readings.length === 0) return '<div class="no-data-msg">No Data Collected Yet.</div>';
 
     let rows = '';
-    readings.forEach(point => {
-      const timestamp = point.timestamp;
-      let dateStr = '-';
-      if (timestamp) {
-        try {
-          // Handle both seconds and milliseconds
-          const date = new Date(timestamp > 10000000000 ? timestamp : timestamp * 1000);
-          dateStr = date.toLocaleString();
-        } catch (e) {
-          dateStr = String(timestamp);
-        }
-      }
+    readings.forEach((point: any) => {
+      const dateStr = this.formatDate(point.timestamp, data.timezone);
 
       rows += `
         <tr>
@@ -332,6 +323,28 @@ export class PdfService {
         <tbody>${rows}</tbody>
       </table>
     `;
+  }
+
+  private formatDate(timestamp: any, timezone?: string, dateOnly: boolean = false): string {
+    if (!timestamp) return '-';
+    try {
+      const date = new Date(timestamp > 10000000000 ? timestamp : timestamp * 1000);
+      const options: Intl.DateTimeFormatOptions = {
+        timeZone: timezone || 'UTC',
+        hour12: false,
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      };
+      if (!dateOnly) {
+        options.hour = '2-digit';
+        options.minute = '2-digit';
+        options.second = '2-digit';
+      }
+      return date.toLocaleString('en-GB', options).replace(',', '');
+    } catch (e) {
+      return String(timestamp);
+    }
   }
 
   private buildAttachments(attachments: string[]): string {
