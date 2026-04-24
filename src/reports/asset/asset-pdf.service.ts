@@ -1,6 +1,7 @@
 import puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
+import { storageConfig } from '../../configDB';
 
 export class PdfService {
   public async generateAssetReportPdf(data: any): Promise<Buffer> {
@@ -184,19 +185,19 @@ export class PdfService {
     return `
       <div class="section-title">Evaluation zone as per ISO 10816</div>
       <div class="iso-container">
-        <div class="iso-chart">
-            <img src="${process.env.STORAGE_BASE_URL}/Icon/ISO_chart.png" alt="ISO Chart" />
+        <div class="iso-chart" style="height:200px;">
+            <img src="${storageConfig.baseUrl}/report-icons/ISO_chart.png" alt="ISO Chart" style="width: 100%; margin-top:10px; height: 100%; object-fit: fill;"/>
         </div>
         <div class="iso-table">
             <table class="inspection-table">
                 <tr style="background: #000069 !important; color: white !important;">
-                  <th style="width:25%; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Class</th>
+                  <th style="width:15%; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Class</th>
                   <th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Description</th>
                 </tr>
                 <tr><td class="font-semibold">Class 1</td><td>Machines having separated driver and driven, or coupled units comprising machinery up to approx 15kw</td></tr>
                 <tr><td class="font-semibold">Class 2</td><td>Machinery (15kw to 75kw) without special foundations or rigidly mounted machines up to 300kW mounted on special foundations</td></tr>
                 <tr><td class="font-semibold">Class 3</td><td>Machines having large prime movers with rotating assemblies mounted on rigid and heavy foundations</td></tr>
-                <tr><td class="font-semibold">Class 4</td><td>Large prime movers with large rotating assemblies mounted on foundations soft in the direction of the measured vibration</td></tr>
+                <tr><td class="font-semibold">Class 4</td><td>Large prime movers with large rotating assemblies mounted on foundations soft in the direction of the measured vibration (i.e turbine, generators, gas turbines greater than 10MW)</td></tr>
             </table>
         </div>
       </div>
@@ -300,14 +301,11 @@ export class PdfService {
         return val == target ? `<div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${color}; margin: 0 auto; box-shadow: 0 0 4px ${color};"></div>` : '';
       };
 
-      const iconUrl = `${process.env.STORAGE_BASE_URL}/Icon/report/${row.name}.png`;
-      const fallbackUrl = `${process.env.STORAGE_BASE_URL}/Icon/report/Other.png`;
-
       return `
         <tr>
           <td class="font-semibold" style="padding-left: 15px;">
             <div style="display: flex; align-items: center; gap: 10px;">
-              <img src="${iconUrl}" onerror="this.src='${fallbackUrl}'" style="height: 25px; width: 25px; object-fit: contain; vertical-align: middle;" />
+              <img src="${storageConfig.baseUrl}/report-icons/${row.name}.png" alt="${row.name}_icon" onerror="this.src='${storageConfig.baseUrl}/report-icons/Other.png'" style="height: 25px; width: 25px; object-fit: contain; vertical-align: middle;" />
               <span style="margin-left: 8px;">${row.translatedName || row.name}</span>
             </div>
           </td>
