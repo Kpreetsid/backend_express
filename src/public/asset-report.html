@@ -41,12 +41,14 @@
     .section-title {
       font-weight: bold;
       color: #000069;
-      font-size: 18px;
-      padding: 8px;
-      background: #d8dae2;
-      text-align: center;
-      margin-top: 25px;
+      font-size: 16px;
+      padding: 8px 0;
+      border-bottom: 2px solid #000069;
+      text-align: left;
+      margin-top: 30px;
       margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .detail-section {
@@ -134,12 +136,14 @@
     }
 
     .health-badge {
-      padding: 5px 15px;
-      border-radius: 6px;
+      padding: 4px 12px;
+      border-radius: 4px;
       font-weight: bold;
       text-align: center;
       display: inline-block;
-      font-size: 13px;
+      font-size: 11px;
+      text-transform: uppercase;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
 
     .critical {
@@ -401,17 +405,15 @@
           const endpoint = readings.find(item => item.point && item.point.includes(endpointId));
           const endpointName = endpoint ? endpoint.point : endpointId;
 
-          // Dynamically iterate over all available chart types for this device
-          Object.keys(device).forEach(type => {
-            // Skip non-chart keys and 'compare-' versions (handled with base type)
-            if (type === 'meta' || type.startsWith('compare-')) return;
-            
-            const baseType = type;
-            const compType = 'compare-' + type;
+          // Define the order and types of charts we want to show
+          const chartTypes = ['acceleration-spectrum', 'velocity-spectrum', 'acceleration-twf', 'velocity-twf'];
+          
+          chartTypes.forEach(baseType => {
+            const compType = 'compare-' + baseType;
+            const hasBase = device[baseType] && (Object.keys(device[baseType]).length > 0);
+            const hasComp = device[compType] && (Object.keys(device[compType]).length > 0);
 
-            if ((device[baseType] && Object.keys(device[baseType]).length > 0) ||
-                (device[compType] && Object.keys(device[compType]).length > 0)) {
-
+            if (hasBase || hasComp) {
               const container = document.createElement('div');
               container.className = 'chart-container';
 
@@ -420,45 +422,65 @@
               title.innerText = endpointName + ' - ' + (device[baseType]?.chartName || device[compType]?.chartName || baseType);
               container.appendChild(title);
 
-              const chartBox = document.createElement('div');
-              chartBox.className = 'chart-box';
-              const chartId = 'chart-' + deviceIdx + '-' + baseType.replace(/-/g, '');
-              chartBox.id = chartId;
-              container.appendChild(chartBox);
-
               root.appendChild(container);
 
-              // Check if we have a pre-captured image from frontend (captures zoom, harmonics, etc.)
-              const capturedImg = chartImages[key] ? chartImages[key][baseType] : null;
+              // Render both base and comparison if they exist
+              [baseType, compType].forEach((type, idx) => {
+                if (device[type] && (Object.keys(device[type]).length > 0)) {
+                  const chartBoxWrapper = document.createElement('div');
+                  chartBoxWrapper.style.marginBottom = idx === 0 && hasComp ? '20px' : '0';
+                  
+                  if (hasBase && hasComp) {
+                    const label = document.createElement('div');
+                    label.style.fontSize = '12px';
+                    label.style.fontWeight = 'bold';
+                    label.style.marginBottom = '5px';
+                    label.style.color = idx === 0 ? '#000069' : '#03b03e';
+                    label.innerText = idx === 0 ? 'Before' : 'After';
+                    chartBoxWrapper.appendChild(label);
+                  }
 
-              if (capturedImg) {
-                if (capturedImg.startsWith('<svg')) {
-                  chartBox.innerHTML = capturedImg;
-                  const svgEl = chartBox.querySelector('svg');
-                  if (svgEl) {
-                    svgEl.removeAttribute('width');
-                    svgEl.removeAttribute('height');
-                    svgEl.style.width = '100%';
-                    svgEl.style.height = '100%';
-                    svgEl.style.display = 'block';
-                    svgEl.setAttribute('preserveAspectRatio', 'none');
-                  }
-                } else {
-                  chartBox.innerHTML = `<img src="${capturedImg}" style="width:100%; height:100%; display:block; object-fit:fill;" />`;
-                }
-              } else {
-                // Fallback to local rendering if no image captured
-                try {
-                  if (baseType.includes('spectrum')) {
-                    renderHighchart(chartId, device[baseType], device[compType]);
+                  const chartBox = document.createElement('div');
+                  chartBox.className = 'chart-box';
+                  const chartId = 'chart-' + deviceIdx + '-' + type.replace(/-/g, '');
+                  chartBox.id = chartId;
+                  chartBoxWrapper.appendChild(chartBox);
+                  container.appendChild(chartBoxWrapper);
+
+                  // Check for captured image (captures zoom, etc.)
+                  const capturedImg = chartImages[key] ? chartImages[key][type] : null;
+
+                  if (capturedImg) {
+                    if (capturedImg.includes('<svg')) {
+                      const svgStart = capturedImg.indexOf('<svg');
+                      chartBox.innerHTML = capturedImg.substring(svgStart);
+                      const svgEl = chartBox.querySelector('svg');
+                      if (svgEl) {
+                        svgEl.removeAttribute('width');
+                        svgEl.removeAttribute('height');
+                        svgEl.style.width = '100%';
+                        svgEl.style.height = '100%';
+                        svgEl.style.display = 'block';
+                        svgEl.setAttribute('preserveAspectRatio', 'none');
+                      }
+                    } else {
+                      chartBox.innerHTML = `<img src="${capturedImg}" style="width:100%; height:100%; display:block; object-fit:contain;" />`;
+                    }
                   } else {
-                    renderEchart(chartId, device[baseType], device[compType]);
+                    // Fallback to local rendering
+                    try {
+                      if (type.includes('spectrum')) {
+                        renderHighchart(chartId, device[type], null); // No internal comparison here as we render side-by-side
+                      } else {
+                        renderEchart(chartId, device[type], null);
+                      }
+                    } catch (err) {
+                      console.error('Error rendering chart', chartId, err);
+                      chartBox.innerHTML = '<div class="no-data-msg">Error rendering this chart.</div>';
+                    }
                   }
-                } catch (err) {
-                  console.error('Error rendering chart', chartId, err);
-                  chartBox.innerHTML = '<div class="no-data-msg">Error rendering this chart.</div>';
                 }
-              }
+              });
             }
           });
         });
@@ -479,17 +501,30 @@
       }
       const series = [];
       if (data && data.yData) {
-        data.yData.forEach(s => series.push({ name: s.name, data: s.data, color: s.lineStyle?.color || '#000069' }));
+        data.yData.forEach(s => series.push({ 
+          name: s.name, 
+          data: s.data, 
+          color: s.lineStyle?.color || s.color || '#000069' 
+        }));
       }
       if (compData && compData.yData) {
-        compData.yData.forEach(s => series.push({ name: 'Compare ' + s.name, data: s.data, dashStyle: 'dash', color: '#ff0000' }));
+        compData.yData.forEach(s => series.push({ 
+          name: 'Compare ' + s.name, 
+          data: s.data, 
+          dashStyle: 'dash', 
+          color: '#ff0000' 
+        }));
       }
 
       Highcharts.chart(id, {
-        chart: { type: 'line', height: 300, animation: false },
+        chart: { type: 'line', height: 350, animation: false },
         title: { text: null },
         xAxis: { categories: data?.xData || compData?.xData || [] },
-        yAxis: { title: { text: data?.yLabel || compData?.yLabel || '' } },
+        yAxis: { 
+          title: { text: data?.yLabel || compData?.yLabel || '' },
+          min: data?.min ? Number(data.min) : null,
+          max: data?.max ? Number(data.max) : null
+        },
         series: series,
         credits: { enabled: false },
         plotOptions: { line: { marker: { enabled: false } } }
@@ -504,29 +539,40 @@
       const chart = echarts.init(document.getElementById(id));
       const series = [];
       if (data && data.yData) {
-        data.yData.forEach(s => series.push({
-          name: s.name,
-          data: s.data,
-          type: 'line',
-          showSymbol: false,
-          lineStyle: { color: s.itemStyle?.color || '#000069' }
-        }));
+        data.yData.forEach(s => {
+          const sData = Array.isArray(s.data) ? s.data : [];
+          series.push({
+            name: s.name,
+            data: sData,
+            type: 'line',
+            showSymbol: false,
+            lineStyle: { color: s.itemStyle?.color || s.color || '#000069' }
+          });
+        });
       }
       if (compData && compData.yData) {
-        compData.yData.forEach(s => series.push({
-          name: 'Compare ' + s.name,
-          data: s.data,
-          type: 'line',
-          showSymbol: false,
-          lineStyle: { type: 'dashed', color: '#ff0000' }
-        }));
+        compData.yData.forEach(s => {
+          const sData = Array.isArray(s.data) ? s.data : [];
+          series.push({
+            name: 'Compare ' + s.name,
+            data: sData,
+            type: 'line',
+            showSymbol: false,
+            lineStyle: { type: 'dashed', color: '#ff0000' }
+          });
+        });
       }
 
       chart.setOption({
         animation: false,
-        grid: { top: 30, bottom: 40, left: 50, right: 20 },
+        grid: { top: 30, bottom: 40, left: 60, right: 20 },
         xAxis: { type: 'category', data: data?.xData || compData?.xData || [] },
-        yAxis: { type: 'value', name: data?.yLabel || compData?.yLabel || '' },
+        yAxis: { 
+          type: 'value', 
+          name: data?.yLabel || compData?.yLabel || '',
+          min: data?.min ? Number(data.min) : null,
+          max: data?.max ? Number(data.max) : null
+        },
         series: series
       });
     }

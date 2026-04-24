@@ -185,11 +185,14 @@ export class PdfService {
       <div class="section-title">Evaluation zone as per ISO 10816</div>
       <div class="iso-container">
         <div class="iso-chart">
-            <img src="https://new.presageinsights.ai/cmms_express/ISO_chart.png" alt="ISO Chart" />
+            <img src="${process.env.STORAGE_BASE_URL}/Icon/ISO_chart.png" alt="ISO Chart" />
         </div>
         <div class="iso-table">
             <table class="inspection-table">
-                <tr><th style="width:25%">Class</th><th>Description</th></tr>
+                <tr style="background: #000069 !important; color: white !important;">
+                  <th style="width:25%; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Class</th>
+                  <th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Description</th>
+                </tr>
                 <tr><td class="font-semibold">Class 1</td><td>Machines having separated driver and driven, or coupled units comprising machinery up to approx 15kw</td></tr>
                 <tr><td class="font-semibold">Class 2</td><td>Machinery (15kw to 75kw) without special foundations or rigidly mounted machines up to 300kW mounted on special foundations</td></tr>
                 <tr><td class="font-semibold">Class 3</td><td>Machines having large prime movers with rotating assemblies mounted on rigid and heavy foundations</td></tr>
@@ -204,7 +207,7 @@ export class PdfService {
     if (!data.healthHistory || data.healthHistory.length === 0) return '';
     
     const slice = data.healthHistory.slice(-12);
-    const headers = slice.map((h: any) => `<th>${h.date}</th>`).join('');
+    const headers = slice.map((h: any) => `<th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">${h.date}</th>`).join('');
     const cells = slice.map((h: any) => {
         const cls = this.getConditionClass(h.status);
         return `<td><div class="health-status-dot ${cls}"></div></td>`;
@@ -221,7 +224,10 @@ export class PdfService {
       <div class="health-history-container">
           <table class="health-history-table">
             <thead>
-                <tr><th style="text-align:left; padding-left:10px; width:60px;">Date</th>${headers}</tr>
+                <tr style="background: #000069 !important; color: white !important;">
+                  <th style="text-align:left; padding-left:10px; width:60px; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Date</th>
+                  ${headers}
+                </tr>
             </thead>
             <tbody>
                 <tr><td class="font-semibold" style="text-align:left; padding-left:10px;">Status</td>${cells}</tr>
@@ -236,21 +242,32 @@ export class PdfService {
 
     let rows = '';
     readings.forEach(point => {
-      const dateStr = point.timestamp ? (typeof point.timestamp === 'number' ? new Date(point.timestamp * 1000).toLocaleString() : point.timestamp) : '-';
+      const timestamp = point.timestamp;
+      let dateStr = '-';
+      if (timestamp) {
+        try {
+          // Handle both seconds and milliseconds
+          const date = new Date(timestamp > 10000000000 ? timestamp : timestamp * 1000);
+          dateStr = date.toLocaleString();
+        } catch (e) {
+          dateStr = String(timestamp);
+        }
+      }
+
       rows += `
         <tr>
-          <td rowspan="2" class="font-semibold">${point.point}</td>
-          <td rowspan="2" style="text-align:center;">${dateStr}</td>
-          <td style="text-align:center;">Acceleration</td>
-          <td style="text-align:center;">${point.acceleration?.h || '-'}</td>
-          <td style="text-align:center;">${point.acceleration?.v || '-'}</td>
-          <td style="text-align:center;">${point.acceleration?.a || '-'}</td>
+          <td rowspan="2" class="font-semibold" style="background: #fdfdfd;">${point.point}</td>
+          <td rowspan="2" style="text-align:center; background: #fdfdfd;">${dateStr}</td>
+          <td style="text-align:center; color: #555;">Acceleration (g)</td>
+          <td style="text-align:center; font-weight: bold;">${point.acceleration?.h ?? '-'}</td>
+          <td style="text-align:center; font-weight: bold;">${point.acceleration?.v ?? '-'}</td>
+          <td style="text-align:center; font-weight: bold;">${point.acceleration?.a ?? '-'}</td>
         </tr>
         <tr>
-          <td style="text-align:center;">Velocity</td>
-          <td style="text-align:center;">${point.velocity?.h || '-'}</td>
-          <td style="text-align:center;">${point.velocity?.v || '-'}</td>
-          <td style="text-align:center;">${point.velocity?.a || '-'}</td>
+          <td style="text-align:center; color: #555;">Velocity (mm/s)</td>
+          <td style="text-align:center; font-weight: bold;">${point.velocity?.h ?? '-'}</td>
+          <td style="text-align:center; font-weight: bold;">${point.velocity?.v ?? '-'}</td>
+          <td style="text-align:center; font-weight: bold;">${point.velocity?.a ?? '-'}</td>
         </tr>
       `;
     });
@@ -258,16 +275,16 @@ export class PdfService {
     return `
       <table class="inspection-table readings-table">
         <thead>
-          <tr>
-            <th rowspan="2">Measuring Point</th>
-            <th rowspan="2">Date</th>
-            <th rowspan="2">Field</th>
-            <th colspan="3">RMS</th>
+          <tr style="background: #000069 !important; color: white !important;">
+            <th rowspan="2" style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Measuring Point</th>
+            <th rowspan="2" style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Timestamp</th>
+            <th rowspan="2" style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Field</th>
+            <th colspan="3" style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">RMS Values</th>
           </tr>
-          <tr>
-            <th>Horizontal</th>
-            <th>Vertical</th>
-            <th>Axial</th>
+          <tr style="background: #000069 !important; color: white !important;">
+            <th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Horizontal</th>
+            <th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Vertical</th>
+            <th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Axial</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -279,13 +296,25 @@ export class PdfService {
     if (!faultData || faultData.length === 0) return '<div class="no-data-msg">No Faults Detected.</div>';
 
     const rows = faultData.map(row => {
+      const getDot = (val: number, target: number, color: string) => {
+        return val == target ? `<div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${color}; margin: 0 auto; box-shadow: 0 0 4px ${color};"></div>` : '';
+      };
+
+      const iconUrl = `${process.env.STORAGE_BASE_URL}/Icon/report/${row.name}.png`;
+      const fallbackUrl = `${process.env.STORAGE_BASE_URL}/Icon/report/Other.png`;
+
       return `
         <tr>
-          <td class="font-semibold">${row.translatedName || row.name}</td>
-          <td><div class="fault-bar-container"><div class="fault-bar" style="background-color: ${row.value == 1 ? '#03b03e' : 'transparent'}"></div></div></td>
-          <td><div class="fault-bar-container"><div class="fault-bar" style="background-color: ${row.value == 2 ? '#f9f500' : 'transparent'}"></div></div></td>
-          <td><div class="fault-bar-container"><div class="fault-bar" style="background-color: ${row.value == 3 ? '#f3b900' : 'transparent'}"></div></div></td>
-          <td><div class="fault-bar-container"><div class="fault-bar" style="background-color: ${row.value == 4 ? '#df0028' : 'transparent'}"></div></div></td>
+          <td class="font-semibold" style="padding-left: 15px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <img src="${iconUrl}" onerror="this.src='${fallbackUrl}'" style="height: 25px; width: 25px; object-fit: contain; vertical-align: middle;" />
+              <span style="margin-left: 8px;">${row.translatedName || row.name}</span>
+            </div>
+          </td>
+          <td>${getDot(row.value, 1, '#03b03e')}</td>
+          <td>${getDot(row.value, 2, '#f9f500')}</td>
+          <td>${getDot(row.value, 3, '#f3b900')}</td>
+          <td>${getDot(row.value, 4, '#df0028')}</td>
         </tr>
       `;
     }).join('');
@@ -293,12 +322,12 @@ export class PdfService {
     return `
       <table class="inspection-table">
         <thead>
-          <tr>
-            <th style="width:30%">Fault</th>
-            <th>Good</th>
-            <th>Satisfactory</th>
-            <th>Unsatisfactory</th>
-            <th>Unacceptable</th>
+          <tr style="background: #000069 !important; color: white !important;">
+            <th style="width:40%; text-align: left; padding-left: 15px; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Fault Condition</th>
+            <th style="text-align: center; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Good</th>
+            <th style="text-align: center; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Satisfactory</th>
+            <th style="text-align: center; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Unsatisfactory</th>
+            <th style="text-align: center; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">Unacceptable</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -309,10 +338,14 @@ export class PdfService {
   private buildAttachments(attachments: string[]): string {
     if (!attachments || attachments.length === 0) return '<div class="no-data-msg">No files attached to this report.</div>';
 
-    return attachments.map(img => `
-      <div class="attachment-card">
-        <img src="${img}" />
+    return `
+      <div class="attachments-grid">
+        ${attachments.map(img => `
+          <div class="attachment-card">
+            <img src="${img}" style="border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" />
+          </div>
+        `).join('')}
       </div>
-    `).join('');
+    `;
   }
 }
