@@ -21,7 +21,7 @@ export default (router: express.Router) => {
     orderRouter.put('/:id', validateParamId, orderController.updateOrder);
     orderRouter.patch('/:id', validateParamId, orderController.updateOrderSubmitData);
     orderRouter.delete('/:id', validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
-    orderRouter.post('/:id/attachments', validateParamId, upload.array('files', 12), orderController.uploadAttachments);
+    orderRouter.post('/:id/attachments', validateParamId, (req, res, next) => { req.params.folderName = 'work_order'; next(); }, upload.array('files', 12), orderController.uploadAttachments);
     orderRouter.get('/history/:id', validateParamId, orderController.getHistory);
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));

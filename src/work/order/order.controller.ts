@@ -151,6 +151,7 @@ class OrderController {
         type: file.mimetype,
         destination: file.destination,
         fileName: file.filename,
+        folderName: req.params.folderName,
         fileUrl: `${req.protocol}://${req.get('host')}/${file.filename}`,
         filePath: file.path,
         size: file.size

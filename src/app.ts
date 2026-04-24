@@ -42,6 +42,7 @@ app.use('/', express.static(path.join(__dirname, '../uploadFiles/posts')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/user_profile_img')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/WO_docs')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_request')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_order')));
 
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });
