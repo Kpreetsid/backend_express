@@ -47,6 +47,37 @@ class OrderService {
     this.mailerService = new MailerService();
   }
 
+  private sanitizeWorkOrder(data: any): any {
+    if (data.tasks && Array.isArray(data.tasks)) {
+      data.tasks = data.tasks.map((task: any) => {
+        const sanitizedTask = { ...task };
+        if (sanitizedTask.assigned_user_id === '') {
+          sanitizedTask.assigned_user_id = null;
+        }
+        return sanitizedTask;
+      });
+    }
+    
+    const objectIdFields = [
+      'wo_asset_id', 
+      'wo_location_id', 
+      'sop_form_id', 
+      'work_request_id', 
+      'asset_report_id', 
+      'parentId',
+      'updatedBy',
+      'createdBy'
+    ];
+
+    objectIdFields.forEach(field => {
+      if (data[field] === '') {
+        data[field] = null;
+      }
+    });
+
+    return data;
+  }
+
   private getWorkOrderPipeline(match: any): any[] {
     return [
       { $match: match },
@@ -544,6 +575,10 @@ class OrderService {
       status_details: [{ status: body.status, createdBy: user._id }],
       createdBy: user._id
     });
+
+    const sanitizedData = this.sanitizeWorkOrder(newAsset.toObject());
+    Object.assign(newAsset, sanitizedData);
+
     const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
     const userDetails = await UserModel.find({ _id: { $in: helperService.validateObjectIds(body.userIdList.join(',')) } });
     if (!userDetails || userDetails.length === 0) {
@@ -583,7 +618,9 @@ class OrderService {
     if (body.hasOwnProperty('userIdList')) {
       await userWorkOrderService.updateMappedUsers(id, body.userIdList);
     }
-    const data = await WorkOrderModel.findByIdAndUpdate(id, existingOrder, { new: true });
+    
+    existingOrder = this.sanitizeWorkOrder(existingOrder);
+    const data = await WorkOrderModel.findByIdAndUpdate(id, existingOrder, { returnDocument: 'after' });
     if (!data) {
       throw Object.assign(new Error('Failed to update work order'), { status: 400 });
     }
@@ -591,7 +628,8 @@ class OrderService {
   };
 
   async updateDataById(id: string, body: any, user: IUser): Promise<any> {
-    return await WorkOrderModel.findByIdAndUpdate(id, { ...body, updatedBy: user._id }, { new: true });
+    const sanitizedBody = this.sanitizeWorkOrder({ ...body, updatedBy: user._id });
+    return await WorkOrderModel.findByIdAndUpdate(id, sanitizedBody, { returnDocument: 'after' });
   };
 
   async orderStatusChange(id: string, status: string, user: IUser): Promise<any> {
@@ -623,7 +661,7 @@ class OrderService {
     return await WorkOrderModel.findByIdAndUpdate(
       id,
       { status, updatedBy: user._id, status_details: statusDetails, parts: existingOrder.parts, task_submitted: existingOrder.task_submitted, sop_form_submitted: existingOrder.sop_form_submitted },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 
@@ -633,7 +671,7 @@ class OrderService {
     if (order?.parts?.length > 0) {
       await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id });
     }
-    return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
+    return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
   async deleteWorkOrderById(id: any, user_id: any): Promise<any> {
