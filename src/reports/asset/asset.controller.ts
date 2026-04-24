@@ -7,6 +7,7 @@ import { processorAPIService } from '../../api-processor';
 import { ASSET_REPORT_STATUS } from '../../models/assetReport.model';
 import { observationService } from '../../masters/observation/observation.service';
 import { PdfService } from './asset-pdf.service';
+import { storageConfig } from '../../configDB';
 
 class AssetReportController {
   private pdfService = new PdfService();
@@ -184,9 +185,65 @@ class AssetReportController {
 
   generateAssetReportPdf = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const payload = req.body;
+      const { params: { id }, body } = req;
+      const reportId = helperService.validateObjectId(String(id));
+      const reports: any[] = await assetReportService.getAllAssetReports({ _id: reportId, visible: true });
+
+      if (!reports || reports.length === 0) {
+        throw Object.assign(new Error('Asset report not found'), { status: 404 });
+      }
+
+      const report = reports[0];
+
+      // Reconstruct the full payload by merging DB data with frontend labels/images
+      const payload: any = {
+        ...body, // Includes labels, chartImages, chartData, etc.
+        assetName: report.assetId?.asset_name || report.assetName || 'NA',
+        analysisDate: report.createdOn,
+        location: report.locationId?.location_name || report.locationName || 'NA',
+        sensorsMapped: report.endpointRMSData?.length || 0,
+        conditionClass: report.EquipmentHealth,
+        observations: report.Observations || 'NA',
+        recommendations: report.Recommendations || 'NA',
+        iso: report.ISO,
+        healthHistory: report.asset_health_history || [],
+        createdFrom: report.createdFrom || 'Asset Report',
+
+        // Construct readings from endpointRMSData
+        readings: (report.endpointRMSData || []).map((point: any) => ({
+          point: `${point.asset_name} > ${point.point_name}-${point.mount_location}`,
+          timestamp: point?.acceleration?.Axial?.timestamp || point?.velocity?.Axial?.timestamp,
+          acceleration: {
+            h: point?.acceleration?.Horizontal?.rms ?? '-',
+            v: point?.acceleration?.Vertical?.rms ?? '-',
+            a: point?.acceleration?.Axial?.rms ?? '-'
+          },
+          velocity: {
+            h: point?.velocity?.Horizontal?.rms ?? '-',
+            v: point?.velocity?.Vertical?.rms ?? '-',
+            a: point?.velocity?.Axial?.rms ?? '-'
+          }
+        })),
+
+        // Map attachments (files)
+        attachments: (report.files || []).map((img: any) =>
+          img.folderName ? `${storageConfig.baseUrl}/${img.folderName}/${img.fileName}` : `${storageConfig.baseUrl}/${img.fileName}`
+        )
+      };
+
+      // Handle assetImage if not in body
+      if (!payload.assetImage && report.assetImage) {
+        payload.assetImage = `${storageConfig.baseUrl}/${report.assetImage}`;
+      } else if (!payload.assetImage && report.assetId?.image_path) {
+        payload.assetImage = `${storageConfig.baseUrl}/${report.assetId.image_path}`;
+      }
+
+      // Fallback for asset initials if image is missing
+      if (!payload.assetImage && !payload.assetInitials) {
+        payload.assetInitials = (report.assetId?.asset_name || report.assetName || 'A').charAt(0).toUpperCase();
+      }
+
       const pdfBuffer = await this.pdfService.generateAssetReportPdf(payload);
-      
       const assetName = payload.assetName || 'Asset';
       const cleanName = assetName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       const dateStr = new Date().toISOString().split('T')[0];
