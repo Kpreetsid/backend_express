@@ -221,6 +221,7 @@ export class PdfService {
         <div style="display:flex; align-items:center; gap:5px;"><div style="width:10px; height:10px; border-radius:50%; background:#fa8349;"></div><span style="font-size:10px;">Danger</span></div>
         <div style="display:flex; align-items:center; gap:5px;"><div style="width:10px; height:10px; border-radius:50%; background:#f7fa4b;"></div><span style="font-size:10px;">Alert</span></div>
         <div style="display:flex; align-items:center; gap:5px;"><div style="width:10px; height:10px; border-radius:50%; background:#51fc4c;"></div><span style="font-size:10px;">Healthy</span></div>
+        <div style="display:flex; align-items:center; gap:5px;"><div style="width:10px; height:10px; border-radius:50%; background:#d8dae2;"></div><span style="font-size:10px;">Not Available</span></div>
       </div>
       <div class="health-history-container">
           <table class="health-history-table">
