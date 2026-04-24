@@ -1,8 +1,52 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+import { historyPlugin } from './plugins/history.plugin';
+import { HistoryWorkOrderModel } from './history-work-order.model';
 
 export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
 export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High', "Urgent"];
+export const TASK_STATUSES = ['Open', 'In-Progress', 'On-Hold', 'Completed'];
+
+export interface ITask {
+  title: string;
+  priority: string;
+  assigned_user_id?: ObjectId;
+  status: string;
+  completed: boolean;
+  completedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  completedAt?: Date;
+  updatedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  updatedAt?: Date;
+  assignedUser?: any;
+}
+
+const TaskSchema = new Schema<ITask>({
+  title: { type: String, required: true },
+  priority: { type: String, enum: WORK_ORDER_PRIORITIES, default: 'Medium' },
+  assigned_user_id: { type: Schema.Types.ObjectId, ref: 'Schema_User' },
+  status: { type: String, enum: TASK_STATUSES, default: 'Open' },
+  completed: { type: Boolean, default: false },
+  completedBy: {
+    id: { type: String },
+    firstName: { type: String },
+    lastName: { type: String }
+  },
+  completedAt: { type: Date },
+  updatedBy: {
+    id: { type: String },
+    firstName: { type: String },
+    lastName: { type: String }
+  },
+  updatedAt: { type: Date }
+}, { _id: false, versionKey: false });
 
 export interface IParts {
   part_id: ObjectId;
@@ -30,7 +74,7 @@ interface IStatusDetails {
 
 const StatusDetailsSchema = new Schema<IStatusDetails>({
   status: { type: String, required: true },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true },
   createdAt: { type: Date, required: true, default: Date.now }
 }, { _id: false, versionKey: false });
 
@@ -56,7 +100,7 @@ export interface IWorkOrder extends Document {
   sop_form_data: object;
   asset_report_id: ObjectId;
   cron_id: ObjectId;
-  tasks: object[];
+  tasks: ITask[];
   task_submitted: boolean;
   parts: IParts[];
   work_request_id: ObjectId;
@@ -87,14 +131,14 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   sop_form_submitted: { type: Boolean, default: false },
   sop_form_data: { type: Schema.Types.Mixed },
   parts: { type: [PartsSchema] },
-  tasks: { type: [Object] },
+  tasks: { type: [TaskSchema], default: [] },
   task_submitted: { type: Boolean, default: false },
   asset_report_id: { type: Schema.Types.ObjectId, ref: 'AssetReportModel' },
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   files: { type: [Object] },
   visible: { type: Boolean, default: true },
-  createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
-  updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
+  createdBy: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true },
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'Schema_User' }
 }, {
   collection: 'work_orders',
   timestamps: true,
@@ -109,5 +153,9 @@ WorkOrderSchema.index({ wo_location_id: 1, visible: 1 });
 WorkOrderSchema.index({ parentId: 1 });
 WorkOrderSchema.index({ order_no: 1 });
 WorkOrderSchema.index({ createdBy: 1 });
+
+WorkOrderSchema.plugin(historyPlugin, {
+  historyModel: HistoryWorkOrderModel
+});
 
 export const WorkOrderModel = mongoose.model<IWorkOrder>('Schema_WorkOrder', WorkOrderSchema);

@@ -261,6 +261,16 @@ class OrderController {
       next(error);
     }
   }
+
+  async getHistory(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const orderId = String(req.params.id);
+      const data = await orderService.getHistory(orderId);
+      res.status(200).json({ status: true, message: "Work order history fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const orderController = new OrderController();

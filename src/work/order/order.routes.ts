@@ -22,6 +22,7 @@ export default (router: express.Router) => {
     orderRouter.patch('/:id', validateParamId, orderController.updateOrderSubmitData);
     orderRouter.delete('/:id', validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
     orderRouter.post('/:id/attachments', validateParamId, upload.array('files', 12), orderController.uploadAttachments);
+    orderRouter.get('/history/:id', validateParamId, orderController.getHistory);
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));
     router.use('/orders', orderRouter);

@@ -145,8 +145,86 @@ class OrderService {
         }
       },
       {
+        $lookup: {
+          from: "users",
+          let: { userIds: "$tasks.assigned_user_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: [
+                    { $toString: "$_id" },
+                    {
+                      $map: {
+                        input: { $ifNull: ["$$userIds", []] },
+                        as: "id",
+                        in: { $toString: { $ifNull: ["$$id", ""] } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "taskUsers"
+        }
+      },
+      {
         $addFields: {
           id: "$_id",
+          tasks: {
+            $map: {
+              input: { $ifNull: ["$tasks", []] },
+              as: "task",
+              in: {
+                $mergeObjects: [
+                  "$$task",
+                  {
+                    assignedUser: {
+                      $let: {
+                        vars: {
+                          matchedUser: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: "$taskUsers",
+                                  as: "u",
+                                  cond: {
+                                    $eq: [
+                                      { $toString: "$$u._id" },
+                                      { $toString: { $ifNull: ["$$task.assigned_user_id", ""] } }
+                                    ]
+                                  }
+                                }
+                              },
+                              0
+                            ]
+                          }
+                        },
+                        in: {
+                          $cond: [
+                            { $gt: ["$$matchedUser", null] },
+                            {
+                              _id: "$$matchedUser._id",
+                              id: "$$matchedUser._id",
+                              firstName: "$$matchedUser.firstName",
+                              lastName: "$$matchedUser.lastName",
+                              email: "$$matchedUser.email",
+                              username: "$$matchedUser.username",
+                              user_profile_img: "$$matchedUser.user_profile_img",
+                              user_role: "$$matchedUser.user_role",
+                              user_status: "$$matchedUser.user_status"
+                            },
+                            null
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
           status_details: {
             $map: {
               input: "$status_details",
@@ -171,7 +249,7 @@ class OrderService {
           }
         }
       },
-      { $project: { statusUsers: 0 } }
+      { $project: { statusUsers: 0, taskUsers: 0 } }
     ];
   }
 
@@ -565,6 +643,18 @@ class OrderService {
       await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id });
     }
     return await WorkOrderModel.findByIdAndDelete(id);
+  }
+
+  async getHistory(id: string): Promise<any> {
+    const objectId = helperService.validateObjectId(id);
+    const HistoryModel = (WorkOrderModel as any).getHistoryModel();
+    const pipeline = this.getWorkOrderPipeline({ original_id: objectId });
+    pipeline.push({ $sort: { history_created_at: -1 } });
+    const history = await HistoryModel.aggregate(pipeline);
+    if (!history || history.length === 0) {
+      throw Object.assign(new Error('No history found for this work order'), { status: 404 });
+    }
+    return history;
   }
 }
 
