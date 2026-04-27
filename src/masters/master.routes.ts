@@ -13,6 +13,7 @@ import scheduleRoutes from './schedule/schedule.routes';
 import sopsRoutes from './sops/sops.routes';
 import floorMapRoutes from './floorMap/floorMap.routes';
 import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.routes';
+import partsTypeRoutes from './part-type/parts-type.routes';
 
 export default (): express.Router => {
     usersRouter(router);
@@ -20,6 +21,7 @@ export default (): express.Router => {
     assetsRouter(router);
     equipmentRoutes(router);
     partsRoutes(router);
+    partsTypeRoutes(router);
     postsRoutes(router);
     scheduleRoutes(router);
     sopsRoutes(router);
