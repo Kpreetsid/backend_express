@@ -34,6 +34,10 @@ class ProcessorAPIService {
     assetHealthFreezeStatus = async (body: any, user_id: any, token: any) => {
         return await getExternalData(`/asset_health_freeze_status/`, 'POST', body, token, user_id);
     }
+
+    getAccVelData = async (payload: any, token: string, user_id: any) => {
+        return await getExternalData(`/get_acc_vel_data/`, 'POST', payload, token, user_id);
+    }
 }
 
 export const processorAPIService = new ProcessorAPIService();

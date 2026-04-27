@@ -197,33 +197,41 @@ class AssetReportController {
 
       // Reconstruct the full payload by merging DB data with frontend labels/images
       const payload: any = {
-        ...body, // Includes labels, chartImages, chartData, etc.
+        ...body, // Includes labels, timezone, chartModifications, etc.
         assetName: report.assetId?.asset_name || report.assetName || 'NA',
+        assetImage: report.assetId?.image_path || report.assetImage || null,
         analysisDate: report.createdOn,
         location: report.locationId?.location_name || report.locationName || 'NA',
         sensorsMapped: report.endpointRMSData?.length || 0,
         conditionClass: report.EquipmentHealth,
-        observations: report.Observations || 'NA',
-        recommendations: report.Recommendations || 'NA',
+        observations: report.Observations && report.Observations.trim() ? report.Observations : null,
+        recommendations: report.Recommendations && report.Recommendations.trim() ? report.Recommendations : null,
         iso: report.ISO,
         healthHistory: report.asset_health_history || [],
         createdFrom: report.createdFrom || 'Asset Report',
+        // Pass chartDetail for backend chart fetching
+        chartDetail: report.chartDetail || [],
 
-        // Construct readings from endpointRMSData
-        readings: (report.endpointRMSData || []).map((point: any) => ({
-          point: `${point.asset_name} > ${point.point_name}-${point.mount_location}`,
-          timestamp: point?.acceleration?.Axial?.timestamp || point?.velocity?.Axial?.timestamp,
-          acceleration: {
-            h: point?.acceleration?.Horizontal?.rms ?? '-',
-            v: point?.acceleration?.Vertical?.rms ?? '-',
-            a: point?.acceleration?.Axial?.rms ?? '-'
-          },
-          velocity: {
-            h: point?.velocity?.Horizontal?.rms ?? '-',
-            v: point?.velocity?.Vertical?.rms ?? '-',
-            a: point?.velocity?.Axial?.rms ?? '-'
-          }
-        })),
+        // Construct readings from endpointRMSData — try all axes for timestamp
+        readings: (report.endpointRMSData || []).map((point: any) => {
+          const getTimestamp = (src: any) =>
+            src?.Axial?.timestamp || src?.Horizontal?.timestamp || src?.Vertical?.timestamp;
+          return {
+            point: `${point.asset_name} > ${point.point_name}-${point.mount_location}`,
+            compositeId: point.composite_id || '',
+            timestamp: getTimestamp(point?.acceleration) || getTimestamp(point?.velocity) || null,
+            acceleration: {
+              h: point?.acceleration?.Horizontal?.rms ?? '-',
+              v: point?.acceleration?.Vertical?.rms ?? '-',
+              a: point?.acceleration?.Axial?.rms ?? '-'
+            },
+            velocity: {
+              h: point?.velocity?.Horizontal?.rms ?? '-',
+              v: point?.velocity?.Vertical?.rms ?? '-',
+              a: point?.velocity?.Axial?.rms ?? '-'
+            }
+          };
+        }),
 
         // Map attachments (files)
         attachments: (report.files || []).map((img: any) =>
@@ -232,18 +240,13 @@ class AssetReportController {
       };
 
       // Handle assetImage if not in body
-      if (!payload.assetImage && report.assetImage) {
-        payload.assetImage = `${storageConfig.baseUrl}/${report.assetImage}`;
-      } else if (!payload.assetImage && report.assetId?.image_path) {
+      if (!payload.assetImage && report.assetId?.image_path) {
         payload.assetImage = `${storageConfig.baseUrl}/${report.assetId.image_path}`;
       }
 
-      // Fallback for asset initials if image is missing
-      if (!payload.assetImage && !payload.assetInitials) {
-        payload.assetInitials = (report.assetId?.asset_name || report.assetName || 'A').charAt(0).toUpperCase();
-      }
-
-      const pdfBuffer = await this.pdfService.generateAssetReportPdf(payload);
+      const user = get(req, "user", {}) as IUser;
+      const userToken = get(req, "userToken", "") as string;
+      const pdfBuffer = await this.pdfService.generateAssetReportPdf(payload, userToken, String(user._id));
       const assetName = payload.assetName || 'Asset';
       const cleanName = assetName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
       const dateStr = new Date().toISOString().split('T')[0];

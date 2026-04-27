@@ -127,7 +127,6 @@
       border: 1px solid #dadada;
       padding: 8px 12px;
       background: white;
-      font-weight: bold;
     }
 
     .font-semibold {
@@ -143,7 +142,7 @@
       display: inline-block;
       font-size: 11px;
       text-transform: uppercase;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .critical {
@@ -230,41 +229,74 @@
 
     .readings-table td {
       font-size: 12px;
-      font-weight: bold;
     }
 
-    .fault-bar-container {
-      width: 100%;
-      height: 20px;
-      background: transparent;
-    }
-
-    .fault-bar {
-      height: 100%;
-      width: 100%;
-    }
-
+    /* Chart layout */
     .chart-container {
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       border: 1px solid #000069;
       padding: 10px;
       background: white;
       border-radius: 8px;
       page-break-inside: avoid;
+      break-inside: avoid;
     }
 
-    .chart-title {
+    .chart-title-wrapper {
+      border-bottom: 2px solid #000069;
+      padding-bottom: 8px;
+      margin-bottom: 12px;
+    }
+
+    .chart-title-sub {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 3px;
+    }
+
+    .chart-title-main {
       font-size: 14px;
       color: #000069;
       font-weight: bold;
-      border-bottom: 1px solid #dadada;
-      padding-bottom: 5px;
-      margin-bottom: 10px;
+    }
+
+    /* Comparison stacked layout */
+    .chart-compare-label {
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 6px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    .chart-compare-label.before {
+      color: #000069;
+      background: #e8eaf6;
+    }
+
+    .chart-compare-label.after {
+      color: #03b03e;
+      background: #e8f5e9;
+    }
+
+    .chart-compare-block {
+      margin-bottom: 18px;
+    }
+
+    .chart-compare-block:last-child {
+      margin-bottom: 0;
     }
 
     .chart-box {
       width: 100%;
-      height: 350px;
+      height: 250px;
+      overflow: hidden;
+    }
+
+    .chart-box-single {
+      width: 100%;
+      height: 250px;
       overflow: hidden;
     }
 
@@ -289,10 +321,11 @@
       background-color: #f7f8f9;
       padding: 16px;
       border-radius: 10px;
-      min-height: 80px;
+      min-height: 60px;
       color: #000069;
       margin: 15px 0;
-      font-size: 14px;
+      font-size: 13px;
+      line-height: 1.6;
     }
 
     .page-break {
@@ -303,8 +336,8 @@
       text-align: center;
       padding: 30px;
       font-weight: bold;
-      color: #000069;
-      font-size: 14px;
+      color: #888;
+      font-size: 13px;
     }
   </style>
 </head>
@@ -321,7 +354,7 @@
       <div class="info-table-wrapper">
         <table class="summary-table">
           <tr>
-            <td class="font-semibold">{{assetNameLabel}}</td>
+            <td class="font-semibold" style="width:40%">{{assetNameLabel}}</td>
             <td>{{assetName}}</td>
           </tr>
           <tr>
@@ -365,219 +398,380 @@
     <div id="charts-root"></div>
 
     <div class="section-title">{{attachmentsLabel}}</div>
-    <div class="attachments-grid">
-      {{attachmentsHtml}}
-    </div>
+    {{attachmentsHtml}}
 
     <div class="section-title">{{observationsLabel}}</div>
-    <div class="content-area">
-      {{observations}}
-    </div>
+    <div class="content-area">{{observations}}</div>
 
     <div class="section-title">{{recommendationsLabel}}</div>
-    <div class="content-area">
-      {{recommendations}}
-    </div>
+    <div class="content-area">{{recommendations}}</div>
   </div>
 
   <script id="chart-data" type="application/json">{{chartDataJson}}</script>
-  <script id="chart-images" type="application/json">{{chartImagesJson}}</script>
   <script id="readings-data" type="application/json">{{readingsJson}}</script>
+  <script id="labels-data" type="application/json">{{labelsJson}}</script>
 
   <script>
     window.PDF_READY = false;
 
+    // ── Locale-aware date formatter ────────────────────────────────────────────
+    function formatJsDate(timestamp, timezone, locale) {
+      if (!timestamp) return '-';
+      let date;
+      if (typeof timestamp === 'string') {
+        date = new Date(timestamp);
+      } else {
+        date = new Date(timestamp > 10000000000 ? timestamp : timestamp * 1000);
+      }
+      if (isNaN(date.getTime())) return '-';
+      const displayLocale = locale === 'ko' ? 'ko-KR' : 'en-GB';
+      try {
+        return new Intl.DateTimeFormat(displayLocale, {
+          timeZone: timezone || 'UTC',
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          hour12: false
+        }).format(date).replace(/,/g, '');
+      } catch (e) {
+        return date.toISOString().replace('T', ' ').substring(0, 19);
+      }
+    }
+
+    // ── Main chart renderer ────────────────────────────────────────────────────
     function renderCharts() {
       console.log('Starting chart rendering...');
       try {
-        const chartData = JSON.parse(document.getElementById('chart-data').textContent);
-        const chartImages = JSON.parse(document.getElementById('chart-images').textContent);
-        const readings = JSON.parse(document.getElementById('readings-data').textContent);
+        const chartData = JSON.parse(document.getElementById('chart-data').textContent || '{}');
+        const readings = JSON.parse(document.getElementById('readings-data').textContent || '[]');
+        const labels = JSON.parse(document.getElementById('labels-data').textContent || '{}');
+        const timezone = labels.timezone || 'UTC';
+        const locale = labels.locale || 'en';
 
         const root = document.getElementById('charts-root');
         if (!chartData || Object.keys(chartData).length === 0) {
-          root.innerHTML = '<div class="no-data-msg">No chart data available for this report.</div>';
+          root.innerHTML = '<div class="no-data-msg">' + (labels.noChartDataLabel || 'No chart data available.') + '</div>';
+          window.PDF_READY = true;
           return;
         }
 
-        Object.entries(chartData).forEach(([key, device], deviceIdx) => {
-          const [endpointId] = key.split('-');
-          const endpoint = readings.find(item => item.point && item.point.includes(endpointId));
-          const endpointName = endpoint ? endpoint.point : endpointId;
+        let chartCount = 0;
 
-          // Define the order and types of charts we want to show
+        Object.entries(chartData).forEach(([key, device], deviceIdx) => {
+          // key = "compositeId-timestamp" — find matching reading by compositeId
+          const keyCompositeId = key.split('-')[0];
+          const matchedReading = readings.find(r => r.compositeId && r.compositeId.includes(keyCompositeId));
+          const endpointName = matchedReading ? matchedReading.point : key;
+
+          const nameParts = endpointName.split(' > ');
+          const assetName = nameParts[0] || '';
+          const pointDetail = nameParts[1] || endpointName;
+
           const chartTypes = ['acceleration-spectrum', 'velocity-spectrum', 'acceleration-twf', 'velocity-twf'];
-          
+
           chartTypes.forEach(baseType => {
             const compType = 'compare-' + baseType;
-            const hasBase = device[baseType] && (Object.keys(device[baseType]).length > 0);
-            const hasComp = device[compType] && (Object.keys(device[compType]).length > 0);
+            const hasBase = device[baseType] && Object.keys(device[baseType]).length > 0;
+            const hasComp = device[compType] && Object.keys(device[compType]).length > 0;
 
-            if (hasBase || hasComp) {
-              const container = document.createElement('div');
-              container.className = 'chart-container';
+            if (!hasBase && !hasComp) return;
 
-              const title = document.createElement('div');
-              title.className = 'chart-title';
-              title.innerText = endpointName + ' - ' + (device[baseType]?.chartName || device[compType]?.chartName || baseType);
-              container.appendChild(title);
+            chartCount++;
+            const container = document.createElement('div');
+            container.className = 'chart-container';
 
-              root.appendChild(container);
+            // Title
+            const titleWrap = document.createElement('div');
+            titleWrap.className = 'chart-title-wrapper';
+            const chartName = (device[baseType]?.chartName || device[compType]?.chartName || baseType);
+            titleWrap.innerHTML = `<div class="chart-title-main">${assetName} &mdash; ${pointDetail} &mdash; ${chartName}</div>`;
+            container.appendChild(titleWrap);
 
-              // Render both base and comparison if they exist
+            if (hasBase && hasComp) {
+              // ── Stacked comparison: Before on top, After below ──────────────
               [baseType, compType].forEach((type, idx) => {
-                if (device[type] && (Object.keys(device[type]).length > 0)) {
-                  const chartBoxWrapper = document.createElement('div');
-                  chartBoxWrapper.style.marginBottom = idx === 0 && hasComp ? '20px' : '0';
-                  
-                  if (hasBase && hasComp) {
-                    const label = document.createElement('div');
-                    label.style.fontSize = '12px';
-                    label.style.fontWeight = 'bold';
-                    label.style.marginBottom = '5px';
-                    label.style.color = idx === 0 ? '#000069' : '#03b03e';
-                    label.innerText = idx === 0 ? 'Before' : 'After';
-                    chartBoxWrapper.appendChild(label);
-                  }
+                const block = document.createElement('div');
+                block.className = 'chart-compare-block';
 
-                  const chartBox = document.createElement('div');
-                  chartBox.className = 'chart-box';
-                  const chartId = 'chart-' + deviceIdx + '-' + type.replace(/-/g, '');
-                  chartBox.id = chartId;
-                  chartBoxWrapper.appendChild(chartBox);
-                  container.appendChild(chartBoxWrapper);
+                const ts = idx === 0 ? device.meta?.timestamp : device.meta?.compare_timestamp;
+                const formattedTs = formatJsDate(ts, timezone, locale);
+                const stateLabel = idx === 0
+                  ? (labels.beforeLabel || 'Before')
+                  : (labels.afterLabel || 'After');
 
-                  // Check for captured image (captures zoom, etc.)
-                  const capturedImg = chartImages[key] ? chartImages[key][type] : null;
+                const lbl = document.createElement('div');
+                lbl.className = 'chart-compare-label ' + (idx === 0 ? 'before' : 'after');
+                lbl.innerText = stateLabel + ' (' + formattedTs + ')';
+                block.appendChild(lbl);
 
-                  if (capturedImg) {
-                    if (capturedImg.includes('<svg')) {
-                      const svgStart = capturedImg.indexOf('<svg');
-                      chartBox.innerHTML = capturedImg.substring(svgStart);
-                      const svgEl = chartBox.querySelector('svg');
-                      if (svgEl) {
-                        svgEl.removeAttribute('width');
-                        svgEl.removeAttribute('height');
-                        svgEl.style.width = '100%';
-                        svgEl.style.height = '100%';
-                        svgEl.style.display = 'block';
-                        svgEl.setAttribute('preserveAspectRatio', 'none');
-                      }
+                const chartBox = document.createElement('div');
+                chartBox.className = 'chart-box';
+                const chartId = 'chart-' + deviceIdx + '-' + idx + '-' + type.replace(/-/g, '');
+                chartBox.id = chartId;
+                block.appendChild(chartBox);
+                container.appendChild(block);
+
+                setTimeout(() => {
+                  try {
+                    if (type.includes('spectrum')) {
+                      renderHighchart(chartId, device[type], null, labels);
                     } else {
-                      chartBox.innerHTML = `<img src="${capturedImg}" style="width:100%; height:100%; display:block; object-fit:contain;" />`;
+                      renderEchart(chartId, device[type], null, labels);
                     }
-                  } else {
-                    // Fallback to local rendering
-                    try {
-                      if (type.includes('spectrum')) {
-                        renderHighchart(chartId, device[type], null); // No internal comparison here as we render side-by-side
-                      } else {
-                        renderEchart(chartId, device[type], null);
-                      }
-                    } catch (err) {
-                      console.error('Error rendering chart', chartId, err);
-                      chartBox.innerHTML = '<div class="no-data-msg">Error rendering this chart.</div>';
-                    }
+                  } catch (e) {
+                    console.error('Chart render error:', chartId, e);
+                    chartBox.innerHTML = '<div class="no-data-msg">' + (labels.errorRenderingChartLabel || 'Error rendering chart.') + '</div>';
                   }
-                }
+                }, 0);
               });
+
+            } else {
+              // ── Single chart ─────────────────────────────────────────────────
+              const activeType = hasBase ? baseType : compType;
+              const chartBox = document.createElement('div');
+              chartBox.className = 'chart-box-single';
+              const chartId = 'chart-' + deviceIdx + '-' + activeType.replace(/-/g, '');
+              chartBox.id = chartId;
+              container.appendChild(chartBox);
+
+              setTimeout(() => {
+                try {
+                  if (activeType.includes('spectrum')) {
+                    renderHighchart(chartId, device[activeType], null, labels);
+                  } else {
+                    renderEchart(chartId, device[activeType], null, labels);
+                  }
+                } catch (e) {
+                  console.error('Chart render error:', chartId, e);
+                  chartBox.innerHTML = '<div class="no-data-msg">' + (labels.errorRenderingChartLabel || 'Error rendering chart.') + '</div>';
+                }
+              }, 0);
             }
+
+            root.appendChild(container);
           });
         });
-      } catch (globalErr) {
-        console.error('Global rendering error:', globalErr);
-      } finally {
+
+        // Scale wait time with number of charts (min 2s, max 15s)
+        const waitMs = Math.min(Math.max(chartCount * 400, 2000), 15000);
+        console.log('Waiting ' + waitMs + 'ms for ' + chartCount + ' charts...');
         setTimeout(() => {
           window.PDF_READY = true;
-          console.log('Charts rendered, PDF_READY set to true');
-        }, 2000);
+          console.log('PDF_READY = true');
+        }, waitMs);
+
+      } catch (globalErr) {
+        console.error('Global rendering error:', globalErr);
+        window.PDF_READY = true;
       }
     }
 
-    function renderHighchart(id, data, compData) {
-      if (typeof Highcharts === 'undefined') {
-        console.error('Highcharts not loaded');
-        return;
-      }
+    // ── Highcharts (Spectrum) ─────────────────────────────────────────────────
+    function renderHighchart(id, data, compData, labels) {
+      if (typeof Highcharts === 'undefined') { console.error('Highcharts not loaded'); return; }
       const series = [];
       if (data && data.yData) {
-        data.yData.forEach(s => series.push({ 
-          name: s.name, 
-          data: s.data, 
-          color: s.lineStyle?.color || s.color || '#000069' 
+        data.yData.forEach(s => series.push({
+          name: s.name,
+          data: s.data,
+          color: (s.lineStyle && s.lineStyle.color) || s.color || '#000069'
         }));
       }
       if (compData && compData.yData) {
-        compData.yData.forEach(s => series.push({ 
-          name: 'Compare ' + s.name, 
-          data: s.data, 
-          dashStyle: 'dash', 
-          color: '#ff0000' 
+        compData.yData.forEach(s => series.push({
+          name: (labels && labels.compareLabel ? labels.compareLabel : 'Compare') + ' ' + s.name,
+          data: s.data,
+          dashStyle: 'Dash',
+          color: '#ff0000'
         }));
+      }
+      const yLabel = data && data.yLabel ? data.yLabel : (compData && compData.yLabel ? compData.yLabel : '');
+      const activeData = data || compData;
+
+      // Apply live zoom state and plot lines/series if user interacted
+      let xMin, xMax;
+      let plotLinesOpt = [];
+      const liveState = activeData && activeData._liveState;
+      if (liveState) {
+        if (liveState.xZoom && liveState.xZoom.isZoomed) {
+          xMin = liveState.xZoom.min;
+          xMax = liveState.xZoom.max;
+        }
+        if (liveState.plotLines && liveState.plotLines.length > 0) {
+          plotLinesOpt = liveState.plotLines;
+        }
+        if (liveState.series && liveState.series.length > 0) {
+          // Find any series from liveState not already in our series (like markers)
+          // or override existing series with live data if sidebands updated them
+          liveState.series.forEach(ls => {
+            const existingIdx = series.findIndex(s => s.name === ls.name);
+            if (existingIdx !== -1) {
+              series[existingIdx].data = ls.data;
+              if (ls.type === 'scatter') {
+                 series[existingIdx].type = 'scatter';
+                 series[existingIdx].marker = ls.marker;
+              }
+            } else {
+              series.push({
+                name: ls.name,
+                data: ls.data,
+                type: ls.type || 'line',
+                color: ls.color || '#FF0000',
+                marker: ls.marker,
+                dashStyle: ls.dashStyle,
+                showInLegend: ls.showInLegend !== false
+              });
+            }
+          });
+        }
       }
 
       Highcharts.chart(id, {
-        chart: { type: 'line', height: 350, animation: false },
+        // margin: [top, right, bottom, left]
+        // top=55 leaves room for legend; bottom=45 leaves room for x-axis labels
+        chart: { type: 'line', animation: false, margin: [55, 12, 45, 68], height: 230 },
         title: { text: null },
-        xAxis: { categories: data?.xData || compData?.xData || [] },
-        yAxis: { 
-          title: { text: data?.yLabel || compData?.yLabel || '' },
-          min: data?.min ? Number(data.min) : null,
-          max: data?.max ? Number(data.max) : null
+        xAxis: {
+          categories: (data && data.xData) || (compData && compData.xData) || [],
+          labels: {
+            style: { fontSize: '8px', color: '#333' },
+            rotation: -45,
+            align: 'right'
+          },
+          min: xMin !== undefined ? xMin : null,
+          max: xMax !== undefined ? xMax : null,
+          plotLines: plotLinesOpt
+        },
+        yAxis: {
+          title: { text: yLabel, style: { fontSize: '10px', fontWeight: 'bold', color: '#000069' } },
+          labels: { style: { fontSize: '8px', color: '#333' } }
+        },
+        legend: {
+          enabled: true,
+          verticalAlign: 'top',
+          align: 'center',
+          layout: 'horizontal',
+          itemStyle: { fontSize: '9px', fontWeight: 'bold', color: '#333' },
+          symbolWidth: 20,
+          symbolHeight: 3,
+          itemDistance: 12
         },
         series: series,
         credits: { enabled: false },
-        plotOptions: { line: { marker: { enabled: false } } }
+        plotOptions: { line: { marker: { enabled: false }, lineWidth: 1.5 } }
       });
     }
 
-    function renderEchart(id, data, compData) {
-      if (typeof echarts === 'undefined') {
-        console.error('ECharts not loaded');
-        return;
-      }
+    // ── ECharts (TWF) ─────────────────────────────────────────────────────────
+    function renderEchart(id, data, compData, labels) {
+      if (typeof echarts === 'undefined') { console.error('ECharts not loaded'); return; }
       const chart = echarts.init(document.getElementById(id));
       const series = [];
       if (data && data.yData) {
         data.yData.forEach(s => {
-          const sData = Array.isArray(s.data) ? s.data : [];
           series.push({
             name: s.name,
-            data: sData,
+            data: Array.isArray(s.data) ? s.data : [],
             type: 'line',
             showSymbol: false,
-            lineStyle: { color: s.itemStyle?.color || s.color || '#000069' }
+            smooth: true,
+            lineStyle: { width: 1, color: (s.itemStyle && s.itemStyle.color) || s.color || '#000069' },
+            itemStyle: { color: (s.itemStyle && s.itemStyle.color) || s.color || '#000069' }
           });
         });
       }
       if (compData && compData.yData) {
         compData.yData.forEach(s => {
-          const sData = Array.isArray(s.data) ? s.data : [];
           series.push({
-            name: 'Compare ' + s.name,
-            data: sData,
+            name: (labels && labels.compareLabel ? labels.compareLabel : 'Compare') + ' ' + s.name,
+            data: Array.isArray(s.data) ? s.data : [],
             type: 'line',
             showSymbol: false,
-            lineStyle: { type: 'dashed', color: '#ff0000' }
+            lineStyle: { type: 'dashed', width: 1, color: '#ff0000' }
           });
         });
+      }
+      const activeData = data || compData;
+
+      // Apply live dataZoom state and series if user interacted
+      let dataZoomOpt = null;
+      let graphicOpt = null;
+      let finalSeries = series;
+      const liveState = activeData && activeData._liveState;
+      if (liveState) {
+        if (liveState.dataZoom && Array.isArray(liveState.dataZoom) && liveState.dataZoom.length > 0) {
+          // Reconstruct dataZoom from captured state (startValue/endValue or start/end %)
+          dataZoomOpt = liveState.dataZoom.map(dz => ({
+            type: dz.type || 'inside',
+            start: dz.start,
+            end: dz.end,
+            startValue: dz.startValue,
+            endValue: dz.endValue
+          }));
+        }
+        if (liveState.series && liveState.series.length > 0) {
+          // Overwrite the manual series with the live one to preserve markers/cursors
+          finalSeries = liveState.series.map(s => {
+            // Strip out non-serializable or problematic parts from live series
+            return {
+              name: s.name,
+              type: s.type,
+              data: s.data,
+              itemStyle: s.itemStyle || undefined,
+              lineStyle: s.lineStyle || undefined,
+              showSymbol: s.showSymbol !== undefined ? s.showSymbol : false,
+              smooth: s.smooth !== undefined ? s.smooth : true,
+              barWidth: s.barWidth || undefined,
+              color: s.color || undefined,
+              markLine: s.markLine || undefined,
+              markArea: s.markArea || undefined,
+              markPoint: s.markPoint || undefined
+            };
+          });
+        }
+        if (liveState.graphic) {
+          graphicOpt = liveState.graphic;
+        }
       }
 
       chart.setOption({
         animation: false,
-        grid: { top: 30, bottom: 40, left: 60, right: 20 },
-        xAxis: { type: 'category', data: data?.xData || compData?.xData || [] },
-        yAxis: { 
-          type: 'value', 
-          name: data?.yLabel || compData?.yLabel || '',
-          min: data?.min ? Number(data.min) : null,
-          max: data?.max ? Number(data.max) : null
+        // Legend at top → grid top must be large enough to clear it
+        // bottom left for y-axis label; bottom for x-axis labels
+        grid: { top: 55, bottom: 40, left: 68, right: 15 },
+        legend: {
+          show: true,
+          top: 4,
+          left: 'center',
+          orient: 'horizontal',
+          icon: 'rect',
+          itemWidth: 20,
+          itemHeight: 3,
+          itemGap: 12,
+          textStyle: { fontSize: 9, color: '#333', fontWeight: 'bold' }
         },
-        series: series
+        xAxis: {
+          type: 'category',
+          data: (activeData && activeData.xData) || [],
+          axisLabel: {
+            fontSize: 8,
+            color: '#333',
+            rotate: 0,
+            interval: 'auto'
+          }
+        },
+        yAxis: {
+          type: 'value',
+          name: (activeData && activeData.yLabel) || '',
+          nameTextStyle: { fontSize: 10, fontWeight: 'bold', color: '#000069' },
+          axisLabel: { fontSize: 8, color: '#333' },
+          min: (activeData && activeData.min) ? Number(activeData.min) : undefined,
+          max: (activeData && activeData.max) ? Number(activeData.max) : undefined
+        },
+        dataZoom: dataZoomOpt || (activeData && activeData.dataZoom) || null,
+        graphic: graphicOpt,
+        series: finalSeries
       });
     }
-
-    // window.onload = renderCharts; // Triggered manually by service
   </script>
 </body>
 
