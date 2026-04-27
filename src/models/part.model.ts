@@ -5,7 +5,7 @@ export interface IPart extends Document {
   account_id: ObjectId;
   part_name: string;
   part_number: string;
-  part_type: string;
+  part_type: ObjectId;
   unit: string;
   description: string;
   quantity: number;
@@ -21,7 +21,7 @@ const partSchema = new Schema<IPart>({
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   part_name: { type: String, required: true, trim: true },
   part_number: { type: String, required: true, trim: true },
-  part_type: { type: String, trim: true, required: true },
+  part_type: { type: mongoose.Schema.Types.ObjectId, ref: 'Schema_PartsTypes', required: true },
   unit: { type: String, trim: true, required: true },
   description: { type: String, trim: true },
   quantity: { type: Number, required: true },

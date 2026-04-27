@@ -57,7 +57,7 @@ class PartsController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Part fetched successfully", data });
+      res.status(200).json({ status: true, message: "Part fetched successfully", data: data[0] });
     } catch (error) {
       next(error);
     }
@@ -66,8 +66,12 @@ class PartsController {
   async createPart(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const data = await partsService.insert(req.body, account_id, user_id);
-      res.status(201).json({ status: true, message: "Part created successfully", data });
+      const createdData = await partsService.insert(req.body, account_id, user_id);
+      
+      // Fetch populated data
+      const data = await partsService.getAllParts({ _id: createdData._id });
+      
+      res.status(201).json({ status: true, message: "Part created successfully", data: data[0] });
     } catch (error) {
       next(error);
     }
@@ -78,15 +82,21 @@ class PartsController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
+      
       const isDataExists = await partsService.getAllParts(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      const data = await partsService.updatePartById(String(id), body, user_id);
-      if (!data) {
+
+      const updated = await partsService.updatePartById(String(id), body, user_id);
+      if (!updated) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Part updated successfully", data });
+
+      // Fetch populated data
+      const data = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)) });
+
+      res.status(200).json({ status: true, message: "Part updated successfully", data: data[0] });
     } catch (error) {
       next(error);
     }
@@ -100,12 +110,19 @@ class PartsController {
       if (!part || part.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      part[0].quantity = Number(part[0].quantity) + Number(quantity);
-      const updatedPart = await partsService.updatePartStock(String(id), part[0], user_id);
+      
+      const currentPart = part[0];
+      const updatedQuantity = Number(currentPart.quantity) + Number(quantity);
+      
+      const updatedPart = await partsService.updatePartStock(String(id), { quantity: updatedQuantity }, user_id);
       if (!updatedPart) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Part stock updated successfully", data: updatedPart });
+
+      // Fetch populated data
+      const data = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)) });
+
+      res.status(200).json({ status: true, message: "Part stock updated successfully", data: data[0] });
     } catch (error) {
       next(error);
     }

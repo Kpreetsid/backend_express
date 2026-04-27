@@ -30,6 +30,18 @@ class PartsService {
       { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
+          from: "mst_part_types",
+          let: { part_type_id: "$part_type" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$part_type_id"] }, visible: true } },
+            { $project: { _id: 1, id: "$_id", name: 1, description: 1 } },
+          ],
+          as: "partTypeData"
+        }
+      },
+      { $unwind: { path: "$partTypeData", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
           from: "users",
           let: { user_id: "$createdBy" },
           pipeline: [
