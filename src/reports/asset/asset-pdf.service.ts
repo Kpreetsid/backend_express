@@ -151,7 +151,7 @@ export class PdfService {
       // Convert logo to Base64 for reliable loading in Puppeteer header
       let logoBase64 = '';
       try {
-        const logoPath = path.join(process.cwd(), 'uploadFiles', 'Presage_Logo.png');
+        const logoPath = path.join(process.cwd(), 'uploadFiles', 'presage-logo.png');
         if (fs.existsSync(logoPath)) {
           const logoBuffer = fs.readFileSync(logoPath);
           logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
