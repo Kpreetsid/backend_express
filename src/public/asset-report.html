@@ -303,16 +303,19 @@
     .attachments-grid {
       display: flex;
       flex-wrap: wrap;
-      gap: 15px;
+      gap: 10px;
     }
 
     .attachment-card {
-      width: 31%;
+      width: calc(50% - 8px);
+      height: 200px;
       margin-bottom: 10px;
     }
 
     .attachment-card img {
       width: 100%;
+      padding: 8px;
+      object-fit: contain;
       border-radius: 8px;
       border: 1px solid #dadada;
     }
