@@ -86,7 +86,7 @@ export class PdfService {
       const html = this.buildHtml(data);
 
       await page.setContent(html, {
-        waitUntil: 'networkidle0',
+        waitUntil: ['domcontentloaded', 'load'],
         timeout: 60000
       });
 
