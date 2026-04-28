@@ -1,25 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 import { ObjectId } from 'mongodb';
 
-interface TaskOption {
-  key: string;
-  value: string | number | boolean;
-}
-
-interface Task {
-  title: string;
-  type: "text" | "number" | "multipleChoice" | "checkBox";
-  fieldValue: string;
-  options: TaskOption[];
-}
-
-const TaskSchema = new Schema<Task>({
-  title: { type: String, trim: true, required: true },
-  type: { type: String, trim: true, required: true },
-  fieldValue: { type: String, trim: true },
-  options: [{ key: String, value: Schema.Types.Mixed }]
-}, { _id: false });
-
 interface IPart {
   part_id: string;
   part_name: string;
@@ -47,7 +28,7 @@ interface WorkOrder {
   wo_asset_id: ObjectId;
   sop_form_id?: ObjectId;
   userIdList: string[];
-  tasks: Task[];
+  tasks: Object[];
   parts: IPart[];
   createdFrom?: string;
 }
@@ -63,7 +44,7 @@ const WorkOrderSchema = new Schema<WorkOrder>({
   wo_asset_id: { type: Schema.Types.ObjectId, ref: "AssetModel", required: true },
   sop_form_id: { type: Schema.Types.ObjectId, ref: "SopFormModel" },
   userIdList: { type: [String], required: true },
-  tasks: { type: [TaskSchema], default: [] },
+  tasks: { type: [Object], default: [] },
   parts: { type: [PartSchema], default: [] },
   createdFrom: { type: String, trim: true }
 }, { _id: false });
