@@ -53,9 +53,13 @@ export class PdfService {
       // Legacy fallback: re-fetch from processor API
       console.warn('[PdfService] No chartData supplied — falling back to processor API re-fetch (user modifications will be lost).');
       try {
-        const res = await processorAPIService.getAccVelData({ composites: data.chartDetail }, token, userId);
-        if (res && res.data) {
-          data.chartData = this.processChartData(res.data, data.chartModifications || {}, data.labels);
+        if (data.chartDetail.composites && data.chartDetail.composites.length > 0) {
+          const res = await processorAPIService.getAccVelData({ composites: data.chartDetail }, token, userId);
+          if (res && res.data) {
+            data.chartData = this.processChartData(res.data, data.chartModifications || {}, data.labels);
+          }
+        } else {
+          console.log(`No Chart attached with this report`);
         }
       } catch (err) {
         console.error('[PdfService] Failed to fetch chart data:', err);
