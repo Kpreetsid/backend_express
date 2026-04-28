@@ -49,7 +49,7 @@ class AssetReportController {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      const match: any = { accountId: account_id, top_level_asset_id: helperService.validateObjectId(String(id)) };
+      const match: any = { accountId: account_id, top_level_asset_id: helperService.validateObjectId(String(id)), visible: true };
       const selectedFields = `Observations Recommendations faultData`;
       const data = await assetReportService.getLatest(match, selectedFields);
       if (!data) {

@@ -2,13 +2,15 @@ import { ReportAssetModel, IReportAsset } from "../../models/assetReport.model";
 import { orderService } from "../../work/order/order.service";
 
 class AssetReportService {
+
+  private populateFilter = [
+    { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible', match: { visible: true } },
+    { path: 'assetId', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level image_path parent_id visible', match: { visible: true } },
+    { path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status', match: { user_status: 'active' } }
+  ];
+
   async getAllAssetReports(match: any) {
-    const populateFilter = [
-      { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible', match: { visible: true } },
-      { path: 'assetId', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level image_path parent_id visible', match: { visible: true } },
-      { path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status', match: { user_status: 'active' } }
-    ];
-    return await ReportAssetModel.find(match).sort({ _id: -1 }).populate(populateFilter);
+    return await ReportAssetModel.find(match).sort({ _id: -1 }).populate(this.populateFilter);
   };
 
   async getLatest(match: any, selectedFields: any) {
