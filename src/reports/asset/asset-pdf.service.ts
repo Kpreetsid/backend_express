@@ -176,7 +176,7 @@ export class PdfService {
           <div style="font-size: 10px; width: 100%; height: 70px; background-color: rgb(0, 0, 105); color: #ffffff; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', Roboto, sans-serif; margin: 0 !important;">
             <div style="display: flex; flex-direction: column; justify-content: center;">
               <div style="font-weight: bold; font-size: 18px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">${assetLabel}: ${data.assetName || 'NA'}</div>
-              <div style="opacity: 0.9; font-size: 10px;">&nbsp; ${reportDateLabel}: ${this.formatDate(data.analysisDate || new Date(), data.timezone, true, data.locale)}</div>
+              <div style="opacity: 0.9; font-size: 10px;">&nbsp; ${reportDateLabel}: ${this.formatDate(data.analysisDate, data.timezone, false, data.locale)}</div>
             </div>
             <div style="display: flex; align-items: center;">
               ${logoBase64 ? `
@@ -211,7 +211,7 @@ export class PdfService {
     const replacements: any = {
       generatedDate: this.formatDate(new Date(), data.timezone, false, data.locale),
       assetName: data.assetName || 'NA',
-      analysisDate: this.formatDate(data.analysisDate || new Date(), data.timezone, true, data.locale),
+      analysisDate: this.formatDate(data.analysisDate, data.timezone, false, data.locale),
       location: data.location || 'NA',
       sensorsMapped: data.sensorsMapped || '0',
       assetCondition: data.assetCondition || 'NA',
