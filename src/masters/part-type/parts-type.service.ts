@@ -23,7 +23,8 @@ class PartsTypeService {
         as: "updatedBy"
       }
     },
-    { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } }
+    { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } },
+    { $addFields: { id: "$_id" } }
     ]);
   }
 

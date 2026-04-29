@@ -1,5 +1,7 @@
 import { SchedulerModel, IScheduleMaster } from "../../models/scheduleMaster.model";
 import { UserModel } from "../../models/user.model";
+import { PartsTypeModel } from "../../models/parts-types.model";
+import { helperService } from "../../utils/helper";
 
 class ScheduleService {
 
@@ -70,19 +72,35 @@ class ScheduleService {
                 } else {
                     item.work_order.users = [];
                 }
+
+                if (item.work_order?.parts?.length) {
+                    item.work_order.parts = await Promise.all(item.work_order.parts.map(async (part: any) => {
+                        if (part.part_type && helperService.validateObjectId(part.part_type)) {
+                            const partType = await PartsTypeModel.findOne({ _id: part.part_type, visible: true }).select("_id name description").lean();
+                            if (partType) {
+                                part.partTypeData = { ...partType, id: partType._id.toString() };
+                            }
+                        }
+                        return part;
+                    }));
+                }
                 return item;
             })
         );
         return result;
     };
 
-    async createSchedules(body: any, account_id: any, user_id: any): Promise<IScheduleMaster> {
+    async createSchedules(body: any, account_id: any, user_id: any): Promise<IScheduleMaster | any> {
         const newSchedule = new SchedulerModel({ ...body, account_id, createdBy: user_id });
-        return await newSchedule.save();
+        const saved = await newSchedule.save();
+        const data = await this.getSchedules({ _id: saved._id });
+        return data[0];
     };
 
-    async updateSchedules(id: any, body: any, user_id: any): Promise<IScheduleMaster | null> {
-        return await SchedulerModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
+    async updateSchedules(id: any, body: any, user_id: any): Promise<IScheduleMaster | any> {
+        await SchedulerModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
+        const data = await this.getSchedules({ _id: helperService.validateObjectId(String(id)) });
+        return data[0];
     };
 
     async removeSchedules(id: any, user_id: any): Promise<IScheduleMaster | null> {

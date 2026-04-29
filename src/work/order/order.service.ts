@@ -7,6 +7,7 @@ import { commentService } from "../comments/comment.service";
 import { requestService } from "../request/request.service";
 import { helperService } from "../../utils/helper";
 import { CommentsModel } from "../../models/comment.model";
+import { PartsTypeModel } from "../../models/parts-types.model";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -45,6 +46,21 @@ class OrderService {
 
   constructor() {
     this.mailerService = new MailerService();
+  }
+
+  private async populatePartTypes(item: any): Promise<any> {
+    if (item.parts?.length) {
+      item.parts = await Promise.all(item.parts.map(async (part: any) => {
+        if (part.part_type && helperService.validateObjectId(part.part_type)) {
+          const partType = await PartsTypeModel.findOne({ _id: part.part_type, visible: true }).select("_id name description").lean();
+          if (partType) {
+            part.partTypeData = { ...partType, id: partType._id.toString() };
+          }
+        }
+        return part;
+      }));
+    }
+    return item;
   }
 
   private sanitizeWorkOrder(data: any): any {
@@ -309,7 +325,7 @@ class OrderService {
         replies: await commentService.getNestedComments(c._id)
       })));
       
-      return item;
+      return await this.populatePartTypes(item);
     }));
     return result;
   };
@@ -400,7 +416,7 @@ class OrderService {
         id: c._id,
         replies: await commentService.getNestedComments(c._id)
       })));
-      return item;
+      return await this.populatePartTypes(item);
     }));
     return result;
   }
@@ -600,7 +616,8 @@ class OrderService {
       const orders = await this.getAllOrders({ _id: data._id });
       await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
     });
-    return data;
+    const resultData = await this.getAllOrders({ _id: data._id });
+    return resultData[0];
   };
 
   async updateById(id: string, body: any, user: IUser): Promise<any> {
@@ -624,7 +641,8 @@ class OrderService {
     if (!data) {
       throw Object.assign(new Error('Failed to update work order'), { status: 400 });
     }
-    return data;
+    const resultData = await this.getAllOrders({ _id: helperService.validateObjectId(id) });
+    return resultData[0];
   };
 
   async updateDataById(id: string, body: any, user: IUser): Promise<any> {
