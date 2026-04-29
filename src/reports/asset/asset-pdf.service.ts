@@ -30,6 +30,37 @@ export class PdfService {
     legend: { orient: 'horizontal', show: true, width: '100%' }
   };
 
+  private isoTableDetails = [
+    {
+      sr_no: 1,
+      class: 'Class 1',
+      ko_class: '클래스 1',
+      description: 'Machines having separated driver and driven, or coupled units comprising machinery up to approx 15kw',
+      ko_description: '구동부와 피구동부가 분리된 기계 또는 결합된 장치를 포함하는 기계로서 최대 약 15kW의 출력을 갖는 기계'
+    },
+    {
+      sr_no: 2,
+      class: 'Class 2',
+      ko_class: '클래스 2',
+      description: 'Machinery (15kw to 75kw) without special foundations or rigidly mounted machines upto 300kW mounted on special foundations',
+      ko_description: '특수 기초가 없는 기계류(15kW~75kW) 또는 특수 기초에 설치된 최대 300kW의 고정식 기계류'
+    },
+    {
+      sr_no: 3,
+      class: 'Class 3',
+      ko_class: '클래스 3',
+      description: 'Machines having large prime movers with rotating assemblies mounted on rigid and heavy foundations',
+      ko_description: '견고하고 무거운 기초 위에 회전 부품이 장착된 대형 원동기를 갖춘 기계'
+    },
+    {
+      sr_no: 4,
+      class: 'Class 4',
+      ko_class: '클래스 4',
+      description: 'Large prime movers with large rotating assemblies mounted on foundations soft in the direction of the measured vibration (i.e turbine, generators, gas turbines greater than 10MW)',
+      ko_description: '측정된 진동 방향으로 지반이 약한 곳에 대형 회전 부품이 설치된 대형 동력 장치(예: 터빈, 발전기, 10MW 이상의 가스 터빈)'
+    }
+  ]
+
   public async generateAssetReportPdf(data: any, token?: string, userId?: string): Promise<Buffer> {
     console.log(`[PdfService] Generating PDF for asset: ${data.assetName || 'Unknown'}`);
 
@@ -249,32 +280,66 @@ export class PdfService {
     return classes[String(val)] || 'not_available';
   }
 
+  private toBase64(filePath: string): string {
+    try {
+      if (fs.existsSync(filePath)) {
+        const fileBuffer = fs.readFileSync(filePath);
+        const extension = path.extname(filePath).substring(1) || 'png';
+        return `data:image/${extension === 'jpg' ? 'jpeg' : extension};base64,${fileBuffer.toString('base64')}`;
+      }
+    } catch (e: any) {
+      console.error(`[PdfService] toBase64 failed for ${filePath}:`, e.message);
+    }
+    return '';
+  }
+
   private buildAssetImage(data: any): string {
-    console.log("----------------------->:  ",data.assetImage);
     if (data.assetImage) {
-      return `<img src="${storageConfig.baseUrl}/assets/${data.assetImage}" alt="Asset Image" style="width:100%; height:180px; border-radius:12px; object-fit:cover;" />`;
+      const imgPath = path.join(process.cwd(), 'uploadFiles', 'assets', data.assetImage);
+      const b64 = this.toBase64(imgPath);
+      if (b64) {
+        return `<img src="${b64}" alt="Asset Image" style="width:100%; height:180px; border-radius:12px; object-fit:cover;" />`;
+      }
     }
     return `<div class="asset-initials">${data.assetName}</div>`;
   }
 
   private buildIsoSection(data: any): string {
     if (!data.iso) return '';
+    const labels = data.labels || {};
+    const isKo = data.locale === 'ko';
+
+    // Fallback labels
+    const isoEvaluationLabel = labels.isoEvaluationLabel || (isKo ? 'ISO 평가' : 'ISO Evaluation');
+    const classLabel = labels.classLabel || (isKo ? '클래스' : 'Class');
+    const descriptionLabel = labels.descriptionLabel || (isKo ? '설명' : 'Description');
+
+    const rows = this.isoTableDetails.map(item => {
+      const className = isKo ? (item.ko_class || item.class) : item.class;
+      const description = isKo ? (item.ko_description || item.description) : item.description;
+      return `<tr><td class="font-semibold">${className}</td><td>${description}</td></tr>`;
+    }).join('');
+
+    const isoChartPath = path.join(process.cwd(), 'uploadFiles', 'report-icons', 'ISO_chart.png');
+    const isoChartB64 = this.toBase64(isoChartPath);
+
     return `
-      <div class="section-title">{{isoEvaluationLabel}}</div>
+      <div class="section-title">${isoEvaluationLabel}</div>
       <div class="iso-container">
         <div class="iso-chart" style="height:200px;">
-            <img src="${storageConfig.baseUrl}/report-icons/ISO_chart.png" alt="ISO Chart" style="width: 100%; margin-top:10px; height: 100%; object-fit: fill;"/>
+            ${isoChartB64 ? `<img src="${isoChartB64}" alt="ISO Chart" style="width: 100%; margin-top:10px; height: 100%; object-fit: fill;"/>` : ''}
         </div>
         <div class="iso-table">
             <table class="inspection-table">
-                <tr style="background: #000069 !important; color: white !important;">
-                  <th style="width:15%; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">{{classLabel}}</th>
-                  <th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">{{descriptionLabel}}</th>
-                </tr>
-                <tr><td class="font-semibold">{{classLabel}} 1</td><td>{{isoClass1Desc}}</td></tr>
-                <tr><td class="font-semibold">{{classLabel}} 2</td><td>{{isoClass2Desc}}</td></tr>
-                <tr><td class="font-semibold">{{classLabel}} 3</td><td>{{isoClass3Desc}}</td></tr>
-                <tr><td class="font-semibold">{{classLabel}} 4</td><td>{{isoClass4Desc}}</td></tr>
+                <thead>
+                  <tr style="background: #000069 !important; color: white !important;">
+                    <th style="width:15%; background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">${classLabel}</th>
+                    <th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">${descriptionLabel}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows}
+                </tbody>
             </table>
         </div>
       </div>
@@ -370,11 +435,18 @@ export class PdfService {
         return val == target ? `<div style="width: 50px; height: 12px; border-radius: 5%; background-color: ${color}; margin: 0 auto; box-shadow: 0 0 4px ${color};"></div>` : '';
       };
 
+      const iconPath = path.join(process.cwd(), 'uploadFiles', 'report-icons', `${row.name}.png`);
+      let iconB64 = this.toBase64(iconPath);
+      if (!iconB64) {
+        const otherPath = path.join(process.cwd(), 'uploadFiles', 'report-icons', 'Other.png');
+        iconB64 = this.toBase64(otherPath);
+      }
+
       return `
         <tr>
           <td class="font-semibold" style="padding-left: 15px;">
             <div style="display: flex; align-items: center; gap: 10px;">
-              <img src="${storageConfig.baseUrl}/report-icons/${row.name}.png" alt="${row.name}_icon" onerror="this.src='${storageConfig.baseUrl}/report-icons/Other.png'" style="height: 25px; width: 25px; object-fit: contain; vertical-align: middle;" />
+              ${iconB64 ? `<img src="${iconB64}" alt="${row.name}_icon" style="height: 25px; width: 25px; object-fit: contain; vertical-align: middle;" />` : ''}
               <span style="margin-left: 8px;">${row.translatedName || row.name}</span>
             </div>
           </td>
@@ -433,16 +505,28 @@ export class PdfService {
     }
   }
 
-  private buildAttachments(attachments: string[]): string {
+  private buildAttachments(attachments: any[]): string {
     if (!attachments || attachments.length === 0) return '<div class="no-data-msg">No files attached to this report.</div>';
 
     return `
       <div class="attachments-grid">
-        ${attachments.map(img => `
-          <div class="attachment-card">
-            <img src="${img}" style="border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" />
-          </div>
-        `).join('')}
+        ${attachments.map(item => {
+          let b64 = '';
+          if (typeof item === 'string') {
+            // Handle both absolute URLs and potential relative paths
+            const relativePath = item.replace(storageConfig.baseUrl, '').replace(/^\/+/, '');
+            const filePath = path.join(process.cwd(), 'uploadFiles', relativePath);
+            b64 = this.toBase64(filePath);
+          }
+          
+          if (!b64) return '';
+
+          return `
+            <div class="attachment-card">
+              <img src="${b64}" style="border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" />
+            </div>
+          `;
+        }).join('')}
       </div>
     `;
   }
