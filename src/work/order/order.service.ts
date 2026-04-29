@@ -49,25 +49,38 @@ class OrderService {
   }
 
   private async populatePartTypes(item: any): Promise<any> {
-    if (item.parts?.length) {
-      item.parts = await Promise.all(item.parts.map(async (part: any) => {
-        if (part.part_type) {
-          if (typeof part.part_type === 'string') {
-            part.partTypeData = {
-              name: part.part_type,
-              description: "",
-              id: ""
-            }
-          } else if (helperService.validateObjectId(part.part_type)) {
-            const partType = await PartsTypeModel.findOne({ _id: part.part_type, visible: true }).select("_id name description").lean();
-            if (partType) {
-              part.partTypeData = { ...partType, id: partType._id.toString() };
-            }
-          }
-        }
+    if (!item?.parts?.length) return item;
+    const objectIds: string[] = item.parts.map((part: any) => part.part_type).filter((pt: any) => typeof pt !== 'string' && helperService.validateObjectId(pt)).map((pt: any) => pt.toString());
+    const partTypes = objectIds.length ? await PartsTypeModel.find({_id: { $in: objectIds }, visible: true }).select('_id name description').lean() : [];
+    const partTypeMap = new Map(partTypes.map((pt: any) => [pt._id.toString(), pt]));
+    item.parts = item.parts.map((part: any) => {
+      const pt = part.part_type;
+      if (typeof pt === 'string') {
+        part.partTypeData = {
+          id: '',
+          name: pt,
+          description: ''
+        };
         return part;
-      }));
-    }
+      }
+      if (helperService.validateObjectId(pt)) {
+        const found = partTypeMap.get(pt.toString());
+        if (found) {
+          part.partTypeData = {
+            id: found._id.toString(),
+            name: found.name,
+            description: found.description
+          };
+        } else {
+          part.partTypeData = {
+            id: '',
+            name: '',
+            description: ''
+          };
+        }
+      }
+      return part;
+    });
     return item;
   }
 
@@ -81,13 +94,13 @@ class OrderService {
         return sanitizedTask;
       });
     }
-    
+
     const objectIdFields = [
-      'wo_asset_id', 
-      'wo_location_id', 
-      'sop_form_id', 
-      'work_request_id', 
-      'asset_report_id', 
+      'wo_asset_id',
+      'wo_location_id',
+      'sop_form_id',
+      'work_request_id',
+      'asset_report_id',
       'parentId',
       'updatedBy',
       'createdBy'
@@ -325,14 +338,14 @@ class OrderService {
     const result = await Promise.all(data.map(async (item: any) => {
       // Map comments from the bulk fetch
       const itemComments = allComments.filter((c: any) => String(c.order_id) === String(item._id));
-      
+
       // Still need the recursive replies (which could be improved in CommentService)
       item.comments = await Promise.all(itemComments.map(async (c: any) => ({
         ...c,
         id: c._id,
         replies: await commentService.getNestedComments(c._id)
       })));
-      
+
       return await this.populatePartTypes(item);
     }));
     return result;
@@ -347,7 +360,7 @@ class OrderService {
     if (query.wo_asset_id) match.wo_asset_id = { $in: helperService.validateObjectIds(query.wo_asset_id.toString()) };
     if (query.wo_location_id) match.wo_location_id = { $in: helperService.validateObjectIds(query.wo_location_id.toString()) };
     if (query.order_no) match.order_no = query.order_no;
-    
+
     if (query.fromDate && query.toDate) {
       match.createdAt = { $gte: new Date(query.fromDate), $lte: new Date(query.toDate) };
     }
@@ -418,7 +431,7 @@ class OrderService {
 
     const result = await Promise.all(data.map(async (item: any) => {
       const itemComments = allComments.filter((c: any) => String(c.order_id) === String(item._id));
-      
+
       item.comments = await Promise.all(itemComments.map(async (c: any) => ({
         ...c,
         id: c._id,
@@ -643,7 +656,7 @@ class OrderService {
     if (body.hasOwnProperty('userIdList')) {
       await userWorkOrderService.updateMappedUsers(id, body.userIdList);
     }
-    
+
     existingOrder = this.sanitizeWorkOrder(existingOrder);
     const data = await WorkOrderModel.findByIdAndUpdate(id, existingOrder, { returnDocument: 'after' });
     if (!data) {
