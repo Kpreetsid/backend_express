@@ -51,10 +51,18 @@ class OrderService {
   private async populatePartTypes(item: any): Promise<any> {
     if (item.parts?.length) {
       item.parts = await Promise.all(item.parts.map(async (part: any) => {
-        if (part.part_type && helperService.validateObjectId(part.part_type)) {
-          const partType = await PartsTypeModel.findOne({ _id: part.part_type, visible: true }).select("_id name description").lean();
-          if (partType) {
-            part.partTypeData = { ...partType, id: partType._id.toString() };
+        if (part.part_type) {
+          if (typeof part.part_type === 'string') {
+            part.partTypeData = {
+              name: part.part_type,
+              description: "",
+              id: ""
+            }
+          } else if (helperService.validateObjectId(part.part_type)) {
+            const partType = await PartsTypeModel.findOne({ _id: part.part_type, visible: true }).select("_id name description").lean();
+            if (partType) {
+              part.partTypeData = { ...partType, id: partType._id.toString() };
+            }
           }
         }
         return part;
