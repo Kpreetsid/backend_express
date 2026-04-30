@@ -97,7 +97,7 @@ class OrderService {
                 as: "user"
               }
             },
-            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } }
           ],
           as: "assignedUsers"
         }
