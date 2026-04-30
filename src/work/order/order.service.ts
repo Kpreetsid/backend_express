@@ -6,8 +6,6 @@ import { partsService } from "../../masters/part/parts.service";
 import { commentService } from "../comments/comment.service";
 import { requestService } from "../request/request.service";
 import { helperService } from "../../utils/helper";
-import { CommentsModel } from "../../models/comment.model";
-import { PartsTypeModel } from "../../models/parts-types.model";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -46,42 +44,6 @@ class OrderService {
 
   constructor() {
     this.mailerService = new MailerService();
-  }
-
-  private async populatePartTypes(item: any): Promise<any> {
-    if (!item?.parts?.length) return item;
-    const objectIds: string[] = item.parts.map((part: any) => part.part_type).filter((pt: any) => typeof pt !== 'string' && helperService.validateObjectId(pt)).map((pt: any) => pt.toString());
-    const partTypes = objectIds.length ? await PartsTypeModel.find({_id: { $in: objectIds }, visible: true }).select('_id name description').lean() : [];
-    const partTypeMap = new Map(partTypes.map((pt: any) => [pt._id.toString(), pt]));
-    item.parts = item.parts.map((part: any) => {
-      const pt = part.part_type;
-      if (typeof pt === 'string') {
-        part.partTypeData = {
-          id: '',
-          name: pt,
-          description: ''
-        };
-        return part;
-      }
-      if (helperService.validateObjectId(pt)) {
-        const found = partTypeMap.get(pt.toString());
-        if (found) {
-          part.partTypeData = {
-            id: found._id.toString(),
-            name: found.name,
-            description: found.description
-          };
-        } else {
-          part.partTypeData = {
-            id: '',
-            name: '',
-            description: ''
-          };
-        }
-      }
-      return part;
-    });
-    return item;
   }
 
   private sanitizeWorkOrder(data: any): any {
@@ -127,31 +89,15 @@ class OrderService {
             {
               $lookup: {
                 from: "users",
-                localField: "userId",
-                foreignField: "_id",
+                let: { userId: '$userId' },
+                pipeline: [
+                  { $match: { $expr: { $eq: ['$_id', '$$userId'] }, user_status: 'active' } },
+                  { $project: this.userProjection },
+                ],
                 as: "user"
               }
             },
-            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-            {
-              $project: {
-                _id: 1,
-                id: "$_id",
-                userId: 1,
-                woId: 1,
-                user: {
-                  _id: "$user._id",
-                  id: "$user._id",
-                  firstName: "$user.firstName",
-                  lastName: "$user.lastName",
-                  email: "$user.email",
-                  username: "$user.username",
-                  user_role: "$user.user_role",
-                  user_status: "$user.user_status",
-                  user_profile_img: "$user.user_profile_img"
-                }
-              }
-            }
+            { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } }
           ],
           as: "assignedUsers"
         }
@@ -185,7 +131,7 @@ class OrderService {
           from: "users",
           let: { createdBy: '$createdBy' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$createdBy'] } } },
+            { $match: { $expr: { $eq: ['$_id', '$$createdBy'] }, user_status: 'active' } },
             { $project: this.userProjection },
           ],
           as: "createdBy"
@@ -197,7 +143,7 @@ class OrderService {
           from: "users",
           let: { updatedBy: '$updatedBy' },
           pipeline: [
-            { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] } } },
+            { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] }, user_status: 'active' } },
             { $project: this.userProjection },
           ],
           as: "updatedBy"
@@ -207,8 +153,11 @@ class OrderService {
       {
         $lookup: {
           from: "users",
-          localField: "status_details.createdBy",
-          foreignField: "_id",
+          let: { createdBy: '$status_details.createdBy' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$createdBy'] }, user_status: 'active' } },
+            { $project: this.userProjection },
+          ],
           as: "statusUsers"
         }
       },
@@ -238,8 +187,88 @@ class OrderService {
         }
       },
       {
+        $lookup: {
+          from: "mst_part_types",
+          let: { partTypeIds: "$parts.part_type" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: [
+                    { $toString: "$_id" },
+                    {
+                      $map: {
+                        input: { $ifNull: ["$$partTypeIds", []] },
+                        as: "id",
+                        in: { $toString: "$$id" }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            { $project: { _id: 1, name: 1, description: 1, visible: 1 } }
+          ],
+          as: "partTypeDetails"
+        }
+      },
+      {
         $addFields: {
           id: "$_id",
+          parts: {
+            $map: {
+              input: { $ifNull: ["$parts", []] },
+              as: "part",
+              in: {
+                $mergeObjects: [
+                  "$$part",
+                  {
+                    partTypeData: {
+                      $let: {
+                        vars: {
+                          found: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: "$partTypeDetails",
+                                  as: "pt",
+                                  cond: { $eq: [{ $toString: "$$pt._id" }, { $toString: "$$part.part_type" }] }
+                                }
+                              },
+                              0
+                            ]
+                          }
+                        },
+                        in: {
+                          $cond: [
+                            { $gt: ["$$found", null] },
+                            "$$found",
+                            { 
+                              id: '', 
+                              name: { 
+                                $cond: [
+                                  { 
+                                    $and: [
+                                      { $eq: [{ $type: "$$part.part_type" }, "string"] },
+                                      { $lt: [{ $strLenCP: "$$part.part_type" }, 24] } // Simple check: if it's 24 chars, it's likely an ID, don't use as name
+                                    ] 
+                                  }, 
+                                  "$$part.part_type", 
+                                  ""
+                                ] 
+                              }, 
+                              description: '', 
+                              visible: true 
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
           tasks: {
             $map: {
               input: { $ifNull: ["$tasks", []] },
@@ -330,24 +359,13 @@ class OrderService {
     }
 
     const orderIds = data.map((d: any) => d._id);
-    // Bulk fetch all comments for all returned orders to avoid N+1 inside the loop
-    const allComments = await CommentsModel.find({ order_id: { $in: orderIds }, visible: true, parentCommentId: null })
-      .populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }])
-      .lean();
+    const commentMap = await commentService.getCommentsByOrderIds(orderIds);
 
-    const result = await Promise.all(data.map(async (item: any) => {
-      // Map comments from the bulk fetch
-      const itemComments = allComments.filter((c: any) => String(c.order_id) === String(item._id));
-
-      // Still need the recursive replies (which could be improved in CommentService)
-      item.comments = await Promise.all(itemComments.map(async (c: any) => ({
-        ...c,
-        id: c._id,
-        replies: await commentService.getNestedComments(c._id)
-      })));
-
-      return await this.populatePartTypes(item);
-    }));
+    const result = [];
+    for (const item of data) {
+      item.comments = commentMap.get(String(item._id)) || [];
+      result.push(item);
+    }
     return result;
   };
 
@@ -367,11 +385,8 @@ class OrderService {
 
     if (query.assignedUser) {
       const assignedIds = helperService.validateObjectIds(query.assignedUser.toString());
-      const workOrderIds = [];
-      for (const uid of assignedIds) {
-        workOrderIds.push(await userWorkOrderService.getMappedWorkOrderIDs(uid));
-      }
-      match._id = { $in: workOrderIds.flat() };
+      const workOrderIdArrays = await Promise.all(assignedIds.map(uid => userWorkOrderService.getMappedWorkOrderIDs(uid)));
+      match._id = { $in: workOrderIdArrays.flat() };
     }
 
     // Role and PageType Logic
@@ -425,20 +440,13 @@ class OrderService {
     }
 
     const orderIds = data.map((d: any) => d._id);
-    const allComments = await CommentsModel.find({ order_id: { $in: orderIds }, visible: true, parentCommentId: null })
-      .populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }])
-      .lean();
+    const commentMap = await commentService.getCommentsByOrderIds(orderIds);
 
-    const result = await Promise.all(data.map(async (item: any) => {
-      const itemComments = allComments.filter((c: any) => String(c.order_id) === String(item._id));
-
-      item.comments = await Promise.all(itemComments.map(async (c: any) => ({
-        ...c,
-        id: c._id,
-        replies: await commentService.getNestedComments(c._id)
-      })));
-      return await this.populatePartTypes(item);
-    }));
+    const result = [];
+    for (const item of data) {
+      item.comments = commentMap.get(String(item._id)) || [];
+      result.push(item);
+    }
     return result;
   }
 
@@ -479,96 +487,123 @@ class OrderService {
 
   async monthlyCount(match: any): Promise<any> {
     match.visible = true;
-    const data: IWorkOrder[] = await WorkOrderModel.find(match)
+    const data = await WorkOrderModel.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          count: { $sum: 1 }
+        }
+      },
+      { $project: { id: "$_id", count: 1, _id: 0 } },
+      { $sort: { id: 1 } }
+    ]);
+
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    var monthlyCountArray: any = [];
-    const monthlyCounts: any = {}
-    data.forEach((item: any) => {
-      const yearMonth = item._id.getTimestamp().toISOString().substr(0, 7);
-      if (!monthlyCounts[yearMonth]) {
-        monthlyCounts[yearMonth] = 0;
-      }
-      monthlyCounts[yearMonth]++;
-      monthlyCountArray = Object.entries(monthlyCounts).map(([yearMonth, count]) => ({ id: yearMonth, count }));
-    });
-    return monthlyCountArray;
+    return data;
   };
 
   async plannedUnplanned(match: any): Promise<any> {
-    const data: any = await WorkOrderModel.find(match).select('_id createdAt createdFrom').lean();
+    const data = await WorkOrderModel.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            createdFrom: { $ifNull: ["$createdFrom", "Work Order"] },
+            monthYear: { $dateToString: { format: "%Y-%m", date: "$createdAt" } }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          createdFrom: "$_id.createdFrom",
+          monthYear: "$_id.monthYear",
+          count: 1
+        }
+      },
+      { $sort: { monthYear: 1 } }
+    ]);
+
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const grouped = data.reduce((acc: Record<string, any>, doc: any) => {
-      const monthYear = new Date(doc.createdAt).toISOString().slice(0, 7);
-      const key = `${doc.createdFrom}-${monthYear}`;
-      if (!acc[key]) acc[key] = { createdFrom: doc.createdFrom || 'Work Order', monthYear, count: 0 };
-      acc[key].count++;
-      return acc;
-    }, {});
-    const aggregated = Object.values(grouped) as { createdFrom: string; monthYear: string; count: number }[];
-    const groupedByCreatedFrom: Record<string, { monthYear: string; count: number }[]> = {};
-    for (const item of aggregated) {
-      if (!groupedByCreatedFrom[item.createdFrom]) groupedByCreatedFrom[item.createdFrom] = [];
-      groupedByCreatedFrom[item.createdFrom].push({ monthYear: item.monthYear, count: item.count });
-    }
-    const months = [...new Set(aggregated.map(a => a.monthYear))].sort();
+
+    const months = [...new Set(data.map(a => a.monthYear))].sort();
     const categories = ['Work Order', 'Preventive'];
-    const final_result: any = { date: months, 'Work Order': [], 'Preventive': [] };
-    const allCreatedFrom = Object.keys(groupedByCreatedFrom);
-    for (const cf of allCreatedFrom) {
-      const counts = months.map(month => {
-        const found = groupedByCreatedFrom[cf].find(c => c.monthYear === month);
+    const final_result: any = { date: months };
+
+    for (const cat of categories) {
+      final_result[cat] = months.map(month => {
+        const found = data.find(d => d.createdFrom === cat && d.monthYear === month);
         return found ? found.count : 0;
       });
-      final_result[cf] = counts;
     }
-    for (const cat of categories) {
-      if (!final_result[cat]?.length) {
-        final_result[cat] = months.map(() => 0);
-      }
-    }
+
     return final_result;
   };
 
   async summaryData(workOrderMatch: any): Promise<any> {
     try {
-      const workOrders: any = await WorkOrderModel.find(workOrderMatch).lean();
       const today = new Date();
-      const completedOnTime: any[] = [];
-      const overdueWO: any[] = [];
-      const plannedWO: any[] = [];
-      const unplannedWO: any[] = [];
-      for (const item of workOrders) {
-        const { status, end_date, updatedAt, createdFrom } = item;
-        const endDate = new Date(end_date);
-        const completedOn = updatedAt ? new Date(updatedAt) : null;
-        if (status === 'Completed' && completedOn && completedOn <= endDate) {
-          completedOnTime.push(item);
+      const aggregationResults = await WorkOrderModel.aggregate([
+        { $match: workOrderMatch },
+        {
+          $facet: {
+            completedOnTime: [
+              {
+                $match: {
+                  status: 'Completed',
+                  updatedAt: { $exists: true },
+                  $expr: { $lte: ["$updatedAt", "$end_date"] }
+                }
+              },
+              { $count: "count" }
+            ],
+            overdue: [
+              {
+                $match: {
+                  status: { $ne: 'Completed' },
+                  end_date: { $lt: today }
+                }
+              },
+              { $count: "count" }
+            ],
+            planned: [
+              { $match: { createdFrom: "Preventive" } },
+              { $count: "count" }
+            ],
+            total: [
+              { $count: "count" }
+            ]
+          }
         }
-        if (status !== 'Completed' && endDate < today) {
-          overdueWO.push(item);
-        }
-        const origin = (createdFrom || '').toLowerCase();
-        if (origin === 'preventive') {
-          plannedWO.push(item);
-        } else {
-          unplannedWO.push(item);
-        }
-      }
+      ]);
+
+      const result = aggregationResults[0];
+      const totalCount = result.total[0]?.count || 0;
+      const completedOnTimeCount = result.completedOnTime[0]?.count || 0;
+      const overdueCount = result.overdue[0]?.count || 0;
+      const plannedCount = result.planned[0]?.count || 0;
+
       const workRequestMatch: any = { status: { $nin: ['completed'] }, asset_id: workOrderMatch.wo_asset_id }
-      if (workOrderMatch.wo_location_id) {
-        workRequestMatch.location_id = workOrderMatch.wo_location_id;
-      }
-      if (workOrderMatch.createdAt) {
-        workRequestMatch.createdAt = workOrderMatch.createdAt;
-      }
-      const workRequests = await requestService.getAllRequests(workRequestMatch);
-      const plannedUnplannedRatio = workOrders.length ? (plannedWO.length / (plannedWO.length + unplannedWO.length)) * 100 : 0;
-      const completionRate = workOrders.length ? (completedOnTime.length / workOrders.length) * 100 : 0;
-      return { completion_rate: Number(completionRate.toFixed(2)), overdue_WO: overdueWO.length, work_request_count: workRequests.length, planned_unplanned_ratio: Number(plannedUnplannedRatio.toFixed(2)) };
+      if (workOrderMatch.wo_location_id) workRequestMatch.location_id = workOrderMatch.wo_location_id;
+      if (workOrderMatch.createdAt) workRequestMatch.createdAt = workOrderMatch.createdAt;
+
+      const workRequestCount = await requestService.countRequests(workRequestMatch);
+
+      const plannedUnplannedRatio = totalCount ? (plannedCount / totalCount) * 100 : 0;
+      const completionRate = totalCount ? (completedOnTimeCount / totalCount) * 100 : 0;
+
+      return {
+        completion_rate: Number(completionRate.toFixed(2)),
+        overdue_WO: overdueCount,
+        work_request_count: workRequestCount,
+        planned_unplanned_ratio: Number(plannedUnplannedRatio.toFixed(2))
+      };
     } catch (err) {
       console.error("summaryData error:", err);
       throw err;

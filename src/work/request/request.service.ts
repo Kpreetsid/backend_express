@@ -2,7 +2,7 @@ import { WorkRequestModel, IWorkRequest } from "../../models/workRequest.model";
 
 class RequestService {
 
-  async getAllRequests (match: any): Promise<IWorkRequest[]> {
+  async getAllRequests(match: any): Promise<IWorkRequest[]> {
     match.visible = true;
     const populateList = [
       { path: "location_id", model: "Schema_Location", select: "id location_name location_type top_level parent_id visible", match: { visible: true } },
@@ -13,6 +13,11 @@ class RequestService {
     ];
     return await WorkRequestModel.find(match).populate(populateList);
   };
+
+  async countRequests(match: any): Promise<number> {
+    match.visible = true;
+    return await WorkRequestModel.countDocuments(match);
+  }
   
   async getRequestById (id: string): Promise<IWorkRequest | null> {
     return await WorkRequestModel.findById(id);

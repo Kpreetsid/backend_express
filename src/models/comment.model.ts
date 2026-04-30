@@ -30,4 +30,7 @@ const CommentsSchema: Schema<IComments> = new Schema(
   }
 );
 
+CommentsSchema.index({ order_id: 1, visible: 1 });
+CommentsSchema.index({ parentCommentId: 1, visible: 1 });
+
 export const CommentsModel = mongoose.model<IComments>("Schema_Comments", CommentsSchema);
