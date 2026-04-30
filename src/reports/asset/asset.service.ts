@@ -21,13 +21,23 @@ class AssetReportService {
     let assetReport: any = null;
     let workOrder: any = null;
     try {
-      assetReport = new ReportAssetModel({ ...body, accountId: user.account_id, userId: user._id, createdBy: user._id });
+      const initialStatus = body.status || 'Open';
+      const statusDetails = [{ status: initialStatus, createdBy: user._id, createdAt: new Date() }];
+      assetReport = new ReportAssetModel({
+        ...body,
+        accountId: user.account_id,
+        userId: user._id,
+        createdBy: user._id,
+        status: initialStatus,
+        status_details: statusDetails
+      });
       await assetReport.save();
       if (Number(CreateWorkRequest) === 1 && workOrderBody && Object.keys(workOrderBody).length > 0) {
         workOrder = await orderService.createWorkOrder({ asset_report_id: assetReport._id, ...workOrderBody, createdFrom: "Asset Report" }, user);
-        await workOrder.save();
-        assetReport.work_order_id = workOrder._id;
-        await assetReport.save();
+        if (workOrder && workOrder._id) {
+          assetReport.work_order_id = workOrder._id;
+          await assetReport.save();
+        }
       }
       return assetReport;
     } catch (error) {
