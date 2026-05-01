@@ -14,6 +14,7 @@ import sopsRoutes from './sops/sops.routes';
 import floorMapRoutes from './floorMap/floorMap.routes';
 import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.routes';
 import partsTypeRoutes from './part-type/parts-type.routes';
+import inspectionRoutes from './inspection/inspection.routes';
 
 export default (): express.Router => {
     usersRouter(router);
@@ -24,6 +25,7 @@ export default (): express.Router => {
     partsTypeRoutes(router);
     postsRoutes(router);
     scheduleRoutes(router);
+    inspectionRoutes(router);
     sopsRoutes(router);
     locationRoutes(router);
     formCategoryRoutes(router);

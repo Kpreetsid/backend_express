@@ -1,5 +1,5 @@
-import { InspectionModel } from "../models/inspection.model";
-import { mapInspectionService } from "../transaction/mapUserInspection/userInspection.service";
+import { InspectionModel } from "../../models/inspection.model";
+import { mapInspectionService } from "../../transaction/mapUserInspection/userInspection.service";
 
 class InspectionService {
  async getAllInspection (filter: any) {

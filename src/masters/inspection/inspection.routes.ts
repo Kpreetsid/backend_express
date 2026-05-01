@@ -1,8 +1,8 @@
 import express from 'express';
 import { inspectionController } from './inspection.controller';
-import { validateParamId } from "../middlewares/validate";
+import { validateParamId } from "../../middlewares/validate";
 
-export default () => {
+export default (outer: express.Router) => {
   const inspectionRouter = express.Router();
   inspectionRouter.get('/', inspectionController.getAll);
   inspectionRouter.get('/:id', validateParamId, inspectionController.getById);
@@ -10,5 +10,5 @@ export default () => {
   inspectionRouter.put('/:id', validateParamId, inspectionController.updateById);
   inspectionRouter.patch('/:id', validateParamId, inspectionController.updateById);
   inspectionRouter.delete('/:id', validateParamId, inspectionController.removeById);
-  return inspectionRouter;
+  outer.use('/inspections', inspectionRouter);
 };

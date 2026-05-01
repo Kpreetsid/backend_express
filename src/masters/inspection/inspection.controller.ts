@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
-import { IUser } from '../models/user.model';
+import { IUser } from '../../models/user.model';
 import { inspectionService } from './inspection.service';
-import { mapInspectionService } from '../transaction/mapUserInspection/userInspection.service';
-import { helperService } from '../utils/helper';
+import { mapInspectionService } from '../../transaction/mapUserInspection/userInspection.service';
+import { helperService } from '../../utils/helper';
 
 class InspectionController {
 
