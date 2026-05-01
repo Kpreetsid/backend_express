@@ -5,7 +5,7 @@ class CommentService {
     match.parentCommentId = match.parentCommentId || null;
     const comments = await CommentsModel.find(match).populate([{ path: 'createdBy', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }]).lean();
     if (!comments || comments.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error('No records found'), { status: 404 });
     }
     const replies = await Promise.all(comments.map(comment => this.getNestedComments(comment._id)));
     return comments.map((comment: any, index) => ({ ...comment, id: comment._id, replies: replies[index] }));

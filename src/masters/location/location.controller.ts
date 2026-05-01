@@ -18,9 +18,9 @@ class LocationController {
       const filter: any = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "account_id", mapping: "location", idField: "_id" });
       let data = await locationService.getAllLocations(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('Location not found'), { status: 404 });
+        throw Object.assign(new Error('No locations found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Locations fetched successfully", data });
+      res.status(200).json({ status: true, message: "Locations retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -60,9 +60,9 @@ class LocationController {
       }
       const data = await locationService.getTree(match, location_id, allowedLocationIds, userRole);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("Location Tree not found"), { status: 404 });
+        throw Object.assign(new Error("Location tree not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Location tree fetched successfully", data });
+      res.status(200).json({ status: true, message: "Location tree retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -159,7 +159,7 @@ class LocationController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Location not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Location fetched successfully", data });
+      res.status(200).json({ status: true, message: "Location retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -169,8 +169,8 @@ class LocationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const body = req.body;
-      if (body.userIdList.length === 0) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
+      if (!body.userIdList || body.userIdList.length === 0) {
+        throw Object.assign(new Error('User list is required for location mapping'), { status: 400 });
       }
       body.account_id = account_id;
       body.createdBy = user_id;
@@ -187,7 +187,7 @@ class LocationController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
       if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
-        throw Object.assign(new Error('Bad request'), { status: 400 });
+        throw Object.assign(new Error('User selection is required for location mapping'), { status: 400 });
       }
       const location = await locationService.getAllLocations({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!location || location.length === 0) {
@@ -196,7 +196,7 @@ class LocationController {
       body.updatedBy = user_id;
       const data: any = await locationService.updateById(String(id), body);
       if (!data || !data.visible) {
-        throw Object.assign(new Error('Location not updated'), { status: 404 });
+        throw Object.assign(new Error('Failed to update location'), { status: 500 });
       }
       data.id = data._id;
       const updatedLocation = await locationService.getAllLocations({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });

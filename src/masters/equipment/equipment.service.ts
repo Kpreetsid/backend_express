@@ -71,7 +71,7 @@ class EquipmentService {
     match.asset_type = { $nin: asset_type_list };
     const allAssets = await AssetModel.find(match).lean();
     if (!allAssets.length) {
-      throw Object.assign(new Error("No data found"), { status: 404 });
+      throw Object.assign(new Error("No records found"), { status: 404 });
     }
     const assetMap = new Map<string, any>();
     allAssets.forEach((a) => assetMap.set(String(a._id), a));
@@ -117,7 +117,7 @@ class EquipmentService {
       { $unwind: { path: '$locationData', preserveNullAndEmptyArrays: true } }
     ]);
     if (!assets.length) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error('No records found'), { status: 404 });
     }
     const assetIds = assets.map(a => a._id);
     const assetUsers = await MapUserAssetLocationModel.aggregate([

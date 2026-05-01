@@ -47,9 +47,9 @@ class EquipmentController {
 
       let data = await equipmentService.getAllEquipment(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('Equipment not found'), { status: 404 });
+        throw Object.assign(new Error('No equipment found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Equipment fetched successfully", data });
+      res.status(200).json({ status: true, message: "Equipment retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -83,7 +83,7 @@ class EquipmentController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Equipment fetched successfully", data });
+      res.status(200).json({ status: true, message: "Equipment retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -100,9 +100,9 @@ class EquipmentController {
       const match: any = { _id: { $in: childIds }, account_id: account_id, visible: true };
       const data = await equipmentService.getAllEquipment(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('Equipment not found'), { status: 404 });
+        throw Object.assign(new Error('No child equipment found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Child equipment fetched successfully", data });
+      res.status(200).json({ status: true, message: "Child equipment retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -127,9 +127,9 @@ class EquipmentController {
       }
       const data = await equipmentService.getEquipmentTreeData(assetQuery);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('Equipment not found'), { status: 404 });
+        throw Object.assign(new Error('Equipment tree not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Equipment tree fetched successfully", data });
+      res.status(200).json({ status: true, message: "Equipment tree retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -168,7 +168,7 @@ class EquipmentController {
       const userToken = get(req, "userToken", {}) as string;
       const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } = req.body;
       if (!Equipment.userList || Equipment.userList.length === 0) {
-        throw Object.assign(new Error('Please select at least one user'), { status: 400 });
+        throw Object.assign(new Error('User selection is required for equipment mapping'), { status: 400 });
       }
       if (Equipment.image_path) {
         const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");

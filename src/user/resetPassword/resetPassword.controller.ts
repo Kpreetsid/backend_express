@@ -34,6 +34,9 @@ class ResetPasswordController {
             if (!email || !verificationCode) {
                 throw Object.assign(new Error('Email and OTP are required'), { status: 400 });
             }
+            if (verificationCode.toString().length !== 6) {
+                throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
+            }
             const emailCheck: any = await usersService.getAllUsers({ email });
             if (emailCheck.length === 0) {
                 throw Object.assign(new Error('User not registered. Please register first.'), { status: 404 });
@@ -44,12 +47,12 @@ class ResetPasswordController {
             const match: any = { email: emailCheck[0].email };
             const otpExists = await resetPasswordService.verifyOTPExists(match);
             if (!otpExists) {
-                throw Object.assign(new Error('OTP has expired'), { status: 404 });
+                throw Object.assign(new Error('OTP has expired. Please request a new one.'), { status: 410 });
             }
             match.code = verificationCode;
             const data = await resetPasswordService.verifyUserOTP(match);
             if (!data) {
-                throw Object.assign(new Error('Invalid OTP'), { status: 400 });
+                throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
             }
             res.status(200).json({ status: true, message: "User OTP verified successfully" });
         } catch (error) {

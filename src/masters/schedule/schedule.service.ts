@@ -61,7 +61,7 @@ class ScheduleService {
             { $sort: { _id: -1 } }
         ]);
         if (!data || data.length === 0) {
-            throw Object.assign(new Error("No data found"), { status: 404 });
+            throw Object.assign(new Error("No records found"), { status: 404 });
         }
         const result = await Promise.all(
             data.map(async (item: any) => {

@@ -36,6 +36,12 @@ class RegistrationController {
     async userOTPVerification (req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
             const body = req.body;
+            if (!body.email || !body.verificationCode) {
+                throw Object.assign(new Error('Email and OTP are required'), { status: 400 });
+            }
+            if (body.verificationCode.toString().length !== 6) {
+                throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
+            }
             const data = await registrationService.verifyOTPCode(body);
             if (!data) {
                 throw Object.assign(new Error('OTP verification failed'), { status: 403 });

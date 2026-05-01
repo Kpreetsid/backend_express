@@ -48,11 +48,11 @@ class AssetController {
       });
       let data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("Asset not found"), { status: 404 });
+        throw Object.assign(new Error("No assets found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Assets fetched successfully", data });
+        .json({ status: true, message: "Assets retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -83,7 +83,7 @@ class AssetController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Asset fetched successfully", data });
+      res.status(200).json({ status: true, message: "Asset retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -106,11 +106,11 @@ class AssetController {
       });
       const data = await assetService.buzzerAssetList(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("Buzzer asset list not found"), { status: 404 });
+        throw Object.assign(new Error("No buzzer assets found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Buzzer asset list fetched successfully", data });
+        .json({ status: true, message: "Buzzer assets retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -139,7 +139,7 @@ class AssetController {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       if (data.length !== body.length) {
-        throw Object.assign(new Error("Bad Request"), { status: 400 });
+        throw Object.assign(new Error("Invalid asset list count"), { status: 400 });
       }
       await assetService.updateBuzzerAssetList(body);
       res
@@ -171,11 +171,11 @@ class AssetController {
       });
       const data = await assetService.getAllAssets(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("Asset not found"), { status: 404 });
+        throw Object.assign(new Error("No child assets found"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Child assets fetched successfully", data });
+        .json({ status: true, message: "Child assets retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -249,11 +249,11 @@ class AssetController {
       }
       const data = await assetService.getAllAssets(match);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error("Asset not found"), { status: 404 });
+        throw Object.assign(new Error("No assets found matching the filter"), { status: 404 });
       }
       res
         .status(200)
-        .json({ status: true, message: "Filtered assets fetched successfully", data });
+        .json({ status: true, message: "Filtered assets retrieved successfully", data });
     } catch (error) {
       next(error);
     }

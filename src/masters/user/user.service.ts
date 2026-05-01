@@ -46,11 +46,11 @@ class UsersService {
       const { params: { locationID } } = req;
       const locationId = helperService.validateObjectId(locationID);
       const data = await MapUserAssetLocationModel.find({ locationId: locationId }).select('userId -_id');
-      if (data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
-      }
       const userIDList = data.map((doc: any) => doc.userId);
       const userData = await this.getAllUsers({ _id: { $in: userIDList } });
+      if (userData.length === 0) {
+        throw Object.assign(new Error('No records found'), { status: 404 });
+      }
       return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
     } catch (error) {
       next(error);

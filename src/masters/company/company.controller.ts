@@ -19,9 +19,9 @@ class CompanyController {
       });
       const data = await companyService.getAllCompanies(filter);
       if (!data.length) {
-        throw Object.assign(new Error("Company not found"), { status: 404 });
+        throw Object.assign(new Error("No companies found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Companies fetched successfully", data });
+      res.status(200).json({ status: true, message: "Companies retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -44,7 +44,7 @@ class CompanyController {
       if (!data.length) {
         throw Object.assign(new Error("Company not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Company fetched successfully", data });
+      res.status(200).json({ status: true, message: "Company retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -52,14 +52,18 @@ class CompanyController {
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const { account_name, type, description } = req.body;
+      if (!account_name || !type) {
+        throw Object.assign(new Error("Account name and type are required"), { status: 400 });
+      }
       const newCompany = {
-        account_name: req.body.account_name,
-        type: req.body.type,
-        description: req.body.description,
+        account_name,
+        type,
+        description,
       };
       const data = await companyService.createCompany(newCompany);
       if (!data)
-        throw Object.assign(new Error("Data creation failed"), { status: 500 });
+        throw Object.assign(new Error("Failed to create company"), { status: 500 });
       res.status(201).json({ status: true, message: "Company created successfully", data });
     } catch (error) {
       next(error);
@@ -72,7 +76,10 @@ class CompanyController {
       const { account_name, type, description } = req.body;
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       if (id !== String(account_id)) {
-        throw Object.assign(new Error("Invalid ID"), { status: 400 });
+        throw Object.assign(new Error("Invalid account ID"), { status: 400 });
+      }
+      if (!account_name || !type) {
+        throw Object.assign(new Error("Account name and type are required"), { status: 400 });
       }
       const updatedObj = {
         account_name,
@@ -85,7 +92,7 @@ class CompanyController {
         updatedObj,
       );
       if (!data)
-        throw Object.assign(new Error("Data update failed"), { status: 500 });
+        throw Object.assign(new Error("Failed to update company"), { status: 500 });
       res.status(200).json({ status: true, message: "Company updated successfully", data });
     } catch (error) {
       next(error);

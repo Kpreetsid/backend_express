@@ -63,7 +63,7 @@ class LocationService {
   async getTree(match: any, location_id: any, allowedLocationIds: string[], userRole: string): Promise<any> {
     const rootLocations: any[] = await LocationModel.find(match).lean();
     if (!rootLocations?.length) {
-      throw Object.assign(new Error("No data found"), { status: 404 });
+      throw Object.assign(new Error("No records found"), { status: 404 });
     }
     let treeData: any[];
     if (location_id) {
@@ -103,7 +103,7 @@ class LocationService {
       }
       const locations: any = await LocationModel.find(match).lean();
       if (!locations?.length) {
-        throw Object.assign(new Error("No data found"), { status: 404 });
+        throw Object.assign(new Error("No records found"), { status: 404 });
       }
       const idMap: Record<string, any> = {};
       locations.forEach((loc: any) => {
@@ -159,7 +159,7 @@ class LocationService {
       }
       const data: any = await AssetModel.find(assetMatch).select('id top_level asset_name asset_type asset_build_type');
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('No records found'), { status: 404 });
       }
       const locationData = await LocationModel.aggregate([
         { $match: { _id: { $in: locationObjectIds }, visible: true } },
@@ -167,7 +167,7 @@ class LocationService {
         { $addFields: { id: { $toString: '$_id' }, name: '$location_name' } }
       ]);
       if (!locationData || locationData.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('No records found'), { status: 404 });
       }
       return { assetList: data, locationList: locationData };
     } catch (error) {
@@ -245,13 +245,13 @@ class LocationService {
       if (userRole !== 'admin') {
         const mappedData = await mapUserToLocationService.getLocationsMappedData(`${user_id}`);
         if (!mappedData || mappedData.length === 0) {
-          throw Object.assign(new Error('No data found'), { status: 404 });
+          throw Object.assign(new Error('No records found'), { status: 404 });
         }
         match._id = { $in: mappedData.map(doc => doc.locationId) };
       }
       const data = await LocationModel.find(match).populate([{ path: 'account_id', model: "Schema_Account", select: 'id account_name' }, { path: 'top_level_location_id', model: "Schema_Location", select: 'id location_name', match: { visible: true } }]);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('No data found'), { status: 404 });
+        throw Object.assign(new Error('No records found'), { status: 404 });
       }
       const result = data.map((doc: any) => {
         return {

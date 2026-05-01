@@ -11,10 +11,14 @@ class RegistrationService {
     this.mailerService = new MailerService();
   }
   async verifyOTPCode(body: any) {
-    const userVerification = await VerificationCodeModel.findOne({ email: body.email, code: body.verificationCode });
-    if (!userVerification) {
-      throw Object.assign(new Error("OTP expired"), { status: 403 });
+    const otpExists = await VerificationCodeModel.findOne({ email: body.email });
+    if (!otpExists) {
+      throw Object.assign(new Error('OTP has expired. Please request a new one.'), { status: 410 });
     }
+    if (otpExists.code !== body.verificationCode) {
+      throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
+    }
+    const userVerification = otpExists;
     const accountBody = { account_name: body.account_name, type: body.type, description: body.description };
     const account: IAccount = await companyService.createCompany(accountBody);
     if (!account) {

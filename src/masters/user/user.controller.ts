@@ -28,9 +28,9 @@ class UserController {
       delete filter.visible;
       const data = await usersService.getAllUsers(filter);
       if (!data.length) {
-        throw Object.assign(new Error("Users not found"), { status: 404 });
+        throw Object.assign(new Error("No users found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Users fetched successfully", data });
+      res.status(200).json({ status: true, message: "Users retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -50,7 +50,7 @@ class UserController {
       if (!data.length) {
         throw Object.assign(new Error("User not found"), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "User fetched successfully", data });
+      res.status(200).json({ status: true, message: "User retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -101,7 +101,7 @@ class UserController {
       }
       const data = await usersService.updateUserDetails(String(id), { ...userData[0].toObject(), ...body, updatedBy: user._id });
       if (!data) {
-        throw Object.assign(new Error("User not updated"), { status: 404 });
+        throw Object.assign(new Error("Failed to update user"), { status: 500 });
       }
       res.status(200).json({ status: true, message: "User updated successfully", data });
     } catch (error) {
@@ -114,7 +114,7 @@ class UserController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const match = { _id: user_id, account_id, user_status: "active" };
       const userData = await usersService.getUserDetails(match);
-      if (!userData) throw Object.assign(new Error("No user found"), { status: 404 });
+      if (!userData) throw Object.assign(new Error("User not found"), { status: 404 });
       const { password, newPassword, confirmNewPassword } = req.body;
       if (!password || !newPassword || !confirmNewPassword)
         throw Object.assign(new Error("Password, new password and confirm password are required"), { status: 400 });
@@ -142,7 +142,7 @@ class UserController {
       const userData = await usersService.getAllUsers({ email, user_status: "active" });
       if (!userData.length) throw Object.assign(new Error("User not found"), { status: 404 });
       const otpExists = await resetPasswordService.verifyOTPExists({ email });
-      if (!otpExists) throw Object.assign(new Error("OTP has expired"), { status: 404 });
+      if (!otpExists) throw Object.assign(new Error("OTP has expired. Please request a new one."), { status: 410 });
       userData[0].password = newPassword;
       await usersService.updateUserPassword(`${userData[0]._id}`, userData[0]);
       await resetPasswordService.deleteVerificationCode({ email });

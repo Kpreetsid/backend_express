@@ -30,9 +30,9 @@ class PartsController {
 
       const data = await partsService.getAllParts(filter);
       if (!data || data.length === 0) {
-        throw Object.assign(new Error('Part not found'), { status: 404 });
+        throw Object.assign(new Error('No parts found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Parts fetched successfully", data });
+      res.status(200).json({ status: true, message: "Parts retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -57,7 +57,7 @@ class PartsController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Part fetched successfully", data: data[0] });
+      res.status(200).json({ status: true, message: "Part retrieved successfully", data: data[0] });
     } catch (error) {
       next(error);
     }

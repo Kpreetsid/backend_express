@@ -100,7 +100,7 @@ class AssetService {
       { $unwind: { path: '$locationData', preserveNullAndEmptyArrays: true } }
     ]);
     if (!allAssets.length) {
-      throw Object.assign(new Error("No data found"), { status: 404 });
+      throw Object.assign(new Error("No records found"), { status: 404 });
     }
     const data = await this.buildAssetsTree(allAssets);
     return data;
@@ -175,7 +175,7 @@ class AssetService {
       { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
     ]);
     if (data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      throw Object.assign(new Error('No records found'), { status: 404 });
     }
     const result = data.map((doc: any) => {
       doc = doc.toObject();
