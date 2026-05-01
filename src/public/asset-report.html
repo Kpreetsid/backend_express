@@ -52,9 +52,6 @@
     }
 
     .detail-section {
-      background-color: #f3ddd3;
-      padding: 20px;
-      border-radius: 12px;
       display: table;
       width: 100%;
       box-sizing: border-box;
@@ -64,12 +61,16 @@
     .info-table-wrapper {
       display: table-cell;
       width: 65%;
+      padding-right: 10px;
       vertical-align: top;
     }
 
     .info-image-wrapper {
+      border: 1px solid rgba(0, 0, 105, 0.3);
+      background-color: #ffffff;
       display: table-cell;
       width: 35%;
+      border-radius: 12px;
       text-align: right;
       vertical-align: top;
     }
@@ -77,7 +78,7 @@
     .info-image-wrapper img {
       max-width: 100%;
       height: 180px;
-      border-radius: 12px;
+      padding: 4px;
       object-fit: cover;
     }
 
@@ -88,7 +89,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
+      font-size: 18px;
       font-weight: bold;
       color: #000069;
       border-radius: 12px;
@@ -124,7 +125,7 @@
     }
 
     .summary-table td {
-      border: 1px solid #dadada;
+      border-bottom: 1px solid rgba(0, 0, 105, 0.1);
       padding: 8px 12px;
       background: white;
     }
@@ -290,14 +291,20 @@
 
     .chart-box {
       width: 100%;
-      height: 250px;
+      height: 300px;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .chart-box-single {
       width: 100%;
-      height: 250px;
+      height: 300px;
       overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .attachments-grid {
@@ -446,7 +453,7 @@
 
     // ── Main chart renderer ────────────────────────────────────────────────────
     function renderCharts() {
-      console.log('Starting chart rendering...');
+      console.log('[PDF] Starting chart rendering from pre-captured images...');
       try {
         const chartData = JSON.parse(document.getElementById('chart-data').textContent || '{}');
         const readings = JSON.parse(document.getElementById('readings-data').textContent || '[]');
@@ -461,10 +468,9 @@
           return;
         }
 
-        let chartCount = 0;
+        let totalChartsRendered = 0;
 
         Object.entries(chartData).forEach(([key, device], deviceIdx) => {
-          // key = "compositeId-timestamp" — find matching reading by compositeId
           const keyCompositeId = key.split('-')[0];
           const matchedReading = readings.find(r => r.compositeId && r.compositeId.includes(keyCompositeId));
           const endpointName = matchedReading ? matchedReading.point : key;
@@ -477,16 +483,15 @@
 
           chartTypes.forEach(baseType => {
             const compType = 'compare-' + baseType;
-            const hasBase = device[baseType] && Object.keys(device[baseType]).length > 0;
-            const hasComp = device[compType] && Object.keys(device[compType]).length > 0;
+            const hasBase = device[baseType] && device[baseType].capturedImage;
+            const hasComp = device[compType] && device[compType].capturedImage;
 
             if (!hasBase && !hasComp) return;
 
-            chartCount++;
+            totalChartsRendered++;
             const container = document.createElement('div');
             container.className = 'chart-container';
 
-            // Title
             const titleWrap = document.createElement('div');
             titleWrap.className = 'chart-title-wrapper';
             const chartName = (device[baseType]?.chartName || device[compType]?.chartName || baseType);
@@ -494,16 +499,13 @@
             container.appendChild(titleWrap);
 
             if (hasBase && hasComp) {
-              // ── Stacked comparison: Before on top, After below ──────────────
               [baseType, compType].forEach((type, idx) => {
                 const block = document.createElement('div');
                 block.className = 'chart-compare-block';
 
                 const ts = idx === 0 ? device.meta?.timestamp : device.meta?.compare_timestamp;
                 const formattedTs = formatJsDate(ts, timezone, locale);
-                const stateLabel = idx === 0
-                  ? (labels.beforeLabel || 'Before')
-                  : (labels.afterLabel || 'After');
+                const stateLabel = idx === 0 ? (labels.beforeLabel || 'Before') : (labels.afterLabel || 'After');
 
                 const lbl = document.createElement('div');
                 lbl.className = 'chart-compare-label ' + (idx === 0 ? 'before' : 'after');
@@ -518,21 +520,16 @@
                 container.appendChild(block);
 
                 setTimeout(() => {
-                  try {
-                    if (type.includes('spectrum')) {
-                      renderHighchart(chartId, device[type], null, labels);
-                    } else {
-                      renderEchart(chartId, device[type], null, labels);
-                    }
-                  } catch (e) {
-                    console.error('Chart render error:', chartId, e);
-                    chartBox.innerHTML = '<div class="no-data-msg">' + (labels.errorRenderingChartLabel || 'Error rendering chart.') + '</div>';
+                  if (device[type].capturedImage) {
+                    displayCapturedChart(chartId, device[type].capturedImage);
+                  } else {
+                    console.error('[PDF] Missing image for compared chart:', chartId);
+                    const el = document.getElementById(chartId);
+                    if (el) el.innerHTML = '<div class="no-data-msg">Comparison chart image not captured.</div>';
                   }
                 }, 0);
               });
-
             } else {
-              // ── Single chart ─────────────────────────────────────────────────
               const activeType = hasBase ? baseType : compType;
               const chartBox = document.createElement('div');
               chartBox.className = 'chart-box-single';
@@ -541,15 +538,12 @@
               container.appendChild(chartBox);
 
               setTimeout(() => {
-                try {
-                  if (activeType.includes('spectrum')) {
-                    renderHighchart(chartId, device[activeType], null, labels);
-                  } else {
-                    renderEchart(chartId, device[activeType], null, labels);
-                  }
-                } catch (e) {
-                  console.error('Chart render error:', chartId, e);
-                  chartBox.innerHTML = '<div class="no-data-msg">' + (labels.errorRenderingChartLabel || 'Error rendering chart.') + '</div>';
+                if (device[activeType].capturedImage) {
+                  displayCapturedChart(chartId, device[activeType].capturedImage);
+                } else {
+                  console.error('[PDF] Missing image for single chart:', chartId);
+                  const el = document.getElementById(chartId);
+                  if (el) el.innerHTML = '<div class="no-data-msg">Chart image not captured from browser.</div>';
                 }
               }, 0);
             }
@@ -558,227 +552,50 @@
           });
         });
 
-        // Scale wait time with number of charts (min 2s, max 15s)
-        const waitMs = Math.min(Math.max(chartCount * 400, 2000), 15000);
-        console.log('Waiting ' + waitMs + 'ms for ' + chartCount + ' charts...');
+        // Set PDF_READY after a short delay to allow images to be added to DOM
+        const waitMs = Math.min(Math.max(totalChartsRendered * 50, 500), 3000);
         setTimeout(() => {
           window.PDF_READY = true;
-          console.log('PDF_READY = true');
+          console.log('[PDF] PDF_READY = true');
         }, waitMs);
 
       } catch (globalErr) {
-        console.error('Global rendering error:', globalErr);
+        console.error('[PDF] Global rendering error:', globalErr);
         window.PDF_READY = true;
       }
     }
 
-    // ── Highcharts (Spectrum) ─────────────────────────────────────────────────
-    function renderHighchart(id, data, compData, labels) {
-      if (typeof Highcharts === 'undefined') { console.error('Highcharts not loaded'); return; }
-      const series = [];
-      if (data && data.yData) {
-        data.yData.forEach(s => series.push({
-          name: s.name,
-          data: s.data,
-          color: (s.lineStyle && s.lineStyle.color) || s.color || '#000069'
-        }));
-      }
-      if (compData && compData.yData) {
-        compData.yData.forEach(s => series.push({
-          name: (labels && labels.compareLabel ? labels.compareLabel : 'Compare') + ' ' + s.name,
-          data: s.data,
-          dashStyle: 'Dash',
-          color: '#ff0000'
-        }));
-      }
-      const yLabel = data && data.yLabel ? data.yLabel : (compData && compData.yLabel ? compData.yLabel : '');
-      const activeData = data || compData;
-
-      // Apply live zoom state and plot lines/series if user interacted
-      let xMin, xMax;
-      let plotLinesOpt = [];
-      const liveState = activeData && activeData._liveState;
-      if (liveState) {
-        if (liveState.xZoom && liveState.xZoom.isZoomed) {
-          xMin = liveState.xZoom.min;
-          xMax = liveState.xZoom.max;
+    function displayCapturedChart(id, data) {
+      const el = document.getElementById(id);
+      if (!el || !data) return;
+      
+      if (typeof data === 'string' && (data.includes('<svg') || data.includes('<?xml'))) {
+        let svgContent = data;
+        const svgStart = data.indexOf('<svg');
+        if (svgStart !== -1) {
+          svgContent = data.substring(svgStart);
         }
-        if (liveState.plotLines && liveState.plotLines.length > 0) {
-          plotLinesOpt = liveState.plotLines;
+        el.innerHTML = svgContent;
+        const svg = el.querySelector('svg');
+        if (svg) {
+          svg.setAttribute('width', '100%');
+          svg.setAttribute('height', '100%');
+          svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+          svg.style.width = '100%';
+          svg.style.height = '100%';
         }
-        if (liveState.series && liveState.series.length > 0) {
-          // Find any series from liveState not already in our series (like markers)
-          // or override existing series with live data if sidebands updated them
-          liveState.series.forEach(ls => {
-            const existingIdx = series.findIndex(s => s.name === ls.name);
-            if (existingIdx !== -1) {
-              series[existingIdx].data = ls.data;
-              if (ls.type === 'scatter') {
-                 series[existingIdx].type = 'scatter';
-                 series[existingIdx].marker = ls.marker;
-              }
-            } else {
-              series.push({
-                name: ls.name,
-                data: ls.data,
-                type: ls.type || 'line',
-                color: ls.color || '#FF0000',
-                marker: ls.marker,
-                dashStyle: ls.dashStyle,
-                showInLegend: ls.showInLegend !== false
-              });
-            }
-          });
-        }
+      } else {
+        const img = document.createElement('img');
+        img.src = data;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'contain';
+        el.appendChild(img);
       }
-
-      Highcharts.chart(id, {
-        // margin: [top, right, bottom, left]
-        // top=55 leaves room for legend; bottom=45 leaves room for x-axis labels
-        chart: { type: 'line', animation: false, margin: [55, 12, 45, 68], height: 230 },
-        title: { text: null },
-        xAxis: {
-          categories: (data && data.xData) || (compData && compData.xData) || [],
-          labels: {
-            style: { fontSize: '8px', color: '#333' },
-            rotation: -45,
-            align: 'right'
-          },
-          min: xMin !== undefined ? xMin : null,
-          max: xMax !== undefined ? xMax : null,
-          plotLines: plotLinesOpt
-        },
-        yAxis: {
-          title: { text: yLabel, style: { fontSize: '10px', fontWeight: 'bold', color: '#000069' } },
-          labels: { style: { fontSize: '8px', color: '#333' } }
-        },
-        legend: {
-          enabled: true,
-          verticalAlign: 'top',
-          align: 'center',
-          layout: 'horizontal',
-          itemStyle: { fontSize: '9px', fontWeight: 'bold', color: '#333' },
-          symbolWidth: 20,
-          symbolHeight: 3,
-          itemDistance: 12
-        },
-        series: series,
-        credits: { enabled: false },
-        plotOptions: { line: { marker: { enabled: false }, lineWidth: 1.5 } }
-      });
     }
 
-    // ── ECharts (TWF) ─────────────────────────────────────────────────────────
-    function renderEchart(id, data, compData, labels) {
-      if (typeof echarts === 'undefined') { console.error('ECharts not loaded'); return; }
-      const chart = echarts.init(document.getElementById(id));
-      const series = [];
-      if (data && data.yData) {
-        data.yData.forEach(s => {
-          series.push({
-            name: s.name,
-            data: Array.isArray(s.data) ? s.data : [],
-            type: 'line',
-            showSymbol: false,
-            smooth: true,
-            lineStyle: { width: 1, color: (s.itemStyle && s.itemStyle.color) || s.color || '#000069' },
-            itemStyle: { color: (s.itemStyle && s.itemStyle.color) || s.color || '#000069' }
-          });
-        });
-      }
-      if (compData && compData.yData) {
-        compData.yData.forEach(s => {
-          series.push({
-            name: (labels && labels.compareLabel ? labels.compareLabel : 'Compare') + ' ' + s.name,
-            data: Array.isArray(s.data) ? s.data : [],
-            type: 'line',
-            showSymbol: false,
-            lineStyle: { type: 'dashed', width: 1, color: '#ff0000' }
-          });
-        });
-      }
-      const activeData = data || compData;
-
-      // Apply live dataZoom state and series if user interacted
-      let dataZoomOpt = null;
-      let graphicOpt = null;
-      let finalSeries = series;
-      const liveState = activeData && activeData._liveState;
-      if (liveState) {
-        if (liveState.dataZoom && Array.isArray(liveState.dataZoom) && liveState.dataZoom.length > 0) {
-          // Reconstruct dataZoom from captured state (startValue/endValue or start/end %)
-          dataZoomOpt = liveState.dataZoom.map(dz => ({
-            type: dz.type || 'inside',
-            start: dz.start,
-            end: dz.end,
-            startValue: dz.startValue,
-            endValue: dz.endValue
-          }));
-        }
-        if (liveState.series && liveState.series.length > 0) {
-          // Overwrite the manual series with the live one to preserve markers/cursors
-          finalSeries = liveState.series.map(s => {
-            // Strip out non-serializable or problematic parts from live series
-            return {
-              name: s.name,
-              type: s.type,
-              data: s.data,
-              itemStyle: s.itemStyle || undefined,
-              lineStyle: s.lineStyle || undefined,
-              showSymbol: s.showSymbol !== undefined ? s.showSymbol : false,
-              smooth: s.smooth !== undefined ? s.smooth : true,
-              barWidth: s.barWidth || undefined,
-              color: s.color || undefined,
-              markLine: s.markLine || undefined,
-              markArea: s.markArea || undefined,
-              markPoint: s.markPoint || undefined
-            };
-          });
-        }
-        if (liveState.graphic) {
-          graphicOpt = liveState.graphic;
-        }
-      }
-
-      chart.setOption({
-        animation: false,
-        // Legend at top → grid top must be large enough to clear it
-        // bottom left for y-axis label; bottom for x-axis labels
-        grid: { top: 55, bottom: 40, left: 68, right: 15 },
-        legend: {
-          show: true,
-          top: 4,
-          left: 'center',
-          orient: 'horizontal',
-          icon: 'rect',
-          itemWidth: 20,
-          itemHeight: 3,
-          itemGap: 12,
-          textStyle: { fontSize: 9, color: '#333', fontWeight: 'bold' }
-        },
-        xAxis: {
-          type: 'category',
-          data: (activeData && activeData.xData) || [],
-          axisLabel: {
-            fontSize: 8,
-            color: '#333',
-            rotate: 0,
-            interval: 'auto'
-          }
-        },
-        yAxis: {
-          type: 'value',
-          name: (activeData && activeData.yLabel) || '',
-          nameTextStyle: { fontSize: 10, fontWeight: 'bold', color: '#000069' },
-          axisLabel: { fontSize: 8, color: '#333' },
-          min: (activeData && activeData.min) ? Number(activeData.min) : undefined,
-          max: (activeData && activeData.max) ? Number(activeData.max) : undefined
-        },
-        dataZoom: dataZoomOpt || (activeData && activeData.dataZoom) || null,
-        graphic: graphicOpt,
-        series: finalSeries
-      });
-    }
+    // Start rendering on load
+    window.addEventListener('DOMContentLoaded', renderCharts);
   </script>
 </body>
 

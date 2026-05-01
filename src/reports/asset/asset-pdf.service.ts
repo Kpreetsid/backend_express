@@ -125,51 +125,7 @@ export class PdfService {
         timeout: 60000
       });
 
-      // Inject chart libraries - prioritizing local node_modules
-      const appNodeModules = path.join(process.cwd(), 'node_modules');
-      
-      const scripts = [
-        { 
-          name: 'highcharts', 
-          path: path.join(appNodeModules, 'highcharts', 'highcharts.js'),
-          cdn: 'https://code.highcharts.com/highcharts.js'
-        },
-        { 
-          name: 'echarts', 
-          path: path.join(appNodeModules, 'echarts', 'dist', 'echarts.min.js'),
-          cdn: 'https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js'
-        }
-      ];
-
-      for (const script of scripts) {
-        let loaded = false;
-        if (fs.existsSync(script.path)) {
-          try {
-            await page.addScriptTag({ path: script.path });
-            loaded = true;
-          } catch (e: any) {
-            console.warn(`[PdfService] Failed to load local ${script.name} from ${script.path}: ${e.message}`);
-          }
-        }
-        
-        if (!loaded) {
-          console.warn(`[PdfService] Local ${script.name} not found or failed, falling back to CDN: ${script.cdn}`);
-          try {
-            await page.addScriptTag({ url: script.cdn });
-          } catch (e: any) {
-            console.error(`[PdfService] CRITICAL: Could not load ${script.name} from any source.`);
-          }
-        }
-      }
-
-      // Wait for charts to be rendered with a more generous timeout
       try {
-        await page.evaluate(() => {
-          if (typeof (globalThis as any).renderCharts === 'function') {
-            (globalThis as any).renderCharts();
-          }
-        });
-
         await page.waitForFunction(() => (globalThis as any).PDF_READY === true, {
           timeout: 60000
         });
