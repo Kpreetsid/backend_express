@@ -640,7 +640,6 @@ class OrderService {
       createdFrom: body.createdFrom,
       files: body.files,
       tasks: body.tasks,
-      task_submitted: body.task_submitted,
       parts: body.parts,
       work_request_id: body.work_request_id,
       asset_report_id: body.asset_report_id,
@@ -712,9 +711,6 @@ class OrderService {
     const existingOrder = orders[0];
 
     if (status === 'Completed') {
-      if (existingOrder.tasks?.length > 0 && !existingOrder.task_submitted) {
-        throw Object.assign(new Error('Task is not completed'), { status: 400 });
-      }
       if (existingOrder.sop_form_id && !existingOrder.sop_form_submitted) {
         throw Object.assign(new Error('Form is not completed'), { status: 400 });
       }
@@ -725,7 +721,6 @@ class OrderService {
         }));
       }
     } else if (status === 'Open') {
-      existingOrder.task_submitted = false;
       existingOrder.sop_form_submitted = false;
     }
 
@@ -734,7 +729,7 @@ class OrderService {
 
     return await WorkOrderModel.findByIdAndUpdate(
       id,
-      { status, updatedBy: user._id, status_details: statusDetails, parts: existingOrder.parts, task_submitted: existingOrder.task_submitted, sop_form_submitted: existingOrder.sop_form_submitted },
+      { status, updatedBy: user._id, status_details: statusDetails, parts: existingOrder.parts, sop_form_submitted: existingOrder.sop_form_submitted },
       { returnDocument: 'after' }
     );
   }

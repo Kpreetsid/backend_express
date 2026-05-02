@@ -12,6 +12,7 @@ export interface IPart extends Document {
   min_quantity: number;
   cost: number;
   location_id: ObjectId;
+  currency: string;
   visible: boolean;
   createdBy: ObjectId;
   updatedBy?: ObjectId
@@ -28,6 +29,7 @@ const partSchema = new Schema<IPart>({
   min_quantity: { type: Number, required: true },
   cost: { type: Number, required: true },
   location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  currency: { type: String, trim: true, default: 'INR' },
   visible: { type: Boolean, required: true, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }

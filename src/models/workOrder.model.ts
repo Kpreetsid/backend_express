@@ -55,6 +55,8 @@ export interface IParts {
   estimatedQuantity: number;
   actualQuantity: number;
   unit: string;
+  cost: number;
+  currency: string;
 }
 
 const PartsSchema = new Schema<IParts>({
@@ -64,6 +66,8 @@ const PartsSchema = new Schema<IParts>({
   estimatedQuantity: { type: Number, required: true },
   actualQuantity: { type: Number },
   unit: { type: String, trim: true },
+  cost: { type: Number },
+  currency: { type: String, trim: true }
 }, { _id: false, versionKey: false });
 
 interface IStatusDetails {
@@ -101,7 +105,6 @@ export interface IWorkOrder extends Document {
   asset_report_id: ObjectId;
   cron_id: ObjectId;
   tasks: ITask[];
-  task_submitted: boolean;
   parts: IParts[];
   work_request_id: ObjectId;
   files: object[];
@@ -132,7 +135,6 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   sop_form_data: { type: Schema.Types.Mixed },
   parts: { type: [PartsSchema] },
   tasks: { type: [TaskSchema], default: [] },
-  task_submitted: { type: Boolean, default: false },
   asset_report_id: { type: Schema.Types.ObjectId, ref: 'AssetReportModel' },
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   files: { type: [Object] },

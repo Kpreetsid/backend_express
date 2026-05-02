@@ -100,7 +100,6 @@ export interface IHistoryWorkOrder extends Document {
   asset_report_id: ObjectId;
   cron_id: ObjectId;
   tasks: ITask[];
-  task_submitted: boolean;
   parts: IParts[];
   work_request_id: ObjectId;
   files: object[];
@@ -135,7 +134,6 @@ const WorkOrderSchema = new Schema<IHistoryWorkOrder>({
   sop_form_data: { type: Schema.Types.Mixed },
   parts: { type: [PartsSchema] },
   tasks: { type: [TaskSchema], default: [] },
-  task_submitted: { type: Boolean, default: false },
   asset_report_id: { type: Schema.Types.ObjectId, ref: 'AssetReportModel' },
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   files: { type: [Object] },

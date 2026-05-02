@@ -111,7 +111,7 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const id = String(req.params.id);
-      if (!req.body?.task_submitted && !req.body?.sop_form_submitted) {
+      if (!req.body?.sop_form_submitted) {
         throw Object.assign(new Error('No data submitted'), { status: 400 });
       }
       const data = await orderService.updateDataById(id, req.body, user);

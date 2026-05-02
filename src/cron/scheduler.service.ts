@@ -64,7 +64,6 @@ class SchedulerService {
             createdFrom: schedule.work_order.createdFrom,
             tasks: schedule.work_order.tasks,
             parts: schedule.work_order.parts,
-            task_submitted: false,
             userIdList: schedule.work_order.userIdList
         };
         switch (s.mode) {

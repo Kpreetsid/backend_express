@@ -81,6 +81,7 @@ class PartsService {
       min_quantity: body.min_quantity,
       cost: body.cost,
       location_id: body.location_id,
+      currency: body.currency,
       createdBy: user_id
     }).save();
   };

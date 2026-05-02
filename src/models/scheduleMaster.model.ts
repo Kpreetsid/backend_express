@@ -7,6 +7,8 @@ interface IPart {
   part_type: string;
   estimatedQuantity: number;
   unit: string;
+  cost: number;
+  currency: string;
 }
 
 const PartSchema = new Schema<IPart>({
@@ -14,7 +16,9 @@ const PartSchema = new Schema<IPart>({
   part_name: { type: String, trim: true, required: true },
   part_type: { type: String, trim: true, required: true },
   estimatedQuantity: { type: Number, required: true },
-  unit: { type: String, trim: true }
+  unit: { type: String, trim: true },
+  cost: { type: Number },
+  currency: { type: String, trim: true }
 }, { _id: false });
 
 interface WorkOrder {
