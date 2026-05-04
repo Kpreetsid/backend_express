@@ -97,6 +97,12 @@ export interface IHistoryWorkOrder extends Document {
   sop_form_id: ObjectId;
   sop_form_submitted: boolean;
   sop_form_data: object;
+  sop_form_updated_by?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  sop_form_updated_at?: Date;
   asset_report_id: ObjectId;
   cron_id: ObjectId;
   tasks: ITask[];
@@ -132,6 +138,12 @@ const WorkOrderSchema = new Schema<IHistoryWorkOrder>({
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
   sop_form_submitted: { type: Boolean, default: false },
   sop_form_data: { type: Schema.Types.Mixed },
+  sop_form_updated_by: {
+    id: { type: String },
+    firstName: { type: String },
+    lastName: { type: String }
+  },
+  sop_form_updated_at: { type: Date },
   parts: { type: [PartsSchema] },
   tasks: { type: [TaskSchema], default: [] },
   asset_report_id: { type: Schema.Types.ObjectId, ref: 'AssetReportModel' },

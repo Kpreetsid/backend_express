@@ -722,6 +722,8 @@ class OrderService {
       }
     } else if (status === 'Open') {
       existingOrder.sop_form_submitted = false;
+      existingOrder.sop_form_updated_by = null;
+      existingOrder.sop_form_updated_at = null;
     }
 
     const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
@@ -729,7 +731,15 @@ class OrderService {
 
     return await WorkOrderModel.findByIdAndUpdate(
       id,
-      { status, updatedBy: user._id, status_details: statusDetails, parts: existingOrder.parts, sop_form_submitted: existingOrder.sop_form_submitted },
+      { 
+        status, 
+        updatedBy: user._id, 
+        status_details: statusDetails, 
+        parts: existingOrder.parts, 
+        sop_form_submitted: existingOrder.sop_form_submitted,
+        sop_form_updated_by: existingOrder.sop_form_updated_by,
+        sop_form_updated_at: existingOrder.sop_form_updated_at
+      },
       { returnDocument: 'after' }
     );
   }
