@@ -4,6 +4,7 @@ import { IUser } from '../../models/user.model';
 import { inspectionService } from './inspection.service';
 import { mapInspectionService } from '../../transaction/mapUserInspection/userInspection.service';
 import { helperService } from '../../utils/helper';
+import { notificationService } from '../../utils/notification.service';
 
 class InspectionController {
 
@@ -57,6 +58,15 @@ class InspectionController {
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
+    await notificationService.notifyAccountUsers({
+      accountId: String(account_id),
+      module: 'Inspection',
+      event: 'created',
+      entityId: String(data._id),
+      entityName: result[0].title,
+      actionUrl: `/inspections/1/${data._id}`,
+      sourceUserId: String(user_id)
+    });
     res.status(201).json({ status: true, message: "Inspection created successfully", data: result });
   } catch (error) {
     next(error);
@@ -75,6 +85,15 @@ class InspectionController {
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
+    await notificationService.notifyAccountUsers({
+      accountId: String(account_id),
+      module: 'Inspection',
+      event: 'updated',
+      entityId: String(id),
+      entityName: result[0].title,
+      actionUrl: `/inspections/1/${id}`,
+      sourceUserId: String(user_id)
+    });
     res.status(200).json({ status: true, message: "Inspection updated successfully", data: result });
   } catch (error) {
     next(error);

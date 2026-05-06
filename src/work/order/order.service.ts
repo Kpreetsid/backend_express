@@ -6,6 +6,7 @@ import { partsService } from "../../masters/part/parts.service";
 import { commentService } from "../comments/comment.service";
 import { requestService } from "../request/request.service";
 import { helperService } from "../../utils/helper";
+import { notificationService } from "../../utils/notification.service";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -672,6 +673,15 @@ class OrderService {
       await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
     });
     const resultData = await this.getAllOrders({ _id: data._id });
+    await notificationService.notifyAccountUsers({
+      accountId: String(user.account_id),
+      module: 'Work Order',
+      event: 'created',
+      entityId: String(data._id),
+      entityName: data.title || data.order_no || 'Work Order',
+      actionUrl: `/work-order/details/${data._id}`,
+      sourceUserId: String(user._id)
+    });
     return resultData[0];
   };
 
@@ -697,6 +707,15 @@ class OrderService {
       throw Object.assign(new Error('Failed to update work order'), { status: 400 });
     }
     const resultData = await this.getAllOrders({ _id: helperService.validateObjectId(id) });
+    await notificationService.notifyAccountUsers({
+      accountId: String(user.account_id),
+      module: 'Work Order',
+      event: 'updated',
+      entityId: String(id),
+      entityName: resultData[0]?.title || resultData[0]?.order_no || 'Work Order',
+      actionUrl: `/work-order/details/${id}`,
+      sourceUserId: String(user._id)
+    });
     return resultData[0];
   };
 
@@ -729,7 +748,7 @@ class OrderService {
     const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
     const statusDetails = [...(existingOrder.status_details || []), statusEntry];
 
-    return await WorkOrderModel.findByIdAndUpdate(
+    const data = await WorkOrderModel.findByIdAndUpdate(
       id,
       { 
         status, 
@@ -742,6 +761,18 @@ class OrderService {
       },
       { returnDocument: 'after' }
     );
+    if (data) {
+      await notificationService.notifyAccountUsers({
+        accountId: String(user.account_id),
+        module: 'Work Order',
+        event: 'updated',
+        entityId: String(id),
+        entityName: data.title || data.order_no || 'Work Order',
+        actionUrl: `/work-order/details/${id}`,
+        sourceUserId: String(user._id)
+      });
+    }
+    return data;
   }
 
   async removeOrder(id: any, user_id: any): Promise<any> {

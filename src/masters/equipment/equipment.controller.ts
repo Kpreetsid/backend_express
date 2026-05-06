@@ -9,6 +9,7 @@ import { locationService } from '../location/location.service';
 import { processorAPIService } from '../../api-processor';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
+import { notificationService } from '../../utils/notification.service';
 
 class EquipmentController {
 
@@ -230,6 +231,15 @@ class EquipmentController {
       });
       await mapUserToAssetService.createMapUserAssets(assetsMapData);
       await processorAPIService.setAssetHealthStatus(assetsMapData, account_id, user_id, userToken);
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Asset',
+        event: 'created',
+        entityId: String(equipmentData._id),
+        entityName: Equipment.asset_name || Equipment.name || 'Asset',
+        actionUrl: `/assets/asset-health/${equipmentData._id}/health`,
+        sourceUserId: String(user_id)
+      });
       res.status(200).json({ status: true, message: "Equipment created successfully", data: equipmentData._id });
     } catch (error) {
       if (equipmentId) {
@@ -345,6 +355,15 @@ class EquipmentController {
         await processorAPIService.setAssetHealthStatus(newlyCreatedAssetList, account_id, user_id, userToken);
       }
       const data = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Asset',
+        event: 'updated',
+        entityId: String(id),
+        entityName: data?.[0]?.asset_name || Equipment.asset_name || Equipment.name || 'Asset',
+        actionUrl: `/assets/asset-health/${id}/health`,
+        sourceUserId: String(user_id)
+      });
       res.status(200).json({ status: true, message: "Equipment updated successfully", data });
     } catch (error) {
       next(error);
@@ -364,6 +383,15 @@ class EquipmentController {
         throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
       await equipmentService.updateEquipmentImageById(String(id), image_path, `${user_id}`);
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Asset',
+        event: 'updated',
+        entityId: String(id),
+        entityName: dataExists?.[0]?.asset_name || 'Asset',
+        actionUrl: `/assets/asset-health/${id}/health`,
+        sourceUserId: String(user_id)
+      });
       res.status(200).json({ status: true, message: "Equipment image updated successfully" });
     } catch (error) {
       next(error);

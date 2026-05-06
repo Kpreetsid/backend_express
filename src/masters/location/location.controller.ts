@@ -5,6 +5,7 @@ import { IUser } from "../../models/user.model";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
+import { notificationService } from '../../utils/notification.service';
 
 class LocationController {
 
@@ -176,6 +177,17 @@ class LocationController {
       body.createdBy = user_id;
       const data: any = await locationService.insertLocation(body);
       await mapUserToLocationService.mapUserLocationData(data._id, body.userIdList, account_id);
+      
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Location',
+        event: 'created',
+        entityId: String(data._id),
+        entityName: data.location_name,
+        actionUrl: `/locations/info/${data._id}`,
+        sourceUserId: String(user_id)
+      });
+
       res.status(201).json({ status: true, message: "Location created successfully", data: [data] });
     } catch (error) {
       next(error);
@@ -200,6 +212,18 @@ class LocationController {
       }
       data.id = data._id;
       const updatedLocation = await locationService.getAllLocations({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
+
+      const locationName = updatedLocation?.[0]?.location_name || 'Location';
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Location',
+        event: 'updated',
+        entityId: String(id),
+        entityName: locationName,
+        actionUrl: `/locations/info/${id}`,
+        sourceUserId: String(user_id)
+      });
+
       res.status(200).json({ status: true, message: "Location updated successfully", data: updatedLocation });
     } catch (error) {
       next(error);

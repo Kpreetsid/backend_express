@@ -11,6 +11,7 @@ import uploadRoutes from './upload/upload.routes';
 import reportsRoutes from './reports/reports.routes';
 import transactionRoutes from './transaction/transaction.routes';
 import masterRoutes from './masters/master.routes';
+import notificationRoutes from './notification/notification.routes';
 import { logger, errorMiddleware } from './middlewares';
 
 const app: Express = express();
@@ -62,6 +63,7 @@ apiRouter.use('/master', isAuthenticated, masterRoutes());
 apiRouter.use('/work', isAuthenticated, workRoutes());
 apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());
+apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
 app.use(['/api/v1', '/api'], apiRouter);
 
 app.use((req: Request, res: Response, next: NextFunction) => {

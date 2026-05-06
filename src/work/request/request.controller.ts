@@ -5,6 +5,7 @@ import { IUser } from '../../models/user.model';
 import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../../models/workRequest.model';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
+import { notificationService } from '../../utils/notification.service';
 
 class RequestController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -90,6 +91,16 @@ class RequestController {
       if (!data) {
         throw Object.assign(new Error('Work request not created'), { status: 404 });
       }
+      await notificationService.notifyAccountUsers({
+        accountId: String(user.account_id),
+        module: 'Work Request',
+        event: 'created',
+        entityId: String(data._id),
+        entityName: data.title || data.problemType || 'Work Request',
+        actionUrl: '/work-request',
+        queryParams: { id: String(data._id) },
+        sourceUserId: String(user._id)
+      });
       res.status(200).json({ status: true, message: "Work request created successfully.", data });
     } catch (error) {
       next(error);
@@ -133,6 +144,16 @@ class RequestController {
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Work Request',
+        event: 'updated',
+        entityId: String(id),
+        entityName: body.title || existingRequest[0].title || existingRequest[0].problemType || 'Work Request',
+        actionUrl: '/work-request',
+        queryParams: { id: String(id) },
+        sourceUserId: String(user_id)
+      });
       res.status(200).json({ status: true, message: "Work request updated successfully." });
     } catch (error) {
       next(error);
@@ -155,6 +176,16 @@ class RequestController {
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Work Request',
+        event: 'updated',
+        entityId: String(id),
+        entityName: existingRequest[0].title || existingRequest[0].problemType || 'Work Request',
+        actionUrl: '/work-request',
+        queryParams: { id: String(id) },
+        sourceUserId: String(user_id)
+      });
       res.status(200).json({ status: true, message: "Work request approved successfully." });
     } catch (error) {
       next(error);
@@ -182,6 +213,16 @@ class RequestController {
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Work Request',
+        event: 'updated',
+        entityId: String(id),
+        entityName: existingRequest[0].title || existingRequest[0].problemType || 'Work Request',
+        actionUrl: '/work-request',
+        queryParams: { id: String(id) },
+        sourceUserId: String(user_id)
+      });
       res.status(200).json({ status: true, message: "Work request rejected successfully." });
     } catch (error) {
       next(error);

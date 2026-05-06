@@ -6,6 +6,7 @@ import { helperService } from '../../utils/helper';
 import { assetService } from '../asset/asset.service';
 import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../utils/roleFilter';
+import { notificationService } from '../../utils/notification.service';
 
 class ObservationController {
 
@@ -80,6 +81,16 @@ class ObservationController {
         throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
       await processorAPIService.updateAssetHealthStatus(body, account_id, user_id, userToken);
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Observation',
+        event: 'created',
+        entityId: String(data._id),
+        entityName: insertedData[0]?.observation_title || insertedData[0]?.title || 'Observation',
+        actionUrl: `/assets/asset-timeline/${insertedData[0]?.assetId || body.assetId}`,
+        queryParams: { observationId: String(data._id) },
+        sourceUserId: String(user_id)
+      });
       res.status(201).json({ status: true, message: "Observation created successfully", data: insertedData });
     } catch (error) {
       if (data) {
@@ -108,6 +119,16 @@ class ObservationController {
         throw Object.assign(new Error('Observation not found'), { status: 404 });
       }
       await processorAPIService.updateAssetHealthStatus(body, account_id, user_id, userToken);
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Observation',
+        event: 'updated',
+        entityId: String(id),
+        entityName: insertedData[0]?.observation_title || insertedData[0]?.title || 'Observation',
+        actionUrl: `/assets/asset-timeline/${insertedData[0]?.assetId || body.assetId || existingData[0]?.assetId}`,
+        queryParams: { observationId: String(id) },
+        sourceUserId: String(user_id)
+      });
       res.status(200).json({ status: true, message: "Observation updated successfully", data: insertedData });
     } catch (error) {
       next(error);

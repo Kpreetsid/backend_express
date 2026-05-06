@@ -8,6 +8,7 @@ import { locationService } from '../location/location.service';
 import { helperService } from '../../utils/helper';
 import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../utils/roleFilter';
+import { notificationService } from '../../utils/notification.service';
 
 class AssetController {
 
@@ -298,6 +299,15 @@ class AssetController {
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Asset',
+        event: 'created',
+        entityId: String(data._id),
+        entityName: insertedData[0]?.asset_name || body.asset_name || 'Asset',
+        actionUrl: `/assets/asset-health/${data._id}/health`,
+        sourceUserId: String(user_id)
+      });
       res.status(201).json({
         status: true,
         message: "Asset created successfully",
@@ -352,6 +362,15 @@ class AssetController {
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Asset',
+        event: 'updated',
+        entityId: String(id),
+        entityName: insertedData[0]?.asset_name || body.asset_name || 'Asset',
+        actionUrl: `/assets/asset-health/${id}/health`,
+        sourceUserId: String(user_id)
+      });
       res.status(200).json({
         status: true,
         message: "Asset updated successfully",

@@ -7,6 +7,7 @@ import { passwordService } from '../../utils/bcrypt';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { mailerService } from '../../_config/mailer';
 import { helperService } from '../../utils/helper';
+import { notificationService } from '../../utils/notification.service';
 
 class UserController {
 
@@ -79,6 +80,15 @@ class UserController {
 
       const data = await usersService.createNewUser(body, account_id);
       await mailerService.sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email });
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'User',
+        event: 'created',
+        entityId: String(data.userDetails._id || data.userDetails.id),
+        entityName: `${data.userDetails.firstName || ''} ${data.userDetails.lastName || ''}`.trim() || data.userDetails.username || 'User',
+        actionUrl: `/admin-panel/users/${data.userDetails._id || data.userDetails.id}`,
+        sourceUserId: String(user_id)
+      });
       res.status(201).json({ status: true, message: "User created successfully", data: data.userDetails, roleData: data.roleDetails });
     } catch (error) {
       next(error);
@@ -103,6 +113,15 @@ class UserController {
       if (!data) {
         throw Object.assign(new Error("Failed to update user"), { status: 500 });
       }
+      await notificationService.notifyAccountUsers({
+        accountId: String(user.account_id),
+        module: 'User',
+        event: 'updated',
+        entityId: String(id),
+        entityName: `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.username || 'User',
+        actionUrl: `/admin-panel/users/${id}`,
+        sourceUserId: String(user._id)
+      });
       res.status(200).json({ status: true, message: "User updated successfully", data });
     } catch (error) {
       next(error);
