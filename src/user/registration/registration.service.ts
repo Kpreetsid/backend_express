@@ -15,7 +15,7 @@ class RegistrationService {
     if (!otpExists) {
       throw Object.assign(new Error('OTP has expired. Please request a new one.'), { status: 410 });
     }
-    if (otpExists.code !== body.verificationCode) {
+    if (otpExists.code !== body.verificationCode.toString()) {
       throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
     }
     const userVerification = otpExists;
@@ -32,7 +32,7 @@ class RegistrationService {
       throw Object.assign(new Error("User creation failed"), { status: 500 });
     }
     await this.mailerService.sendRegistrationConfirmation(userDetails.userDetails);
-    await userVerification.deleteOne({ email: body.email, code: body.verificationCode });
+    await userVerification.deleteOne({ email: body.email, code: body.verificationCode.toString() });
     return userDetails;
   }
 
