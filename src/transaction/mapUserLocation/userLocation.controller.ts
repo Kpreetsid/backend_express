@@ -45,7 +45,7 @@ class MapUserLocationController {
   async setUserLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const body = req.body;
+      const body = Array.isArray(req.body) ? req.body : (req.body ? [req.body] : []);
       const validatedData = body.filter((doc: any) => doc.locationId && doc.userId).map((doc: any) => ({
         locationId: helperService.validateObjectId(String(doc.locationId)),
         userId: helperService.validateObjectId(String(doc.userId))
@@ -63,7 +63,8 @@ class MapUserLocationController {
   async updateUserLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const validatedBody = req.body.map((doc: any) => ({
+      const body = Array.isArray(req.body) ? req.body : (req.body ? [req.body] : []);
+      const validatedBody = body.map((doc: any) => ({
         locationId: helperService.validateObjectId(String(doc.locationId)),
         userId: helperService.validateObjectId(String(doc.userId))
       }));

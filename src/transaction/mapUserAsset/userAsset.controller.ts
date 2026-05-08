@@ -43,7 +43,8 @@ class MapUserAssetController {
 
   async setUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const validatedBody = req.body.filter((doc: any) => doc.assetId && doc.userId).map((doc: any) => ({
+      const body = Array.isArray(req.body) ? req.body : (req.body ? [req.body] : []);
+      const validatedBody = body.filter((doc: any) => doc.assetId && doc.userId).map((doc: any) => ({
         assetId: helperService.validateObjectId(String(doc.assetId)),
         userId: helperService.validateObjectId(String(doc.userId))
       }));
@@ -60,7 +61,7 @@ class MapUserAssetController {
   async updateUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { params: { assetId }, body } = req;
-      if (!assetId || body.length === 0) {
+      if (!assetId || !body || (Array.isArray(body) && body.length === 0) || (!Array.isArray(body) && Object.keys(body).length === 0)) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
       const validatedAssetId = helperService.validateObjectId(String(assetId));
@@ -74,7 +75,8 @@ class MapUserAssetController {
 
   async updateSendMailFlag(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const validatedBody = req.body.map((item: any) => ({
+      const body = Array.isArray(req.body) ? req.body : (req.body ? [req.body] : []);
+      const validatedBody = body.map((item: any) => ({
         ...item,
         _id: helperService.validateObjectId(String(item._id))
       }));

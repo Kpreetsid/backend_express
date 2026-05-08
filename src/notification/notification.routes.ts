@@ -1,11 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { notificationController } from './notification.controller';
 import { isAuthenticated } from '../_config/auth';
+import { rateLimiter } from '../middlewares/rateLimits';
 
 const router = Router();
 
 // All notification routes require authentication
 router.use(isAuthenticated);
+router.use(rateLimiter.notificationLimiter);
 
 router.get('/', (req: Request, res: Response, next: NextFunction) => {
   notificationController.getNotifications(req as any, res).catch(next);

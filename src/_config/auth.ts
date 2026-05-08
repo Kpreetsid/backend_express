@@ -139,16 +139,20 @@ export const encryptToken = (email: string, ttlSeconds: number = 300): string =>
 }
 
 export const decryptToken = (token: string): any => {
-  const key = getKey();
-  const decodedJson = Buffer.from(token, "base64").toString("utf8");
-  const decoded = JSON.parse(decodedJson);
-  const iv = Buffer.from(decoded.iv, "base64");
-  const ct = Buffer.from(decoded.ct, "base64");
-  const tag = Buffer.from(decoded.tag, "base64");
-  const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  decipher.setAuthTag(tag);
-  const plaintext = Buffer.concat([decipher.update(ct), decipher.final()]);
-  return JSON.parse(plaintext.toString("utf8"));
+  try {
+    const key = getKey();
+    const decodedJson = Buffer.from(token, "base64").toString("utf8");
+    const decoded = JSON.parse(decodedJson);
+    const iv = Buffer.from(decoded.iv, "base64");
+    const ct = Buffer.from(decoded.ct, "base64");
+    const tag = Buffer.from(decoded.tag, "base64");
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    const plaintext = Buffer.concat([decipher.update(ct), decipher.final()]);
+    return JSON.parse(plaintext.toString("utf8"));
+  } catch (error: any) {
+    throw Object.assign(new Error('Invalid or corrupted external token'), { status: 401, name: 'InvalidTokenError' });
+  }
 }
 
 export const verifyEncryptedToken = (req: Request, res: Response, next: NextFunction): void => {

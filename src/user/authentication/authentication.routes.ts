@@ -1,14 +1,15 @@
 import express from 'express';
 import { authentication, authenticationToken, externalToken, authenticationByToken, resetPassword, userLogOut } from '../authentication/authentication.controller'; 
 import { isLogOutAuthenticated, verifyEncryptedToken } from '../../_config/auth';
+import { rateLimiter } from '../../middlewares/rateLimits';
 
 export default (router: express.Router) => {
     const userRouter = express.Router();
-    userRouter.post('/login', authentication);
-    userRouter.post('/authenticate', authenticationToken);
-    userRouter.get('/create_external_token/:email', externalToken);
-    userRouter.post('/external_auth', verifyEncryptedToken, authenticationByToken);
-    userRouter.post('/updatePassword', resetPassword);
+    userRouter.post('/login', rateLimiter.authLimiter, authentication);
+    userRouter.post('/authenticate', rateLimiter.authLimiter, authenticationToken);
+    userRouter.get('/create_external_token/:email', rateLimiter.authLimiter, externalToken);
+    userRouter.post('/external_auth', rateLimiter.authLimiter, verifyEncryptedToken, authenticationByToken);
+    userRouter.post('/updatePassword', rateLimiter.passwordResetValidateLimiter, resetPassword);
     userRouter.get('/logout', isLogOutAuthenticated, userLogOut);
     router.use('/users', userRouter);
 }
