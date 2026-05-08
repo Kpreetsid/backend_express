@@ -11,12 +11,12 @@ class TroubleshootGuideService {
     };
     
     async insertTroubleshootGuide (body: any, account_id: any, user_id: any): Promise<any> {
-        const newTeam = new TroubleshootGuideModel({
+        const newGuide = new TroubleshootGuideModel({
             ...body,
             account_id: account_id,
             createdBy: user_id
         });
-        return await newTeam.save();
+        return await newGuide.save();
     };
     
     async updateTroubleshootGuideById (id: any, body: any, user_id: any): Promise<any> {
