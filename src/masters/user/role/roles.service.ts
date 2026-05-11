@@ -28,7 +28,7 @@ class RolesService {
     return await newUserRoleMenu.save();
   }
 
-  async createUserRole(userRole: any, userData: IUser) {
+  async createUserRole(userRole: any, userData: IUser, session?: any) {
     try {
       var platformControl = await PlatformControlManager.getRoleMenuData(userRole);
       var newRoleMenu = await RoleManager.getRoleMenuData(userRole);
@@ -39,7 +39,7 @@ class RolesService {
         roleMenu: newRoleMenu,
         createdBy: userData._id
       });
-      return await newUserRoleMenu.save();
+      return await newUserRoleMenu.save({ session });
     } catch (error) {
       console.error(error);
       return null;

@@ -1,8 +1,8 @@
 import { WorkOrderAssigneeModel } from "../../models/mapUserWorkOrder.model";
 
 class UserWorkOrderService {
-  async mapUsersWorkOrder (body: any) {
-    return await WorkOrderAssigneeModel.insertMany(body);
+  async mapUsersWorkOrder (body: any, session?: any) {
+    return await WorkOrderAssigneeModel.insertMany(body, { session });
   };
 
   async getMappedWorkOrderUserIDs (workOrderId: any): Promise<any[]> {
@@ -15,14 +15,14 @@ class UserWorkOrderService {
     return [...new Set(assigneeMappings.map(item => item.woId))];
   };
 
-  async updateMappedUsers (id: any, userIdList: any[]): Promise<any> {
-    await WorkOrderAssigneeModel.deleteMany({ woId: id });
+  async updateMappedUsers (id: any, userIdList: any[], session?: any): Promise<any> {
+    await WorkOrderAssigneeModel.deleteMany({ woId: id }, { session });
     const newMappings = userIdList.map(userId => ({ userId, woId: id }));
-    return await WorkOrderAssigneeModel.insertMany(newMappings);
+    return await WorkOrderAssigneeModel.insertMany(newMappings, { session });
   };
 
-  async removeMappedUsers (id: any): Promise<any> {
-    return await WorkOrderAssigneeModel.deleteMany({ woId: id });
+  async removeMappedUsers (id: any, session?: any): Promise<any> {
+    return await WorkOrderAssigneeModel.deleteMany({ woId: id }, { session });
   };
   
   async mappedData (match: any): Promise<any> {

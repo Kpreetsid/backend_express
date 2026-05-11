@@ -1,8 +1,10 @@
 import { InspectionModel } from "../../models/inspection.model";
 import { mapInspectionService } from "../../transaction/mapUserInspection/userInspection.service";
+import { withTransaction } from "../../utils/transaction.helper";
 
 class InspectionService {
  async getAllInspection (filter: any) {
+  // ... (aggregate pipeline stays same)
   const data = await InspectionModel.aggregate([
     { $match: filter },
     {
@@ -82,46 +84,52 @@ class InspectionService {
     { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } }
   ]);
   return data;
-};
+ };
 
  async createInspection (body: any, account_id: any, user_id: any) {
-  const newInspection = new InspectionModel({
-    account_id,
-    title: body.title,
-    description: body.description,
-    start_date: body.start_date,
-    form_id: body.form_id,
-    inspection_report: body.inspection_report,
-    location_id: body.location_id,
-    asset_id: body.asset_id,
-    assignedUser: body.assignedUser,
-    status: body.status,
-    month: body.month,
-    createdFrom: body.createdFrom,
-    no_of_actions: body.no_of_actions,
-    createdBy: user_id
+  return await withTransaction(async (session) => {
+    const newInspection = new InspectionModel({
+      account_id,
+      title: body.title,
+      description: body.description,
+      start_date: body.start_date,
+      form_id: body.form_id,
+      inspection_report: body.inspection_report,
+      location_id: body.location_id,
+      asset_id: body.asset_id,
+      assignedUser: body.assignedUser,
+      status: body.status,
+      month: body.month,
+      createdFrom: body.createdFrom,
+      no_of_actions: body.no_of_actions,
+      createdBy: user_id
+    });
+    await mapInspectionService.setInspection(account_id, newInspection._id, body.assignedUser, session);
+    return await newInspection.save({ session });
   });
-  await mapInspectionService.setInspection(account_id, newInspection._id, body.assignedUser);
-  return await newInspection.save();
-};
+ };
 
  async updateInspection (id: any, body: any, account_id: any, user_id: any) {
-  await mapInspectionService.setInspection(account_id, id, body.assignedUser);
-  return await InspectionModel.findOneAndUpdate(
-    { _id: id, account_id },
-    { ...body, updatedBy: user_id },
-    { new: true }
-  );
-};
+  return await withTransaction(async (session) => {
+    await mapInspectionService.setInspection(account_id, id, body.assignedUser, session);
+    return await InspectionModel.findOneAndUpdate(
+      { _id: id, account_id },
+      { ...body, updatedBy: user_id },
+      { new: true, session }
+    );
+  });
+ };
 
  async removeInspection (id: any, account_id: any, user_id: any) {
-  await mapInspectionService.removeInspectionById(account_id, id);
-  return await InspectionModel.findOneAndUpdate(
-    { _id: id, account_id },
-    { visible: false, updatedBy: user_id },
-    { new: true }
-  );
-};
+  return await withTransaction(async (session) => {
+    await mapInspectionService.removeInspectionById(account_id, id, session);
+    return await InspectionModel.findOneAndUpdate(
+      { _id: id, account_id },
+      { visible: false, updatedBy: user_id },
+      { new: true, session }
+    );
+  });
+ };
 }
 
 export const inspectionService = new InspectionService();

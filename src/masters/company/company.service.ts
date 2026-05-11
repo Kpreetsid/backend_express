@@ -7,9 +7,9 @@ class CompanyService {
     return await AccountModel.find(filter);
   };
 
-  async createCompany(body: any) {
+  async createCompany(body: any, session?: any) {
     const match: any = { account_name: body.account_name };
-    const existingCompany: IAccount[] = await AccountModel.find(match);
+    const existingCompany: IAccount[] = await AccountModel.find(match).session(session || null);
     if (existingCompany.length > 0) {
       throw Object.assign(new Error('Company already exists'), { status: 403 });
     }
@@ -18,7 +18,7 @@ class CompanyService {
       type: body.type,
       description: body.description
     });
-    return await newCompany.save();
+    return await newCompany.save({ session });
   };
 
   async verifyCompany(id: string) {

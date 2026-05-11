@@ -7,6 +7,7 @@ import { commentService } from "../comments/comment.service";
 import { requestService } from "../request/request.service";
 import { helperService } from "../../utils/helper";
 import { notificationService } from "../../utils/notification.service";
+import { withTransaction } from "../../utils/transaction.helper";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -619,104 +620,118 @@ class OrderService {
   };
 
   async createWorkOrder(body: any, user: IUser): Promise<any> {
-    const newAsset = new WorkOrderModel({
-      account_id: user.account_id,
-      order_no: await this.generateOrderNo(user.account_id),
-      title: body.title,
-      description: body.description,
-      estimated_time: body.estimated_time,
-      parentId: body.parentId,
-      priority: body.priority,
-      status: body.status,
-      type: body.type,
-      nature_of_work: body.type,
-      sop_form_id: body.sop_form_id,
-      rescheduleEnabled: false,
-      created_by: user._id,
-      wo_asset_id: body.wo_asset_id,
-      wo_location_id: body.wo_location_id,
-      end_date: body.end_date,
-      start_date: body.start_date,
-      sopForm: body.sopForm,
-      createdFrom: body.createdFrom,
-      files: body.files,
-      tasks: body.tasks,
-      parts: body.parts,
-      work_request_id: body.work_request_id,
-      asset_report_id: body.asset_report_id,
-      status_details: [{ status: body.status, createdBy: user._id }],
-      createdBy: user._id
-    });
+    return await withTransaction(async (session) => {
+      const newAsset = new WorkOrderModel({
+        account_id: user.account_id,
+        order_no: await this.generateOrderNo(user.account_id),
+        title: body.title,
+        description: body.description,
+        estimated_time: body.estimated_time,
+        parentId: body.parentId,
+        priority: body.priority,
+        status: body.status,
+        type: body.type,
+        nature_of_work: body.type,
+        sop_form_id: body.sop_form_id,
+        rescheduleEnabled: false,
+        created_by: user._id,
+        wo_asset_id: body.wo_asset_id,
+        wo_location_id: body.wo_location_id,
+        end_date: body.end_date,
+        start_date: body.start_date,
+        sopForm: body.sopForm,
+        createdFrom: body.createdFrom,
+        files: body.files,
+        tasks: body.tasks,
+        parts: body.parts,
+        work_request_id: body.work_request_id,
+        asset_report_id: body.asset_report_id,
+        status_details: [{ status: body.status, createdBy: user._id }],
+        createdBy: user._id
+      });
 
-    const sanitizedData = this.sanitizeWorkOrder(newAsset.toObject());
-    Object.assign(newAsset, sanitizedData);
+      const sanitizedData = this.sanitizeWorkOrder(newAsset.toObject());
+      Object.assign(newAsset, sanitizedData);
 
-    const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
-    const userDetails = await UserModel.find({ _id: { $in: helperService.validateObjectIds(body.userIdList.join(',')) } });
-    if (!userDetails || userDetails.length === 0) {
-      throw Object.assign(new Error('No users found'), { status: 404 });
-    }
-    const result = await userWorkOrderService.mapUsersWorkOrder(mappedUsers);
-    if (!result || result.length === 0) {
-      throw Object.assign(new Error('Failed to map users to work order'), { status: 500 });
-    }
-    const data: any = await newAsset.save();
-    if (!data) {
-      throw Object.assign(new Error('Failed to create work order'), { status: 400 });
-    }
-    if (body.parts?.length > 0) {
-      const inventoryResult = await partsService.adjustInventoryByWorkOrder([], body.parts, user);
-      data.inventoryWarnings = inventoryResult.warnings;
-    }
-    userDetails.forEach(async (assignedUsers: IUser) => {
-      const orders = await this.getAllOrders({ _id: data._id });
-      await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
+      const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
+      const userDetails = await UserModel.find({ _id: { $in: helperService.validateObjectIds(body.userIdList.join(',')) } }).session(session);
+      if (!userDetails || userDetails.length === 0) {
+        throw Object.assign(new Error('No users found'), { status: 404 });
+      }
+      
+      const result = await userWorkOrderService.mapUsersWorkOrder(mappedUsers, session);
+      if (!result || result.length === 0) {
+        throw Object.assign(new Error('Failed to map users to work order'), { status: 500 });
+      }
+      
+      const data: any = await newAsset.save({ session });
+      if (!data) {
+        throw Object.assign(new Error('Failed to create work order'), { status: 400 });
+      }
+      
+      if (body.parts?.length > 0) {
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder([], body.parts, user, session);
+        data.inventoryWarnings = inventoryResult.warnings;
+      }
+      
+      userDetails.forEach(async (assignedUsers: IUser) => {
+        const orders = await this.getAllOrders({ _id: data._id });
+        await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
+      });
+      
+      await notificationService.notifyAccountUsers({
+        accountId: String(user.account_id),
+        module: 'Work Order',
+        event: 'created',
+        entityId: String(data._id),
+        entityName: data.title || data.order_no || 'Work Order',
+        actionUrl: `/work-order/details/${data._id}`,
+        sourceUserId: String(user._id)
+      });
+      
+      const resultData = await this.getAllOrders({ _id: data._id });
+      return resultData[0];
     });
-    const resultData = await this.getAllOrders({ _id: data._id });
-    await notificationService.notifyAccountUsers({
-      accountId: String(user.account_id),
-      module: 'Work Order',
-      event: 'created',
-      entityId: String(data._id),
-      entityName: data.title || data.order_no || 'Work Order',
-      actionUrl: `/work-order/details/${data._id}`,
-      sourceUserId: String(user._id)
-    });
-    return resultData[0];
   };
 
   async updateById(id: string, body: any, user: IUser): Promise<any> {
-    const objectId = helperService.validateObjectId(id);
-    let existingOrder: any = await WorkOrderModel.findById(objectId);
-    if (!existingOrder) {
-      throw Object.assign(new Error('Work Order not found'), { status: 404 });
-    }
-    existingOrder = { ...existingOrder.toObject(), ...body };
-    if (body.parts?.length > 0) {
-      const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || [], body.parts, user);
-      existingOrder.inventoryWarnings = inventoryResult.warnings;
-    }
-    existingOrder.updatedBy = user._id;
-    if (body.hasOwnProperty('userIdList')) {
-      await userWorkOrderService.updateMappedUsers(id, body.userIdList);
-    }
+    return await withTransaction(async (session) => {
+      const objectId = helperService.validateObjectId(id);
+      let existingOrder: any = await WorkOrderModel.findById(objectId).session(session);
+      if (!existingOrder) {
+        throw Object.assign(new Error('Work Order not found'), { status: 404 });
+      }
+      
+      let updatedData = { ...existingOrder.toObject(), ...body };
+      
+      if (body.parts?.length > 0) {
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || [], body.parts, user, session);
+        updatedData.inventoryWarnings = inventoryResult.warnings;
+      }
+      
+      updatedData.updatedBy = user._id;
+      if (body.hasOwnProperty('userIdList')) {
+        await userWorkOrderService.updateMappedUsers(id, body.userIdList, session);
+      }
 
-    existingOrder = this.sanitizeWorkOrder(existingOrder);
-    const data = await WorkOrderModel.findByIdAndUpdate(id, existingOrder, { returnDocument: 'after' });
-    if (!data) {
-      throw Object.assign(new Error('Failed to update work order'), { status: 400 });
-    }
-    const resultData = await this.getAllOrders({ _id: helperService.validateObjectId(id) });
-    await notificationService.notifyAccountUsers({
-      accountId: String(user.account_id),
-      module: 'Work Order',
-      event: 'updated',
-      entityId: String(id),
-      entityName: resultData[0]?.title || resultData[0]?.order_no || 'Work Order',
-      actionUrl: `/work-order/details/${id}`,
-      sourceUserId: String(user._id)
+      updatedData = this.sanitizeWorkOrder(updatedData);
+      const data = await WorkOrderModel.findByIdAndUpdate(id, updatedData, { returnDocument: 'after', session });
+      if (!data) {
+        throw Object.assign(new Error('Failed to update work order'), { status: 400 });
+      }
+      
+      const resultData = await this.getAllOrders({ _id: helperService.validateObjectId(id) });
+      await notificationService.notifyAccountUsers({
+        accountId: String(user.account_id),
+        module: 'Work Order',
+        event: 'updated',
+        entityId: String(id),
+        entityName: resultData[0]?.title || resultData[0]?.order_no || 'Work Order',
+        actionUrl: `/work-order/details/${id}`,
+        sourceUserId: String(user._id)
+      });
+      return resultData[0];
     });
-    return resultData[0];
   };
 
   async updateDataById(id: string, body: any, user: IUser): Promise<any> {
@@ -776,21 +791,25 @@ class OrderService {
   }
 
   async removeOrder(id: any, user_id: any): Promise<any> {
-    await userWorkOrderService.removeMappedUsers(id);
-    const order: any = await WorkOrderModel.findById(id).lean();
-    if (order?.parts?.length > 0) {
-      await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id });
-    }
-    return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
+    return await withTransaction(async (session) => {
+      await userWorkOrderService.removeMappedUsers(id, session);
+      const order: any = await WorkOrderModel.findById(id).session(session).lean();
+      if (order?.parts?.length > 0) {
+        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session);
+      }
+      return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after', session });
+    });
   };
 
   async deleteWorkOrderById(id: any, user_id: any): Promise<any> {
-    await userWorkOrderService.removeMappedUsers(id);
-    const order: any = await WorkOrderModel.findById(id).lean();
-    if (order?.parts?.length > 0) {
-      await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id });
-    }
-    return await WorkOrderModel.findByIdAndDelete(id);
+    return await withTransaction(async (session) => {
+      await userWorkOrderService.removeMappedUsers(id, session);
+      const order: any = await WorkOrderModel.findById(id).session(session).lean();
+      if (order?.parts?.length > 0) {
+        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session);
+      }
+      return await WorkOrderModel.findByIdAndDelete(id, { session });
+    });
   }
 
   async getHistory(id: string): Promise<any> {

@@ -9,13 +9,13 @@ class MapInspectionService {
     return await MapUserInspectionModel.find({ account_id, inspection_id, user_id: { $exists: true } });
   }
   
-  async setInspection (account_id: any, inspection_id: any, user_id: string[]) {
-    await this.removeInspectionById(account_id, inspection_id);
-    await MapUserInspectionModel.insertMany(user_id.map(userId => ({ account_id, user_id: userId, inspection_id })));
+  async setInspection (account_id: any, inspection_id: any, user_id: string[], session?: any) {
+    await this.removeInspectionById(account_id, inspection_id, session);
+    await MapUserInspectionModel.insertMany(user_id.map(userId => ({ account_id, user_id: userId, inspection_id })), { session });
   }
   
-  async removeInspectionById (account_id: any, inspection_id: string) {
-    await MapUserInspectionModel.deleteMany({ inspection_id, account_id, user_id: { $exists: true } });
+  async removeInspectionById (account_id: any, inspection_id: string, session?: any) {
+    await MapUserInspectionModel.deleteMany({ inspection_id, account_id, user_id: { $exists: true } }, { session });
   }
   
   async removeInspectionByUserId (account_id: any, user_id: string) {

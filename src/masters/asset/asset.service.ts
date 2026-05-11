@@ -9,6 +9,8 @@ import { ReportAssetModel } from '../../models/assetReport.model';
 import { InspectionModel } from '../../models/inspection.model';
 import { WorkRequestModel } from '../../models/workRequest.model';
 
+import { withTransaction } from "../../utils/transaction.helper";
+
 class AssetService {
   async getAllAssets(match: any) {
     const assetsData = await AssetModel.find(match).populate([
@@ -137,23 +139,25 @@ class AssetService {
   }
 
   async removeById(match: any, userID: any) {
-    const parentId = String(match._id);
-    const account_id = match.account_id;
-    const childAssets = await this.getAllChildAssetsRecursive(parentId, account_id);
-    const totalIds = [parentId, ...childAssets.map(a => String(a._id))];
-    const objectIds = helperService.validateObjectIds(totalIds);
-    
-    const updateQuery = { $set: { visible: false, updatedBy: userID } };
-    
-    await AssetModel.updateMany({ _id: { $in: objectIds } }, updateQuery);
-    await WorkOrderModel.updateMany({ wo_asset_id: { $in: objectIds } }, updateQuery);
-    await ObservationModel.updateMany({ assetId: { $in: objectIds } }, updateQuery);
-    await ReportAssetModel.updateMany({ assetId: { $in: objectIds } }, updateQuery);
-    await InspectionModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery);
-    await WorkRequestModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery);
-    
-    await mapUserToAssetService.removeAssetListMapping(totalIds);
-    return true;
+    return await withTransaction(async (session) => {
+      const parentId = String(match._id);
+      const account_id = match.account_id;
+      const childAssets = await this.getAllChildAssetsRecursive(parentId, account_id);
+      const totalIds = [parentId, ...childAssets.map(a => String(a._id))];
+      const objectIds = helperService.validateObjectIds(totalIds);
+      
+      const updateQuery = { $set: { visible: false, updatedBy: userID } };
+      
+      await AssetModel.updateMany({ _id: { $in: objectIds } }, updateQuery, { session });
+      await WorkOrderModel.updateMany({ wo_asset_id: { $in: objectIds } }, updateQuery, { session });
+      await ObservationModel.updateMany({ assetId: { $in: objectIds } }, updateQuery, { session });
+      await ReportAssetModel.updateMany({ assetId: { $in: objectIds } }, updateQuery, { session });
+      await InspectionModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery, { session });
+      await WorkRequestModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery, { session });
+      
+      await mapUserToAssetService.removeAssetListMapping(totalIds, session);
+      return true;
+    });
   };
 
   async deleteAsset(id: string): Promise<any> {
@@ -199,9 +203,11 @@ class AssetService {
   }
 
   async updateAssetOld(id: any, body: any, user_id: any): Promise<any> {
-    await mapUserToAssetService.updateUserMapping(String(id), body.userIdList);
-    await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType);
-    return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true });
+    return await withTransaction(async (session) => {
+      await mapUserToAssetService.updateUserMapping(String(id), body.userIdList);
+      await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType);
+      return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true, session });
+    });
   }
 
   async updateAllChildAssetsLocation(id: any, locationId: any, user_id: any): Promise<any> {
@@ -238,86 +244,89 @@ class AssetService {
     return all;
   };
 
-  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any): Promise<any> {
-    try {
-      const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
-      const cleanAsset = JSON.parse(JSON.stringify(rest));
-      delete cleanAsset._id;
-      delete cleanAsset.id;
-      delete cleanAsset.createdAt;
-      delete cleanAsset.updatedAt;
-      if (!cleanAsset.asset_name) cleanAsset.asset_name = "Unnamed Asset";
-      if (!cleanAsset.account_id) cleanAsset.account_id = account_id;
-      const baseName = (sourceAsset.asset_name || "Asset").replace(/\s-\s(Copy|\(\d+\))$/, "");
-      const existingCount = await AssetModel.countDocuments({
-        parent_id: newParentId || { $exists: false },
-        account_id,
-        asset_name: { $regex: `^${baseName} - Copy`, $options: "i" },
-        visible: true
-      });
-      const newName = existingCount > 0 ? `${baseName} - Copy (${existingCount + 1})` : `${baseName} - Copy`;
-      let topLevelRef: any = null;
-      if (sourceAsset.top_level) {
-        topLevelRef = undefined;
-      } else if (newTopLevelId) {
-        topLevelRef = newTopLevelId;
-      } else {
-        topLevelRef = sourceAsset.top_level_asset_id;
-      }
-      const newAssetData: any = {
-        ...cleanAsset,
-        asset_name: newName,
-        asset_type: sourceAsset.asset_type || "Other",
-        createdBy: user_id,
-        updatedBy: undefined,
-        account_id,
-        visible: true,
-        parent_id: newParentId ? helperService.validateObjectId(String(newParentId)) : undefined,
-        top_level_asset_id: topLevelRef
-      };
-      const newAsset = new AssetModel(newAssetData);
-      const savedAsset: any = await newAsset.save();
-      if (sourceAsset.top_level) {
-        savedAsset.top_level_asset_id = savedAsset._id;
-        await savedAsset.save();
-      }
-      let userList: any[] = [];
+  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any): Promise<any> {
+    return await withTransaction(async (innerSession) => {
+      const activeSession = session || innerSession;
       try {
-        const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
-        userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
-      } catch { }
-      try {
-        const endPointList: any = await processorAPIService.getEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
-        if (endPointList?.data?.length > 0) {
-          for (const item of endPointList.data) {
-            const newEndPointPayload = {
-              org_id: item.org_id,
-              point_name: item.point_name,
-              asset_id: savedAsset._id.toString(),
-              mount_location: item.mount_location,
-              rpm: item.rpm || "",
-              bsf: item.bsf || "",
-              ftf: item.ftf || "",
-              bpfo: item.bpfo || "",
-              bpfi: item.bpfi || "",
-              bearing_number: item.bearing_number || "",
-              parent_asset_id: newParentId || null
-            };
-            await processorAPIService.createEndPoint(newEndPointPayload, user_id, token);
-          }
+        const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
+        const cleanAsset = JSON.parse(JSON.stringify(rest));
+        delete cleanAsset._id;
+        delete cleanAsset.id;
+        delete cleanAsset.createdAt;
+        delete cleanAsset.updatedAt;
+        if (!cleanAsset.asset_name) cleanAsset.asset_name = "Unnamed Asset";
+        if (!cleanAsset.account_id) cleanAsset.account_id = account_id;
+        const baseName = (sourceAsset.asset_name || "Asset").replace(/\s-\s(Copy|\(\d+\))$/, "");
+        const existingCount = await AssetModel.countDocuments({
+          parent_id: newParentId || { $exists: false },
+          account_id,
+          asset_name: { $regex: `^${baseName} - Copy`, $options: "i" },
+          visible: true
+        }).session(activeSession);
+        const newName = existingCount > 0 ? `${baseName} - Copy (${existingCount + 1})` : `${baseName} - Copy`;
+        let topLevelRef: any = null;
+        if (sourceAsset.top_level) {
+          topLevelRef = undefined;
+        } else if (newTopLevelId) {
+          topLevelRef = newTopLevelId;
+        } else {
+          topLevelRef = sourceAsset.top_level_asset_id;
         }
-      } catch (err) {
-        console.error("Endpoint copy failed:", err);
+        const newAssetData: any = {
+          ...cleanAsset,
+          asset_name: newName,
+          asset_type: sourceAsset.asset_type || "Other",
+          createdBy: user_id,
+          updatedBy: undefined,
+          account_id,
+          visible: true,
+          parent_id: newParentId ? helperService.validateObjectId(String(newParentId)) : undefined,
+          top_level_asset_id: topLevelRef
+        };
+        const newAsset = new AssetModel(newAssetData);
+        const savedAsset: any = await newAsset.save({ session: activeSession });
+        if (sourceAsset.top_level) {
+          savedAsset.top_level_asset_id = savedAsset._id;
+          await savedAsset.save({ session: activeSession });
+        }
+        let userList: any[] = [];
+        try {
+          const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
+          userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
+        } catch { }
+        try {
+          const endPointList: any = await processorAPIService.getEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
+          if (endPointList?.data?.length > 0) {
+            for (const item of endPointList.data) {
+              const newEndPointPayload = {
+                org_id: item.org_id,
+                point_name: item.point_name,
+                asset_id: savedAsset._id.toString(),
+                mount_location: item.mount_location,
+                rpm: item.rpm || "",
+                bsf: item.bsf || "",
+                ftf: item.ftf || "",
+                bpfo: item.bpfo || "",
+                bpfi: item.bpfi || "",
+                bearing_number: item.bearing_number || "",
+                parent_asset_id: newParentId || null
+              };
+              await processorAPIService.createEndPoint(newEndPointPayload, user_id, token);
+            }
+          }
+        } catch (err) {
+          console.error("Endpoint copy failed:", err);
+        }
+        if (userList.length > 0) {
+          const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
+          await mapUserToAssetService.createMapUserAssets(mappedData);
+        }
+        return savedAsset._id;
+      } catch (error) {
+        console.error("Error in make Asset Copy:", error);
+        throw error;
       }
-      if (userList.length > 0) {
-        const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
-        await mapUserToAssetService.createMapUserAssets(mappedData);
-      }
-      return savedAsset._id;
-    } catch (error) {
-      console.error("Error in make Asset Copy:", error);
-      throw error;
-    }
+    }, session);
   };
 }
 

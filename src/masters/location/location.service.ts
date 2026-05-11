@@ -13,6 +13,8 @@ import mongoose from "mongoose";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { mapUserToAssetService, updateLocationAssetMapping } from '../../transaction/mapUserAsset/userAsset.service';
 
+import { withTransaction } from "../../utils/transaction.helper";
+
 class LocationService {
 
   async getLocationsList(match: any) {
@@ -212,27 +214,29 @@ class LocationService {
   };
 
   async removeLocationById(id: any, user_id: any) {
-    const totalIds = [id];
-    const childIds = await this.getAllChildLocationsRecursive([id]);
-    totalIds.push(...childIds);
-    const objectIds = helperService.validateObjectIds(totalIds.join(','));
-    await mapUserToLocationService.removeLocationListMapping(totalIds);
-    const getAssetsByLocationId = await AssetModel.find({ locationId: { $in: objectIds } });
-    if (getAssetsByLocationId?.length > 0) {
-      const assetIds: any = getAssetsByLocationId.map(asset => asset._id);
-      await mapUserToAssetService.removeAssetListMapping(assetIds);
-    }
-    const updateQuery = { $set: { visible: false, updatedBy: user_id } };
-    await AssetModel.updateMany({ locationId: { $in: objectIds } }, updateQuery);
-    await WorkOrderModel.updateMany({ wo_location_id: { $in: objectIds } }, updateQuery);
-    await ObservationModel.updateMany({ locationId: { $in: objectIds } }, updateQuery);
-    await PartsModel.updateMany({ location_id: { $in: objectIds } }, updateQuery);
-    await WorkRequestModel.updateMany({ location_id: { $in: objectIds } }, updateQuery);
-    await InspectionModel.updateMany({ location_id: { $in: objectIds } }, updateQuery);
-    await SOPsModel.updateMany({ locationId: { $in: objectIds } }, updateQuery);
-    await SchedulerModel.updateMany({ "work_order.wo_location_id": { $in: objectIds } }, updateQuery);
-    await LocationModel.updateMany({ _id: { $in: objectIds } }, updateQuery);
-    return true;
+    return await withTransaction(async (session) => {
+      const totalIds = [id];
+      const childIds = await this.getAllChildLocationsRecursive([id]);
+      totalIds.push(...childIds);
+      const objectIds = helperService.validateObjectIds(totalIds.join(','));
+      await mapUserToLocationService.removeLocationListMapping(totalIds, session);
+      const getAssetsByLocationId = await AssetModel.find({ locationId: { $in: objectIds } }).session(session);
+      if (getAssetsByLocationId?.length > 0) {
+        const assetIds: any = getAssetsByLocationId.map(asset => asset._id);
+        await mapUserToAssetService.removeAssetListMapping(assetIds, session);
+      }
+      const updateQuery = { $set: { visible: false, updatedBy: user_id } };
+      await AssetModel.updateMany({ locationId: { $in: objectIds } }, updateQuery, { session });
+      await WorkOrderModel.updateMany({ wo_location_id: { $in: objectIds } }, updateQuery, { session });
+      await ObservationModel.updateMany({ locationId: { $in: objectIds } }, updateQuery, { session });
+      await PartsModel.updateMany({ location_id: { $in: objectIds } }, updateQuery, { session });
+      await WorkRequestModel.updateMany({ location_id: { $in: objectIds } }, updateQuery, { session });
+      await InspectionModel.updateMany({ location_id: { $in: objectIds } }, updateQuery, { session });
+      await SOPsModel.updateMany({ locationId: { $in: objectIds } }, updateQuery, { session });
+      await SchedulerModel.updateMany({ "work_order.wo_location_id": { $in: objectIds } }, updateQuery, { session });
+      await LocationModel.updateMany({ _id: { $in: objectIds } }, updateQuery, { session });
+      return true;
+    });
   };
 
   async updateFloorMapImage(id: string, account_id: any, user_id: any, top_level_location_image: string) {
@@ -283,50 +287,53 @@ class LocationService {
     return all;
   };
 
-  async cloneLocationNode(source: any, user_id: any, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any): Promise<any> {
-    const userMappings = await mapUserToLocationService.getDataByLocationId(source._id.toString());
-    const userList = userMappings.map((u: any) => u.userId);
-    const { _id, id, createdAt, updatedAt, ...rest } = source;
-    const cleanSource = JSON.parse(JSON.stringify(rest));
-    delete cleanSource._id;
-    delete cleanSource.id;
-    const baseName = (source.location_name || "Location").replace(/\s-\s(copy|\(\d+\))$/i, "");
-    const existingCount = await LocationModel.countDocuments({
-      parent_id: newParentId || { $exists: false },
-      account_id,
-      location_name: { $regex: `^${baseName} - copy`, $options: "i" },
-      visible: true,
-    });
-    const newName = existingCount > 0 ? `${baseName} - copy (${existingCount + 1})` : `${baseName} - copy`;
-    let topLevelRef: any = null;
-    if (source.top_level) {
-      topLevelRef = undefined;
-    } else if (newTopLevelId) {
-      topLevelRef = newTopLevelId;
-    } else if (source.top_level_location_id) {
-      topLevelRef = source.top_level_location_id;
-    }
-    const newBody: any = {
-      ...cleanSource,
-      location_name: newName,
-      parent_id: newParentId ? helperService.validateObjectId(String(newParentId)) : undefined,
-      account_id,
-      createdBy: user_id,
-      updatedBy: undefined,
-      visible: true,
-      top_level: source.top_level,
-      top_level_location_id: topLevelRef,
-    };
-    const newLoc = new LocationModel(newBody);
-    await newLoc.save();
-    if (source.top_level) {
-      newLoc.top_level_location_id = newLoc._id;
-      await newLoc.save();
-    }
-    if (userList.length > 0) {
-      await mapUserToLocationService.mapUserLocationData(newLoc._id, userList, account_id);
-    }
-    return newLoc._id;
+  async cloneLocationNode(source: any, user_id: any, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any): Promise<any> {
+    return await withTransaction(async (innerSession) => {
+      const activeSession = session || innerSession;
+      const userMappings = await mapUserToLocationService.getDataByLocationId(source._id.toString());
+      const userList = userMappings.map((u: any) => u.userId);
+      const { _id, id, createdAt, updatedAt, ...rest } = source;
+      const cleanSource = JSON.parse(JSON.stringify(rest));
+      delete cleanSource._id;
+      delete cleanSource.id;
+      const baseName = (source.location_name || "Location").replace(/\s-\s(copy|\(\d+\))$/i, "");
+      const existingCount = await LocationModel.countDocuments({
+        parent_id: newParentId || { $exists: false },
+        account_id,
+        location_name: { $regex: `^${baseName} - copy`, $options: "i" },
+        visible: true,
+      }).session(activeSession);
+      const newName = existingCount > 0 ? `${baseName} - copy (${existingCount + 1})` : `${baseName} - copy`;
+      let topLevelRef: any = null;
+      if (source.top_level) {
+        topLevelRef = undefined;
+      } else if (newTopLevelId) {
+        topLevelRef = newTopLevelId;
+      } else if (source.top_level_location_id) {
+        topLevelRef = source.top_level_location_id;
+      }
+      const newBody: any = {
+        ...cleanSource,
+        location_name: newName,
+        parent_id: newParentId ? helperService.validateObjectId(String(newParentId)) : undefined,
+        account_id,
+        createdBy: user_id,
+        updatedBy: undefined,
+        visible: true,
+        top_level: source.top_level,
+        top_level_location_id: topLevelRef,
+      };
+      const newLoc = new LocationModel(newBody);
+      await newLoc.save({ session: activeSession });
+      if (source.top_level) {
+        newLoc.top_level_location_id = newLoc._id;
+        await newLoc.save({ session: activeSession });
+      }
+      if (userList.length > 0) {
+        await mapUserToLocationService.mapUserLocationData(newLoc._id, userList, account_id);
+      }
+      return newLoc._id;
+    }, session);
   };
 }
 

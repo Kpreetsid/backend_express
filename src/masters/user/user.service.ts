@@ -8,6 +8,8 @@ import { MailerService } from "../../_config/mailer";
 import { RoleManager } from "../../_role/newUserRoles";
 import { RoleMenuModel } from "../../models/userRoleMenu.model";
 
+import { withTransaction } from "../../utils/transaction.helper";
+
 class UsersService {
 
   constructor(private mailerService: MailerService) {}
@@ -57,12 +59,22 @@ class UsersService {
     }
   };
 
-  async createNewUser(body: IUser, account_id: any) {
+  async createNewUser(body: IUser, account_id: any, session?: any) {
     body.password = await passwordService.hashPassword(body.password);
-    const newUser = new UserModel({ ...body, account_id });
-    const userDetails = await newUser.save();
-    const roleDetails = await rolesService.createUserRole(body.user_role, userDetails);
-    return { userDetails, roleDetails };
+    
+    if (session) {
+      const newUser = new UserModel({ ...body, account_id });
+      const userDetails = await newUser.save({ session });
+      const roleDetails = await rolesService.createUserRole(body.user_role, userDetails, session);
+      return { userDetails, roleDetails };
+    }
+
+    return await withTransaction(async (session) => {
+      const newUser = new UserModel({ ...body, account_id });
+      const userDetails = await newUser.save({ session });
+      const roleDetails = await rolesService.createUserRole(body.user_role, userDetails, session);
+      return { userDetails, roleDetails };
+    });
   };
 
   async updateUserPassword(user_id: any, body: any) {
@@ -77,8 +89,10 @@ class UsersService {
   }
 
   async removeById(id: string) {
-    await MapUserAssetLocationModel.deleteMany({ userId: id });
-    return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { new: true });
+    return await withTransaction(async (session) => {
+      await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
+      return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { new: true, session });
+    });
   };
 }
 

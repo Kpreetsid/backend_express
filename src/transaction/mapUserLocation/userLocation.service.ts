@@ -17,9 +17,9 @@ class MapUserToLocationService {
     return await MapUserAssetLocationModel.find({ locationId: { $in: helperService.validateObjectIds(locationIds.join(',')) }, userId: { $exists: true } }).lean();
   }
 
-  mapUserLocationData = async (id: any, userIdList: any, account_id: any) => {
-    await this.getAllChildLocations(id, userIdList);
-    await MapUserAssetLocationModel.deleteMany({ locationId: id });
+  mapUserLocationData = async (id: any, userIdList: any, account_id: any, session?: any) => {
+    await this.getAllChildLocations(id, userIdList, session);
+    await MapUserAssetLocationModel.deleteMany({ locationId: id }, { session });
     const queryArray: any = [];
     userIdList.forEach((doc: any) => {
       queryArray.push(new MapUserAssetLocationModel({
@@ -28,8 +28,8 @@ class MapUserToLocationService {
         account_id
       }));
     })
-    await this.updateAssetsForLocationHierarchy(id, userIdList);
-    return await MapUserAssetLocationModel.insertMany(queryArray);
+    await this.updateAssetsForLocationHierarchy(id, userIdList, session);
+    return await MapUserAssetLocationModel.insertMany(queryArray, { session });
   }
 
   userLocations = async (match: any, filter: any): Promise<any> => {
@@ -82,31 +82,31 @@ class MapUserToLocationService {
     return data;
   };
 
-  getAllChildLocations = async (locationId: string, userIdList: string[]) => {
-    const children = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean();
+  getAllChildLocations = async (locationId: string, userIdList: string[], session?: any) => {
+    const children = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean().session(session);
     if (!children?.length) return;
     const childIds = children.map(c => c._id.toString());
     const allMappedData = await MapUserAssetLocationModel.find({
       locationId: { $in: [locationId, ...childIds] },
       userId: { $in: userIdList }
-    });
+    }).session(session);
     if (allMappedData?.length > 0) {
       await MapUserAssetLocationModel.deleteMany({
         locationId: { $in: childIds },
         userId: { $nin: userIdList }
-      });
+      }, { session });
     }
-    await Promise.all(childIds.map(async (id: string) => await this.getAllChildLocations(id, userIdList)));
+    await Promise.all(childIds.map(async (id: string) => await this.getAllChildLocations(id, userIdList, session)));
   }
 
-  updateAssetsForLocationHierarchy = async (locationId: string, userIdList: string[]) => {
-    const assets = await AssetModel.find({ locationId: locationId, visible: true }).select("_id").lean();
+  updateAssetsForLocationHierarchy = async (locationId: string, userIdList: string[], session?: any) => {
+    const assets = await AssetModel.find({ locationId: locationId, visible: true }).select("_id").lean().session(session);
     for (const asset of assets) {
-      await mapUserToAssetService.updateUserMapping(`${asset._id}`, userIdList);
+      await mapUserToAssetService.updateUserMapping(`${asset._id}`, userIdList, [], [], session);
     }
-    const childLocations = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean();
+    const childLocations = await LocationModel.find({ parent_id: locationId, visible: true }).select("_id").lean().session(session);
     for (const child of childLocations) {
-      await this.updateAssetsForLocationHierarchy(child._id.toString(), userIdList);
+      await this.updateAssetsForLocationHierarchy(child._id.toString(), userIdList, session);
     }
   };
 
@@ -118,15 +118,15 @@ class MapUserToLocationService {
     return await MapUserAssetLocationModel.insertMany(queryArray);
   };
 
-  removeLocationMapping = async (id: any) => {
-    return await MapUserAssetLocationModel.deleteMany({ locationId: id });
+  removeLocationMapping = async (id: any, session?: any) => {
+    return await MapUserAssetLocationModel.deleteMany({ locationId: id }, { session });
   }
 
-  removeLocationListMapping = async (locationIdList: string[]) => {
-    return await MapUserAssetLocationModel.deleteMany({ locationId: { $in: locationIdList } });
+  removeLocationListMapping = async (locationIdList: string[], session?: any) => {
+    return await MapUserAssetLocationModel.deleteMany({ locationId: { $in: locationIdList } }, { session });
   }
 
-  updateUserMapping = async (locationId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = []) => {
+  updateUserMapping = async (locationId: string, userIdList: string[], inheritedAdded: string[] = [], inheritedRemoved: string[] = [], session?: any) => {
     const locationUserMappings = await this.getDataByLocationId(locationId);
     const existingUsers = locationUserMappings.map((u: any) => String(u.userId));
     const addedUsers = userIdList.filter(id => !existingUsers.includes(id));
@@ -134,30 +134,30 @@ class MapUserToLocationService {
     const effectiveAdded = Array.from([...new Set([...addedUsers, ...inheritedAdded])]);
     const effectiveRemoved = Array.from([...new Set([...removedUsers, ...inheritedRemoved])]);
     if (effectiveAdded.length > 0) {
-      await this.addChildLocationMapping(locationId, effectiveAdded);
+      await this.addChildLocationMapping(locationId, effectiveAdded, session);
     }
     if (effectiveRemoved.length > 0) {
-      await this.removeChildLocationMapping(locationId, effectiveRemoved);
+      await this.removeChildLocationMapping(locationId, effectiveRemoved, session);
     }
-    await mapUserToAssetService.updateAssetsForLocationHierarchy(locationId, userIdList);
-    const locationChildList = await LocationModel.find({ parent_id: helperService.validateObjectId(locationId) }).select("_id").lean();
+    await mapUserToAssetService.updateAssetsForLocationHierarchy(locationId, userIdList, session);
+    const locationChildList = await LocationModel.find({ parent_id: helperService.validateObjectId(locationId) }).select("_id").lean().session(session);
     for (const { _id } of locationChildList) {
       const childExisting = await this.getDataByLocationId(String(_id));
       const childUserList = childExisting.map((d: any) => String(d.userId));
-      await this.updateUserMapping(String(_id), childUserList, effectiveAdded, effectiveRemoved);
+      await this.updateUserMapping(String(_id), childUserList, effectiveAdded, effectiveRemoved, session);
     }
   }
 
-  addChildLocationMapping = async (locationId: string, userIdList: string[]) => {
+  addChildLocationMapping = async (locationId: string, userIdList: string[], session?: any) => {
     const locationObjectId = helperService.validateObjectId(locationId);
     const userIds = helperService.validateObjectIds(userIdList.join(','));
-    await MapUserAssetLocationModel.insertMany(userIds.map(userId => ({ locationId: locationObjectId, userId: userId })));
+    await MapUserAssetLocationModel.insertMany(userIds.map(userId => ({ locationId: locationObjectId, userId: userId })), { session });
   }
 
-  removeChildLocationMapping = async (locationId: string, userIdList: string[]) => {
+  removeChildLocationMapping = async (locationId: string, userIdList: string[], session?: any) => {
     const locationObjectId = helperService.validateObjectId(locationId);
     const userIds = helperService.validateObjectIds(userIdList.join(','));
-    await MapUserAssetLocationModel.deleteMany({ locationId: locationObjectId, userId: { $in: userIds } });
+    await MapUserAssetLocationModel.deleteMany({ locationId: locationObjectId, userId: { $in: userIds } }, { session });
   }
 }
 
