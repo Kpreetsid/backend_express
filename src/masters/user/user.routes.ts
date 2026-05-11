@@ -3,6 +3,8 @@ import { userController } from './user.controller';
 import rolesRoutes from './role/roles.routes';
 import userLogRouters from './logs/logs.routes';
 import { validateParamId } from '../../middlewares/validate';
+import { userValidator } from './user.validator';
+import { validate } from '../../middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const userRouter = express.Router();
@@ -11,10 +13,10 @@ export default (router: express.Router) => {
     userRouter.get('/', userController.getUsers);
     userRouter.get('/:id', validateParamId, userController.getUser);
     userRouter.get('/location/:id', validateParamId, userController.getLocationWiseUsers);
-    userRouter.post('/', userController.createUser);
+    userRouter.post('/', userValidator, validate, userController.createUser);
     userRouter.post('/change-password', userController.updatePasswordUser);
-    userRouter.put('/:id', validateParamId, userController.updateUser);
-    userRouter.patch('/:id', validateParamId, userController.updateUser);
+    userRouter.put('/:id', validateParamId, userValidator, validate, userController.updateUser);
+    userRouter.patch('/:id', validateParamId, userValidator, validate, userController.updateUser);
     userRouter.delete('/:id', validateParamId, userController.removeUser);
     router.use('/users', userRouter);
 }

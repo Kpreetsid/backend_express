@@ -4,13 +4,15 @@ import commentsRoutes from '../comments/comment.routes';
 import { hasRolePermission } from '../../middlewares';
 import { validateParamId } from '../../middlewares/validate';
 import { upload } from '../../upload/upload.routes';
+import { workOrderValidator } from './workOrder.validator';
+import { validate } from '../../middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const orderRouter = express.Router();
     orderRouter.get('/', orderController.getAll);
     orderRouter.get('/get-work-order', orderController.getAllWorkOrders);
     orderRouter.get('/:id', validateParamId, orderController.getOrderById);
-    orderRouter.post('/', hasRolePermission('workOrder', 'create_work_order'), orderController.createOrder);
+    orderRouter.post('/', hasRolePermission('workOrder', 'create_work_order'), workOrderValidator, validate, orderController.createOrder);
     orderRouter.post('/status', orderController.getOrderStatus);
     orderRouter.post('/summary', orderController.getSummaryData);
     orderRouter.post('/pending', orderController.getPendingOrders);
@@ -18,7 +20,7 @@ export default (router: express.Router) => {
     orderRouter.post('/monthly-count', orderController.getMonthlyCount);
     orderRouter.post('/planned-unplanned', orderController.getPlannedUnplanned);
     orderRouter.put('/status/:id', validateParamId, hasRolePermission('workOrder', 'update_work_order_status'), orderController.statusUpdateOrder);
-    orderRouter.put('/:id', validateParamId, orderController.updateOrder);
+    orderRouter.put('/:id', validateParamId, workOrderValidator, validate, orderController.updateOrder);
     orderRouter.patch('/:id', validateParamId, orderController.updateOrderSubmitData);
     orderRouter.delete('/:id', validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
     orderRouter.post('/:id/attachments', validateParamId, (req, res, next) => { req.params.folderName = 'work_order'; next(); }, upload.array('files', 12), orderController.uploadAttachments);
@@ -26,4 +28,4 @@ export default (router: express.Router) => {
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));
     router.use('/orders', orderRouter);
-};
+};
