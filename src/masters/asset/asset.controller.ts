@@ -507,64 +507,11 @@ class AssetController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userToken = get(req, "userToken", {}) as string;
-      const {
-        params: { id },
-      } = req;
-      const dataExists: any = await assetService.getAllAssets({
-        _id: helperService.validateObjectId(String(id)),
-        account_id,
-        visible: true,
-      });
-      if (!dataExists || dataExists.length === 0) {
+      const { params: { id } } = req;
+      const newParentId = await assetService.makeAssetCopyRecursive(String(id), user_id, userToken, account_id);
+      if (!newParentId) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
-      const sourceAsset = dataExists[0];
-      const allChildren: any[] = await assetService.getAllChildAssetsRecursive(
-        String(id),
-        account_id,
-      );
-      const idMap: Record<string, any> = {};
-      const originalTopLevelId = sourceAsset.top_level
-        ? sourceAsset.id
-        : sourceAsset.top_level_asset_id;
-      const parentForCopy = sourceAsset.parent_id
-        ? sourceAsset.parent_id.id
-        : undefined;
-      const newParentId = await assetService.makeAssetCopyByIdWithChildren(
-        sourceAsset,
-        user_id,
-        userToken,
-        account_id,
-        parentForCopy,
-        idMap,
-        null,
-      );
-      const newTopLevelId = sourceAsset.top_level
-        ? newParentId
-        : originalTopLevelId;
-      idMap[`${sourceAsset.id}`] = newParentId;
-      for (const child of allChildren) {
-        const newParent = idMap[child.parent_id?.toString()] || newParentId;
-        const newChildId = await assetService.makeAssetCopyByIdWithChildren(
-          child,
-          user_id,
-          userToken,
-          account_id,
-          newParent,
-          idMap,
-          newTopLevelId,
-        );
-        idMap[child._id.toString()] = newChildId;
-      }
-      await processorAPIService.setAssetHealthStatus(
-        [
-          { assetId: newParentId },
-          ...allChildren.map((c) => ({ assetId: idMap[c._id.toString()] })),
-        ],
-        account_id,
-        user_id,
-        userToken,
-      );
       const copiedData: any = await assetService.getAllAssets({
         _id: newParentId,
         account_id,

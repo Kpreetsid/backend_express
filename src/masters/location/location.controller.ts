@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { locationService } from './location.service';
+import { assetService } from '../asset/asset.service';
 import { get } from "lodash";
 import { IUser } from "../../models/user.model";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
@@ -295,6 +296,12 @@ class LocationController {
           idMap[child._id.toString()] = newChildId;
         }
       }
+
+      const userToken = get(req, "userToken", "") as string;
+      for (const [oldLocId, newLocId] of Object.entries(idMap)) {
+        await assetService.cloneAssetsByLocation(oldLocId, newLocId, account_id, user_id, userToken);
+      }
+
       const getData = await locationService.getAllLocations({ _id: newParentId, account_id, visible: true });
       if (!getData || getData.length === 0) {
         throw Object.assign(new Error("Child Location not found"), { status: 404 });

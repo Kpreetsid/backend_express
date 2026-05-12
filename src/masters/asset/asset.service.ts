@@ -244,7 +244,76 @@ class AssetService {
     return all;
   };
 
-  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any): Promise<any> {
+  async makeAssetCopyRecursive(id: string, user_id: any, token: string, account_id: any, targetLocationId?: any, session?: any): Promise<any> {
+    const dataExists: any = await AssetModel.find({
+      _id: helperService.validateObjectId(String(id)),
+      account_id,
+      visible: true,
+    }).session(session);
+    if (!dataExists || dataExists.length === 0) return null;
+
+    const sourceAsset = dataExists[0];
+    const allChildren: any[] = await this.getAllChildAssetsRecursive(String(id), account_id);
+    const idMap: Record<string, any> = {};
+    
+    const originalTopLevelId = sourceAsset.top_level ? sourceAsset.id : sourceAsset.top_level_asset_id;
+    const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;
+
+    const newParentId = await this.makeAssetCopyByIdWithChildren(
+      sourceAsset,
+      user_id,
+      token,
+      account_id,
+      parentForCopy,
+      idMap,
+      null,
+      session,
+      targetLocationId
+    );
+
+    const newTopLevelId = sourceAsset.top_level ? newParentId : originalTopLevelId;
+    idMap[`${sourceAsset.id || sourceAsset._id}`] = newParentId;
+
+    for (const child of allChildren) {
+      const newParent = idMap[child.parent_id?.toString()] || newParentId;
+      const newChildId = await this.makeAssetCopyByIdWithChildren(
+        child,
+        user_id,
+        token,
+        account_id,
+        newParent,
+        idMap,
+        newTopLevelId,
+        session,
+        targetLocationId
+      );
+      idMap[child._id.toString()] = newChildId;
+    }
+
+    await processorAPIService.setAssetHealthStatus(
+      [{ assetId: newParentId }, ...allChildren.map((c) => ({ assetId: idMap[c._id.toString()] }))],
+      account_id,
+      user_id,
+      token
+    );
+
+    return newParentId;
+  }
+
+  async cloneAssetsByLocation(oldLocationId: string, newLocationId: string, account_id: any, user_id: any, token: string, session?: any) {
+    const topLevelAssets = await AssetModel.find({
+      locationId: helperService.validateObjectId(oldLocationId),
+      parent_id: { $exists: false },
+      visible: true,
+      account_id
+    }).session(session);
+
+    for (const asset of topLevelAssets) {
+      await this.makeAssetCopyRecursive(String(asset._id), user_id, token, account_id, newLocationId, session);
+    }
+  }
+
+  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any, newLocationId?: any): Promise<any> {
     return await withTransaction(async (innerSession) => {
       const activeSession = session || innerSession;
       const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
@@ -280,7 +349,8 @@ class AssetService {
         account_id,
         visible: true,
         parent_id: newParentId ? helperService.validateObjectId(String(newParentId)) : undefined,
-        top_level_asset_id: topLevelRef
+        top_level_asset_id: topLevelRef,
+        locationId: newLocationId || sourceAsset.locationId
       };
       const newAsset = new AssetModel(newAssetData);
       const savedAsset: any = await newAsset.save({ session: activeSession });
