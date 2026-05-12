@@ -18,7 +18,8 @@ class MapUserAssetController {
       if (userRole === 'admin') {
         const assetMatch: any = { account_id, visible: true };
         if (assetId) {
-          assetMatch._id = helperService.validateObjectId(String(assetId));
+          const ids = helperService.validateObjectIds(String(assetId));
+          assetMatch._id = { $in: ids };
         }
         const assetIds = await AssetModel.find(assetMatch).distinct('_id');
         if (!assetIds || assetIds.length === 0) {
@@ -28,7 +29,8 @@ class MapUserAssetController {
       } else {
         match.userId = user_id;
         if (assetId) {
-          match.assetId = helperService.validateObjectId(String(assetId));
+          const ids = helperService.validateObjectIds(String(assetId));
+          match.assetId = { $in: ids };
         }
       }
       const data = await mapUserToAssetService.userAssets(match, populate);

@@ -45,3 +45,8 @@ export const workOrderValidator = [
     .notEmpty().withMessage('Part ID is required')
     .isMongoId().withMessage('Invalid Part ID format')
 ];
+
+export const updateWorkOrderValidator = workOrderValidator.map(v => {
+  // Clone and make optional for updates
+  return v.optional();
+});

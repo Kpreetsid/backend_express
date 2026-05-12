@@ -22,10 +22,10 @@ class MapUserLocationController {
         match.locationId = { $in: locationData.map((doc) => doc._id) };
       }
       if (query.locationId) {
-        const locationId = helperService.validateObjectId(query.locationId);
-        match.locationId = locationId;
-        const locationData = await locationService.getLocationsList({ _id: locationId, account_id });
-        if (!locationData) {
+        const locationIds = helperService.validateObjectIds(query.locationId);
+        match.locationId = { $in: locationIds };
+        const locationData = await locationService.getLocationsList({ _id: { $in: locationIds }, account_id, visible: true });
+        if (!locationData?.length) {
           throw Object.assign(new Error("Location not found"), { status: 404 });
         }
       }
