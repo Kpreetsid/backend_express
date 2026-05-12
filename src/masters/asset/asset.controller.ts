@@ -177,23 +177,12 @@ class AssetController {
       const { id, location_id } = req.query;
       const baseFilter: any = {};
       if (id) {
-        baseFilter.$or = [
-          { _id: { $in: helperService.validateObjectIds(String(id)) } },
-          { parent_id: { $in: helperService.validateObjectIds(String(id)) } },
-        ];
+        baseFilter.$or = [{ _id: { $in: helperService.validateObjectIds(String(id)) } }, { parent_id: { $in: helperService.validateObjectIds(String(id)) } }];
       }
       if (location_id) {
-        baseFilter.locationId = {
-          $in: helperService.validateObjectIds(String(location_id)),
-        };
+        baseFilter.locationId = { $in: helperService.validateObjectIds(String(location_id)) };
       }
-      const filter = await applyRoleFilter({
-        user,
-        baseFilter,
-        accountField: "account_id",
-        mapping: "asset",
-        idField: "_id",
-      });
+      const filter = await applyRoleFilter({ user, baseFilter, accountField: "account_id", mapping: "asset", idField: "_id" });
       const data = await assetService.getAssetsTreeData(filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
