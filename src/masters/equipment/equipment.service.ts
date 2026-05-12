@@ -900,7 +900,7 @@ class EquipmentService {
         }
         if (userList.length > 0) {
           const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
-          await mapUserToAssetService.createMapUserAssets(mappedData);
+          await mapUserToAssetService.createMapUserAssets(mappedData, activeSession);
         }
         return savedAsset._id;
       } catch (error) {

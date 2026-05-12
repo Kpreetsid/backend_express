@@ -330,7 +330,7 @@ class LocationService {
         await newLoc.save({ session: activeSession });
       }
       if (userList.length > 0) {
-        await mapUserToLocationService.mapUserLocationData(newLoc._id, userList, account_id);
+        await mapUserToLocationService.mapUserLocationData(newLoc._id, userList, account_id, activeSession);
       }
       return newLoc._id;
     }, session);

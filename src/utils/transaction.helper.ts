@@ -9,16 +9,49 @@ export const withTransaction = async <T>(fn: (session: ClientSession) => Promise
   if (existingSession) {
     return await fn(existingSession);
   }
+
   const session = await mongoose.startSession();
-  session.startTransaction();
+  let sessionEnded = false;
+
   try {
+    session.startTransaction();
     const result = await fn(session);
     await session.commitTransaction();
+    sessionEnded = true;
+    await session.endSession();
     return result;
-  } catch (error) {
-    await session.abortTransaction();
+  } catch (error: any) {
+    const errorMessage = error.message || error.errmsg || String(error);
+    const isStandaloneError = errorMessage.includes("Transaction numbers are only allowed") ||
+      error.code === 20 ||
+      error.codeName === 'IllegalOperation';
+
+    if (isStandaloneError) {
+      console.warn("⚠️ MongoDB Transactions are not supported (Standalone Instance). Falling back to non-transactional execution.");
+      console.warn(`Original Error: ${errorMessage}`);
+      if (!sessionEnded) {
+        try {
+          if (session.inTransaction()) await session.abortTransaction();
+          await session.endSession();
+        } catch (e) {}
+        sessionEnded = true;
+      }
+      return await fn(undefined as any);
+    }
+
+    if (!sessionEnded) {
+      try {
+        if (session.inTransaction()) await session.abortTransaction();
+        await session.endSession();
+      } catch (e) {}
+      sessionEnded = true;
+    }
     throw error;
   } finally {
-    session.endSession();
+    if (!sessionEnded) {
+      try {
+        await session.endSession();
+      } catch (e) {}
+    }
   }
 };

@@ -25,8 +25,8 @@ class MapUserToAssetService {
     }).lean();
   };
 
-  createMapUserAssets = async (data: any): Promise<any> => {
-    return await MapUserAssetLocationModel.insertMany(data);
+  createMapUserAssets = async (data: any, session?: any): Promise<any> => {
+    return await MapUserAssetLocationModel.insertMany(data, { session });
   };
 
   userAssets = async (match: any, populate: any): Promise<any> => {
