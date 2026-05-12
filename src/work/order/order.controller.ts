@@ -116,7 +116,7 @@ class OrderController {
         throw Object.assign(new Error('No data provided for update'), { status: 400 });
       }
 
-      const data = await orderService.updateById(id, body, user);
+      const data = await orderService.updateById(helperService.validateObjectId(String(id)), body, user);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
       next(error);

@@ -694,10 +694,9 @@ class OrderService {
     });
   };
 
-  async updateById(id: string, body: any, user: IUser): Promise<any> {
+  async updateById(id: any, body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
-      const objectId = helperService.validateObjectId(id);
-      let existingOrder: any = await WorkOrderModel.findById(objectId).session(session);
+      let existingOrder: any = await WorkOrderModel.findById(id).session(session);
       if (!existingOrder) {
         throw Object.assign(new Error('Work Order not found'), { status: 404 });
       }
@@ -720,7 +719,7 @@ class OrderService {
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
       }
       
-      const resultData = await this.getAllOrders({ _id: helperService.validateObjectId(id) });
+      const resultData = await this.getAllOrders({ _id: id });
       await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),
         module: 'Work Order',
