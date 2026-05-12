@@ -387,8 +387,20 @@ class AssetService {
         console.error("Endpoint copy failed:", err);
       }
       if (userList.length > 0) {
-        const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
+        const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u, account_id }));
         await mapUserToAssetService.createMapUserAssets(mappedData, activeSession);
+
+        if (newLocationId) {
+          const locId = helperService.validateObjectId(String(newLocationId));
+          const userIds = userList.map(u => helperService.validateObjectId(String(u)));
+          for (const uId of userIds) {
+            await MapUserAssetLocationModel.updateOne(
+              { locationId: locId, userId: uId },
+              { $set: { locationId: locId, userId: uId, account_id } },
+              { upsert: true, session: activeSession }
+            );
+          }
+        }
       }
       return savedAsset._id;
     }, session);

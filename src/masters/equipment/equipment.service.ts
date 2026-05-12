@@ -824,7 +824,63 @@ class EquipmentService {
     return all;
   };
 
-  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any): Promise<any> {
+  async makeAssetCopyRecursive(id: string, user_id: any, token: string, account_id: any, targetLocationId?: any, session?: any): Promise<any> {
+    const dataExists: any = await AssetModel.find({
+      _id: helperService.validateObjectId(String(id)),
+      account_id,
+      visible: true,
+    }).session(session);
+    if (!dataExists || dataExists.length === 0) return null;
+
+    const sourceAsset = dataExists[0];
+    const allChildren: any[] = await this.getAllChildEquipmentRecursive(String(id), account_id);
+    const idMap: Record<string, any> = {};
+
+    const originalTopLevelId = sourceAsset.top_level ? sourceAsset.id : sourceAsset.top_level_asset_id;
+    const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;
+
+    const newParentId = await this.makeAssetCopyByIdWithChildren(
+      sourceAsset,
+      user_id,
+      token,
+      account_id,
+      parentForCopy,
+      idMap,
+      null,
+      session,
+      targetLocationId
+    );
+
+    const newTopLevelId = sourceAsset.top_level ? newParentId : originalTopLevelId;
+    idMap[`${sourceAsset.id || sourceAsset._id}`] = newParentId;
+
+    for (const child of allChildren) {
+      const newParent = idMap[child.parent_id?.toString()] || newParentId;
+      const newChildId = await this.makeAssetCopyByIdWithChildren(
+        child,
+        user_id,
+        token,
+        account_id,
+        newParent,
+        idMap,
+        newTopLevelId,
+        session,
+        targetLocationId
+      );
+      idMap[child._id.toString()] = newChildId;
+    }
+
+    await processorAPIService.setAssetHealthStatus(
+      [{ assetId: newParentId }, ...allChildren.map((c) => ({ assetId: idMap[c._id.toString()] }))],
+      account_id,
+      user_id,
+      token
+    );
+
+    return newParentId;
+  }
+
+  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any, newLocationId?: any): Promise<any> {
     return await withTransaction(async (innerSession) => {
       const activeSession = session || innerSession;
       const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
@@ -861,7 +917,8 @@ class EquipmentService {
         account_id,
         visible: true,
         parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
-        top_level_asset_id: topLevelRef
+        top_level_asset_id: topLevelRef,
+        locationId: newLocationId || sourceAsset.locationId
       };
       const newAsset = new AssetModel(newAssetData);
       const savedAsset: any = await newAsset.save({ session: activeSession });
@@ -898,8 +955,20 @@ class EquipmentService {
         console.error("Endpoint copy failed:", err);
       }
       if (userList.length > 0) {
-        const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
+        const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u, account_id }));
         await mapUserToAssetService.createMapUserAssets(mappedData, activeSession);
+
+        if (newLocationId) {
+          const locId = helperService.validateObjectId(String(newLocationId));
+          const userIds = userList.map(u => helperService.validateObjectId(String(u)));
+          for (const uId of userIds) {
+            await MapUserAssetLocationModel.updateOne(
+              { locationId: locId, userId: uId },
+              { $set: { locationId: locId, userId: uId, account_id } },
+              { upsert: true, session: activeSession }
+            );
+          }
+        }
       }
       return savedAsset._id;
     }, session);
