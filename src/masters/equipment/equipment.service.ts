@@ -827,86 +827,81 @@ class EquipmentService {
   async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any): Promise<any> {
     return await withTransaction(async (innerSession) => {
       const activeSession = session || innerSession;
-      try {
-        const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
-        const cleanAsset = JSON.parse(JSON.stringify(rest));
-        delete cleanAsset._id;
-        delete cleanAsset.id;
-        delete cleanAsset.createdAt;
-        delete cleanAsset.updatedAt;
-        if (!cleanAsset.asset_name) cleanAsset.asset_name = "Unnamed Asset";
-        if (!cleanAsset.account_id) cleanAsset.account_id = account_id;
-        const baseName = (sourceAsset.asset_name || "Asset").replace(/\s-\s(Copy|\(\d+\))$/, "");
-        const existingCount = await AssetModel.countDocuments({
-          parent_id: newParentId || { $exists: false },
-          account_id,
-          asset_name: { $regex: `^${baseName} - Copy`, $options: "i" },
-          visible: true
-        }).session(activeSession);
-        const newName = existingCount > 0 ? `${baseName} - Copy (${existingCount + 1})` : `${baseName} - Copy`;
-        let topLevelRef: any = null;
-        if (sourceAsset.top_level) {
-          topLevelRef = undefined;
-        } else if (newTopLevelId) {
-          topLevelRef = newTopLevelId;
-        } else {
-          topLevelRef = sourceAsset.top_level_asset_id;
-        }
-        const newAssetData: any = {
-          ...cleanAsset,
-          asset_name: newName,
-          asset_type: sourceAsset.asset_type || "Other",
-          asset_build_type: sourceAsset.asset_build_type,
-          createdBy: user_id,
-          updatedBy: undefined,
-          account_id,
-          visible: true,
-          parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
-          top_level_asset_id: topLevelRef
-        };
-        const newAsset = new AssetModel(newAssetData);
-        const savedAsset: any = await newAsset.save({ session: activeSession });
-        if (sourceAsset.top_level) {
-          savedAsset.top_level_asset_id = savedAsset._id;
-          await savedAsset.save({ session: activeSession });
-        }
-        let userList: any[] = [];
-        try {
-          const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
-          userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
-        } catch { }
-        try {
-          const endPointList: any = await processorAPIService.getEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
-          if (endPointList?.data?.length > 0) {
-            for (const item of endPointList.data) {
-              const newEndPointPayload = {
-                org_id: item.org_id,
-                point_name: item.point_name,
-                asset_id: savedAsset._id.toString(),
-                mount_location: item.mount_location,
-                rpm: item.rpm || "",
-                bsf: item.bsf || "",
-                ftf: item.ftf || "",
-                bpfo: item.bpfo || "",
-                bpfi: item.bpfi || "",
-                bearing_number: item.bearing_number || "",
-                parent_asset_id: newParentId || null
-              };
-              await processorAPIService.createEndPoint(newEndPointPayload, user_id, token);
-            }
-          }
-        } catch (err) {
-          console.error("Endpoint copy failed:", err);
-        }
-        if (userList.length > 0) {
-          const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
-          await mapUserToAssetService.createMapUserAssets(mappedData, activeSession);
-        }
-        return savedAsset._id;
-      } catch (error) {
-        console.error("Error in make Asset Copy:", error);
-        throw error;
+      const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
+      const cleanAsset = JSON.parse(JSON.stringify(rest));
+      delete cleanAsset._id;
+      delete cleanAsset.id;
+      delete cleanAsset.createdAt;
+      delete cleanAsset.updatedAt;
+      if (!cleanAsset.asset_name) cleanAsset.asset_name = "Unnamed Asset";
+      if (!cleanAsset.account_id) cleanAsset.account_id = account_id;
+      const baseName = (sourceAsset.asset_name || "Asset").replace(/\s-\s(Copy|\(\d+\))$/, "");
+      const existingCount = await AssetModel.countDocuments({
+        parent_id: newParentId || { $exists: false },
+        account_id,
+        asset_name: { $regex: `^${baseName} - Copy`, $options: "i" },
+        visible: true
+      }).session(activeSession);
+      const newName = existingCount > 0 ? `${baseName} - Copy (${existingCount + 1})` : `${baseName} - Copy`;
+      let topLevelRef: any = null;
+      if (sourceAsset.top_level) {
+        topLevelRef = undefined;
+      } else if (newTopLevelId) {
+        topLevelRef = newTopLevelId;
+      } else {
+        topLevelRef = sourceAsset.top_level_asset_id;
       }
+      const newAssetData: any = {
+        ...cleanAsset,
+        asset_name: newName,
+        asset_type: sourceAsset.asset_type || "Other",
+        asset_build_type: sourceAsset.asset_build_type,
+        createdBy: user_id,
+        updatedBy: undefined,
+        account_id,
+        visible: true,
+        parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
+        top_level_asset_id: topLevelRef
+      };
+      const newAsset = new AssetModel(newAssetData);
+      const savedAsset: any = await newAsset.save({ session: activeSession });
+      if (sourceAsset.top_level) {
+        savedAsset.top_level_asset_id = savedAsset._id;
+        await savedAsset.save({ session: activeSession });
+      }
+      let userList: any[] = [];
+      try {
+        const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
+        userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
+      } catch { }
+      try {
+        const endPointList: any = await processorAPIService.getEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
+        if (endPointList?.data?.length > 0) {
+          for (const item of endPointList.data) {
+            const newEndPointPayload = {
+              org_id: item.org_id,
+              point_name: item.point_name,
+              asset_id: savedAsset._id.toString(),
+              mount_location: item.mount_location,
+              rpm: item.rpm || "",
+              bsf: item.bsf || "",
+              ftf: item.ftf || "",
+              bpfo: item.bpfo || "",
+              bpfi: item.bpfi || "",
+              bearing_number: item.bearing_number || "",
+              parent_asset_id: newParentId || null
+            };
+            await processorAPIService.createEndPoint(newEndPointPayload, user_id, token);
+          }
+        }
+      } catch (err) {
+        console.error("Endpoint copy failed:", err);
+      }
+      if (userList.length > 0) {
+        const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u }));
+        await mapUserToAssetService.createMapUserAssets(mappedData, activeSession);
+      }
+      return savedAsset._id;
     }, session);
   };
 }
