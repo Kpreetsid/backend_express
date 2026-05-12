@@ -12,7 +12,7 @@ export const locationValidator = [
     .trim(),
 
   body('top_level')
-    .notEmpty().withMessage('Top level flag is required')
+    .optional()
     .isBoolean().withMessage('Top level must be a boolean'),
 
   body('parent_id')

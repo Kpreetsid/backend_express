@@ -20,24 +20,42 @@ class RegistrationService {
       throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
     }
 
-    return await withTransaction(async (session) => {
-      const userVerification = otpExists;
-      const accountBody = { account_name: body.account_name, type: body.type, description: body.description };
-      const account: IAccount = await companyService.createCompany(accountBody, session);
-      if (!account) {
-        throw Object.assign(new Error("Account creation failed"), { status: 500 });
+    let createdAccountId: any = null;
+    try {
+      return await withTransaction(async (session) => {
+        const userVerification = otpExists;
+        const accountBody = { account_name: body.account_name, type: body.type, description: body.description };
+        const account: IAccount = await companyService.createCompany(accountBody, session);
+        if (!account) {
+          throw Object.assign(new Error("Account creation failed"), { status: 500 });
+        }
+        createdAccountId = account._id;
+        
+        body.isFirstUser = true;
+        body.user_role = "admin";
+        body.isVerified = true;
+        
+        const userDetails = await usersService.createNewUser(body, account._id, session);
+        if (!userDetails) {
+          throw Object.assign(new Error("User creation failed"), { status: 500 });
+        }
+        
+        await this.mailerService.sendRegistrationConfirmation(userDetails.userDetails);
+        await userVerification.deleteOne({ session });
+        return userDetails;
+      });
+    } catch (error) {
+      // Manual cleanup for standalone instances where transactions are not supported
+      if (createdAccountId) {
+        try {
+          console.log(`Cleaning up account ${createdAccountId} due to registration failure...`);
+          await companyService.removeById(createdAccountId, null);
+        } catch (cleanupError) {
+          console.error("Manual cleanup failed:", cleanupError);
+        }
       }
-      body.isFirstUser = true;
-      body.user_role = "admin";
-      body.isVerified = true;
-      const userDetails = await usersService.createNewUser(body, account._id, session);
-      if (!userDetails) {
-        throw Object.assign(new Error("User creation failed"), { status: 500 });
-      }
-      await this.mailerService.sendRegistrationConfirmation(userDetails.userDetails);
-      await userVerification.deleteOne({ session });
-      return userDetails;
-    });
+      throw error;
+    }
   }
 
   async emailVerificationCode(match: any) {

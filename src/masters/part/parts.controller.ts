@@ -70,8 +70,9 @@ class PartsController {
       
       // Fetch populated data
       const data = await partsService.getAllParts({ _id: createdData._id });
+      const result = data && data.length > 0 ? data[0] : createdData;
       
-      res.status(201).json({ status: true, message: "Part created successfully", data: data[0] });
+      res.status(201).json({ status: true, message: "Part created successfully", data: result });
     } catch (error) {
       next(error);
     }

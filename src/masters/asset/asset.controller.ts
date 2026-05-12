@@ -52,9 +52,7 @@ class AssetController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error("No assets found"), { status: 404 });
       }
-      res
-        .status(200)
-        .json({ status: true, message: "Assets retrieved successfully", data });
+      res.status(200).json({ status: true, message: "Assets retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -110,9 +108,7 @@ class AssetController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error("No buzzer assets found"), { status: 404 });
       }
-      res
-        .status(200)
-        .json({ status: true, message: "Buzzer assets retrieved successfully", data });
+      res.status(200).json({ status: true, message: "Buzzer assets retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -144,9 +140,7 @@ class AssetController {
         throw Object.assign(new Error("Invalid asset list count"), { status: 400 });
       }
       await assetService.updateBuzzerAssetList(body);
-      res
-        .status(200)
-        .json({ status: true, message: "Buzzer asset list updated successfully" });
+      res.status(200).json({ status: true, message: "Buzzer asset list updated successfully" });
     } catch (error) {
       next(error);
     }
@@ -155,12 +149,8 @@ class AssetController {
   getChildAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const user = get(req, "user", {}) as IUser;
-      const {
-        params: { id },
-      } = req;
-      const childIds = await assetService.getAllChildAssetIDs(
-        helperService.validateObjectId(String(id)),
-      );
+      const { params: { id } } = req;
+      const childIds = await assetService.getAllChildAssetIDs(helperService.validateObjectId(String(id)));
       if (childIds.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
@@ -175,9 +165,7 @@ class AssetController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error("No child assets found"), { status: 404 });
       }
-      res
-        .status(200)
-        .json({ status: true, message: "Child assets retrieved successfully", data });
+      res.status(200).json({ status: true, message: "Child assets retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -210,9 +198,7 @@ class AssetController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
-      res
-        .status(200)
-        .json({ status: true, message: "Asset tree fetched successfully", data });
+      res.status(200).json({ status: true, message: "Asset tree fetched successfully", data });
     } catch (error) {
       next(error);
     }
@@ -220,16 +206,11 @@ class AssetController {
 
   getFilteredAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const {
-        account_id,
-        _id: user_id,
-        user_role: userRole,
-      } = get(req, "user", {}) as IUser;
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { locationList = [], assets = [], top_level } = req.body;
       const match: any = { account_id, visible: true };
       if (userRole !== "admin") {
-        const mapData =
-          await mapUserToAssetService.getAssetsMappedData(user_id);
+        const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
         if (!mapData || mapData.length === 0) {
           throw Object.assign(new Error("Asset not found"), { status: 404 });
         }
@@ -241,8 +222,7 @@ class AssetController {
       if (locationList && locationList.length > 0) {
         match.locationId = { $in: locationList };
         if (userRole !== "admin") {
-          const mapData =
-            await mapUserToAssetService.getAssetsMappedData(user_id);
+          const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
           match._id = { $in: mapData.map((doc) => doc.assetId) };
         }
       }
@@ -253,9 +233,7 @@ class AssetController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error("No assets found matching the filter"), { status: 404 });
       }
-      res
-        .status(200)
-        .json({ status: true, message: "Filtered assets retrieved successfully", data });
+      res.status(200).json({ status: true, message: "Filtered assets retrieved successfully", data });
     } catch (error) {
       next(error);
     }
@@ -268,9 +246,7 @@ class AssetController {
       const userToken = get(req, "userToken", {}) as string;
       const { body } = req;
       if (body.userIdList?.length === 0) {
-        throw Object.assign(new Error("Please select at least one user"), {
-          status: 400,
-        });
+        throw Object.assign(new Error("Please select at least one user"), { status: 400 });
       }
       data = await assetService.createAssetOld(body, account_id, user_id);
       if (!data) {
@@ -294,9 +270,7 @@ class AssetController {
         user_id,
         userToken,
       );
-      const insertedData: any = await assetService.getAllAssets({
-        _id: data._id,
-      });
+      const insertedData: any = await assetService.getAllAssets({ _id: data._id });
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
@@ -309,11 +283,7 @@ class AssetController {
         actionUrl: `/assets/asset-health/${data._id}/health`,
         sourceUserId: String(user_id)
       });
-      res.status(201).json({
-        status: true,
-        message: "Asset created successfully",
-        data: insertedData,
-      });
+      res.status(201).json({ status: true, message: "Asset created successfully", data: insertedData });
     } catch (error) {
       if (data) {
         await assetService.deleteAssetsById(data._id);
@@ -325,35 +295,19 @@ class AssetController {
   updateOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const {
-        params: { id },
-        body,
-      } = req;
+      const { params: { id }, body } = req;
       if (body.userIdList?.length === 0) {
-        throw Object.assign(new Error("Please select at least one user"), {
-          status: 400,
-        });
+        throw Object.assign(new Error("Please select at least one user"), { status: 400 });
       }
-      const existingData: any = await assetService.getAllAssets({
-        _id: helperService.validateObjectId(String(id)),
-        account_id,
-        visible: true,
-        });
+      const existingData: any = await assetService.getAllAssets({ _id: helperService.validateObjectId(String(id)), account_id, visible: true });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       if (body.locationId !== existingData[0].locationId) {
         await assetService.updateAllChildAssetsLocation(
-          helperService.validateObjectId(String(id)),
-          body.locationId,
-          user_id,
-        );
+          helperService.validateObjectId(String(id)), body.locationId, user_id);
       }
-      const data = await assetService.updateAssetOld(
-        helperService.validateObjectId(String(id)),
-        body,
-        user_id,
-      );
+      const data = await assetService.updateAssetOld(helperService.validateObjectId(String(id)), body, user_id);
       if (!data) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
@@ -372,11 +326,7 @@ class AssetController {
         actionUrl: `/assets/asset-health/${id}/health`,
         sourceUserId: String(user_id)
       });
-      res.status(200).json({
-        status: true,
-        message: "Asset updated successfully",
-        data: insertedData,
-      });
+      res.status(200).json({ status: true, message: "Asset updated successfully", data: insertedData });
     } catch (error) {
       next(error);
     }

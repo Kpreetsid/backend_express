@@ -13,7 +13,7 @@ export class MongoConnection {
       return this.instance;
     }
     try {
-      const mongoUri = `mongodb://${database.userName}:${database.password}@${database.host}/${database.databaseName}?authSource=${database.authSource}`;
+      const mongoUri = `mongodb://${database.userName}:${database.password}@${database.host}/${database.databaseName}?authSource=${database.authSource}&retryWrites=false`;
       await mongoose.connect(mongoUri, {
         autoIndex: true,
         connectTimeoutMS: 10000,

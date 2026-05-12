@@ -62,19 +62,11 @@ class UsersService {
   async createNewUser(body: IUser, account_id: any, session?: any) {
     body.password = await passwordService.hashPassword(body.password);
     
-    if (session) {
-      const newUser = new UserModel({ ...body, account_id });
-      const userDetails = await newUser.save({ session });
-      const roleDetails = await rolesService.createUserRole(body.user_role, userDetails, session);
-      return { userDetails, roleDetails };
-    }
-
-    return await withTransaction(async (session) => {
-      const newUser = new UserModel({ ...body, account_id });
-      const userDetails = await newUser.save({ session });
-      const roleDetails = await rolesService.createUserRole(body.user_role, userDetails, session);
-      return { userDetails, roleDetails };
-    });
+    // Use the provided session (or explicitly use the fallback if session is undefined but provided in arguments)
+    const newUser = new UserModel({ ...body, account_id });
+    const userDetails = await newUser.save({ session });
+    const roleDetails = await rolesService.createUserRole(body.user_role, userDetails, session);
+    return { userDetails, roleDetails };
   };
 
   async updateUserPassword(user_id: any, body: any) {
