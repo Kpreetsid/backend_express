@@ -6,6 +6,8 @@ import { IUser } from "../../models/user.model";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
+import { withTransaction } from "../../utils/transaction.helper";
+import { LocationModel } from "../../models/location.model";
 import { notificationService } from '../../utils/notification.service';
 
 class LocationController {
@@ -278,35 +280,45 @@ class LocationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      let sourceLocation: any = await locationService.getLocationById(helperService.validateObjectId(String(id)), account_id);
-      if (!sourceLocation) {
-        throw Object.assign(new Error("Location not found"), { status: 404 });
-      }
-      sourceLocation = sourceLocation.toObject ? sourceLocation.toObject() : sourceLocation;
-      const allChildren: any[] = await locationService.getAllChildHierarchy(helperService.validateObjectId(String(id)), account_id);
-      const idMap: Record<string, any> = {};
-      const parentForCopy = sourceLocation.parent_id ? sourceLocation.parent_id : undefined;
-      const newParentId = await locationService.cloneLocationNode(sourceLocation, user_id, account_id, parentForCopy, idMap, null);
-      const newTopLevelId = sourceLocation.parent_id ? sourceLocation.top_level_location_id : newParentId;
-      idMap[`${sourceLocation._id || sourceLocation.id}`] = newParentId;
-      if (allChildren.length > 0) {
-        for (const child of allChildren) {
-          const newParent = idMap[child.parent_id?.toString()] || newParentId;
-          const newChildId = await locationService.cloneLocationNode(child, user_id, account_id, newParent, idMap, newTopLevelId);
-          idMap[child._id.toString()] = newChildId;
+
+      const result = await withTransaction(async (session: any) => {
+        let sourceLocation: any = await LocationModel.findOne({ _id: helperService.validateObjectId(String(id)), account_id, visible: true }).session(session);
+        if (!sourceLocation) {
+          throw Object.assign(new Error("Location not found"), { status: 404 });
         }
-      }
+        sourceLocation = sourceLocation.toObject();
 
-      const userToken = get(req, "userToken", "") as string;
-      for (const [oldLocId, newLocId] of Object.entries(idMap)) {
-        await assetService.cloneAssetsByLocation(oldLocId, newLocId, account_id, user_id, userToken);
-      }
+        const allChildren: any[] = await locationService.getAllChildHierarchy(helperService.validateObjectId(String(id)), account_id);
+        const idMap: Record<string, any> = {};
+        const parentForCopy = sourceLocation.parent_id ? sourceLocation.parent_id : undefined;
 
-      const getData = await locationService.getAllLocations({ _id: newParentId, account_id, visible: true });
-      if (!getData || getData.length === 0) {
-        throw Object.assign(new Error("Child Location not found"), { status: 404 });
-      }
-      res.status(201).json({ status: true, message: "Location hierarchy copied successfully", data: getData });
+        // Clone the root location node
+        const newParentId = await locationService.cloneLocationNode(sourceLocation, user_id, account_id, parentForCopy, idMap, null, session);
+        const newTopLevelId = sourceLocation.parent_id ? sourceLocation.top_level_location_id : newParentId;
+        idMap[`${sourceLocation._id}`] = newParentId;
+
+        // Clone all child location nodes
+        if (allChildren.length > 0) {
+          for (const child of allChildren) {
+            const childObj = child.toObject ? child.toObject() : child;
+            const newParent = idMap[childObj.parent_id?.toString()] || newParentId;
+            const newChildId = await locationService.cloneLocationNode(childObj, user_id, account_id, newParent, idMap, newTopLevelId, session);
+            idMap[childObj._id.toString()] = newChildId;
+          }
+        }
+
+        // Clone assets for each location in the new hierarchy
+        const userToken = get(req, "userToken", "") as string;
+        for (const [oldLocId, newLocId] of Object.entries(idMap)) {
+          await assetService.cloneAssetsByLocation(oldLocId, newLocId, account_id, user_id, userToken, session);
+        }
+
+        // Fetch the newly created top-level location with all its details
+        const getData = await locationService.getAllLocations({ _id: newParentId, account_id, visible: true });
+        return getData;
+      });
+
+      res.status(201).json({ status: true, message: "Location hierarchy copied successfully", data: result });
     } catch (error) {
       next(error);
     }

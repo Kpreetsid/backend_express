@@ -9,6 +9,7 @@ import { helperService } from '../../utils/helper';
 import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
+import { withTransaction } from "../../utils/transaction.helper";
 
 class AssetController {
 
@@ -506,21 +507,26 @@ class AssetController {
   makeAssetCopy = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const userToken = get(req, "userToken", {}) as string;
+      const userToken = get(req, "userToken", "") as string;
       const { params: { id } } = req;
-      const newParentId = await assetService.makeAssetCopyRecursive(String(id), user_id, userToken, account_id);
-      if (!newParentId) {
-        throw Object.assign(new Error("Asset not found"), { status: 404 });
-      }
-      const copiedData: any = await assetService.getAllAssets({
-        _id: newParentId,
-        account_id,
-        visible: true,
+
+      const result = await withTransaction(async (session: any) => {
+        const newParentId = await assetService.makeAssetCopyRecursive(String(id), user_id, userToken, account_id, undefined, session);
+        if (!newParentId) {
+          throw Object.assign(new Error("Asset not found"), { status: 404 });
+        }
+        const copiedData: any = await assetService.getAllAssets({
+          _id: newParentId,
+          account_id,
+          visible: true,
+        });
+        return copiedData;
       });
+
       res.status(201).json({
         status: true,
         message: "Asset hierarchy copied successfully",
-        data: copiedData,
+        data: result,
       });
     } catch (error) {
       next(error);

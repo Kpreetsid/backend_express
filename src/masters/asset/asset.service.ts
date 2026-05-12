@@ -252,12 +252,12 @@ class AssetService {
     }).session(session);
     if (!dataExists || dataExists.length === 0) return null;
 
-    const sourceAsset = dataExists[0];
+    const sourceAsset = dataExists[0].toObject();
     const allChildren: any[] = await this.getAllChildAssetsRecursive(String(id), account_id);
     const idMap: Record<string, any> = {};
     
-    const originalTopLevelId = sourceAsset.top_level ? sourceAsset.id : sourceAsset.top_level_asset_id;
-    const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id.id : undefined;
+    const originalTopLevelId = sourceAsset.top_level ? sourceAsset._id : sourceAsset.top_level_asset_id;
+    const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id : undefined;
 
     const newParentId = await this.makeAssetCopyByIdWithChildren(
       sourceAsset,
@@ -272,12 +272,13 @@ class AssetService {
     );
 
     const newTopLevelId = sourceAsset.top_level ? newParentId : originalTopLevelId;
-    idMap[`${sourceAsset.id || sourceAsset._id}`] = newParentId;
+    idMap[`${sourceAsset._id}`] = newParentId;
 
     for (const child of allChildren) {
-      const newParent = idMap[child.parent_id?.toString()] || newParentId;
+      const childObj = child.toObject ? child.toObject() : child;
+      const newParent = idMap[childObj.parent_id?.toString()] || newParentId;
       const newChildId = await this.makeAssetCopyByIdWithChildren(
-        child,
+        childObj,
         user_id,
         token,
         account_id,
@@ -287,7 +288,7 @@ class AssetService {
         session,
         targetLocationId
       );
-      idMap[child._id.toString()] = newChildId;
+      idMap[childObj._id.toString()] = newChildId;
     }
 
     await processorAPIService.setAssetHealthStatus(
@@ -303,7 +304,11 @@ class AssetService {
   async cloneAssetsByLocation(oldLocationId: string, newLocationId: string, account_id: any, user_id: any, token: string, session?: any) {
     const topLevelAssets = await AssetModel.find({
       locationId: helperService.validateObjectId(oldLocationId),
-      parent_id: { $exists: false },
+      $or: [
+        { parent_id: { $exists: false } },
+        { parent_id: null },
+        { top_level: true }
+      ],
       visible: true,
       account_id
     }).session(session);
