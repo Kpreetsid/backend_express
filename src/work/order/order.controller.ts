@@ -110,11 +110,13 @@ class OrderController {
   async updateOrderSubmitData(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const id = String(req.params.id);
-      if (!req.body?.sop_form_submitted) {
-        throw Object.assign(new Error('No data submitted'), { status: 400 });
+      const { params: { id }, body } = req;
+      
+      if (!body || Object.keys(body).length === 0) {
+        throw Object.assign(new Error('No data provided for update'), { status: 400 });
       }
-      const data = await orderService.updateDataById(id, req.body, user);
+
+      const data = await orderService.updateById(id, body, user);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
       next(error);

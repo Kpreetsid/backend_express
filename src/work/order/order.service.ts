@@ -734,7 +734,7 @@ class OrderService {
     });
   };
 
-  async updateDataById(id: string, body: any, user: IUser): Promise<any> {
+  async updateDataById(id: any, body: any, user: IUser): Promise<any> {
     const sanitizedBody = this.sanitizeWorkOrder({ ...body, updatedBy: user._id });
     return await WorkOrderModel.findByIdAndUpdate(id, sanitizedBody, { returnDocument: 'after' });
   };
