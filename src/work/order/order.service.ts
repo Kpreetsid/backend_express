@@ -130,6 +130,18 @@ class OrderService {
       { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
+          from: "sops",
+          let: { sop_form_id: '$sop_form_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$sop_form_id'] }, visible: true } },
+            { $project: { _id: 1, id: '$_id', name: 1, description: 1, json_temp: 1, visible: 1 } },
+          ],
+          as: "sopForm"
+        }
+      },
+      { $unwind: { path: "$sopForm", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
           from: "users",
           let: { createdBy: '$createdBy' },
           pipeline: [
