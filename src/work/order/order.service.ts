@@ -663,6 +663,7 @@ class OrderService {
 
   async createWorkOrder(body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
+      const userIdList = Array.isArray(body.userIdList) ? body.userIdList.filter((userId: string) => !!userId) : [];
       const newAsset = new WorkOrderModel({
         account_id: user.account_id,
         order_no: await this.generateOrderNo(user.account_id),
@@ -695,20 +696,23 @@ class OrderService {
       const sanitizedData = this.sanitizeWorkOrder(newAsset.toObject());
       Object.assign(newAsset, sanitizedData);
 
-      const mappedUsers = body.userIdList.map((userId: string) => ({ userId: userId, woId: newAsset._id }));
-      const userDetails = await UserModel.find({ _id: { $in: helperService.validateObjectIds(body.userIdList.join(',')) } }).session(session);
-      if (!userDetails || userDetails.length === 0) {
-        throw Object.assign(new Error('No users found'), { status: 404 });
-      }
-      
-      const result = await userWorkOrderService.mapUsersWorkOrder(mappedUsers, session);
-      if (!result || result.length === 0) {
-        throw Object.assign(new Error('Failed to map users to work order'), { status: 500 });
-      }
-      
       const data: any = await newAsset.save({ session });
       if (!data) {
         throw Object.assign(new Error('Failed to create work order'), { status: 400 });
+      }
+
+      let userDetails: IUser[] = [];
+      if (userIdList.length > 0) {
+        const mappedUsers = userIdList.map((userId: string) => ({ userId, woId: newAsset._id }));
+        userDetails = await UserModel.find({ _id: { $in: helperService.validateObjectIds(userIdList.join(',')) } }).session(session);
+        if (!userDetails || userDetails.length === 0) {
+          throw Object.assign(new Error('No users found'), { status: 404 });
+        }
+
+        const result = await userWorkOrderService.mapUsersWorkOrder(mappedUsers, session);
+        if (!result || result.length === 0) {
+          throw Object.assign(new Error('Failed to map users to work order'), { status: 500 });
+        }
       }
       
       if (body.parts?.length > 0) {
@@ -716,10 +720,12 @@ class OrderService {
         data.inventoryWarnings = inventoryResult.warnings;
       }
       
-      userDetails.forEach(async (assignedUsers: IUser) => {
-        const orders = await this.getAllOrders({ _id: data._id });
-        await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
-      });
+      if (userDetails.length > 0) {
+        userDetails.forEach(async (assignedUsers: IUser) => {
+          const orders = await this.getAllOrders({ _id: data._id });
+          await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
+        });
+      }
       
       await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),

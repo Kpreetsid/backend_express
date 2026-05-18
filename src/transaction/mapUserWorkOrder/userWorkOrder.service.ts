@@ -18,6 +18,9 @@ class UserWorkOrderService {
   async updateMappedUsers (id: any, userIdList: any[], session?: any): Promise<any> {
     await WorkOrderAssigneeModel.deleteMany({ woId: id }, { session });
     const newMappings = userIdList.map(userId => ({ userId, woId: id }));
+    if (newMappings.length === 0) {
+      return [];
+    }
     return await WorkOrderAssigneeModel.insertMany(newMappings, { session });
   };
 

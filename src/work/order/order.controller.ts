@@ -71,9 +71,6 @@ class OrderController {
   async createOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      if (!req.body.userIdList || req.body.userIdList.length === 0) {
-        throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
-      }
       const data = await orderService.createWorkOrder(req.body, user);
       res.status(201).send({ status: true, message: 'Work order created.', data });
     } catch (error) {
@@ -85,9 +82,6 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const id = String(req.params.id);
-      if (req.body.hasOwnProperty('userIdList') && (!req.body.userIdList || req.body.userIdList.length === 0)) {
-        throw Object.assign(new Error('User must be assigned to the work order'), { status: 400 });
-      }
       const data = await orderService.updateById(id, req.body, user);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
