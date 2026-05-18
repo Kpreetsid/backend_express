@@ -257,6 +257,46 @@ class OrderService {
         }
       },
       {
+        $lookup: {
+          from: "parts",
+          let: { partIds: "$parts.part_id" },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: {
+                  $in: [
+                    { $toString: "$_id" },
+                    {
+                      $map: {
+                        input: { $ifNull: ["$$partIds", []] },
+                        as: "id",
+                        in: { $toString: "$$id" }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                id: "$_id",
+                part_name: 1,
+                part_number: 1,
+                quantity: 1,
+                min_quantity: 1,
+                unit: 1,
+                cost: 1,
+                currency: 1,
+                location_id: 1
+              }
+            }
+          ],
+          as: "inventoryPartDetails"
+        }
+      },
+      {
         $addFields: {
           id: "$_id",
           parts: {
@@ -303,6 +343,95 @@ class OrderService {
                               }, 
                               description: '', 
                               visible: true 
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    inventoryData: {
+                      $let: {
+                        vars: {
+                          inventoryPart: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: "$inventoryPartDetails",
+                                  as: "inv",
+                                  cond: { $eq: [{ $toString: "$$inv._id" }, { $toString: "$$part.part_id" }] }
+                                }
+                              },
+                              0
+                            ]
+                          }
+                        },
+                        in: {
+                          $cond: [
+                            { $gt: ["$$inventoryPart", null] },
+                            "$$inventoryPart",
+                            null
+                          ]
+                        }
+                      }
+                    },
+                    reservedQuantity: { $ifNull: ["$$part.estimatedQuantity", 0] },
+                    remainingQuantity: {
+                      $let: {
+                        vars: {
+                          inventoryPart: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: "$inventoryPartDetails",
+                                  as: "inv",
+                                  cond: { $eq: [{ $toString: "$$inv._id" }, { $toString: "$$part.part_id" }] }
+                                }
+                              },
+                              0
+                            ]
+                          }
+                        },
+                        in: "$$inventoryPart.quantity"
+                      }
+                    },
+                    reservationStatus: {
+                      $cond: [
+                        { $eq: ["$status", "Completed"] },
+                        "Issued",
+                        "Reserved"
+                      ]
+                    },
+                    availabilityStatus: {
+                      $let: {
+                        vars: {
+                          inventoryPart: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: "$inventoryPartDetails",
+                                  as: "inv",
+                                  cond: { $eq: [{ $toString: "$$inv._id" }, { $toString: "$$part.part_id" }] }
+                                }
+                              },
+                              0
+                            ]
+                          }
+                        },
+                        in: {
+                          $cond: [
+                            { $not: ["$$inventoryPart"] },
+                            "Missing",
+                            {
+                              $cond: [
+                                { $lte: ["$$inventoryPart.quantity", 0] },
+                                "Out of Stock",
+                                {
+                                  $cond: [
+                                    { $lte: ["$$inventoryPart.quantity", "$$inventoryPart.min_quantity"] },
+                                    "Low Stock",
+                                    "Available"
+                                  ]
+                                }
+                              ]
                             }
                           ]
                         }
@@ -390,7 +519,7 @@ class OrderService {
           }
         }
       },
-      { $project: { statusUsers: 0, taskUsers: 0 } }
+      { $project: { statusUsers: 0, taskUsers: 0, inventoryPartDetails: 0 } }
     ];
   }
 
