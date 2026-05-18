@@ -22,7 +22,11 @@ export const withTransaction = async <T>(fn: (session: ClientSession) => Promise
     return result;
   } catch (error: any) {
     const errorMessage = error.message || error.errmsg || String(error);
-    const isStandaloneError = errorMessage.includes("Transaction numbers are only allowed") ||
+    const isStandaloneError =
+      errorMessage.includes("Transaction numbers are only allowed") ||
+      errorMessage.includes("does not support retryable writes") ||
+      errorMessage.includes("Transaction is not supported") ||
+      errorMessage.includes("replica set member or mongos") ||
       error.code === 20 ||
       error.codeName === 'IllegalOperation';
 

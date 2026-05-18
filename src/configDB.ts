@@ -6,10 +6,11 @@ export const environment = {
 }
 
 export const database = {
+  uri: process.env.MONGO_URI,
   host: process.env.DB_HOST!,
   port: parseInt(process.env.DB_PORT!),
-  userName: process.env.DB_USERNAME!,
-  password: process.env.DB_PASSWORD!,
+  userName: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
   databaseName: process.env.DB_NAME!,
   authSource: process.env.DB_AUTH_SOURCE || 'admin',
   maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE || '100'),

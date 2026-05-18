@@ -4,7 +4,9 @@ import axios, { AxiosRequestConfig } from "axios";
 export const getExternalData = async (path: string, method: string, body: any, token: string, userID: string) => {
   try {
     console.group("External API");
-    const apiUrl = `${externalAPI.URL}${path}`;
+    const baseUrl = (externalAPI.URL || "").replace(/\/+$/, "");
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    const apiUrl = `${baseUrl}${normalizedPath}`;
     console.log({ apiUrl, body, token, userID });
     const config: AxiosRequestConfig = {
       method: method,

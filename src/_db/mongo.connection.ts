@@ -13,7 +13,18 @@ export class MongoConnection {
       return this.instance;
     }
     try {
-      const mongoUri = `mongodb://${database.userName}:${database.password}@${database.host}/${database.databaseName}?authSource=${database.authSource}&retryWrites=false`;
+      const hasCredentials = !!database.userName && !!database.password;
+      const credentials = hasCredentials
+        ? `${encodeURIComponent(database.userName!)}:${encodeURIComponent(database.password!)}@`
+        : "";
+      const query = new URLSearchParams({ retryWrites: "false" });
+
+      if (hasCredentials && database.authSource) {
+        query.set("authSource", database.authSource);
+      }
+
+      const mongoUri = database.uri ||
+        `mongodb://${credentials}${database.host}:${database.port}/${database.databaseName}?${query.toString()}`;
       await mongoose.connect(mongoUri, {
         autoIndex: true,
         connectTimeoutMS: 10000,
