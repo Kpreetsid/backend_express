@@ -25,7 +25,7 @@ class SOPsService {
     };
 
     async removeSOPs (id: any, user_id: any): Promise<any> {
-        return await SOPsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
+        return await SOPsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
     };
 }
 

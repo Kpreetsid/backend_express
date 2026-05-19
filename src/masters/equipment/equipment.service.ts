@@ -160,7 +160,7 @@ class EquipmentService {
   };
 
   async updateEquipmentImageById(id: string, image_path: string, user_id: string) {
-    return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
+    return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { returnDocument: 'after' });
   }
 
   async removeEquipmentById(match: any, userID: any) {
@@ -170,7 +170,7 @@ class EquipmentService {
         await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID }, { session });
       }
       await mapUserToLocationService.removeLocationMapping(match._id, session);
-      return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { new: true, session });
+      return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { returnDocument: 'after', session });
     });
   };
 

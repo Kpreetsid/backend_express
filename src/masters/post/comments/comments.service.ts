@@ -50,11 +50,11 @@ class CommentService {
   };
 
   async updateComment (commentId: any, message: any, user_id: any): Promise<any> {
-    return await CommentsModel.findByIdAndUpdate(commentId, { comments: message, updatedBy: user_id }, { new: true });
+    return await CommentsModel.findByIdAndUpdate(commentId, { comments: message, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
   async removeComment (commentId: any, user_id: any): Promise<any> {
-    const deletedComment = await CommentsModel.findByIdAndUpdate(commentId, { visible: false, updatedBy: user_id }, { new: true });
+    const deletedComment = await CommentsModel.findByIdAndUpdate(commentId, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
     if (!deletedComment) {
       throw Object.assign(new Error('Comment not found'), { status: 404 });
     }
@@ -65,7 +65,7 @@ class CommentService {
   async softDeleteChildComments (parentId: any, user_id: any) {
     const childComments = await CommentsModel.find({ parentCommentId: parentId, visible: true }).lean();
     for (const child of childComments) {
-      await CommentsModel.findByIdAndUpdate(child._id, { visible: false, updatedBy: user_id }, { new: true });
+      await CommentsModel.findByIdAndUpdate(child._id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
       await this.softDeleteChildComments(child._id, user_id);
     }
   };

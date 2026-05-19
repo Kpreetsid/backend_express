@@ -34,11 +34,11 @@ class PartsTypeService {
   }
 
   async updatePartType(id: any, data: any, userId: any) {
-    return await PartsTypeModel.findByIdAndUpdate(id, { ...data, updatedBy: userId }, { new: true });
+    return await PartsTypeModel.findByIdAndUpdate(id, { ...data, updatedBy: userId }, { returnDocument: 'after' });
   }
 
   async removePartType(id: any, userId: any) {
-    return await PartsTypeModel.findByIdAndUpdate(id, { visible: false, updatedBy: userId }, { new: true });
+    return await PartsTypeModel.findByIdAndUpdate(id, { visible: false, updatedBy: userId }, { returnDocument: 'after' });
   }
 }
 

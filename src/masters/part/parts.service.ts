@@ -89,16 +89,16 @@ class PartsService {
 
   async updatePartById(id: string, body: IPart, user_id: any) {
     body.updatedBy = user_id;
-    return await PartsModel.findByIdAndUpdate(id, body, { new: true });
+    return await PartsModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
   };
 
   async updatePartStock(id: string, body: any, user_id: any) {
     body.updatedBy = user_id;
-    return await PartsModel.findByIdAndUpdate(id, body, { new: true });
+    return await PartsModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
   }
 
   async removeById(id: string, user_id: any) {
-    return await PartsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
+    return await PartsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
   async assignPartToWorkOrder(body: any, user: any) {

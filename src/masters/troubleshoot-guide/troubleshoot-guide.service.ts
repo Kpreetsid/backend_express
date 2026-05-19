@@ -20,11 +20,11 @@ class TroubleshootGuideService {
     };
     
     async updateTroubleshootGuideById (id: any, body: any, user_id: any): Promise<any> {
-        return await TroubleshootGuideModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
+        return await TroubleshootGuideModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { returnDocument: 'after' });
     };
     
     async removeTroubleshootGuideById (id: any, user_id: any): Promise<any> {
-        return await TroubleshootGuideModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
+        return await TroubleshootGuideModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
     };
 }
 

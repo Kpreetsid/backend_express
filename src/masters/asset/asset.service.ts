@@ -135,7 +135,7 @@ class AssetService {
   };
 
   async updateAssetImageById(id: any, image_path: string, user_id: any) {
-    return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { new: true });
+    return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { returnDocument: 'after' });
   }
 
   async removeById(match: any, userID: any) {
@@ -206,7 +206,7 @@ class AssetService {
     return await withTransaction(async (session) => {
       await mapUserToAssetService.updateUserMapping(String(id), body.userIdList);
       await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType);
-      return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { new: true, session });
+      return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { returnDocument: 'after', session });
     });
   }
 

@@ -51,7 +51,7 @@ class ObservationService {
   };
   
   async updateObservationById (id: any, body: any, user_id: any): Promise<any> {
-    return await ObservationModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
+    return await ObservationModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
   async updateObservation (match: any, body: any): Promise<any> {
@@ -59,7 +59,7 @@ class ObservationService {
   };
   
   async removeObservationById (id: any, user_id: any): Promise<any> {
-    return await ObservationModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
+    return await ObservationModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
   };
   
   async deleteObservationById (id: string): Promise<any> {

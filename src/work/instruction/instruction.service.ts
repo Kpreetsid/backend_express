@@ -12,11 +12,11 @@ class InstructionsService {
   
   async updateInstructions (id: string, body: any, user_id: any): Promise<any> {
     body.updatedBy = user_id;
-    return await WorkInstructions.findByIdAndUpdate(id, body, { new: true });
+    return await WorkInstructions.findByIdAndUpdate(id, body, { returnDocument: 'after' });
   }
   
   async deleteInstructionsById (id: string, user_id: any): Promise<any> {
-    return await WorkInstructions.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
+    return await WorkInstructions.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
   }  
 }
 

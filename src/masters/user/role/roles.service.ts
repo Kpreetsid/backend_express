@@ -47,11 +47,11 @@ class RolesService {
   }
 
   async updateById(id: any, body: any, user_id: any): Promise<any> {
-    return await RoleMenuModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
+    return await RoleMenuModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { returnDocument: 'after' });
   }
 
   async removeById(id: any, user_id: any): Promise<any> {
-    return await RoleMenuModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
+    return await RoleMenuModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
   }
 }
 

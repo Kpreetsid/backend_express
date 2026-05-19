@@ -46,7 +46,7 @@ class RequestService {
   };
   
   async deleteRequestById (id: any, user_id: any): Promise<any> {
-    return await WorkRequestModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
+    return await WorkRequestModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
   };
 }
 

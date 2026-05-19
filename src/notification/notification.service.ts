@@ -31,7 +31,7 @@ export class NotificationRepository {
         $set: { status },
         $push: { statusHistory: { status, timestamp: new Date(), userId: userId ? new Types.ObjectId(userId) : undefined } }
       },
-      { new: true }
+      { returnDocument: 'after' }
     );
   }
 

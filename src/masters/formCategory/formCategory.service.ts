@@ -30,11 +30,11 @@ class FormCategoryService {
   }
 
   async updateById(id: string, body: any, user: IUser) {
-    return CategoryModel.findByIdAndUpdate(id, { name: body.name, description: body.description, updatedBy: user._id }, { new: true });
+    return CategoryModel.findByIdAndUpdate(id, { name: body.name, description: body.description, updatedBy: user._id }, { returnDocument: 'after' });
   }
 
   async removeById(id: string) {
-    return CategoryModel.findByIdAndUpdate(id, { visible: false }, { new: true });
+    return CategoryModel.findByIdAndUpdate(id, { visible: false }, { returnDocument: 'after' });
   }
 }
 
