@@ -99,6 +99,40 @@ const LaborEntrySchema = new Schema<ILaborEntry>({
   notes: { type: String, trim: true }
 }, { _id: false, versionKey: false });
 
+export interface IProcedureExecutionEntry {
+  procedure_id?: ObjectId;
+  name: string;
+  category?: string;
+  tags?: string[];
+  description?: string;
+  steps: any[];
+  responses?: Record<string, any>;
+  submitted?: boolean;
+  submitted_by?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  submitted_at?: Date;
+}
+
+const ProcedureExecutionEntrySchema = new Schema<IProcedureExecutionEntry>({
+  procedure_id: { type: Schema.Types.ObjectId, ref: 'Schema_Procedure' },
+  name: { type: String, trim: true, required: true },
+  category: { type: String, trim: true },
+  tags: { type: [String], default: [] },
+  description: { type: String, trim: true },
+  steps: { type: [Schema.Types.Mixed] as any, default: [] },
+  responses: { type: Schema.Types.Mixed, default: {} },
+  submitted: { type: Boolean, default: false },
+  submitted_by: {
+    id: { type: String },
+    firstName: { type: String },
+    lastName: { type: String }
+  },
+  submitted_at: { type: Date }
+}, { _id: false, versionKey: false });
+
 export interface IWorkOrder extends Document {
   account_id: ObjectId;
   order_no: string;
@@ -121,6 +155,8 @@ export interface IWorkOrder extends Document {
   actual_end_date?: Date;
   actual_time?: number;
   sop_form_id: ObjectId;
+  procedure_ids?: ObjectId[];
+  procedure_entries?: IProcedureExecutionEntry[];
   sop_form_submitted: boolean;
   sop_form_data: object;
   sop_form_updated_by?: {
@@ -163,6 +199,8 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   actual_end_date: { type: Date },
   actual_time: { type: Number },
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
+  procedure_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_Procedure', default: [] },
+  procedure_entries: { type: [ProcedureExecutionEntrySchema], default: [] },
   sop_form_submitted: { type: Boolean, default: false },
   sop_form_data: { type: Schema.Types.Mixed },
   sop_form_updated_by: {

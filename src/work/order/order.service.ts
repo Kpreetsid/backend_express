@@ -8,6 +8,7 @@ import { requestService } from "../request/request.service";
 import { helperService } from "../../utils/helper";
 import { notificationService } from "../../utils/notification.service";
 import { withTransaction } from "../../utils/transaction.helper";
+import { ProcedureModel } from "../../models/procedure.model";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -46,6 +47,102 @@ class OrderService {
 
   constructor() {
     this.mailerService = new MailerService();
+  }
+
+  private isProcedureFieldAnswered(step: any, responses: Record<string, any>): boolean {
+    if (step?.type !== 'field' || !step?.required) {
+      return true;
+    }
+
+    const value = responses?.[step.id];
+    switch (step?.field_type) {
+      case 'checkbox':
+      case 'checklist':
+        return Array.isArray(value) && value.length > 0;
+      case 'multiple-choice':
+      case 'inspection-check':
+      case 'yes-no-na':
+        return typeof value === 'string' && value.trim().length > 0;
+      case 'number':
+        return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+      case 'date':
+        return typeof value === 'string' && value.trim().length > 0;
+      case 'text':
+      default:
+        return typeof value === 'string' ? value.trim().length > 0 : !!value;
+    }
+  }
+
+  private areProcedureStepsComplete(steps: any[] = [], responses: Record<string, any> = {}): boolean {
+    return (steps || []).every((step: any) => {
+      if (step?.type === 'section') {
+        return this.areProcedureStepsComplete(step?.items || [], responses);
+      }
+      return this.isProcedureFieldAnswered(step, responses);
+    });
+  }
+
+  private buildProcedureEntry(template: any, sourceEntry: any, user: IUser): any {
+    const responses = sourceEntry?.responses && typeof sourceEntry.responses === 'object' ? sourceEntry.responses : {};
+    const completed = this.areProcedureStepsComplete(template?.steps || [], responses);
+
+    return {
+      procedure_id: template?._id || sourceEntry?.procedure_id || null,
+      name: template?.name || sourceEntry?.name || 'Untitled Procedure',
+      category: template?.category || '',
+      tags: Array.isArray(template?.tags) ? template.tags : [],
+      description: template?.description || '',
+      steps: Array.isArray(template?.steps) ? template.steps : [],
+      responses,
+      submitted: completed,
+      submitted_by: completed
+        ? {
+            id: String(user._id),
+            firstName: user.firstName,
+            lastName: user.lastName
+          }
+        : null,
+      submitted_at: completed ? new Date() : null
+    };
+  }
+
+  private async syncProcedureEntries(input: any, account_id: any, user: IUser, existingEntries: any[] = []): Promise<{ procedure_ids: any[]; procedure_entries: any[] }> {
+    const explicitEntries = Array.isArray(input?.procedure_entries) ? input.procedure_entries : [];
+    const explicitIds = explicitEntries
+      .map((entry: any) => String(entry?.procedure_id || entry?.id || ''))
+      .filter(Boolean);
+    const bodyIds = Array.isArray(input?.procedure_ids) ? input.procedure_ids.map((id: any) => String(id || '')).filter(Boolean) : [];
+    const requestedIds = Array.from(new Set([...(bodyIds || []), ...(explicitIds || [])]));
+
+    if (requestedIds.length === 0) {
+      return { procedure_ids: [], procedure_entries: [] };
+    }
+
+    const templates = await ProcedureModel.find({
+      _id: { $in: helperService.validateObjectIds(requestedIds.join(',')) },
+      account_id,
+      visible: true
+    }).lean();
+
+    const templateMap = new Map(templates.map((template: any) => [String(template._id), template]));
+    const existingEntryMap = new Map((existingEntries || []).map((entry: any) => [String(entry?.procedure_id || entry?.id || ''), entry]));
+    const explicitEntryMap = new Map((explicitEntries || []).map((entry: any) => [String(entry?.procedure_id || entry?.id || ''), entry]));
+
+    const procedure_entries = requestedIds
+      .map((id: string) => {
+        const template = templateMap.get(id);
+        if (!template) {
+          return null;
+        }
+        const sourceEntry = explicitEntryMap.get(id) || existingEntryMap.get(id) || {};
+        return this.buildProcedureEntry(template, sourceEntry, user);
+      })
+      .filter(Boolean);
+
+    return {
+      procedure_ids: procedure_entries.map((entry: any) => entry.procedure_id),
+      procedure_entries
+    };
   }
 
   private normalizeTimingFields(data: any): any {
@@ -294,6 +391,45 @@ class OrderService {
       { $unwind: { path: "$sopForm", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
+          from: "procedures",
+          let: { procedureIds: "$procedure_ids" },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: {
+                  $in: [
+                    { $toString: "$_id" },
+                    {
+                      $map: {
+                        input: { $ifNull: ["$$procedureIds", []] },
+                        as: "id",
+                        in: { $toString: "$$id" }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                id: "$_id",
+                name: 1,
+                category: 1,
+                tags: 1,
+                description: 1,
+                steps: 1,
+                createdAt: 1,
+                updatedAt: 1
+              }
+            }
+          ],
+          as: "procedures"
+        }
+      },
+      {
+        $lookup: {
           from: "users",
           let: { createdBy: '$createdBy' },
           pipeline: [
@@ -448,6 +584,30 @@ class OrderService {
           id: "$_id",
           parentOrder: { $arrayElemAt: ["$parentOrder", 0] },
           childCount: { $size: { $ifNull: ["$childOrders", []] } },
+          procedures: {
+            $cond: [
+              { $gt: [{ $size: { $ifNull: ["$procedure_entries", []] } }, 0] },
+              {
+                $map: {
+                  input: { $ifNull: ["$procedure_entries", []] },
+                  as: "entry",
+                  in: {
+                    $mergeObjects: [
+                      "$$entry",
+                      {
+                        id: {
+                          $toString: {
+                            $ifNull: ["$$entry.procedure_id", ""]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "$procedures"
+            ]
+          },
           durationVariance: {
             $cond: [
               {
@@ -1008,6 +1168,7 @@ class OrderService {
   async createWorkOrder(body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
       const userIdList = Array.isArray(body.userIdList) ? body.userIdList.filter((userId: string) => !!userId) : [];
+      const procedureSync = await this.syncProcedureEntries(body, user.account_id, user, []);
       let linkedRequest: any = null;
       if (body.work_request_id) {
         linkedRequest = await requestService.getRequestById(String(body.work_request_id));
@@ -1041,6 +1202,8 @@ class OrderService {
         type: body.type,
         nature_of_work: body.type,
         sop_form_id: body.sop_form_id,
+        procedure_ids: procedureSync.procedure_ids,
+        procedure_entries: procedureSync.procedure_entries,
         rescheduleEnabled: false,
         created_by: user._id,
         wo_asset_id: body.wo_asset_id,
@@ -1137,6 +1300,11 @@ class OrderService {
       if (body.hasOwnProperty('userIdList')) {
         await userWorkOrderService.updateMappedUsers(id, body.userIdList, session);
       }
+      if (body.hasOwnProperty('procedure_ids') || body.hasOwnProperty('procedure_entries')) {
+        const procedureSync = await this.syncProcedureEntries(updatedData, user.account_id, user, existingOrder.procedure_entries || []);
+        updatedData.procedure_ids = procedureSync.procedure_ids;
+        updatedData.procedure_entries = procedureSync.procedure_entries;
+      }
 
       updatedData = this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData));
       const data = await WorkOrderModel.findByIdAndUpdate(id, updatedData, { returnDocument: 'after', session });
@@ -1178,6 +1346,10 @@ class OrderService {
     if (status === 'Completed') {
       if (existingOrder.sop_form_id && !existingOrder.sop_form_submitted) {
         throw Object.assign(new Error('Form is not completed'), { status: 400 });
+      }
+      const incompleteProcedures = (existingOrder.procedures || []).filter((procedure: any) => !this.areProcedureStepsComplete(procedure?.steps || [], procedure?.responses || {}));
+      if (incompleteProcedures.length > 0) {
+        throw Object.assign(new Error('Attached procedures must be completed before closing this work order'), { status: 400 });
       }
       if (existingOrder.parts?.length > 0) {
         existingOrder.parts = existingOrder.parts.map((part: any) => ({

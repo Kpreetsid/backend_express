@@ -45,6 +45,23 @@ export const workOrderValidator = [
     .isString().withMessage('Block reason must be a string')
     .trim(),
 
+  body('procedure_ids')
+    .optional({ nullable: true })
+    .isArray().withMessage('Procedure IDs must be an array'),
+
+  body('procedure_ids.*')
+    .if(body('procedure_ids').exists())
+    .notEmpty().withMessage('Procedure ID is required')
+    .isMongoId().withMessage('Invalid Procedure ID format'),
+
+  body('procedure_entries')
+    .optional({ nullable: true })
+    .isArray().withMessage('Procedure entries must be an array'),
+
+  body('procedure_entries.*.procedure_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId().withMessage('Invalid procedure entry ID format'),
+
   body('tasks')
     .optional()
     .isArray().withMessage('Tasks must be an array'),
@@ -133,6 +150,23 @@ export const updateWorkOrderValidator = [
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Block reason must be a string')
     .trim(),
+
+  body('procedure_ids')
+    .optional({ nullable: true })
+    .isArray().withMessage('Procedure IDs must be an array'),
+
+  body('procedure_ids.*')
+    .if(body('procedure_ids').exists())
+    .notEmpty().withMessage('Procedure ID is required')
+    .isMongoId().withMessage('Invalid Procedure ID format'),
+
+  body('procedure_entries')
+    .optional({ nullable: true })
+    .isArray().withMessage('Procedure entries must be an array'),
+
+  body('procedure_entries.*.procedure_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId().withMessage('Invalid procedure entry ID format'),
 
   body('tasks')
     .optional({ nullable: true })
