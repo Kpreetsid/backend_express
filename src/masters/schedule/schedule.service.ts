@@ -4,6 +4,13 @@ import { PartsTypeModel } from "../../models/parts-types.model";
 import { helperService } from "../../utils/helper";
 
 class ScheduleService {
+    private normalizeSchedulePayload(body: any): any {
+        const normalized = JSON.parse(JSON.stringify(body || {}));
+        if (normalized?.work_order?.wo_asset_id === '') {
+            normalized.work_order.wo_asset_id = null;
+        }
+        return normalized;
+    }
 
     async getSchedules(match: any): Promise<IScheduleMaster[]> {
         match.visible = true;
@@ -91,14 +98,16 @@ class ScheduleService {
     };
 
     async createSchedules(body: any, account_id: any, user_id: any): Promise<IScheduleMaster | any> {
-        const newSchedule = new SchedulerModel({ ...body, account_id, createdBy: user_id });
+        const normalizedBody = this.normalizeSchedulePayload(body);
+        const newSchedule = new SchedulerModel({ ...normalizedBody, account_id, createdBy: user_id });
         const saved = await newSchedule.save();
         const data = await this.getSchedules({ _id: saved._id });
         return data[0];
     };
 
     async updateSchedules(id: any, body: any, user_id: any): Promise<IScheduleMaster | any> {
-        await SchedulerModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
+        const normalizedBody = this.normalizeSchedulePayload(body);
+        await SchedulerModel.findByIdAndUpdate(id, { ...normalizedBody, updatedBy: user_id }, { new: true });
         const data = await this.getSchedules({ _id: helperService.validateObjectId(String(id)) });
         return data[0];
     };

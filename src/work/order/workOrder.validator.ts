@@ -13,11 +13,11 @@ export const workOrderValidator = [
 
   body('status')
     .optional()
-    .isIn(['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'])
+    .isIn(['Open', 'Pending', 'Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'])
     .withMessage('Invalid status'),
 
   body('wo_asset_id')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .isMongoId().withMessage('Invalid Asset ID format'),
 
   body('wo_location_id')
@@ -25,8 +25,25 @@ export const workOrderValidator = [
     .isMongoId().withMessage('Invalid Location ID format'),
 
   body('estimated_time')
-    .optional({ nullable: true })
+    .optional({ nullable: true, checkFalsy: true })
     .isNumeric().withMessage('Estimated time must be a number'),
+
+  body('actual_start_date')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Actual start date must be a valid date'),
+
+  body('actual_end_date')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Actual end date must be a valid date'),
+
+  body('actual_time')
+    .optional({ nullable: true, checkFalsy: true })
+    .isNumeric().withMessage('Actual time must be a number'),
+
+  body('block_reason')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Block reason must be a string')
+    .trim(),
 
   body('tasks')
     .optional()
@@ -43,10 +60,120 @@ export const workOrderValidator = [
   body('parts.*.part_id')
     .if(body('parts').exists())
     .notEmpty().withMessage('Part ID is required')
-    .isMongoId().withMessage('Invalid Part ID format')
+    .isMongoId().withMessage('Invalid Part ID format'),
+
+  body('labor_entries')
+    .optional()
+    .isArray().withMessage('Labor entries must be an array'),
+
+  body('labor_entries.*.user_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId().withMessage('Invalid labor user ID format'),
+
+  body('labor_entries.*.work_date')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Labor work date must be a valid date'),
+
+  body('labor_entries.*.vendor_name')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Vendor name must be a string')
+    .trim(),
+
+  body('labor_entries.*.hours')
+    .if(body('labor_entries').exists())
+    .isNumeric().withMessage('Labor hours must be a number'),
+
+  body('labor_entries.*.notes')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Labor notes must be a string')
+    .trim()
 ];
 
-export const updateWorkOrderValidator = workOrderValidator.map(v => {
-  // Clone and make optional for updates
-  return v.optional();
-});
+export const updateWorkOrderValidator = [
+  body('title')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Title must be a string')
+    .trim(),
+
+  body('priority')
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(['None', 'Low', 'Medium', 'High', 'Urgent'])
+    .withMessage('Invalid priority level'),
+
+  body('status')
+    .optional({ nullable: true, checkFalsy: true })
+    .isIn(['Open', 'Pending', 'Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'])
+    .withMessage('Invalid status'),
+
+  body('wo_asset_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId().withMessage('Invalid Asset ID format'),
+
+  body('wo_location_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId().withMessage('Invalid Location ID format'),
+
+  body('estimated_time')
+    .optional({ nullable: true, checkFalsy: true })
+    .isNumeric().withMessage('Estimated time must be a number'),
+
+  body('actual_start_date')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Actual start date must be a valid date'),
+
+  body('actual_end_date')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Actual end date must be a valid date'),
+
+  body('actual_time')
+    .optional({ nullable: true, checkFalsy: true })
+    .isNumeric().withMessage('Actual time must be a number'),
+
+  body('block_reason')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Block reason must be a string')
+    .trim(),
+
+  body('tasks')
+    .optional({ nullable: true })
+    .isArray().withMessage('Tasks must be an array'),
+
+  body('tasks.*.title')
+    .if(body('tasks').exists())
+    .notEmpty().withMessage('Task title is required'),
+
+  body('parts')
+    .optional({ nullable: true })
+    .isArray().withMessage('Parts must be an array'),
+
+  body('parts.*.part_id')
+    .if(body('parts').exists())
+    .notEmpty().withMessage('Part ID is required')
+    .isMongoId().withMessage('Invalid Part ID format'),
+
+  body('labor_entries')
+    .optional({ nullable: true })
+    .isArray().withMessage('Labor entries must be an array'),
+
+  body('labor_entries.*.user_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId().withMessage('Invalid labor user ID format'),
+
+  body('labor_entries.*.work_date')
+    .optional({ nullable: true, checkFalsy: true })
+    .isISO8601().withMessage('Labor work date must be a valid date'),
+
+  body('labor_entries.*.vendor_name')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Vendor name must be a string')
+    .trim(),
+
+  body('labor_entries.*.hours')
+    .if(body('labor_entries').exists())
+    .isNumeric().withMessage('Labor hours must be a number'),
+
+  body('labor_entries.*.notes')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Labor notes must be a string')
+    .trim()
+];

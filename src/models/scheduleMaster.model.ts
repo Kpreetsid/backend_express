@@ -29,7 +29,7 @@ interface WorkOrder {
   priority: string;
   estimated_time: number;
   wo_location_id: ObjectId;
-  wo_asset_id: ObjectId;
+  wo_asset_id?: ObjectId | null;
   sop_form_id?: ObjectId;
   userIdList: string[];
   tasks: Object[];
@@ -45,7 +45,7 @@ const WorkOrderSchema = new Schema<WorkOrder>({
   priority: { type: String, trim: true, required: true },
   estimated_time: Number,
   wo_location_id: { type: Schema.Types.ObjectId, ref: "LocationModel", required: true },
-  wo_asset_id: { type: Schema.Types.ObjectId, ref: "AssetModel", required: true },
+  wo_asset_id: { type: Schema.Types.ObjectId, ref: "AssetModel" },
   sop_form_id: { type: Schema.Types.ObjectId, ref: "SopFormModel" },
   userIdList: { type: [String], required: true },
   tasks: { type: [Object], default: [] },

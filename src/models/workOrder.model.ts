@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { historyPlugin } from './plugins/history.plugin';
 import { HistoryWorkOrderModel } from './history-work-order.model';
 
-export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
+export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
 export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High', 'Urgent'];
 export const TASK_STATUSES = ['Open', 'In-Progress', 'On-Hold', 'Completed'];
 
@@ -82,6 +82,23 @@ const StatusDetailsSchema = new Schema<IStatusDetails>({
   createdAt: { type: Date, required: true, default: Date.now }
 }, { _id: false, versionKey: false });
 
+export interface ILaborEntry {
+  user_id?: ObjectId;
+  vendor_name?: string;
+  work_date?: Date;
+  hours: number;
+  notes?: string;
+  user?: any;
+}
+
+const LaborEntrySchema = new Schema<ILaborEntry>({
+  user_id: { type: Schema.Types.ObjectId, ref: 'Schema_User' },
+  vendor_name: { type: String, trim: true },
+  work_date: { type: Date },
+  hours: { type: Number, required: true },
+  notes: { type: String, trim: true }
+}, { _id: false, versionKey: false });
+
 export interface IWorkOrder extends Document {
   account_id: ObjectId;
   order_no: string;
@@ -91,6 +108,7 @@ export interface IWorkOrder extends Document {
   priority: string;
   status: string;
   parentId?: ObjectId;
+  block_reason?: string;
   status_details: IStatusDetails[];
   type: string;
   createdFrom: string;
@@ -99,6 +117,9 @@ export interface IWorkOrder extends Document {
   wo_location_id: ObjectId;
   start_date: Date;
   end_date: Date;
+  actual_start_date?: Date;
+  actual_end_date?: Date;
+  actual_time?: number;
   sop_form_id: ObjectId;
   sop_form_submitted: boolean;
   sop_form_data: object;
@@ -112,6 +133,7 @@ export interface IWorkOrder extends Document {
   cron_id: ObjectId;
   tasks: ITask[];
   parts: IParts[];
+  labor_entries: ILaborEntry[];
   work_request_id: ObjectId;
   files: object[];
   visible: boolean;
@@ -129,6 +151,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: "Low" },
   status: { type: String, trim: true, enum: WORK_ORDER_STATUSES, default: "Open" },
   parentId: { type: Schema.Types.ObjectId, ref: 'Schema_WorkOrder' },
+  block_reason: { type: String, trim: true },
   status_details: { type: [StatusDetailsSchema], default: [] },
   type: { type: String, trim: true },
   nature_of_work: { type: String, trim: true },
@@ -136,6 +159,9 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   wo_location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   start_date: { type: Date },
   end_date: { type: Date },
+  actual_start_date: { type: Date },
+  actual_end_date: { type: Date },
+  actual_time: { type: Number },
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
   sop_form_submitted: { type: Boolean, default: false },
   sop_form_data: { type: Schema.Types.Mixed },
@@ -147,6 +173,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   sop_form_updated_at: { type: Date },
   parts: { type: [PartsSchema] },
   tasks: { type: [TaskSchema], default: [] },
+  labor_entries: { type: [LaborEntrySchema], default: [] },
   asset_report_id: { type: Schema.Types.ObjectId, ref: 'AssetReportModel' },
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   files: { type: [Object] },

@@ -26,7 +26,7 @@ export const workRequestValidator = [
     .isMongoId().withMessage('Invalid Location ID format'),
 
   body('asset_id')
-    .notEmpty().withMessage('Asset ID is required')
+    .optional({ nullable: true, checkFalsy: true })
     .isMongoId().withMessage('Invalid Asset ID format'),
 
   body('description')

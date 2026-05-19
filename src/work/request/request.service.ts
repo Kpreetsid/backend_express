@@ -80,7 +80,7 @@ class RequestService {
       problemType: body.problemType,
       priority,
       location_id: body.location_id,
-      asset_id: body.asset_id,
+      asset_id: body.asset_id || null,
       files: body.files,
       status: body.status || 'Open',
       tags: body.tags,
@@ -92,6 +92,9 @@ class RequestService {
   
   async updateRequest (id: string, body: any, user_id: any, session?: any): Promise<any> {
     body.updatedBy = user_id;
+    if (body.asset_id === '') {
+      body.asset_id = null;
+    }
     if (body.priority) {
       const reviewGovernance = this.buildReviewGovernance(body.priority);
       body.review_sla_hours = reviewGovernance.review_sla_hours;

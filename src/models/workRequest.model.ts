@@ -27,7 +27,7 @@ export interface IWorkRequest extends Document {
   problemType: string;
   priority: string;
   location_id: ObjectId;
-  asset_id: ObjectId;
+  asset_id?: ObjectId | null;
   files: IUpload[];
   status: string;
   tags?: string[];
@@ -59,7 +59,7 @@ const WorkRequestSchema = new Schema<IWorkRequest>({
   files: { type: [Object], default: [] },
   status: { type: String, trim: true, enum: WORK_REQUEST_STATUSES, default: 'Open' },
   location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
-  asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel' },
   tags: { type: [String] },
   remarks: { type: String, trim: true },
   review_sla_hours: { type: Number },

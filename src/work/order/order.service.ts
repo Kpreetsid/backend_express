@@ -48,6 +48,55 @@ class OrderService {
     this.mailerService = new MailerService();
   }
 
+  private normalizeTimingFields(data: any): any {
+    const normalized = { ...data };
+    const actualStartDate = normalized.actual_start_date ? new Date(normalized.actual_start_date) : null;
+    const actualEndDate = normalized.actual_end_date ? new Date(normalized.actual_end_date) : null;
+
+    if (normalized.actual_start_date === '') {
+      normalized.actual_start_date = null;
+    }
+
+    if (normalized.actual_end_date === '') {
+      normalized.actual_end_date = null;
+    }
+
+    if (normalized.actual_time === '') {
+      normalized.actual_time = null;
+    }
+
+    if (!Number.isFinite(Number(normalized.actual_time))) {
+      normalized.actual_time = normalized.actual_time === null || normalized.actual_time === undefined
+        ? normalized.actual_time
+        : null;
+    } else if (normalized.actual_time !== null && normalized.actual_time !== undefined) {
+      normalized.actual_time = Number(normalized.actual_time);
+    }
+
+    if (actualStartDate && actualEndDate && actualEndDate >= actualStartDate && !(Number(normalized.actual_time) > 0)) {
+      normalized.actual_time = Number((((actualEndDate.getTime() - actualStartDate.getTime()) / 3600000)).toFixed(2));
+    }
+
+    normalized.labor_entries = Array.isArray(normalized.labor_entries)
+      ? normalized.labor_entries
+          .map((entry: any) => ({
+            ...entry,
+            user_id: entry?.user_id || null,
+            vendor_name: entry?.vendor_name || '',
+            work_date: entry?.work_date || null,
+            hours: entry?.hours === '' || entry?.hours === null || entry?.hours === undefined ? null : Number(entry.hours),
+            notes: entry?.notes || ''
+          }))
+          .filter((entry: any) => entry.hours !== null && Number.isFinite(entry.hours) && (entry.user_id || entry.vendor_name))
+      : [];
+
+    if (normalized.block_reason === '') {
+      normalized.block_reason = null;
+    }
+
+    return normalized;
+  }
+
   private sanitizeWorkOrder(data: any): any {
     if (data.tasks && Array.isArray(data.tasks)) {
       data.tasks = data.tasks.map((task: any) => {
@@ -56,6 +105,16 @@ class OrderService {
           sanitizedTask.assigned_user_id = null;
         }
         return sanitizedTask;
+      });
+    }
+
+    if (data.labor_entries && Array.isArray(data.labor_entries)) {
+      data.labor_entries = data.labor_entries.map((entry: any) => {
+        const sanitizedEntry = { ...entry };
+        if (sanitizedEntry.user_id === '') {
+          sanitizedEntry.user_id = null;
+        }
+        return sanitizedEntry;
       });
     }
 
@@ -102,6 +161,69 @@ class OrderService {
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } }
           ],
           as: "assignedUsers"
+        }
+      },
+      {
+        $lookup: {
+          from: "work_orders",
+          let: { parentId: '$parentId' },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: {
+                  $eq: [
+                    '$_id',
+                    { $cond: [{ $eq: [{ $type: '$$parentId' }, 'string'] }, { $toObjectId: '$$parentId' }, '$$parentId'] }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                id: '$_id',
+                order_no: 1,
+                title: 1,
+                status: 1,
+                priority: 1,
+                start_date: 1,
+                end_date: 1,
+                estimated_time: 1,
+                actual_time: 1
+              }
+            }
+          ],
+          as: "parentOrder"
+        }
+      },
+      {
+        $lookup: {
+          from: "work_orders",
+          let: { workOrderId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: { $eq: ['$parentId', '$$workOrderId'] }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                id: '$_id',
+                order_no: 1,
+                title: 1,
+                status: 1,
+                priority: 1,
+                start_date: 1,
+                end_date: 1,
+                estimated_time: 1,
+                actual_time: 1
+              }
+            }
+          ],
+          as: "childOrders"
         }
       },
       {
@@ -232,6 +354,31 @@ class OrderService {
       },
       {
         $lookup: {
+          from: "users",
+          let: { userIds: "$labor_entries.user_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: [
+                    { $toString: "$_id" },
+                    {
+                      $map: {
+                        input: { $ifNull: ["$$userIds", []] },
+                        as: "id",
+                        in: { $toString: { $ifNull: ["$$id", ""] } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "laborUsers"
+        }
+      },
+      {
+        $lookup: {
           from: "mst_part_types",
           let: { partTypeIds: "$parts.part_type" },
           pipeline: [
@@ -299,6 +446,20 @@ class OrderService {
       {
         $addFields: {
           id: "$_id",
+          parentOrder: { $arrayElemAt: ["$parentOrder", 0] },
+          childCount: { $size: { $ifNull: ["$childOrders", []] } },
+          durationVariance: {
+            $cond: [
+              {
+                $and: [
+                  { $gt: [{ $ifNull: ["$estimated_time", 0] }, 0] },
+                  { $gt: [{ $ifNull: ["$actual_time", 0] }, 0] }
+                ]
+              },
+              { $subtract: ["$actual_time", "$estimated_time"] },
+              null
+            ]
+          },
           parts: {
             $map: {
               input: { $ifNull: ["$parts", []] },
@@ -495,6 +656,59 @@ class OrderService {
               }
             }
           },
+          labor_entries: {
+            $map: {
+              input: { $ifNull: ["$labor_entries", []] },
+              as: "entry",
+              in: {
+                $mergeObjects: [
+                  "$$entry",
+                  {
+                    user: {
+                      $let: {
+                        vars: {
+                          matchedUser: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: "$laborUsers",
+                                  as: "u",
+                                  cond: {
+                                    $eq: [
+                                      { $toString: "$$u._id" },
+                                      { $toString: { $ifNull: ["$$entry.user_id", ""] } }
+                                    ]
+                                  }
+                                }
+                              },
+                              0
+                            ]
+                          }
+                        },
+                        in: {
+                          $cond: [
+                            { $gt: ["$$matchedUser", null] },
+                            {
+                              _id: "$$matchedUser._id",
+                              id: "$$matchedUser._id",
+                              firstName: "$$matchedUser.firstName",
+                              lastName: "$$matchedUser.lastName",
+                              email: "$$matchedUser.email",
+                              username: "$$matchedUser.username",
+                              user_profile_img: "$$matchedUser.user_profile_img",
+                              user_role: "$$matchedUser.user_role",
+                              user_status: "$$matchedUser.user_status"
+                            },
+                            null
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
           status_details: {
             $map: {
               input: "$status_details",
@@ -519,7 +733,7 @@ class OrderService {
           }
         }
       },
-      { $project: { statusUsers: 0, taskUsers: 0, inventoryPartDetails: 0 } }
+      { $project: { statusUsers: 0, taskUsers: 0, laborUsers: 0, inventoryPartDetails: 0 } }
     ];
   }
 
@@ -577,7 +791,7 @@ class OrderService {
         case "openToAll": {
           match.createdBy = { $ne: user_id };
           if (!query.status) {
-            match.status = { $in: ["Open", "In-Progress", "On-Hold"] };
+            match.status = { $in: ["Open", "Blocked", "Waiting-on-Parts", "Waiting-on-Permit", "In-Progress", "On-Hold"] };
           }
           const ids = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
           if (ids?.length) match._id = { $nin: ids };
@@ -632,7 +846,7 @@ class OrderService {
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const statuses = ['Open', 'On-Hold', 'In-Progress', 'Completed'];
+    const statuses = ['Open', 'Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold', 'In-Progress', 'Completed'];
     const result = statuses.map((status) => {
       const found: any = data.find((d: any) => d.key === status);
       return { key: status, value: found ? found.value : 0 };
@@ -817,6 +1031,10 @@ class OrderService {
         title: body.title,
         description: body.description,
         estimated_time: body.estimated_time,
+        actual_start_date: body.actual_start_date,
+        actual_end_date: body.actual_end_date,
+        actual_time: body.actual_time,
+        block_reason: body.block_reason,
         parentId: body.parentId,
         priority: body.priority,
         status: body.status,
@@ -834,13 +1052,14 @@ class OrderService {
         files: body.files,
         tasks: body.tasks,
         parts: body.parts,
+        labor_entries: body.labor_entries,
         work_request_id: body.work_request_id,
         asset_report_id: body.asset_report_id,
         status_details: [{ status: body.status, createdBy: user._id }],
         createdBy: user._id
       });
 
-      const sanitizedData = this.sanitizeWorkOrder(newAsset.toObject());
+      const sanitizedData = this.normalizeTimingFields(this.sanitizeWorkOrder(newAsset.toObject()));
       Object.assign(newAsset, sanitizedData);
 
       const data: any = await newAsset.save({ session });
@@ -919,7 +1138,7 @@ class OrderService {
         await userWorkOrderService.updateMappedUsers(id, body.userIdList, session);
       }
 
-      updatedData = this.sanitizeWorkOrder(updatedData);
+      updatedData = this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData));
       const data = await WorkOrderModel.findByIdAndUpdate(id, updatedData, { returnDocument: 'after', session });
       if (!data) {
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
@@ -940,14 +1159,21 @@ class OrderService {
   };
 
   async updateDataById(id: any, body: any, user: IUser): Promise<any> {
-    const sanitizedBody = this.sanitizeWorkOrder({ ...body, updatedBy: user._id });
+    const sanitizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body, updatedBy: user._id }));
     return await WorkOrderModel.findByIdAndUpdate(id, sanitizedBody, { returnDocument: 'after' });
   };
 
-  async orderStatusChange(id: string, status: string, user: IUser): Promise<any> {
+  async orderStatusChange(id: string, status: string, user: IUser, blockReason?: string | null): Promise<any> {
     const orderId = helperService.validateObjectId(id);
     const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
     const existingOrder = orders[0];
+    const blockedStatuses = ['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit'];
+    const isBlockedStatus = blockedStatuses.includes(status);
+    const normalizedBlockReason = typeof blockReason === 'string' ? blockReason.trim() : '';
+
+    if (isBlockedStatus && !normalizedBlockReason) {
+      throw Object.assign(new Error('A reason is required for this status'), { status: 400 });
+    }
 
     if (status === 'Completed') {
       if (existingOrder.sop_form_id && !existingOrder.sop_form_submitted) {
@@ -959,10 +1185,31 @@ class OrderService {
           actualQuantity: part.actualQuantity || part.estimatedQuantity
         }));
       }
+      if (!existingOrder.actual_start_date) {
+        existingOrder.actual_start_date = existingOrder.start_date || new Date();
+      }
+      if (!existingOrder.actual_end_date) {
+        existingOrder.actual_end_date = new Date();
+      }
+      if (existingOrder.actual_start_date && existingOrder.actual_end_date && !(Number(existingOrder.actual_time) > 0)) {
+        const startTime = new Date(existingOrder.actual_start_date).getTime();
+        const endTime = new Date(existingOrder.actual_end_date).getTime();
+        if (endTime >= startTime) {
+          existingOrder.actual_time = Number((((endTime - startTime) / 3600000)).toFixed(2));
+        }
+      }
+    } else if (status === 'In-Progress' && !existingOrder.actual_start_date) {
+      existingOrder.actual_start_date = new Date();
     } else if (status === 'Open') {
       existingOrder.sop_form_submitted = false;
       existingOrder.sop_form_updated_by = null;
       existingOrder.sop_form_updated_at = null;
+    }
+
+    if (isBlockedStatus) {
+      existingOrder.block_reason = normalizedBlockReason;
+    } else if (status !== 'On-Hold') {
+      existingOrder.block_reason = null;
     }
 
     const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
@@ -975,6 +1222,10 @@ class OrderService {
         updatedBy: user._id, 
         status_details: statusDetails, 
         parts: existingOrder.parts, 
+        actual_start_date: existingOrder.actual_start_date,
+        actual_end_date: existingOrder.actual_end_date,
+        actual_time: existingOrder.actual_time,
+        block_reason: existingOrder.block_reason,
         sop_form_submitted: existingOrder.sop_form_submitted,
         sop_form_updated_by: existingOrder.sop_form_updated_by,
         sop_form_updated_at: existingOrder.sop_form_updated_at
