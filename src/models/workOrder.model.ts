@@ -95,7 +95,7 @@ export interface IWorkOrder extends Document {
   type: string;
   createdFrom: string;
   nature_of_work: string;
-  wo_asset_id: ObjectId;
+  wo_asset_id?: ObjectId;
   wo_location_id: ObjectId;
   start_date: Date;
   end_date: Date;
@@ -132,7 +132,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   status_details: { type: [StatusDetailsSchema], default: [] },
   type: { type: String, trim: true },
   nature_of_work: { type: String, trim: true },
-  wo_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel', required: true },
+  wo_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel' },
   wo_location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   start_date: { type: Date },
   end_date: { type: Date },

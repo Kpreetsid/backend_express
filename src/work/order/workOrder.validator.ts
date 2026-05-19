@@ -17,7 +17,7 @@ export const workOrderValidator = [
     .withMessage('Invalid status'),
 
   body('wo_asset_id')
-    .notEmpty().withMessage('Asset ID is required')
+    .optional({ nullable: true })
     .isMongoId().withMessage('Invalid Asset ID format'),
 
   body('wo_location_id')

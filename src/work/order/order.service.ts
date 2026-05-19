@@ -762,7 +762,8 @@ class OrderService {
       const overdueCount = result.overdue[0]?.count || 0;
       const plannedCount = result.planned[0]?.count || 0;
 
-      const workRequestMatch: any = { status: { $nin: ['completed'] }, asset_id: workOrderMatch.wo_asset_id }
+      const workRequestMatch: any = { status: { $nin: ['completed'] } }
+      if (workOrderMatch.wo_asset_id) workRequestMatch.asset_id = workOrderMatch.wo_asset_id;
       if (workOrderMatch.wo_location_id) workRequestMatch.location_id = workOrderMatch.wo_location_id;
       if (workOrderMatch.createdAt) workRequestMatch.createdAt = workOrderMatch.createdAt;
 
