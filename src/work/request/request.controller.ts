@@ -30,10 +30,10 @@ class RequestController {
         baseFilter.createdBy = { $in: helperService.validateObjectIds(assignedBy.toString()) };
       }
       if (approvedBy) {
-        baseFilter.updatedBy = { $in: helperService.validateObjectIds(approvedBy.toString()) };
+        baseFilter.approvedBy = { $in: helperService.validateObjectIds(approvedBy.toString()) };
       }
       if (rejectedBy) {
-        baseFilter.updatedBy = { $in: helperService.validateObjectIds(rejectedBy.toString()) };
+        baseFilter.rejectedBy = { $in: helperService.validateObjectIds(rejectedBy.toString()) };
       }
 
       const filter = await applyRoleFilter({
@@ -112,14 +112,14 @@ class RequestController {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
       const { params: { id, status }, body } = req;
       const requestId = helperService.validateObjectId(id);
+      if (status === 'Approved' || status === 'Rejected') {
+        throw Object.assign(new Error('Use the dedicated approval actions for this request'), { status: 400 });
+      }
       if (status) {
         if (!WORK_REQUEST_STATUSES.includes(String(status))) {
           throw Object.assign(new Error('Status is not editable'), { status: 400 });
         }
         body.status = status;
-        if (status === 'Approved' || status === 'Rejected') {
-          throw Object.assign(new Error('Create a valid request'), { status: 400 });
-        }
       }
       if (body.priority) {
         if (!WORK_REQUEST_PRIORITIES.includes(body.priority)) {
@@ -137,8 +137,11 @@ class RequestController {
       if (status === existingRequest[0].status) {
         throw Object.assign(new Error('No changes detected'), { status: 400 });
       }
-      if (status === 'Approved') {
-        body.approvedBy = user_id;
+      if (existingRequest[0].converted_work_order_id) {
+        throw Object.assign(new Error('Converted work requests cannot be edited'), { status: 400 });
+      }
+      if (['Approved', 'Rejected'].includes(existingRequest[0].status)) {
+        throw Object.assign(new Error('Finalized work requests cannot be edited'), { status: 400 });
       }
       const data = await requestService.updateRequest(String(id), body, user_id);
       if (!data || data.modifiedCount === 0) {
@@ -162,7 +165,10 @@ class RequestController {
 
   async approve(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { account_id, _id: user_id, user_role } = get(req, "user", {}) as IUser;
+      if (user_role !== 'admin') {
+        throw Object.assign(new Error('Only administrators can approve work requests'), { status: 403 });
+      }
       const { params: { id } } = req;
       const requestId = helperService.validateObjectId(id);
       const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
@@ -172,7 +178,13 @@ class RequestController {
       if (existingRequest[0].status === 'Approved') {
         throw Object.assign(new Error('Request is already approved'), { status: 400 });
       }
-      const data = await requestService.updateRequest(String(id), { status: 'Approved', updatedBy: user_id }, user_id);
+      if (existingRequest[0].status === 'Rejected') {
+        throw Object.assign(new Error('Rejected requests cannot be approved'), { status: 400 });
+      }
+      if (existingRequest[0].converted_work_order_id) {
+        throw Object.assign(new Error('This request has already been converted into a work order'), { status: 400 });
+      }
+      const data = await requestService.markApproved(String(id), user_id, existingRequest[0].priority);
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
@@ -194,7 +206,10 @@ class RequestController {
 
   async reject(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
+      const { account_id, _id: user_id, firstName, lastName, user_role } = get(req, "user", {}) as IUser;
+      if (user_role !== 'admin') {
+        throw Object.assign(new Error('Only administrators can reject work requests'), { status: 403 });
+      }
       const { params: { id }, body: { remarks } } = req;
       const requestId = helperService.validateObjectId(id);
       if (!remarks) {
@@ -207,9 +222,15 @@ class RequestController {
       if (existingRequest[0].status === 'Rejected') {
         throw Object.assign(new Error('Request is already rejected'), { status: 400 });
       }
+      if (existingRequest[0].status === 'Approved') {
+        throw Object.assign(new Error('Approved requests cannot be rejected'), { status: 400 });
+      }
+      if (existingRequest[0].converted_work_order_id) {
+        throw Object.assign(new Error('Converted work requests cannot be rejected'), { status: 400 });
+      }
       const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
       const updatedRemarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${remarks} by ${firstName} ${lastName} on ${dateTime}` : `${remarks} by ${firstName} ${lastName} on ${dateTime}`;
-      const data = await requestService.updateRequest(String(id), { status: 'Rejected', remarks: updatedRemarks }, user_id);
+      const data = await requestService.markRejected(String(id), user_id, updatedRemarks);
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }

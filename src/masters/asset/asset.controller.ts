@@ -32,13 +32,15 @@ class AssetController {
         baseFilter.top_level = top_level == "true" ? true : false;
       }
       if (locationId) {
-        const validatedLocationId = helperService.validateObjectId(String(locationId));
-        const childIds = await locationService.getAllChildLocationIds(String(validatedLocationId));
+        const validatedLocationIds = helperService.validateObjectIds(String(locationId));
+        const rootLocationIds = validatedLocationIds.map((id) => String(id));
+        const childLocationGroups = await Promise.all(rootLocationIds.map((id) => locationService.getAllChildLocationIds(id)));
+        const expandedLocationIds = [...new Set([...rootLocationIds, ...childLocationGroups.flat()])];
         if (user.user_role !== "admin") {
-          const mappedData = await mapUserToLocationService.getDataByLocationIds([String(validatedLocationId), ...childIds]);
+          const mappedData = await mapUserToLocationService.getDataByLocationIds(expandedLocationIds);
           baseFilter.locationId = { $in: mappedData.map((doc) => doc.locationId) };
         } else {
-          baseFilter.locationId = { $in: [validatedLocationId, ...childIds.map(id => helperService.validateObjectId(id))] };
+          baseFilter.locationId = { $in: helperService.validateObjectIds(expandedLocationIds) };
         }
       }
       const filter: any = await applyRoleFilter({

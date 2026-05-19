@@ -33,7 +33,7 @@ export const scheduleValidator = [
     .isMongoId().withMessage('Invalid Location ID format'),
 
   body('work_order.wo_asset_id')
-    .notEmpty().withMessage('Work order asset ID is required')
+    .optional({ nullable: true, checkFalsy: true })
     .isMongoId().withMessage('Invalid Asset ID format'),
 
   body('work_order.userIdList')

@@ -8,6 +8,7 @@ import { requestService } from "../request/request.service";
 import { helperService } from "../../utils/helper";
 import { notificationService } from "../../utils/notification.service";
 import { withTransaction } from "../../utils/transaction.helper";
+import { ProcedureModel } from "../../models/procedure.model";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -48,6 +49,151 @@ class OrderService {
     this.mailerService = new MailerService();
   }
 
+  private isProcedureFieldAnswered(step: any, responses: Record<string, any>): boolean {
+    if (step?.type !== 'field' || !step?.required) {
+      return true;
+    }
+
+    const value = responses?.[step.id];
+    switch (step?.field_type) {
+      case 'checkbox':
+      case 'checklist':
+        return Array.isArray(value) && value.length > 0;
+      case 'multiple-choice':
+      case 'inspection-check':
+      case 'yes-no-na':
+        return typeof value === 'string' && value.trim().length > 0;
+      case 'number':
+        return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value));
+      case 'date':
+        return typeof value === 'string' && value.trim().length > 0;
+      case 'text':
+      default:
+        return typeof value === 'string' ? value.trim().length > 0 : !!value;
+    }
+  }
+
+  private areProcedureStepsComplete(steps: any[] = [], responses: Record<string, any> = {}): boolean {
+    return (steps || []).every((step: any) => {
+      if (step?.type === 'section') {
+        return this.areProcedureStepsComplete(step?.items || [], responses);
+      }
+      return this.isProcedureFieldAnswered(step, responses);
+    });
+  }
+
+  private buildProcedureEntry(template: any, sourceEntry: any, user: IUser): any {
+    const responses = sourceEntry?.responses && typeof sourceEntry.responses === 'object' ? sourceEntry.responses : {};
+    const completed = this.areProcedureStepsComplete(template?.steps || [], responses);
+
+    return {
+      procedure_id: template?._id || sourceEntry?.procedure_id || null,
+      name: template?.name || sourceEntry?.name || 'Untitled Procedure',
+      category: template?.category || '',
+      tags: Array.isArray(template?.tags) ? template.tags : [],
+      description: template?.description || '',
+      steps: Array.isArray(template?.steps) ? template.steps : [],
+      responses,
+      submitted: completed,
+      submitted_by: completed
+        ? {
+            id: String(user._id),
+            firstName: user.firstName,
+            lastName: user.lastName
+          }
+        : null,
+      submitted_at: completed ? new Date() : null
+    };
+  }
+
+  private async syncProcedureEntries(input: any, account_id: any, user: IUser, existingEntries: any[] = []): Promise<{ procedure_ids: any[]; procedure_entries: any[] }> {
+    const explicitEntries = Array.isArray(input?.procedure_entries) ? input.procedure_entries : [];
+    const explicitIds = explicitEntries
+      .map((entry: any) => String(entry?.procedure_id || entry?.id || ''))
+      .filter(Boolean);
+    const bodyIds = Array.isArray(input?.procedure_ids) ? input.procedure_ids.map((id: any) => String(id || '')).filter(Boolean) : [];
+    const requestedIds = Array.from(new Set([...(bodyIds || []), ...(explicitIds || [])]));
+
+    if (requestedIds.length === 0) {
+      return { procedure_ids: [], procedure_entries: [] };
+    }
+
+    const templates = await ProcedureModel.find({
+      _id: { $in: helperService.validateObjectIds(requestedIds.join(',')) },
+      account_id,
+      visible: true
+    }).lean();
+
+    const templateMap = new Map(templates.map((template: any) => [String(template._id), template]));
+    const existingEntryMap = new Map((existingEntries || []).map((entry: any) => [String(entry?.procedure_id || entry?.id || ''), entry]));
+    const explicitEntryMap = new Map((explicitEntries || []).map((entry: any) => [String(entry?.procedure_id || entry?.id || ''), entry]));
+
+    const procedure_entries = requestedIds
+      .map((id: string) => {
+        const template = templateMap.get(id);
+        if (!template) {
+          return null;
+        }
+        const sourceEntry = explicitEntryMap.get(id) || existingEntryMap.get(id) || {};
+        return this.buildProcedureEntry(template, sourceEntry, user);
+      })
+      .filter(Boolean);
+
+    return {
+      procedure_ids: procedure_entries.map((entry: any) => entry.procedure_id),
+      procedure_entries
+    };
+  }
+
+  private normalizeTimingFields(data: any): any {
+    const normalized = { ...data };
+    const actualStartDate = normalized.actual_start_date ? new Date(normalized.actual_start_date) : null;
+    const actualEndDate = normalized.actual_end_date ? new Date(normalized.actual_end_date) : null;
+
+    if (normalized.actual_start_date === '') {
+      normalized.actual_start_date = null;
+    }
+
+    if (normalized.actual_end_date === '') {
+      normalized.actual_end_date = null;
+    }
+
+    if (normalized.actual_time === '') {
+      normalized.actual_time = null;
+    }
+
+    if (!Number.isFinite(Number(normalized.actual_time))) {
+      normalized.actual_time = normalized.actual_time === null || normalized.actual_time === undefined
+        ? normalized.actual_time
+        : null;
+    } else if (normalized.actual_time !== null && normalized.actual_time !== undefined) {
+      normalized.actual_time = Number(normalized.actual_time);
+    }
+
+    if (actualStartDate && actualEndDate && actualEndDate >= actualStartDate && !(Number(normalized.actual_time) > 0)) {
+      normalized.actual_time = Number((((actualEndDate.getTime() - actualStartDate.getTime()) / 3600000)).toFixed(2));
+    }
+
+    normalized.labor_entries = Array.isArray(normalized.labor_entries)
+      ? normalized.labor_entries
+          .map((entry: any) => ({
+            ...entry,
+            user_id: entry?.user_id || null,
+            vendor_name: entry?.vendor_name || '',
+            work_date: entry?.work_date || null,
+            hours: entry?.hours === '' || entry?.hours === null || entry?.hours === undefined ? null : Number(entry.hours),
+            notes: entry?.notes || ''
+          }))
+          .filter((entry: any) => entry.hours !== null && Number.isFinite(entry.hours) && (entry.user_id || entry.vendor_name))
+      : [];
+
+    if (normalized.block_reason === '') {
+      normalized.block_reason = null;
+    }
+
+    return normalized;
+  }
+
   private sanitizeWorkOrder(data: any): any {
     if (data.tasks && Array.isArray(data.tasks)) {
       data.tasks = data.tasks.map((task: any) => {
@@ -56,6 +202,16 @@ class OrderService {
           sanitizedTask.assigned_user_id = null;
         }
         return sanitizedTask;
+      });
+    }
+
+    if (data.labor_entries && Array.isArray(data.labor_entries)) {
+      data.labor_entries = data.labor_entries.map((entry: any) => {
+        const sanitizedEntry = { ...entry };
+        if (sanitizedEntry.user_id === '') {
+          sanitizedEntry.user_id = null;
+        }
+        return sanitizedEntry;
       });
     }
 
@@ -102,6 +258,69 @@ class OrderService {
             { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } }
           ],
           as: "assignedUsers"
+        }
+      },
+      {
+        $lookup: {
+          from: "work_orders",
+          let: { parentId: '$parentId' },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: {
+                  $eq: [
+                    '$_id',
+                    { $cond: [{ $eq: [{ $type: '$$parentId' }, 'string'] }, { $toObjectId: '$$parentId' }, '$$parentId'] }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                id: '$_id',
+                order_no: 1,
+                title: 1,
+                status: 1,
+                priority: 1,
+                start_date: 1,
+                end_date: 1,
+                estimated_time: 1,
+                actual_time: 1
+              }
+            }
+          ],
+          as: "parentOrder"
+        }
+      },
+      {
+        $lookup: {
+          from: "work_orders",
+          let: { workOrderId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: { $eq: ['$parentId', '$$workOrderId'] }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                id: '$_id',
+                order_no: 1,
+                title: 1,
+                status: 1,
+                priority: 1,
+                start_date: 1,
+                end_date: 1,
+                estimated_time: 1,
+                actual_time: 1
+              }
+            }
+          ],
+          as: "childOrders"
         }
       },
       {
@@ -172,6 +391,45 @@ class OrderService {
       { $unwind: { path: "$sopForm", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
+          from: "procedures",
+          let: { procedureIds: "$procedure_ids" },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: {
+                  $in: [
+                    { $toString: "$_id" },
+                    {
+                      $map: {
+                        input: { $ifNull: ["$$procedureIds", []] },
+                        as: "id",
+                        in: { $toString: "$$id" }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                id: "$_id",
+                name: 1,
+                category: 1,
+                tags: 1,
+                description: 1,
+                steps: 1,
+                createdAt: 1,
+                updatedAt: 1
+              }
+            }
+          ],
+          as: "procedures"
+        }
+      },
+      {
+        $lookup: {
           from: "users",
           let: { createdBy: '$createdBy' },
           pipeline: [
@@ -228,6 +486,31 @@ class OrderService {
             }
           ],
           as: "taskUsers"
+        }
+      },
+      {
+        $lookup: {
+          from: "users",
+          let: { userIds: "$labor_entries.user_id" },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $in: [
+                    { $toString: "$_id" },
+                    {
+                      $map: {
+                        input: { $ifNull: ["$$userIds", []] },
+                        as: "id",
+                        in: { $toString: { $ifNull: ["$$id", ""] } }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          ],
+          as: "laborUsers"
         }
       },
       {
@@ -299,6 +582,44 @@ class OrderService {
       {
         $addFields: {
           id: "$_id",
+          parentOrder: { $arrayElemAt: ["$parentOrder", 0] },
+          childCount: { $size: { $ifNull: ["$childOrders", []] } },
+          procedures: {
+            $cond: [
+              { $gt: [{ $size: { $ifNull: ["$procedure_entries", []] } }, 0] },
+              {
+                $map: {
+                  input: { $ifNull: ["$procedure_entries", []] },
+                  as: "entry",
+                  in: {
+                    $mergeObjects: [
+                      "$$entry",
+                      {
+                        id: {
+                          $toString: {
+                            $ifNull: ["$$entry.procedure_id", ""]
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "$procedures"
+            ]
+          },
+          durationVariance: {
+            $cond: [
+              {
+                $and: [
+                  { $gt: [{ $ifNull: ["$estimated_time", 0] }, 0] },
+                  { $gt: [{ $ifNull: ["$actual_time", 0] }, 0] }
+                ]
+              },
+              { $subtract: ["$actual_time", "$estimated_time"] },
+              null
+            ]
+          },
           parts: {
             $map: {
               input: { $ifNull: ["$parts", []] },
@@ -495,6 +816,59 @@ class OrderService {
               }
             }
           },
+          labor_entries: {
+            $map: {
+              input: { $ifNull: ["$labor_entries", []] },
+              as: "entry",
+              in: {
+                $mergeObjects: [
+                  "$$entry",
+                  {
+                    user: {
+                      $let: {
+                        vars: {
+                          matchedUser: {
+                            $arrayElemAt: [
+                              {
+                                $filter: {
+                                  input: "$laborUsers",
+                                  as: "u",
+                                  cond: {
+                                    $eq: [
+                                      { $toString: "$$u._id" },
+                                      { $toString: { $ifNull: ["$$entry.user_id", ""] } }
+                                    ]
+                                  }
+                                }
+                              },
+                              0
+                            ]
+                          }
+                        },
+                        in: {
+                          $cond: [
+                            { $gt: ["$$matchedUser", null] },
+                            {
+                              _id: "$$matchedUser._id",
+                              id: "$$matchedUser._id",
+                              firstName: "$$matchedUser.firstName",
+                              lastName: "$$matchedUser.lastName",
+                              email: "$$matchedUser.email",
+                              username: "$$matchedUser.username",
+                              user_profile_img: "$$matchedUser.user_profile_img",
+                              user_role: "$$matchedUser.user_role",
+                              user_status: "$$matchedUser.user_status"
+                            },
+                            null
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
           status_details: {
             $map: {
               input: "$status_details",
@@ -519,7 +893,7 @@ class OrderService {
           }
         }
       },
-      { $project: { statusUsers: 0, taskUsers: 0, inventoryPartDetails: 0 } }
+      { $project: { statusUsers: 0, taskUsers: 0, laborUsers: 0, inventoryPartDetails: 0 } }
     ];
   }
 
@@ -577,7 +951,7 @@ class OrderService {
         case "openToAll": {
           match.createdBy = { $ne: user_id };
           if (!query.status) {
-            match.status = { $in: ["Open", "In-Progress", "On-Hold"] };
+            match.status = { $in: ["Open", "Blocked", "Waiting-on-Parts", "Waiting-on-Permit", "In-Progress", "On-Hold"] };
           }
           const ids = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
           if (ids?.length) match._id = { $nin: ids };
@@ -632,7 +1006,7 @@ class OrderService {
     if (data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const statuses = ['Open', 'On-Hold', 'In-Progress', 'Completed'];
+    const statuses = ['Open', 'Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold', 'In-Progress', 'Completed'];
     const result = statuses.map((status) => {
       const found: any = data.find((d: any) => d.key === status);
       return { key: status, value: found ? found.value : 0 };
@@ -762,7 +1136,8 @@ class OrderService {
       const overdueCount = result.overdue[0]?.count || 0;
       const plannedCount = result.planned[0]?.count || 0;
 
-      const workRequestMatch: any = { status: { $nin: ['completed'] }, asset_id: workOrderMatch.wo_asset_id }
+      const workRequestMatch: any = { status: { $nin: ['completed'] } }
+      if (workOrderMatch.wo_asset_id) workRequestMatch.asset_id = workOrderMatch.wo_asset_id;
       if (workOrderMatch.wo_location_id) workRequestMatch.location_id = workOrderMatch.wo_location_id;
       if (workOrderMatch.createdAt) workRequestMatch.createdAt = workOrderMatch.createdAt;
 
@@ -793,18 +1168,42 @@ class OrderService {
   async createWorkOrder(body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
       const userIdList = Array.isArray(body.userIdList) ? body.userIdList.filter((userId: string) => !!userId) : [];
+      const procedureSync = await this.syncProcedureEntries(body, user.account_id, user, []);
+      let linkedRequest: any = null;
+      if (body.work_request_id) {
+        linkedRequest = await requestService.getRequestById(String(body.work_request_id));
+        if (!linkedRequest || String(linkedRequest.account_id) !== String(user.account_id)) {
+          throw Object.assign(new Error('Linked work request was not found'), { status: 404 });
+        }
+        if (linkedRequest.status === 'Rejected') {
+          throw Object.assign(new Error('Rejected work requests cannot be converted into work orders'), { status: 400 });
+        }
+        if (linkedRequest.status !== 'Approved') {
+          throw Object.assign(new Error('Only approved work requests can be converted into work orders'), { status: 400 });
+        }
+        if (linkedRequest.converted_work_order_id) {
+          throw Object.assign(new Error('This work request has already been converted into a work order'), { status: 400 });
+        }
+      }
+
       const newAsset = new WorkOrderModel({
         account_id: user.account_id,
         order_no: await this.generateOrderNo(user.account_id),
         title: body.title,
         description: body.description,
         estimated_time: body.estimated_time,
+        actual_start_date: body.actual_start_date,
+        actual_end_date: body.actual_end_date,
+        actual_time: body.actual_time,
+        block_reason: body.block_reason,
         parentId: body.parentId,
         priority: body.priority,
         status: body.status,
         type: body.type,
         nature_of_work: body.type,
         sop_form_id: body.sop_form_id,
+        procedure_ids: procedureSync.procedure_ids,
+        procedure_entries: procedureSync.procedure_entries,
         rescheduleEnabled: false,
         created_by: user._id,
         wo_asset_id: body.wo_asset_id,
@@ -816,13 +1215,14 @@ class OrderService {
         files: body.files,
         tasks: body.tasks,
         parts: body.parts,
+        labor_entries: body.labor_entries,
         work_request_id: body.work_request_id,
         asset_report_id: body.asset_report_id,
         status_details: [{ status: body.status, createdBy: user._id }],
         createdBy: user._id
       });
 
-      const sanitizedData = this.sanitizeWorkOrder(newAsset.toObject());
+      const sanitizedData = this.normalizeTimingFields(this.sanitizeWorkOrder(newAsset.toObject()));
       Object.assign(newAsset, sanitizedData);
 
       const data: any = await newAsset.save({ session });
@@ -847,6 +1247,17 @@ class OrderService {
       if (body.parts?.length > 0) {
         const inventoryResult = await partsService.adjustInventoryByWorkOrder([], body.parts, user, session);
         data.inventoryWarnings = inventoryResult.warnings;
+      }
+
+      if (linkedRequest) {
+        await requestService.markConverted(String(linkedRequest._id), {
+          workOrderId: data._id,
+          orderNo: data.order_no,
+          priority: linkedRequest.priority,
+          approvedBy: linkedRequest.approvedBy || user._id,
+          approvedAt: linkedRequest.approvedAt,
+          convertedBy: user._id
+        }, session);
       }
       
       if (userDetails.length > 0) {
@@ -889,8 +1300,13 @@ class OrderService {
       if (body.hasOwnProperty('userIdList')) {
         await userWorkOrderService.updateMappedUsers(id, body.userIdList, session);
       }
+      if (body.hasOwnProperty('procedure_ids') || body.hasOwnProperty('procedure_entries')) {
+        const procedureSync = await this.syncProcedureEntries(updatedData, user.account_id, user, existingOrder.procedure_entries || []);
+        updatedData.procedure_ids = procedureSync.procedure_ids;
+        updatedData.procedure_entries = procedureSync.procedure_entries;
+      }
 
-      updatedData = this.sanitizeWorkOrder(updatedData);
+      updatedData = this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData));
       const data = await WorkOrderModel.findByIdAndUpdate(id, updatedData, { returnDocument: 'after', session });
       if (!data) {
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
@@ -911,18 +1327,29 @@ class OrderService {
   };
 
   async updateDataById(id: any, body: any, user: IUser): Promise<any> {
-    const sanitizedBody = this.sanitizeWorkOrder({ ...body, updatedBy: user._id });
+    const sanitizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body, updatedBy: user._id }));
     return await WorkOrderModel.findByIdAndUpdate(id, sanitizedBody, { returnDocument: 'after' });
   };
 
-  async orderStatusChange(id: string, status: string, user: IUser): Promise<any> {
+  async orderStatusChange(id: string, status: string, user: IUser, blockReason?: string | null): Promise<any> {
     const orderId = helperService.validateObjectId(id);
     const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
     const existingOrder = orders[0];
+    const blockedStatuses = ['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit'];
+    const isBlockedStatus = blockedStatuses.includes(status);
+    const normalizedBlockReason = typeof blockReason === 'string' ? blockReason.trim() : '';
+
+    if (isBlockedStatus && !normalizedBlockReason) {
+      throw Object.assign(new Error('A reason is required for this status'), { status: 400 });
+    }
 
     if (status === 'Completed') {
       if (existingOrder.sop_form_id && !existingOrder.sop_form_submitted) {
         throw Object.assign(new Error('Form is not completed'), { status: 400 });
+      }
+      const incompleteProcedures = (existingOrder.procedures || []).filter((procedure: any) => !this.areProcedureStepsComplete(procedure?.steps || [], procedure?.responses || {}));
+      if (incompleteProcedures.length > 0) {
+        throw Object.assign(new Error('Attached procedures must be completed before closing this work order'), { status: 400 });
       }
       if (existingOrder.parts?.length > 0) {
         existingOrder.parts = existingOrder.parts.map((part: any) => ({
@@ -930,10 +1357,31 @@ class OrderService {
           actualQuantity: part.actualQuantity || part.estimatedQuantity
         }));
       }
+      if (!existingOrder.actual_start_date) {
+        existingOrder.actual_start_date = existingOrder.start_date || new Date();
+      }
+      if (!existingOrder.actual_end_date) {
+        existingOrder.actual_end_date = new Date();
+      }
+      if (existingOrder.actual_start_date && existingOrder.actual_end_date && !(Number(existingOrder.actual_time) > 0)) {
+        const startTime = new Date(existingOrder.actual_start_date).getTime();
+        const endTime = new Date(existingOrder.actual_end_date).getTime();
+        if (endTime >= startTime) {
+          existingOrder.actual_time = Number((((endTime - startTime) / 3600000)).toFixed(2));
+        }
+      }
+    } else if (status === 'In-Progress' && !existingOrder.actual_start_date) {
+      existingOrder.actual_start_date = new Date();
     } else if (status === 'Open') {
       existingOrder.sop_form_submitted = false;
       existingOrder.sop_form_updated_by = null;
       existingOrder.sop_form_updated_at = null;
+    }
+
+    if (isBlockedStatus) {
+      existingOrder.block_reason = normalizedBlockReason;
+    } else if (status !== 'On-Hold') {
+      existingOrder.block_reason = null;
     }
 
     const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
@@ -946,6 +1394,10 @@ class OrderService {
         updatedBy: user._id, 
         status_details: statusDetails, 
         parts: existingOrder.parts, 
+        actual_start_date: existingOrder.actual_start_date,
+        actual_end_date: existingOrder.actual_end_date,
+        actual_time: existingOrder.actual_time,
+        block_reason: existingOrder.block_reason,
         sop_form_submitted: existingOrder.sop_form_submitted,
         sop_form_updated_by: existingOrder.sop_form_updated_by,
         sop_form_updated_at: existingOrder.sop_form_updated_at

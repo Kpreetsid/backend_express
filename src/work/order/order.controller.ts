@@ -93,8 +93,8 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const id = String(req.params.id);
-      const { status } = req.body;
-      await orderService.orderStatusChange(id, status, user);
+      const { status, block_reason } = req.body;
+      await orderService.orderStatusChange(id, status, user, block_reason);
       res.status(200).send({ status: true, message: 'Work order updated successfully.' });
     } catch (error) {
       next(error);
@@ -251,7 +251,7 @@ class OrderController {
         user_role: user.user_role,
         query: req.body
       });
-      match.status = { $in: ['Open', 'In-Progress', 'On-Hold'] };
+      match.status = { $in: ['Open', 'Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'In-Progress', 'On-Hold'] };
       const data = await orderService.getAllOrders(match);
       res.status(200).json({ status: true, message: "Work order pending orders fetched successfully.", data });
     } catch (error) {
