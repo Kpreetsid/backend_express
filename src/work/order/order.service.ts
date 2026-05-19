@@ -794,6 +794,23 @@ class OrderService {
   async createWorkOrder(body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
       const userIdList = Array.isArray(body.userIdList) ? body.userIdList.filter((userId: string) => !!userId) : [];
+      let linkedRequest: any = null;
+      if (body.work_request_id) {
+        linkedRequest = await requestService.getRequestById(String(body.work_request_id));
+        if (!linkedRequest || String(linkedRequest.account_id) !== String(user.account_id)) {
+          throw Object.assign(new Error('Linked work request was not found'), { status: 404 });
+        }
+        if (linkedRequest.status === 'Rejected') {
+          throw Object.assign(new Error('Rejected work requests cannot be converted into work orders'), { status: 400 });
+        }
+        if (linkedRequest.status !== 'Approved') {
+          throw Object.assign(new Error('Only approved work requests can be converted into work orders'), { status: 400 });
+        }
+        if (linkedRequest.converted_work_order_id) {
+          throw Object.assign(new Error('This work request has already been converted into a work order'), { status: 400 });
+        }
+      }
+
       const newAsset = new WorkOrderModel({
         account_id: user.account_id,
         order_no: await this.generateOrderNo(user.account_id),
@@ -848,6 +865,17 @@ class OrderService {
       if (body.parts?.length > 0) {
         const inventoryResult = await partsService.adjustInventoryByWorkOrder([], body.parts, user, session);
         data.inventoryWarnings = inventoryResult.warnings;
+      }
+
+      if (linkedRequest) {
+        await requestService.markConverted(String(linkedRequest._id), {
+          workOrderId: data._id,
+          orderNo: data.order_no,
+          priority: linkedRequest.priority,
+          approvedBy: linkedRequest.approvedBy || user._id,
+          approvedAt: linkedRequest.approvedAt,
+          convertedBy: user._id
+        }, session);
       }
       
       if (userDetails.length > 0) {
