@@ -320,6 +320,14 @@ class OrderService {
   }
 
   private sanitizeWorkOrder(data: any): any {
+    if (data.parts && Array.isArray(data.parts)) {
+      data.parts = data.parts.map((part: any) => ({
+        ...part,
+        part_id: part?.part_id || part?.id || part?._id || null,
+        part_type: part?.part_type || 'N/A'
+      }));
+    }
+
     if (data.tasks && Array.isArray(data.tasks)) {
       data.tasks = data.tasks.map((task: any) => {
         const sanitizedTask = { ...task };
@@ -358,6 +366,17 @@ class OrderService {
     });
 
     return data;
+  }
+
+  private validateIncomingParts(parts: any[] = []): void {
+    for (const part of parts || []) {
+      const rawPartId = String(part?.part_id || part?.id || part?._id || '').trim();
+      try {
+        helperService.validateObjectId(rawPartId);
+      } catch {
+        throw Object.assign(new Error(`Invalid part selection for "${part?.part_name || 'Unnamed Part'}". Please reselect the part and try again.`), { status: 400 });
+      }
+    }
   }
 
   private getWorkOrderPipeline(match: any): any[] {
@@ -705,6 +724,41 @@ class OrderService {
         }
       },
       {
+        $lookup: {
+          from: "inventory_movements",
+          let: { workOrderId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: { $eq: ["$work_order_id", "$$workOrderId"] }
+              }
+            },
+            { $sort: { createdAt: -1 } },
+            {
+              $project: {
+                _id: 1,
+                id: "$_id",
+                part_id: 1,
+                part_name: 1,
+                work_order_id: 1,
+                work_order_no: 1,
+                location_id: 1,
+                movement_type: 1,
+                quantity: 1,
+                stock_before: 1,
+                stock_after: 1,
+                note: 1,
+                createdBy: 1,
+                createdByName: 1,
+                createdAt: 1
+              }
+            }
+          ],
+          as: "partMovements"
+        }
+      },
+      {
         $addFields: {
           id: "$_id",
           parentOrder: { $arrayElemAt: ["$parentOrder", 0] },
@@ -819,7 +873,60 @@ class OrderService {
                         }
                       }
                     },
-                    reservedQuantity: { $ifNull: ["$$part.estimatedQuantity", 0] },
+                    plannedQuantity: { $ifNull: ["$$part.plannedQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] },
+                    reservedQuantity: {
+                      $cond: [
+                        { $eq: ["$status", "Completed"] },
+                        0,
+                        { $ifNull: ["$$part.reservedQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                      ]
+                    },
+                    issuedQuantity: {
+                      $cond: [
+                        { $eq: ["$status", "Completed"] },
+                        {
+                          $ifNull: [
+                            "$$part.issuedQuantity",
+                            { $ifNull: ["$$part.actualQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                          ]
+                        },
+                        0
+                      ]
+                    },
+                    returnedQuantity: {
+                      $cond: [
+                        { $eq: ["$status", "Completed"] },
+                        {
+                          $ifNull: [
+                            "$$part.returnedQuantity",
+                            {
+                              $max: [
+                                {
+                                  $subtract: [
+                                    { $ifNull: ["$$part.estimatedQuantity", 0] },
+                                    { $ifNull: ["$$part.actualQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                                  ]
+                                },
+                                0
+                              ]
+                            }
+                          ]
+                        },
+                        0
+                      ]
+                    },
+                    shortQuantity: {
+                      $ifNull: [
+                        "$$part.shortQuantity",
+                        {
+                          $cond: [
+                            { $eq: ["$status", "Waiting-on-Parts"] },
+                            { $ifNull: ["$$part.estimatedQuantity", 0] },
+                            0
+                          ]
+                        }
+                      ]
+                    },
                     remainingQuantity: {
                       $let: {
                         vars: {
@@ -841,9 +948,107 @@ class OrderService {
                     },
                     reservationStatus: {
                       $cond: [
-                        { $eq: ["$status", "Completed"] },
-                        "Issued",
-                        "Reserved"
+                        { $or: [{ $eq: ["$status", "Waiting-on-Parts"] }, { $eq: ["$status", "Blocked"] }] },
+                        "Short",
+                        {
+                          $cond: [
+                            { $eq: ["$status", "Completed"] },
+                            {
+                              $cond: [
+                                {
+                                  $gt: [
+                                    {
+                                      $ifNull: [
+                                        "$$part.returnedQuantity",
+                                        {
+                                          $max: [
+                                            {
+                                              $subtract: [
+                                                { $ifNull: ["$$part.estimatedQuantity", 0] },
+                                                { $ifNull: ["$$part.actualQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                                              ]
+                                            },
+                                            0
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    0
+                                  ]
+                                },
+                                "Issued / Returned",
+                                "Issued"
+                              ]
+                            },
+                            {
+                              $cond: [
+                                { $gt: [{ $ifNull: ["$$part.estimatedQuantity", 0] }, 0] },
+                                "Reserved",
+                                "Planned"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    lifecycleStatus: {
+                      $cond: [
+                        {
+                          $or: [
+                            { $eq: ["$status", "Waiting-on-Parts"] },
+                            { $eq: [{ $ifNull: ["$$part.lifecycle_status", ""] }, "short"] }
+                          ]
+                        },
+                        "short",
+                        {
+                          $cond: [
+                            { $eq: ["$status", "Completed"] },
+                            {
+                              $cond: [
+                                {
+                                  $and: [
+                                    {
+                                      $gt: [
+                                        {
+                                          $ifNull: [
+                                            "$$part.returnedQuantity",
+                                            {
+                                              $max: [
+                                                {
+                                                  $subtract: [
+                                                    { $ifNull: ["$$part.estimatedQuantity", 0] },
+                                                    { $ifNull: ["$$part.actualQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                                                  ]
+                                                },
+                                                0
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        0
+                                      ]
+                                    },
+                                    {
+                                      $lte: [
+                                        { $ifNull: ["$$part.actualQuantity", 0] },
+                                        0
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "returned",
+                                "issued"
+                              ]
+                            },
+                            {
+                              $cond: [
+                                { $gt: [{ $ifNull: ["$$part.estimatedQuantity", 0] }, 0] },
+                                "reserved",
+                                "planned"
+                              ]
+                            }
+                          ]
+                        }
                       ]
                     },
                     availabilityStatus: {
@@ -1022,9 +1227,13 @@ class OrderService {
     ];
   }
 
-  async getAllOrders(match: any): Promise<any> {
+  async getAllOrders(match: any, session?: any): Promise<any> {
     const pipeline = this.getWorkOrderPipeline(match);
-    const data = await WorkOrderModel.aggregate(pipeline);
+    const aggregateQuery = WorkOrderModel.aggregate(pipeline);
+    if (session) {
+      aggregateQuery.session(session);
+    }
+    const data = await aggregateQuery;
 
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -1294,6 +1503,7 @@ class OrderService {
   async createWorkOrder(body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
       const normalizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body }));
+      this.validateIncomingParts(normalizedBody.parts || []);
       const userIdList = Array.isArray(normalizedBody.userIdList) ? normalizedBody.userIdList.filter((userId: string) => !!userId) : [];
       const procedureSync = await this.syncProcedureEntries(normalizedBody, user.account_id, user, []);
       let linkedRequest: any = null;
@@ -1341,7 +1551,7 @@ class OrderService {
         createdFrom: normalizedBody.createdFrom,
         files: normalizedBody.files,
         tasks: normalizedBody.tasks,
-        parts: normalizedBody.parts,
+        parts: partsService.normalizeWorkOrderParts(normalizedBody.parts || [], normalizedBody.status),
         labor_entries: normalizedBody.labor_entries,
         work_request_id: normalizedBody.work_request_id,
         asset_report_id: normalizedBody.asset_report_id,
@@ -1369,7 +1579,15 @@ class OrderService {
       }
       
       if (normalizedBody.parts?.length > 0) {
-        const inventoryResult = await partsService.adjustInventoryByWorkOrder([], normalizedBody.parts, user, session);
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder([], newAsset.parts || [], user, session, {
+          account_id: user.account_id,
+          work_order_id: data._id,
+          work_order_no: data.order_no,
+          location_id: normalizedBody.wo_location_id,
+          previous_status: 'Open',
+          next_status: normalizedBody.status,
+          note: 'Initial work order parts reservation'
+        });
         data.inventoryWarnings = inventoryResult.warnings;
       }
 
@@ -1386,8 +1604,12 @@ class OrderService {
       
       if (userDetails.length > 0) {
         userDetails.forEach(async (assignedUsers: IUser) => {
-          const orders = await this.getAllOrders({ _id: data._id });
-          await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
+          try {
+            const orders = await this.getAllOrders({ _id: data._id, account_id: user.account_id, visible: true }, session);
+            await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
+          } catch (mailError: any) {
+            console.warn('Failed to prepare work order mail payload after create:', mailError?.message || mailError);
+          }
         });
       }
       
@@ -1401,8 +1623,13 @@ class OrderService {
         sourceUserId: String(user._id)
       });
       
-      const resultData = await this.getAllOrders({ _id: data._id });
-      return resultData[0];
+      try {
+        const resultData = await this.getAllOrders({ _id: data._id, account_id: user.account_id, visible: true }, session);
+        return resultData[0];
+      } catch (readError: any) {
+        console.warn('Failed to fetch enriched work order after create, returning saved document instead:', readError?.message || readError);
+        return data?.toObject ? data.toObject() : data;
+      }
     });
   };
 
@@ -1414,9 +1641,35 @@ class OrderService {
       }
       
       let updatedData = { ...existingOrder.toObject(), ...body };
+      if (body.hasOwnProperty('parts')) {
+        this.validateIncomingParts(body.parts || []);
+      }
       
-      if (body.parts?.length > 0) {
-        const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || [], body.parts, user, session);
+      if (body.hasOwnProperty('parts')) {
+        const normalizedParts = partsService.normalizeWorkOrderParts(body.parts || [], updatedData.status || existingOrder.status);
+        updatedData.parts = normalizedParts;
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || existingOrder.parts || [], normalizedParts, user, session, {
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          work_order_no: existingOrder.order_no,
+          location_id: updatedData.wo_location_id || existingOrder.wo_location_id,
+          previous_status: existingOrder.status,
+          next_status: updatedData.status || existingOrder.status,
+          note: 'Work order parts updated'
+        });
+        updatedData.inventoryWarnings = inventoryResult.warnings;
+      } else if (body.hasOwnProperty('status') && Array.isArray(updatedData.parts)) {
+        const normalizedParts = partsService.normalizeWorkOrderParts(updatedData.parts, updatedData.status || existingOrder.status);
+        updatedData.parts = normalizedParts;
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder(existingOrder.parts || [], normalizedParts, user, session, {
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          work_order_no: existingOrder.order_no,
+          location_id: updatedData.wo_location_id || existingOrder.wo_location_id,
+          previous_status: existingOrder.status,
+          next_status: updatedData.status || existingOrder.status,
+          note: `Work order status changed to ${updatedData.status || existingOrder.status}`
+        });
         updatedData.inventoryWarnings = inventoryResult.warnings;
       }
       
@@ -1436,17 +1689,24 @@ class OrderService {
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
       }
       
-      const resultData = await this.getAllOrders({ _id: id });
+      let responseData: any = null;
+      try {
+        const resultData = await this.getAllOrders({ _id: id, account_id: user.account_id, visible: true }, session);
+        responseData = resultData[0];
+      } catch (readError: any) {
+        console.warn('Failed to fetch enriched work order after update, returning saved document instead:', readError?.message || readError);
+        responseData = data?.toObject ? data.toObject() : data;
+      }
       await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),
         module: 'Work Order',
         event: 'updated',
         entityId: String(id),
-        entityName: resultData[0]?.title || resultData[0]?.order_no || 'Work Order',
+        entityName: responseData?.title || responseData?.order_no || 'Work Order',
         actionUrl: `/work-order/details/${id}`,
         sourceUserId: String(user._id)
       });
-      return resultData[0];
+      return responseData;
     });
   };
 
@@ -1459,6 +1719,7 @@ class OrderService {
     const orderId = helperService.validateObjectId(id);
     const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
     const existingOrder = orders[0];
+    const previousParts = JSON.parse(JSON.stringify(existingOrder.parts || []));
     const blockedStatuses = ['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit'];
     const isBlockedStatus = blockedStatuses.includes(status);
     const normalizedBlockReason = typeof blockReason === 'string' ? blockReason.trim() : '';
@@ -1467,7 +1728,7 @@ class OrderService {
       throw Object.assign(new Error('A reason is required for this status'), { status: 400 });
     }
 
-    if (status === 'Completed') {
+      if (status === 'Completed') {
       if (existingOrder.sop_form_id && !existingOrder.sop_form_submitted) {
         throw Object.assign(new Error('Form is not completed'), { status: 400 });
       }
@@ -1494,9 +1755,9 @@ class OrderService {
           existingOrder.actual_time = Number((((endTime - startTime) / 3600000)).toFixed(2));
         }
       }
-    } else if (status === 'In-Progress' && !existingOrder.actual_start_date) {
-      existingOrder.actual_start_date = new Date();
-    } else if (status === 'Open') {
+      } else if (status === 'In-Progress' && !existingOrder.actual_start_date) {
+        existingOrder.actual_start_date = new Date();
+      } else if (status === 'Open') {
       existingOrder.sop_form_submitted = false;
       existingOrder.sop_form_updated_by = null;
       existingOrder.sop_form_updated_at = null;
@@ -1510,6 +1771,16 @@ class OrderService {
 
     const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
     const statusDetails = [...(existingOrder.status_details || []), statusEntry];
+    const lifecycleParts = partsService.normalizeWorkOrderParts(existingOrder.parts || [], status);
+    const inventoryResult = await partsService.adjustInventoryByWorkOrder(previousParts, lifecycleParts, user, undefined, {
+      account_id: user.account_id,
+      work_order_id: existingOrder._id,
+      work_order_no: existingOrder.order_no,
+      location_id: existingOrder.wo_location_id,
+      previous_status: existingOrder.status,
+      next_status: status,
+      note: `Work order status moved to ${status}`
+    });
 
     const data = await WorkOrderModel.findByIdAndUpdate(
       id,
@@ -1517,7 +1788,7 @@ class OrderService {
         status, 
         updatedBy: user._id, 
         status_details: statusDetails, 
-        parts: existingOrder.parts, 
+        parts: lifecycleParts,
         actual_start_date: existingOrder.actual_start_date,
         actual_end_date: existingOrder.actual_end_date,
         actual_time: existingOrder.actual_time,
@@ -1528,6 +1799,9 @@ class OrderService {
       },
       { returnDocument: 'after' }
     );
+    if (data) {
+      (data as any).inventoryWarnings = inventoryResult.warnings;
+    }
     if (data) {
       await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),
@@ -1547,7 +1821,15 @@ class OrderService {
       await userWorkOrderService.removeMappedUsers(id, session);
       const order: any = await WorkOrderModel.findById(id).session(session).lean();
       if (order?.parts?.length > 0) {
-        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session);
+        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session, {
+          account_id: order.account_id,
+          work_order_id: order._id,
+          work_order_no: order.order_no,
+          location_id: order.wo_location_id,
+          previous_status: order.status,
+          next_status: 'Open',
+          note: 'Work order removed and reservations reversed'
+        });
       }
       return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after', session });
     });
@@ -1558,7 +1840,15 @@ class OrderService {
       await userWorkOrderService.removeMappedUsers(id, session);
       const order: any = await WorkOrderModel.findById(id).session(session).lean();
       if (order?.parts?.length > 0) {
-        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session);
+        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session, {
+          account_id: order.account_id,
+          work_order_id: order._id,
+          work_order_no: order.order_no,
+          location_id: order.wo_location_id,
+          previous_status: order.status,
+          next_status: 'Open',
+          note: 'Work order deleted and reservations reversed'
+        });
       }
       return await WorkOrderModel.findByIdAndDelete(id, { session });
     });

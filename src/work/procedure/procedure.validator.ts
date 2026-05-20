@@ -158,6 +158,43 @@ export const procedureValidator = [
     .isString().withMessage('Description must be a string')
     .trim(),
 
+  body('required_parts')
+    .optional({ nullable: true })
+    .isArray().withMessage('Required parts must be an array'),
+
+  body('required_parts.*.part_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId().withMessage('Each required part id must be a valid id'),
+
+  body('required_parts.*.part_name')
+    .if(body('required_parts').exists())
+    .isString().withMessage('Each required part name must be a string')
+    .trim(),
+
+  body('required_parts.*.part_number')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Each required part number must be a string')
+    .trim(),
+
+  body('required_parts.*.barcode')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Each required part barcode must be a string')
+    .trim(),
+
+  body('required_parts.*.quantity')
+    .if(body('required_parts').exists())
+    .isNumeric().withMessage('Each required part quantity must be numeric'),
+
+  body('required_parts.*.unit')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Each required part unit must be a string')
+    .trim(),
+
+  body('required_parts.*.notes')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Each required part note must be a string')
+    .trim(),
+
   body('version_notes')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Version notes must be a string')
@@ -208,6 +245,43 @@ export const updateProcedureValidator = [
   body('description')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Description must be a string')
+    .trim(),
+
+  body('required_parts')
+    .optional({ nullable: true })
+    .isArray().withMessage('Required parts must be an array'),
+
+  body('required_parts.*.part_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId().withMessage('Each required part id must be a valid id'),
+
+  body('required_parts.*.part_name')
+    .if(body('required_parts').exists())
+    .isString().withMessage('Each required part name must be a string')
+    .trim(),
+
+  body('required_parts.*.part_number')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Each required part number must be a string')
+    .trim(),
+
+  body('required_parts.*.barcode')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Each required part barcode must be a string')
+    .trim(),
+
+  body('required_parts.*.quantity')
+    .if(body('required_parts').exists())
+    .isNumeric().withMessage('Each required part quantity must be numeric'),
+
+  body('required_parts.*.unit')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Each required part unit must be a string')
+    .trim(),
+
+  body('required_parts.*.notes')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Each required part note must be a string')
     .trim(),
 
   body('version_notes')

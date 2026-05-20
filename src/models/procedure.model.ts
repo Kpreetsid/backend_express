@@ -17,6 +17,16 @@ export interface IProcedureCorrectiveAction {
   priority?: string;
 }
 
+export interface IProcedureRequiredPart {
+  part_id?: ObjectId;
+  part_name: string;
+  part_number?: string;
+  barcode?: string;
+  quantity: number;
+  unit?: string;
+  notes?: string;
+}
+
 export interface IProcedureItem {
   id: string;
   type: string;
@@ -41,6 +51,7 @@ export interface IProcedure extends Document {
   location_ids?: ObjectId[];
   asset_ids?: ObjectId[];
   description?: string;
+  required_parts?: IProcedureRequiredPart[];
   steps: IProcedureItem[];
   version_group_id: ObjectId;
   version: number;
@@ -62,6 +73,7 @@ const ProcedureSchema = new Schema<IProcedure>(
     location_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_Location', default: [] },
     asset_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_Asset', default: [] },
     description: { type: String, trim: true },
+    required_parts: { type: [Schema.Types.Mixed] as any, default: [] },
     steps: { type: [Schema.Types.Mixed] as any, default: [] },
     version_group_id: { type: Schema.Types.ObjectId, required: true },
     version: { type: Number, default: 1 },

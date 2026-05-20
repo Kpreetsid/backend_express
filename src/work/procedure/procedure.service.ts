@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { AssetModel } from '../../models/asset.model';
 import { LocationModel } from '../../models/location.model';
+import { PartsModel } from '../../models/part.model';
 import { ProcedureModel } from '../../models/procedure.model';
 import { helperService } from '../../utils/helper';
 
@@ -42,6 +43,7 @@ class ProcedureService {
       location_ids: this.normalizeObjectIds(body.location_ids),
       asset_ids: this.normalizeObjectIds(body.asset_ids),
       description: body.description || '',
+      required_parts: this.normalizeRequiredParts(body.required_parts),
       steps: Array.isArray(body.steps) ? body.steps : [],
       version_group_id: versionGroupId,
       version: 1,
@@ -75,6 +77,7 @@ class ProcedureService {
       location_ids: body.location_ids !== undefined ? this.normalizeObjectIds(body.location_ids) : this.normalizeObjectIds(existingProcedure.location_ids),
       asset_ids: body.asset_ids !== undefined ? this.normalizeObjectIds(body.asset_ids) : this.normalizeObjectIds(existingProcedure.asset_ids),
       description: body.description !== undefined ? (body.description || '') : (existingProcedure.description || ''),
+      required_parts: body.required_parts !== undefined ? this.normalizeRequiredParts(body.required_parts) : this.normalizeRequiredParts(existingProcedure.required_parts),
       steps: body.steps !== undefined ? (Array.isArray(body.steps) ? body.steps : []) : (existingProcedure.steps || []),
       version_group_id: existingProcedure.version_group_id || existingProcedure._id,
       version: nextVersion,
@@ -137,11 +140,14 @@ class ProcedureService {
     const assetIds = Array.from(new Set(
       procedures.flatMap((procedure: any) => (procedure.asset_ids || []).map((id: any) => String(id)))
     ));
+    const requiredPartIds = Array.from(new Set(
+      procedures.flatMap((procedure: any) => (procedure.required_parts || []).map((part: any) => String(part?.part_id || '')).filter(Boolean))
+    ));
     const versionGroupIds = Array.from(new Set(
       procedures.map((procedure: any) => String(procedure.version_group_id || procedure._id))
     )).map((id) => helperService.validateObjectId(id));
 
-    const [locations, assets, versionStats, versionHistory] = await Promise.all([
+    const [locations, assets, requiredParts, versionStats, versionHistory] = await Promise.all([
       locationIds.length
         ? LocationModel.find({
             _id: { $in: locationIds.map((id) => helperService.validateObjectId(id)) },
@@ -159,6 +165,23 @@ class ProcedureService {
           }, {
             asset_name: 1,
             locationId: 1
+          }).lean()
+        : Promise.resolve([]),
+      requiredPartIds.length
+        ? PartsModel.find({
+            _id: { $in: requiredPartIds.map((id) => helperService.validateObjectId(id)) },
+            account_id,
+            visible: true
+          }, {
+            part_name: 1,
+            part_number: 1,
+            barcode: 1,
+            unit: 1,
+            cost: 1,
+            quantity: 1,
+            min_quantity: 1,
+            reorder_point: 1,
+            location_id: 1
           }).lean()
         : Promise.resolve([]),
       ProcedureModel.aggregate([
@@ -213,6 +236,10 @@ class ProcedureService {
       String(item._id),
       item
     ]));
+    const requiredPartMap = new Map(requiredParts.map((part: any) => [
+      String(part._id),
+      part
+    ]));
     const versionHistoryMap = new Map<string, any[]>();
 
     versionHistory.forEach((item: any) => {
@@ -246,6 +273,25 @@ class ProcedureService {
         assets: (procedure.asset_ids || [])
           .map((id: any) => assetMap.get(String(id)))
           .filter(Boolean),
+        required_parts: (procedure.required_parts || []).map((part: any) => {
+          const linkedPart = part?.part_id ? requiredPartMap.get(String(part.part_id)) : null;
+          return {
+            part_id: part?.part_id ? String(part.part_id) : '',
+            part_name: part?.part_name || linkedPart?.part_name || '',
+            part_number: part?.part_number || linkedPart?.part_number || '',
+            barcode: part?.barcode || linkedPart?.barcode || '',
+            quantity: Number(part?.quantity || 0),
+            unit: part?.unit || linkedPart?.unit || '',
+            notes: part?.notes || '',
+            inventory: linkedPart ? {
+              id: String(linkedPart._id),
+              quantity: Number(linkedPart.quantity || 0),
+              min_quantity: Number(linkedPart.min_quantity || 0),
+              reorder_point: Number(linkedPart.reorder_point || 0),
+              location_id: linkedPart.location_id ? String(linkedPart.location_id) : ''
+            } : null
+          };
+        }),
         version_group_id: versionGroupKey,
         version_count: Number(stats.version_count || 1),
         latest_version: Number(stats.latest_version || procedure.version || 1),
@@ -283,6 +329,33 @@ class ProcedureService {
         .map((id: any) => String(id || '').trim())
         .filter(Boolean)
     )).map((id) => helperService.validateObjectId(id));
+  }
+
+  private normalizeRequiredParts(parts: any): any[] {
+    if (!Array.isArray(parts)) {
+      return [];
+    }
+
+    const seen = new Set<string>();
+    return parts
+      .map((part: any) => {
+        const partId = String(part?.part_id || part?.id || part?._id || '').trim();
+        const key = partId || `${String(part?.part_number || '').trim()}::${String(part?.part_name || '').trim()}`;
+        if (!key || seen.has(key)) {
+          return null;
+        }
+        seen.add(key);
+        return {
+          part_id: partId && mongoose.Types.ObjectId.isValid(partId) ? helperService.validateObjectId(partId) : undefined,
+          part_name: String(part?.part_name || '').trim(),
+          part_number: String(part?.part_number || '').trim(),
+          barcode: String(part?.barcode || '').trim(),
+          quantity: Number(part?.quantity || part?.estimatedQuantity || 0),
+          unit: String(part?.unit || '').trim(),
+          notes: String(part?.notes || '').trim()
+        };
+      })
+      .filter((part: any) => part && part.part_name && Number(part.quantity) > 0);
   }
 }
 
