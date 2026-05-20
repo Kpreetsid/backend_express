@@ -34,8 +34,12 @@ const importUpload = multer({
 export default (router: express.Router) => {
     const partRouter = express.Router();
     partRouter.get('/', partsController.getParts);
+    partRouter.get('/cycle-counts', partsController.getCycleCounts);
+    partRouter.get('/replenishment-suggestions', partsController.getReplenishmentSuggestions);
     partRouter.post('/import', importUpload.single('file'), partsController.importParts);
     partRouter.get('/:id', validateParamId, partsController.getPart);
+    partRouter.post('/cycle-counts', partsController.createCycleCount);
+    partRouter.put('/cycle-counts/:id/approve', validateParamId, partsController.approveCycleCount);
     partRouter.post('/', partValidator, validate, partsController.createPart);
     partRouter.put('/:id', validateParamId, partValidator, validate, partsController.updatePart);
     partRouter.patch('/:id', validateParamId, partsController.updateStock);

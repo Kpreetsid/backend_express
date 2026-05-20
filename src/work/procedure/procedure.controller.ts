@@ -12,8 +12,16 @@ class ProcedureController {
       const search = String(req.query.search || '').trim();
       const category = String(req.query.category || '').trim();
       const tag = String(req.query.tag || '').trim();
+      const locationId = req.query.location_id;
+      const assetId = req.query.asset_id;
+      const includeHistory = String(req.query.include_history || '').trim() === 'true';
       if (search && search !== 'undefined' && search !== 'null') {
-        match.name = { $regex: search, $options: 'i' };
+        match.$or = [
+          { name: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { category: { $regex: search, $options: 'i' } },
+          { tags: { $regex: search, $options: 'i' } }
+        ];
       }
       if (category && category !== 'undefined' && category !== 'null') {
         match.category = category;
@@ -21,7 +29,13 @@ class ProcedureController {
       if (tag && tag !== 'undefined' && tag !== 'null') {
         match.tags = tag;
       }
-      const data = await procedureService.getAllProcedures(match);
+      if (locationId && String(locationId).trim() && String(locationId).trim() !== 'undefined' && String(locationId).trim() !== 'null') {
+        match.location_ids = { $in: helperService.validateObjectIds(locationId) };
+      }
+      if (assetId && String(assetId).trim() && String(assetId).trim() !== 'undefined' && String(assetId).trim() !== 'null') {
+        match.asset_ids = { $in: helperService.validateObjectIds(assetId) };
+      }
+      const data = await procedureService.getAllProcedures(match, { includeHistory });
       res.status(200).json({ status: true, message: 'Procedures fetched successfully.', data });
     } catch (error) {
       next(error);

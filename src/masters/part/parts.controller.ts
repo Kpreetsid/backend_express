@@ -38,6 +38,58 @@ class PartsController {
     }
   }
 
+  async getCycleCounts(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const match: any = { account_id: user.account_id, visible: true };
+      const { status, part_id, location_id } = req.query;
+      if (status) {
+        match.status = { $in: String(status).split(',').map((value) => value.trim()).filter(Boolean) };
+      }
+      if (part_id) {
+        match.part_id = { $in: helperService.validateObjectIds(String(part_id)) };
+      }
+      if (location_id) {
+        match.location_id = { $in: helperService.validateObjectIds(String(location_id)) };
+      }
+      const data = await partsService.getCycleCounts(match);
+      res.status(200).json({ status: true, message: 'Cycle counts retrieved successfully', data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async createCycleCount(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const data = await partsService.createCycleCount(req.body, user.account_id, user);
+      res.status(201).json({ status: true, message: 'Cycle count submitted successfully', data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async approveCycleCount(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const decision = String(req.body?.decision || '').trim() === 'rejected' ? 'rejected' : 'approved';
+      const data = await partsService.approveCycleCount(String(req.params.id), decision, user.account_id, user, req.body?.approval_notes);
+      res.status(200).json({ status: true, message: `Cycle count ${decision} successfully`, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getReplenishmentSuggestions(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const data = await partsService.getReplenishmentSuggestions(user.account_id);
+      res.status(200).json({ status: true, message: 'Replenishment suggestions retrieved successfully', data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getPart(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
@@ -143,17 +195,15 @@ class PartsController {
 
   async updateStock(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const { params: { id }, body: { quantity } } = req;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const { params: { id }, body } = req;
       const part = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)), account_id, visible: true });
       if (!part || part.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      
-      const currentPart = part[0];
-      const updatedQuantity = Number(currentPart.quantity) + Number(quantity);
-      
-      const updatedPart = await partsService.updatePartStock(String(id), { quantity: updatedQuantity }, user_id);
+
+      const updatedPart = await partsService.updatePartStock(String(id), body, user, account_id);
       if (!updatedPart) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }

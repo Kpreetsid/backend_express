@@ -9,6 +9,7 @@ import { helperService } from "../../utils/helper";
 import { notificationService } from "../../utils/notification.service";
 import { withTransaction } from "../../utils/transaction.helper";
 import { ProcedureModel } from "../../models/procedure.model";
+import { WorkOrderAssigneeModel } from "../../models/mapUserWorkOrder.model";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -75,6 +76,9 @@ class OrderService {
 
   private areProcedureStepsComplete(steps: any[] = [], responses: Record<string, any> = {}): boolean {
     return (steps || []).every((step: any) => {
+      if (!this.isProcedureStepVisible(step, responses)) {
+        return true;
+      }
       if (step?.type === 'section') {
         return this.areProcedureStepsComplete(step?.items || [], responses);
       }
@@ -82,9 +86,129 @@ class OrderService {
     });
   }
 
+  private isProcedureStepVisible(step: any, responses: Record<string, any> = {}): boolean {
+    const condition = step?.visibility_condition;
+    if (!condition?.step_id || !Array.isArray(condition?.values) || !condition.values.length) {
+      return true;
+    }
+
+    const dependentValue = responses?.[condition.step_id];
+    const normalizedTriggers = condition.values.map((value: any) => String(value || '').trim()).filter(Boolean);
+    if (!normalizedTriggers.length) {
+      return true;
+    }
+
+    if (Array.isArray(dependentValue)) {
+      return dependentValue.some((value) => normalizedTriggers.includes(String(value || '').trim()));
+    }
+
+    return normalizedTriggers.includes(String(dependentValue || '').trim());
+  }
+
+  private collectProcedureScore(steps: any[] = [], responses: Record<string, any> = {}): { earned: number; possible: number; percentage: number | null } {
+    let earned = 0;
+    let possible = 0;
+
+    (steps || []).forEach((step: any) => {
+      if (!this.isProcedureStepVisible(step, responses)) {
+        return;
+      }
+
+      if (step?.type === 'section') {
+        const nested = this.collectProcedureScore(step?.items || [], responses);
+        earned += nested.earned;
+        possible += nested.possible;
+        return;
+      }
+
+      if (step?.type !== 'field' || !step?.scoring_enabled || !Array.isArray(step?.option_scores) || !step.option_scores.length) {
+        return;
+      }
+
+      const scores = step.option_scores.map((score: any) => Number(score || 0));
+      const maxStepScore = ['checkbox', 'checklist'].includes(step?.field_type || '')
+        ? scores.reduce((total: number, score: number) => total + Math.max(score, 0), 0)
+        : (scores.length ? Math.max(...scores, 0) : 0);
+      if (maxStepScore > 0) {
+        possible += maxStepScore;
+      }
+
+      const value = responses?.[step.id];
+      if (Array.isArray(value) && Array.isArray(step?.options)) {
+        earned += value.reduce((total: number, selectedValue: any) => {
+          const optionIndex = step.options.findIndex((option: any) => String(option || '').trim() === String(selectedValue || '').trim());
+          return total + (optionIndex >= 0 ? Number(scores[optionIndex] || 0) : 0);
+        }, 0);
+      } else if (Array.isArray(step?.options)) {
+        const optionIndex = step.options.findIndex((option: any) => String(option || '').trim() === String(value || '').trim());
+        if (optionIndex >= 0) {
+          earned += Number(scores[optionIndex] || 0);
+        }
+      }
+    });
+
+    return {
+      earned,
+      possible,
+      percentage: possible > 0 ? Number(((earned / possible) * 100).toFixed(1)) : null
+    };
+  }
+
+  private collectTriggeredCorrectiveActions(steps: any[] = [], responses: Record<string, any> = {}): any[] {
+    const triggeredActions: any[] = [];
+
+    (steps || []).forEach((step: any) => {
+      if (!this.isProcedureStepVisible(step, responses)) {
+        return;
+      }
+
+      if (step?.type === 'section') {
+        triggeredActions.push(...this.collectTriggeredCorrectiveActions(step?.items || [], responses));
+        return;
+      }
+
+      if (step?.type !== 'field' || !Array.isArray(step?.corrective_actions) || !step.corrective_actions.length) {
+        return;
+      }
+
+      const value = responses?.[step.id];
+      step.corrective_actions.forEach((action: any) => {
+        const triggerValues = Array.isArray(action?.trigger_values)
+          ? action.trigger_values.map((triggerValue: any) => String(triggerValue || '').trim()).filter(Boolean)
+          : [];
+
+        if (!triggerValues.length) {
+          return;
+        }
+
+        const matchedValues = Array.isArray(value)
+          ? value.filter((item: any) => triggerValues.includes(String(item || '').trim()))
+          : triggerValues.includes(String(value || '').trim()) ? [String(value || '').trim()] : [];
+
+        if (!matchedValues.length) {
+          return;
+        }
+
+        triggeredActions.push({
+          id: action?.id || `${step.id}-${Math.random().toString(36).slice(2, 8)}`,
+          step_id: step.id,
+          step_title: step.title || '',
+          title: action?.title || 'Corrective action',
+          description: action?.description || '',
+          priority: action?.priority || '',
+          trigger_values: matchedValues
+        });
+      });
+    });
+
+    return triggeredActions;
+  }
+
   private buildProcedureEntry(template: any, sourceEntry: any, user: IUser): any {
     const responses = sourceEntry?.responses && typeof sourceEntry.responses === 'object' ? sourceEntry.responses : {};
     const completed = this.areProcedureStepsComplete(template?.steps || [], responses);
+    const score_summary = this.collectProcedureScore(template?.steps || [], responses);
+    const triggered_actions = this.collectTriggeredCorrectiveActions(template?.steps || [], responses);
 
     return {
       procedure_id: template?._id || sourceEntry?.procedure_id || null,
@@ -94,6 +218,8 @@ class OrderService {
       description: template?.description || '',
       steps: Array.isArray(template?.steps) ? template.steps : [],
       responses,
+      score_summary,
+      triggered_actions,
       submitted: completed,
       submitted_by: completed
         ? {
@@ -195,6 +321,14 @@ class OrderService {
   }
 
   private sanitizeWorkOrder(data: any): any {
+    if (data.parts && Array.isArray(data.parts)) {
+      data.parts = data.parts.map((part: any) => ({
+        ...part,
+        part_id: part?.part_id || part?.id || part?._id || null,
+        part_type: part?.part_type || 'N/A'
+      }));
+    }
+
     if (data.tasks && Array.isArray(data.tasks)) {
       data.tasks = data.tasks.map((task: any) => {
         const sanitizedTask = { ...task };
@@ -233,6 +367,241 @@ class OrderService {
     });
 
     return data;
+  }
+
+  private validateIncomingParts(parts: any[] = []): void {
+    for (const part of parts || []) {
+      const rawPartId = String(part?.part_id || part?.id || part?._id || '').trim();
+      try {
+        helperService.validateObjectId(rawPartId);
+      } catch {
+        throw Object.assign(new Error(`Invalid part selection for "${part?.part_name || 'Unnamed Part'}". Please reselect the part and try again.`), { status: 400 });
+      }
+    }
+  }
+
+  private hasExecutionOwnedFieldChanges(body: any): boolean {
+    const executionOwnedFields = [
+      'parts',
+      'procedure_ids',
+      'procedure_entries',
+      'labor_entries',
+      'actual_start_date',
+      'actual_end_date',
+      'actual_time'
+    ];
+
+    return executionOwnedFields.some((field: string) => Object.prototype.hasOwnProperty.call(body || {}, field));
+  }
+
+  private async getChildOrderCount(orderId: any, session?: any): Promise<number> {
+    const objectId = helperService.validateObjectId(String(orderId));
+    const query = WorkOrderModel.countDocuments({ parentId: objectId, visible: true });
+    if (session) {
+      query.session(session);
+    }
+    return query;
+  }
+
+  private async getParentOrderForInheritance(parentId: any, account_id: any, session?: any): Promise<any | null> {
+    if (!parentId) {
+      return null;
+    }
+
+    const query = WorkOrderModel.findOne({
+      _id: helperService.validateObjectId(String(parentId)),
+      account_id,
+      visible: true
+    }).lean();
+
+    if (session) {
+      query.session(session);
+    }
+
+    return query;
+  }
+
+  private async getAssignedUserIdsForWorkOrder(workOrderId: any, session?: any): Promise<string[]> {
+    if (!workOrderId) {
+      return [];
+    }
+
+    const query = WorkOrderAssigneeModel.find({ woId: helperService.validateObjectId(String(workOrderId)) }).select('userId').lean();
+    if (session) {
+      query.session(session);
+    }
+
+    const mappings = await query;
+    return mappings
+      .map((mapping: any) => String(mapping?.userId || '').trim())
+      .filter(Boolean);
+  }
+
+  private applyParentInheritance(body: any, parentOrder: any, inheritedUserIds: string[] = []): { normalizedBody: any; userIdList: string[] } {
+    const normalizedBody = { ...body };
+    const assignIfMissing = (field: string, fallbackValue: any): void => {
+      if (
+        (normalizedBody[field] === undefined || normalizedBody[field] === null || normalizedBody[field] === '') &&
+        fallbackValue !== undefined &&
+        fallbackValue !== null &&
+        fallbackValue !== ''
+      ) {
+        normalizedBody[field] = fallbackValue;
+      }
+    };
+
+    assignIfMissing('priority', parentOrder?.priority);
+    assignIfMissing('type', parentOrder?.type);
+    assignIfMissing('nature_of_work', parentOrder?.nature_of_work || parentOrder?.type);
+    assignIfMissing('description', parentOrder?.description);
+    assignIfMissing('wo_location_id', parentOrder?.wo_location_id);
+    assignIfMissing('wo_asset_id', parentOrder?.wo_asset_id);
+    assignIfMissing('start_date', parentOrder?.start_date);
+    assignIfMissing('end_date', parentOrder?.end_date);
+
+    const userIdList = Array.isArray(body?.userIdList) && body.userIdList.length > 0
+      ? body.userIdList.filter((userId: string) => !!userId)
+      : inheritedUserIds;
+
+    return {
+      normalizedBody,
+      userIdList
+    };
+  }
+
+  private buildChildStatusSummary(childOrders: any[] = []): any {
+    const summary = {
+      total: childOrders.length,
+      open: 0,
+      inProgress: 0,
+      blocked: 0,
+      onHold: 0,
+      completed: 0,
+      completionPercent: 0
+    };
+
+    childOrders.forEach((child: any) => {
+      const status = String(child?.status || '').trim();
+      if (status === 'Completed') {
+        summary.completed += 1;
+      } else if (status === 'In-Progress') {
+        summary.inProgress += 1;
+      } else if (status === 'On-Hold') {
+        summary.onHold += 1;
+      } else if (['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit'].includes(status)) {
+        summary.blocked += 1;
+      } else {
+        summary.open += 1;
+      }
+    });
+
+    summary.completionPercent = summary.total > 0
+      ? Number(((summary.completed / summary.total) * 100).toFixed(1))
+      : 0;
+
+    return summary;
+  }
+
+  private buildChildLaborRollup(childOrders: any[] = []): any {
+    let totalHours = 0;
+    let entryCount = 0;
+    const contributorSet = new Set<string>();
+
+    childOrders.forEach((child: any) => {
+      const entries = Array.isArray(child?.labor_entries) ? child.labor_entries : [];
+      entryCount += entries.length;
+
+      if (entries.length > 0) {
+        entries.forEach((entry: any) => {
+          const hours = Number(entry?.hours || 0);
+          if (Number.isFinite(hours) && hours > 0) {
+            totalHours += hours;
+          }
+          const contributorKey = String(entry?.user_id || entry?.vendor_name || '').trim();
+          if (contributorKey) {
+            contributorSet.add(contributorKey);
+          }
+        });
+      } else {
+        const actualHours = Number(child?.actual_time || 0);
+        if (Number.isFinite(actualHours) && actualHours > 0) {
+          totalHours += actualHours;
+        }
+      }
+    });
+
+    return {
+      totalHours: Number(totalHours.toFixed(2)),
+      entryCount,
+      contributorCount: contributorSet.size
+    };
+  }
+
+  private buildChildPartsRollup(childOrders: any[] = []): any {
+    const rollup = {
+      lineCount: 0,
+      plannedQuantity: 0,
+      reservedQuantity: 0,
+      issuedQuantity: 0,
+      returnedQuantity: 0,
+      shortQuantity: 0,
+      shortLineCount: 0
+    };
+
+    childOrders.forEach((child: any) => {
+      const parts = Array.isArray(child?.parts) ? child.parts : [];
+      rollup.lineCount += parts.length;
+
+      parts.forEach((part: any) => {
+        rollup.plannedQuantity += Number(part?.plannedQuantity ?? part?.estimatedQuantity ?? 0) || 0;
+        rollup.reservedQuantity += Number(part?.reservedQuantity ?? 0) || 0;
+        rollup.issuedQuantity += Number(part?.issuedQuantity ?? part?.actualQuantity ?? 0) || 0;
+        rollup.returnedQuantity += Number(part?.returnedQuantity ?? 0) || 0;
+        rollup.shortQuantity += Number(part?.shortQuantity ?? 0) || 0;
+        if (Number(part?.shortQuantity ?? 0) > 0) {
+          rollup.shortLineCount += 1;
+        }
+      });
+    });
+
+    return rollup;
+  }
+
+  private decorateHierarchy(order: any): any {
+    const childOrders = Array.isArray(order?.childOrders) ? order.childOrders : [];
+    const isParentWorkOrder = childOrders.length > 0;
+    const isChildWorkOrder = !!order?.parentId;
+    const childStatusSummary = this.buildChildStatusSummary(childOrders);
+    const childLaborRollup = this.buildChildLaborRollup(childOrders);
+    const childPartsRollup = this.buildChildPartsRollup(childOrders);
+
+    return {
+      ...order,
+      hierarchy: {
+        isParentWorkOrder,
+        isChildWorkOrder,
+        executionOwnedByChildren: isParentWorkOrder,
+        childStatusSummary,
+        childLaborRollup,
+        childPartsRollup,
+        childProgressLabel: isParentWorkOrder
+          ? `${childStatusSummary.completed}/${childStatusSummary.total} complete`
+          : '',
+        parentReference: order?.parentOrder
+          ? {
+              _id: order.parentOrder._id,
+              id: order.parentOrder.id || order.parentOrder._id,
+              order_no: order.parentOrder.order_no,
+              title: order.parentOrder.title,
+              status: order.parentOrder.status
+            }
+          : null
+      }
+    };
+  }
+
+  private decorateHierarchyCollection(orders: any[] = []): any[] {
+    return (orders || []).map((order: any) => this.decorateHierarchy(order));
   }
 
   private getWorkOrderPipeline(match: any): any[] {
@@ -316,7 +685,13 @@ class OrderService {
                 start_date: 1,
                 end_date: 1,
                 estimated_time: 1,
-                actual_time: 1
+                actual_time: 1,
+                wo_asset_id: 1,
+                wo_location_id: 1,
+                parts: 1,
+                labor_entries: 1,
+                procedure_ids: 1,
+                procedure_entries: 1
               }
             }
           ],
@@ -580,6 +955,41 @@ class OrderService {
         }
       },
       {
+        $lookup: {
+          from: "inventory_movements",
+          let: { workOrderId: "$_id" },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: { $eq: ["$work_order_id", "$$workOrderId"] }
+              }
+            },
+            { $sort: { createdAt: -1 } },
+            {
+              $project: {
+                _id: 1,
+                id: "$_id",
+                part_id: 1,
+                part_name: 1,
+                work_order_id: 1,
+                work_order_no: 1,
+                location_id: 1,
+                movement_type: 1,
+                quantity: 1,
+                stock_before: 1,
+                stock_after: 1,
+                note: 1,
+                createdBy: 1,
+                createdByName: 1,
+                createdAt: 1
+              }
+            }
+          ],
+          as: "partMovements"
+        }
+      },
+      {
         $addFields: {
           id: "$_id",
           parentOrder: { $arrayElemAt: ["$parentOrder", 0] },
@@ -694,7 +1104,60 @@ class OrderService {
                         }
                       }
                     },
-                    reservedQuantity: { $ifNull: ["$$part.estimatedQuantity", 0] },
+                    plannedQuantity: { $ifNull: ["$$part.plannedQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] },
+                    reservedQuantity: {
+                      $cond: [
+                        { $eq: ["$status", "Completed"] },
+                        0,
+                        { $ifNull: ["$$part.reservedQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                      ]
+                    },
+                    issuedQuantity: {
+                      $cond: [
+                        { $eq: ["$status", "Completed"] },
+                        {
+                          $ifNull: [
+                            "$$part.issuedQuantity",
+                            { $ifNull: ["$$part.actualQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                          ]
+                        },
+                        0
+                      ]
+                    },
+                    returnedQuantity: {
+                      $cond: [
+                        { $eq: ["$status", "Completed"] },
+                        {
+                          $ifNull: [
+                            "$$part.returnedQuantity",
+                            {
+                              $max: [
+                                {
+                                  $subtract: [
+                                    { $ifNull: ["$$part.estimatedQuantity", 0] },
+                                    { $ifNull: ["$$part.actualQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                                  ]
+                                },
+                                0
+                              ]
+                            }
+                          ]
+                        },
+                        0
+                      ]
+                    },
+                    shortQuantity: {
+                      $ifNull: [
+                        "$$part.shortQuantity",
+                        {
+                          $cond: [
+                            { $eq: ["$status", "Waiting-on-Parts"] },
+                            { $ifNull: ["$$part.estimatedQuantity", 0] },
+                            0
+                          ]
+                        }
+                      ]
+                    },
                     remainingQuantity: {
                       $let: {
                         vars: {
@@ -716,9 +1179,107 @@ class OrderService {
                     },
                     reservationStatus: {
                       $cond: [
-                        { $eq: ["$status", "Completed"] },
-                        "Issued",
-                        "Reserved"
+                        { $or: [{ $eq: ["$status", "Waiting-on-Parts"] }, { $eq: ["$status", "Blocked"] }] },
+                        "Short",
+                        {
+                          $cond: [
+                            { $eq: ["$status", "Completed"] },
+                            {
+                              $cond: [
+                                {
+                                  $gt: [
+                                    {
+                                      $ifNull: [
+                                        "$$part.returnedQuantity",
+                                        {
+                                          $max: [
+                                            {
+                                              $subtract: [
+                                                { $ifNull: ["$$part.estimatedQuantity", 0] },
+                                                { $ifNull: ["$$part.actualQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                                              ]
+                                            },
+                                            0
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    0
+                                  ]
+                                },
+                                "Issued / Returned",
+                                "Issued"
+                              ]
+                            },
+                            {
+                              $cond: [
+                                { $gt: [{ $ifNull: ["$$part.estimatedQuantity", 0] }, 0] },
+                                "Reserved",
+                                "Planned"
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    lifecycleStatus: {
+                      $cond: [
+                        {
+                          $or: [
+                            { $eq: ["$status", "Waiting-on-Parts"] },
+                            { $eq: [{ $ifNull: ["$$part.lifecycle_status", ""] }, "short"] }
+                          ]
+                        },
+                        "short",
+                        {
+                          $cond: [
+                            { $eq: ["$status", "Completed"] },
+                            {
+                              $cond: [
+                                {
+                                  $and: [
+                                    {
+                                      $gt: [
+                                        {
+                                          $ifNull: [
+                                            "$$part.returnedQuantity",
+                                            {
+                                              $max: [
+                                                {
+                                                  $subtract: [
+                                                    { $ifNull: ["$$part.estimatedQuantity", 0] },
+                                                    { $ifNull: ["$$part.actualQuantity", { $ifNull: ["$$part.estimatedQuantity", 0] }] }
+                                                  ]
+                                                },
+                                                0
+                                              ]
+                                            }
+                                          ]
+                                        },
+                                        0
+                                      ]
+                                    },
+                                    {
+                                      $lte: [
+                                        { $ifNull: ["$$part.actualQuantity", 0] },
+                                        0
+                                      ]
+                                    }
+                                  ]
+                                },
+                                "returned",
+                                "issued"
+                              ]
+                            },
+                            {
+                              $cond: [
+                                { $gt: [{ $ifNull: ["$$part.estimatedQuantity", 0] }, 0] },
+                                "reserved",
+                                "planned"
+                              ]
+                            }
+                          ]
+                        }
                       ]
                     },
                     availabilityStatus: {
@@ -897,9 +1458,13 @@ class OrderService {
     ];
   }
 
-  async getAllOrders(match: any): Promise<any> {
+  async getAllOrders(match: any, session?: any): Promise<any> {
     const pipeline = this.getWorkOrderPipeline(match);
-    const data = await WorkOrderModel.aggregate(pipeline);
+    const aggregateQuery = WorkOrderModel.aggregate(pipeline);
+    if (session) {
+      aggregateQuery.session(session);
+    }
+    const data = await aggregateQuery;
 
     if (!data || data.length === 0) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -913,12 +1478,13 @@ class OrderService {
       item.comments = commentMap.get(String(item._id)) || [];
       result.push(item);
     }
-    return result;
+    return this.decorateHierarchyCollection(result);
   };
 
   async buildSearchMatch(params: WorkOrderSearchParams): Promise<any> {
     const { account_id, user_id, user_role, query } = params;
     const match: any = { account_id, visible: true };
+    const userObjectId = helperService.validateObjectId(String(user_id));
 
     if (query.status) match.status = { $in: query.status.toString().split(',') };
     if (query.priority) match.priority = { $in: query.priority.toString().split(',') };
@@ -945,11 +1511,11 @@ class OrderService {
           break;
         }
         case "createdByMe": {
-          match.createdBy = user_id;
+          match.createdBy = userObjectId;
           break;
         }
         case "openToAll": {
-          match.createdBy = { $ne: user_id };
+          match.createdBy = { $ne: userObjectId };
           if (!query.status) {
             match.status = { $in: ["Open", "Blocked", "Waiting-on-Parts", "Waiting-on-Permit", "In-Progress", "On-Hold"] };
           }
@@ -961,9 +1527,9 @@ class OrderService {
     } else if (user_role !== 'admin') {
       const userWorkOrderIdList = await userWorkOrderService.getMappedWorkOrderIDs(user_id);
       if (!userWorkOrderIdList || userWorkOrderIdList.length === 0) {
-        match.createdBy = user_id;
+        match.createdBy = userObjectId;
       } else {
-        match.$or = [{ _id: { $in: userWorkOrderIdList } }, { createdBy: user_id }];
+        match.$or = [{ _id: { $in: userWorkOrderIdList } }, { createdBy: userObjectId }];
       }
     }
 
@@ -994,7 +1560,7 @@ class OrderService {
       item.comments = commentMap.get(String(item._id)) || [];
       result.push(item);
     }
-    return result;
+    return this.decorateHierarchyCollection(result);
   }
 
   async orderStatus(match: any): Promise<any> {
@@ -1167,11 +1733,25 @@ class OrderService {
 
   async createWorkOrder(body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
-      const userIdList = Array.isArray(body.userIdList) ? body.userIdList.filter((userId: string) => !!userId) : [];
-      const procedureSync = await this.syncProcedureEntries(body, user.account_id, user, []);
+      let normalizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body }));
+      this.validateIncomingParts(normalizedBody.parts || []);
+      let userIdList = Array.isArray(normalizedBody.userIdList) ? normalizedBody.userIdList.filter((userId: string) => !!userId) : [];
+
+      if (normalizedBody.parentId) {
+        const parentOrder = await this.getParentOrderForInheritance(normalizedBody.parentId, user.account_id, session);
+        if (!parentOrder) {
+          throw Object.assign(new Error('Parent work order not found'), { status: 404 });
+        }
+        const parentAssignedUserIds = await this.getAssignedUserIdsForWorkOrder(parentOrder._id, session);
+        const inheritedState = this.applyParentInheritance(normalizedBody, parentOrder, parentAssignedUserIds);
+        normalizedBody = inheritedState.normalizedBody;
+        userIdList = inheritedState.userIdList;
+      }
+
+      const procedureSync = await this.syncProcedureEntries(normalizedBody, user.account_id, user, []);
       let linkedRequest: any = null;
-      if (body.work_request_id) {
-        linkedRequest = await requestService.getRequestById(String(body.work_request_id));
+      if (normalizedBody.work_request_id) {
+        linkedRequest = await requestService.getRequestById(String(normalizedBody.work_request_id));
         if (!linkedRequest || String(linkedRequest.account_id) !== String(user.account_id)) {
           throw Object.assign(new Error('Linked work request was not found'), { status: 404 });
         }
@@ -1189,41 +1769,38 @@ class OrderService {
       const newAsset = new WorkOrderModel({
         account_id: user.account_id,
         order_no: await this.generateOrderNo(user.account_id),
-        title: body.title,
-        description: body.description,
-        estimated_time: body.estimated_time,
-        actual_start_date: body.actual_start_date,
-        actual_end_date: body.actual_end_date,
-        actual_time: body.actual_time,
-        block_reason: body.block_reason,
-        parentId: body.parentId,
-        priority: body.priority,
-        status: body.status,
-        type: body.type,
-        nature_of_work: body.type,
-        sop_form_id: body.sop_form_id,
+        title: normalizedBody.title,
+        description: normalizedBody.description,
+        estimated_time: normalizedBody.estimated_time,
+        actual_start_date: normalizedBody.actual_start_date,
+        actual_end_date: normalizedBody.actual_end_date,
+        actual_time: normalizedBody.actual_time,
+        block_reason: normalizedBody.block_reason,
+        parentId: normalizedBody.parentId,
+        priority: normalizedBody.priority,
+        status: normalizedBody.status,
+        type: normalizedBody.type,
+        nature_of_work: normalizedBody.nature_of_work || normalizedBody.type,
+        sop_form_id: normalizedBody.sop_form_id,
         procedure_ids: procedureSync.procedure_ids,
         procedure_entries: procedureSync.procedure_entries,
         rescheduleEnabled: false,
         created_by: user._id,
-        wo_asset_id: body.wo_asset_id,
-        wo_location_id: body.wo_location_id,
-        end_date: body.end_date,
-        start_date: body.start_date,
-        sopForm: body.sopForm,
-        createdFrom: body.createdFrom,
-        files: body.files,
-        tasks: body.tasks,
-        parts: body.parts,
-        labor_entries: body.labor_entries,
-        work_request_id: body.work_request_id,
-        asset_report_id: body.asset_report_id,
-        status_details: [{ status: body.status, createdBy: user._id }],
+        wo_asset_id: normalizedBody.wo_asset_id,
+        wo_location_id: normalizedBody.wo_location_id,
+        end_date: normalizedBody.end_date,
+        start_date: normalizedBody.start_date,
+        sopForm: normalizedBody.sopForm,
+        createdFrom: normalizedBody.createdFrom,
+        files: normalizedBody.files,
+        tasks: normalizedBody.tasks,
+        parts: partsService.normalizeWorkOrderParts(normalizedBody.parts || [], normalizedBody.status),
+        labor_entries: normalizedBody.labor_entries,
+        work_request_id: normalizedBody.work_request_id,
+        asset_report_id: normalizedBody.asset_report_id,
+        status_details: [{ status: normalizedBody.status, createdBy: user._id }],
         createdBy: user._id
       });
-
-      const sanitizedData = this.normalizeTimingFields(this.sanitizeWorkOrder(newAsset.toObject()));
-      Object.assign(newAsset, sanitizedData);
 
       const data: any = await newAsset.save({ session });
       if (!data) {
@@ -1244,8 +1821,16 @@ class OrderService {
         }
       }
       
-      if (body.parts?.length > 0) {
-        const inventoryResult = await partsService.adjustInventoryByWorkOrder([], body.parts, user, session);
+      if (normalizedBody.parts?.length > 0) {
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder([], newAsset.parts || [], user, session, {
+          account_id: user.account_id,
+          work_order_id: data._id,
+          work_order_no: data.order_no,
+          location_id: normalizedBody.wo_location_id,
+          previous_status: 'Open',
+          next_status: normalizedBody.status,
+          note: 'Initial work order parts reservation'
+        });
         data.inventoryWarnings = inventoryResult.warnings;
       }
 
@@ -1262,8 +1847,12 @@ class OrderService {
       
       if (userDetails.length > 0) {
         userDetails.forEach(async (assignedUsers: IUser) => {
-          const orders = await this.getAllOrders({ _id: data._id });
-          await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
+          try {
+            const orders = await this.getAllOrders({ _id: data._id, account_id: user.account_id, visible: true }, session);
+            await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
+          } catch (mailError: any) {
+            console.warn('Failed to prepare work order mail payload after create:', mailError?.message || mailError);
+          }
         });
       }
       
@@ -1277,8 +1866,13 @@ class OrderService {
         sourceUserId: String(user._id)
       });
       
-      const resultData = await this.getAllOrders({ _id: data._id });
-      return resultData[0];
+      try {
+        const resultData = await this.getAllOrders({ _id: data._id, account_id: user.account_id, visible: true }, session);
+        return resultData[0];
+      } catch (readError: any) {
+        console.warn('Failed to fetch enriched work order after create, returning saved document instead:', readError?.message || readError);
+        return data?.toObject ? data.toObject() : data;
+      }
     });
   };
 
@@ -1288,11 +1882,48 @@ class OrderService {
       if (!existingOrder) {
         throw Object.assign(new Error('Work Order not found'), { status: 404 });
       }
+
+      const childCount = await this.getChildOrderCount(id, session);
+      if (childCount > 0 && this.hasExecutionOwnedFieldChanges(body)) {
+        throw Object.assign(new Error('Parts, procedures, labor, and actual execution data are tracked on child work orders for parent work orders.'), { status: 400 });
+      }
+      if (childCount > 0 && Object.prototype.hasOwnProperty.call(body || {}, 'status')) {
+        const requestedStatus = String(body?.status || '').trim();
+        if (['In-Progress', 'Completed'].includes(requestedStatus)) {
+          throw Object.assign(new Error('Move child work orders through execution. Parent work orders roll up child progress.'), { status: 400 });
+        }
+      }
       
       let updatedData = { ...existingOrder.toObject(), ...body };
+      if (body.hasOwnProperty('parts')) {
+        this.validateIncomingParts(body.parts || []);
+      }
       
-      if (body.parts?.length > 0) {
-        const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || [], body.parts, user, session);
+      if (body.hasOwnProperty('parts')) {
+        const normalizedParts = partsService.normalizeWorkOrderParts(body.parts || [], updatedData.status || existingOrder.status);
+        updatedData.parts = normalizedParts;
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || existingOrder.parts || [], normalizedParts, user, session, {
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          work_order_no: existingOrder.order_no,
+          location_id: updatedData.wo_location_id || existingOrder.wo_location_id,
+          previous_status: existingOrder.status,
+          next_status: updatedData.status || existingOrder.status,
+          note: 'Work order parts updated'
+        });
+        updatedData.inventoryWarnings = inventoryResult.warnings;
+      } else if (body.hasOwnProperty('status') && Array.isArray(updatedData.parts)) {
+        const normalizedParts = partsService.normalizeWorkOrderParts(updatedData.parts, updatedData.status || existingOrder.status);
+        updatedData.parts = normalizedParts;
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder(existingOrder.parts || [], normalizedParts, user, session, {
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          work_order_no: existingOrder.order_no,
+          location_id: updatedData.wo_location_id || existingOrder.wo_location_id,
+          previous_status: existingOrder.status,
+          next_status: updatedData.status || existingOrder.status,
+          note: `Work order status changed to ${updatedData.status || existingOrder.status}`
+        });
         updatedData.inventoryWarnings = inventoryResult.warnings;
       }
       
@@ -1312,17 +1943,24 @@ class OrderService {
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
       }
       
-      const resultData = await this.getAllOrders({ _id: id });
+      let responseData: any = null;
+      try {
+        const resultData = await this.getAllOrders({ _id: id, account_id: user.account_id, visible: true }, session);
+        responseData = resultData[0];
+      } catch (readError: any) {
+        console.warn('Failed to fetch enriched work order after update, returning saved document instead:', readError?.message || readError);
+        responseData = data?.toObject ? data.toObject() : data;
+      }
       await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),
         module: 'Work Order',
         event: 'updated',
         entityId: String(id),
-        entityName: resultData[0]?.title || resultData[0]?.order_no || 'Work Order',
+        entityName: responseData?.title || responseData?.order_no || 'Work Order',
         actionUrl: `/work-order/details/${id}`,
         sourceUserId: String(user._id)
       });
-      return resultData[0];
+      return responseData;
     });
   };
 
@@ -1335,12 +1973,22 @@ class OrderService {
     const orderId = helperService.validateObjectId(id);
     const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
     const existingOrder = orders[0];
+    const hierarchy = existingOrder?.hierarchy || {};
+    const previousParts = JSON.parse(JSON.stringify(existingOrder.parts || []));
     const blockedStatuses = ['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit'];
     const isBlockedStatus = blockedStatuses.includes(status);
     const normalizedBlockReason = typeof blockReason === 'string' ? blockReason.trim() : '';
 
     if (isBlockedStatus && !normalizedBlockReason) {
       throw Object.assign(new Error('A reason is required for this status'), { status: 400 });
+    }
+
+    if (hierarchy?.executionOwnedByChildren && status === 'In-Progress') {
+      throw Object.assign(new Error('Start child work orders to begin execution. Parent work orders roll up child progress.'), { status: 400 });
+    }
+
+    if (hierarchy?.executionOwnedByChildren && status === 'Completed' && Number(hierarchy?.childStatusSummary?.completed || 0) !== Number(hierarchy?.childStatusSummary?.total || 0)) {
+      throw Object.assign(new Error('All child work orders must be completed before the parent work order can be closed.'), { status: 400 });
     }
 
     if (status === 'Completed') {
@@ -1370,9 +2018,9 @@ class OrderService {
           existingOrder.actual_time = Number((((endTime - startTime) / 3600000)).toFixed(2));
         }
       }
-    } else if (status === 'In-Progress' && !existingOrder.actual_start_date) {
-      existingOrder.actual_start_date = new Date();
-    } else if (status === 'Open') {
+      } else if (status === 'In-Progress' && !existingOrder.actual_start_date) {
+        existingOrder.actual_start_date = new Date();
+      } else if (status === 'Open') {
       existingOrder.sop_form_submitted = false;
       existingOrder.sop_form_updated_by = null;
       existingOrder.sop_form_updated_at = null;
@@ -1386,6 +2034,16 @@ class OrderService {
 
     const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
     const statusDetails = [...(existingOrder.status_details || []), statusEntry];
+    const lifecycleParts = partsService.normalizeWorkOrderParts(existingOrder.parts || [], status);
+    const inventoryResult = await partsService.adjustInventoryByWorkOrder(previousParts, lifecycleParts, user, undefined, {
+      account_id: user.account_id,
+      work_order_id: existingOrder._id,
+      work_order_no: existingOrder.order_no,
+      location_id: existingOrder.wo_location_id,
+      previous_status: existingOrder.status,
+      next_status: status,
+      note: `Work order status moved to ${status}`
+    });
 
     const data = await WorkOrderModel.findByIdAndUpdate(
       id,
@@ -1393,7 +2051,7 @@ class OrderService {
         status, 
         updatedBy: user._id, 
         status_details: statusDetails, 
-        parts: existingOrder.parts, 
+        parts: lifecycleParts,
         actual_start_date: existingOrder.actual_start_date,
         actual_end_date: existingOrder.actual_end_date,
         actual_time: existingOrder.actual_time,
@@ -1404,6 +2062,9 @@ class OrderService {
       },
       { returnDocument: 'after' }
     );
+    if (data) {
+      (data as any).inventoryWarnings = inventoryResult.warnings;
+    }
     if (data) {
       await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),
@@ -1423,7 +2084,15 @@ class OrderService {
       await userWorkOrderService.removeMappedUsers(id, session);
       const order: any = await WorkOrderModel.findById(id).session(session).lean();
       if (order?.parts?.length > 0) {
-        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session);
+        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session, {
+          account_id: order.account_id,
+          work_order_id: order._id,
+          work_order_no: order.order_no,
+          location_id: order.wo_location_id,
+          previous_status: order.status,
+          next_status: 'Open',
+          note: 'Work order removed and reservations reversed'
+        });
       }
       return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after', session });
     });
@@ -1434,7 +2103,15 @@ class OrderService {
       await userWorkOrderService.removeMappedUsers(id, session);
       const order: any = await WorkOrderModel.findById(id).session(session).lean();
       if (order?.parts?.length > 0) {
-        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session);
+        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session, {
+          account_id: order.account_id,
+          work_order_id: order._id,
+          work_order_no: order.order_no,
+          location_id: order.wo_location_id,
+          previous_status: order.status,
+          next_status: 'Open',
+          note: 'Work order deleted and reservations reversed'
+        });
       }
       return await WorkOrderModel.findByIdAndDelete(id, { session });
     });

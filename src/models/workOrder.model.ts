@@ -54,6 +54,12 @@ export interface IParts {
   part_type: string;
   estimatedQuantity: number;
   actualQuantity: number;
+  plannedQuantity?: number;
+  reservedQuantity?: number;
+  issuedQuantity?: number;
+  returnedQuantity?: number;
+  shortQuantity?: number;
+  lifecycle_status?: 'planned' | 'reserved' | 'issued' | 'returned' | 'short';
   unit: string;
   cost: number;
   currency: string;
@@ -65,6 +71,12 @@ const PartsSchema = new Schema<IParts>({
   part_type: { type: String, trim: true, required: true },
   estimatedQuantity: { type: Number, required: true },
   actualQuantity: { type: Number },
+  plannedQuantity: { type: Number, default: 0 },
+  reservedQuantity: { type: Number, default: 0 },
+  issuedQuantity: { type: Number, default: 0 },
+  returnedQuantity: { type: Number, default: 0 },
+  shortQuantity: { type: Number, default: 0 },
+  lifecycle_status: { type: String, enum: ['planned', 'reserved', 'issued', 'returned', 'short'], default: 'planned' },
   unit: { type: String, trim: true },
   cost: { type: Number },
   currency: { type: String, trim: true }
@@ -107,6 +119,12 @@ export interface IProcedureExecutionEntry {
   description?: string;
   steps: any[];
   responses?: Record<string, any>;
+  score_summary?: {
+    earned: number;
+    possible: number;
+    percentage?: number | null;
+  };
+  triggered_actions?: any[];
   submitted?: boolean;
   submitted_by?: {
     id: string;
@@ -124,6 +142,8 @@ const ProcedureExecutionEntrySchema = new Schema<IProcedureExecutionEntry>({
   description: { type: String, trim: true },
   steps: { type: [Schema.Types.Mixed] as any, default: [] },
   responses: { type: Schema.Types.Mixed, default: {} },
+  score_summary: { type: Schema.Types.Mixed },
+  triggered_actions: { type: [Schema.Types.Mixed] as any, default: [] },
   submitted: { type: Boolean, default: false },
   submitted_by: {
     id: { type: String },
