@@ -15,8 +15,8 @@ export default (router: express.Router) => {
     userRouter.get('/location/:id', validateParamId, userController.getLocationWiseUsers);
     userRouter.post('/', userValidator, validate, userController.createUser);
     userRouter.post('/change-password', userController.updatePasswordUser);
-    userRouter.put('/:id', validateParamId, userValidator, validate, userController.updateUser);
-    userRouter.patch('/:id', validateParamId, userValidator, validate, userController.updateUser);
+    userRouter.put('/:id', validateParamId, userController.updateUser);
+    userRouter.patch('/:id', validateParamId, userController.updateUser);
     userRouter.delete('/:id', validateParamId, userController.removeUser);
     router.use('/users', userRouter);
 }
