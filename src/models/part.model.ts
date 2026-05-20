@@ -5,13 +5,13 @@ export interface IPart extends Document {
   account_id: ObjectId;
   part_name: string;
   part_number: string;
-  part_type: ObjectId;
+  part_type?: ObjectId;
   unit: string;
   description: string;
   quantity: number;
   min_quantity: number;
   cost: number;
-  location_id: ObjectId;
+  location_id?: ObjectId;
   currency: string;
   visible: boolean;
   createdBy: ObjectId;
@@ -22,13 +22,13 @@ const partSchema = new Schema<IPart>({
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   part_name: { type: String, required: true, trim: true },
   part_number: { type: String, required: true, trim: true },
-  part_type: { type: mongoose.Schema.Types.ObjectId, ref: 'Schema_PartsTypes', required: true },
+  part_type: { type: mongoose.Schema.Types.ObjectId, ref: 'Schema_PartsTypes', required: false },
   unit: { type: String, trim: true, required: true },
   description: { type: String, trim: true },
   quantity: { type: Number, required: true },
   min_quantity: { type: Number, required: true },
   cost: { type: Number, required: true },
-  location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: false },
   currency: { type: String, trim: true, default: 'INR' },
   visible: { type: Boolean, required: true, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },

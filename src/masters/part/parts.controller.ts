@@ -78,6 +78,44 @@ class PartsController {
     }
   }
 
+  async importParts(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const rawParts = req.body?.parts;
+      let parts: any[] = [];
+
+      if (typeof rawParts === 'string') {
+        parts = JSON.parse(rawParts);
+      } else if (Array.isArray(rawParts)) {
+        parts = rawParts;
+      }
+
+      if (!Array.isArray(parts) || parts.length === 0) {
+        throw Object.assign(new Error('Import file contains no valid parts data'), { status: 400 });
+      }
+
+      const result = await partsService.importParts(parts, account_id, user_id);
+      const file = req.file ? {
+        originalName: req.file.originalname,
+        fileName: req.file.filename,
+        path: req.file.path,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      } : null;
+
+      res.status(201).json({
+        status: result.imported > 0,
+        message: result.failed
+          ? `Imported ${result.imported} out of ${result.total} parts.`
+          : `Successfully imported ${result.imported} parts.`,
+        data: result,
+        file
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async updatePart(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
