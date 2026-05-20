@@ -9,6 +9,7 @@ import { helperService } from "../../utils/helper";
 import { notificationService } from "../../utils/notification.service";
 import { withTransaction } from "../../utils/transaction.helper";
 import { ProcedureModel } from "../../models/procedure.model";
+import { WorkOrderAssigneeModel } from "../../models/mapUserWorkOrder.model";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -379,6 +380,230 @@ class OrderService {
     }
   }
 
+  private hasExecutionOwnedFieldChanges(body: any): boolean {
+    const executionOwnedFields = [
+      'parts',
+      'procedure_ids',
+      'procedure_entries',
+      'labor_entries',
+      'actual_start_date',
+      'actual_end_date',
+      'actual_time'
+    ];
+
+    return executionOwnedFields.some((field: string) => Object.prototype.hasOwnProperty.call(body || {}, field));
+  }
+
+  private async getChildOrderCount(orderId: any, session?: any): Promise<number> {
+    const objectId = helperService.validateObjectId(String(orderId));
+    const query = WorkOrderModel.countDocuments({ parentId: objectId, visible: true });
+    if (session) {
+      query.session(session);
+    }
+    return query;
+  }
+
+  private async getParentOrderForInheritance(parentId: any, account_id: any, session?: any): Promise<any | null> {
+    if (!parentId) {
+      return null;
+    }
+
+    const query = WorkOrderModel.findOne({
+      _id: helperService.validateObjectId(String(parentId)),
+      account_id,
+      visible: true
+    }).lean();
+
+    if (session) {
+      query.session(session);
+    }
+
+    return query;
+  }
+
+  private async getAssignedUserIdsForWorkOrder(workOrderId: any, session?: any): Promise<string[]> {
+    if (!workOrderId) {
+      return [];
+    }
+
+    const query = WorkOrderAssigneeModel.find({ woId: helperService.validateObjectId(String(workOrderId)) }).select('userId').lean();
+    if (session) {
+      query.session(session);
+    }
+
+    const mappings = await query;
+    return mappings
+      .map((mapping: any) => String(mapping?.userId || '').trim())
+      .filter(Boolean);
+  }
+
+  private applyParentInheritance(body: any, parentOrder: any, inheritedUserIds: string[] = []): { normalizedBody: any; userIdList: string[] } {
+    const normalizedBody = { ...body };
+    const assignIfMissing = (field: string, fallbackValue: any): void => {
+      if (
+        (normalizedBody[field] === undefined || normalizedBody[field] === null || normalizedBody[field] === '') &&
+        fallbackValue !== undefined &&
+        fallbackValue !== null &&
+        fallbackValue !== ''
+      ) {
+        normalizedBody[field] = fallbackValue;
+      }
+    };
+
+    assignIfMissing('priority', parentOrder?.priority);
+    assignIfMissing('type', parentOrder?.type);
+    assignIfMissing('nature_of_work', parentOrder?.nature_of_work || parentOrder?.type);
+    assignIfMissing('description', parentOrder?.description);
+    assignIfMissing('wo_location_id', parentOrder?.wo_location_id);
+    assignIfMissing('wo_asset_id', parentOrder?.wo_asset_id);
+    assignIfMissing('start_date', parentOrder?.start_date);
+    assignIfMissing('end_date', parentOrder?.end_date);
+
+    const userIdList = Array.isArray(body?.userIdList) && body.userIdList.length > 0
+      ? body.userIdList.filter((userId: string) => !!userId)
+      : inheritedUserIds;
+
+    return {
+      normalizedBody,
+      userIdList
+    };
+  }
+
+  private buildChildStatusSummary(childOrders: any[] = []): any {
+    const summary = {
+      total: childOrders.length,
+      open: 0,
+      inProgress: 0,
+      blocked: 0,
+      onHold: 0,
+      completed: 0,
+      completionPercent: 0
+    };
+
+    childOrders.forEach((child: any) => {
+      const status = String(child?.status || '').trim();
+      if (status === 'Completed') {
+        summary.completed += 1;
+      } else if (status === 'In-Progress') {
+        summary.inProgress += 1;
+      } else if (status === 'On-Hold') {
+        summary.onHold += 1;
+      } else if (['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit'].includes(status)) {
+        summary.blocked += 1;
+      } else {
+        summary.open += 1;
+      }
+    });
+
+    summary.completionPercent = summary.total > 0
+      ? Number(((summary.completed / summary.total) * 100).toFixed(1))
+      : 0;
+
+    return summary;
+  }
+
+  private buildChildLaborRollup(childOrders: any[] = []): any {
+    let totalHours = 0;
+    let entryCount = 0;
+    const contributorSet = new Set<string>();
+
+    childOrders.forEach((child: any) => {
+      const entries = Array.isArray(child?.labor_entries) ? child.labor_entries : [];
+      entryCount += entries.length;
+
+      if (entries.length > 0) {
+        entries.forEach((entry: any) => {
+          const hours = Number(entry?.hours || 0);
+          if (Number.isFinite(hours) && hours > 0) {
+            totalHours += hours;
+          }
+          const contributorKey = String(entry?.user_id || entry?.vendor_name || '').trim();
+          if (contributorKey) {
+            contributorSet.add(contributorKey);
+          }
+        });
+      } else {
+        const actualHours = Number(child?.actual_time || 0);
+        if (Number.isFinite(actualHours) && actualHours > 0) {
+          totalHours += actualHours;
+        }
+      }
+    });
+
+    return {
+      totalHours: Number(totalHours.toFixed(2)),
+      entryCount,
+      contributorCount: contributorSet.size
+    };
+  }
+
+  private buildChildPartsRollup(childOrders: any[] = []): any {
+    const rollup = {
+      lineCount: 0,
+      plannedQuantity: 0,
+      reservedQuantity: 0,
+      issuedQuantity: 0,
+      returnedQuantity: 0,
+      shortQuantity: 0,
+      shortLineCount: 0
+    };
+
+    childOrders.forEach((child: any) => {
+      const parts = Array.isArray(child?.parts) ? child.parts : [];
+      rollup.lineCount += parts.length;
+
+      parts.forEach((part: any) => {
+        rollup.plannedQuantity += Number(part?.plannedQuantity ?? part?.estimatedQuantity ?? 0) || 0;
+        rollup.reservedQuantity += Number(part?.reservedQuantity ?? 0) || 0;
+        rollup.issuedQuantity += Number(part?.issuedQuantity ?? part?.actualQuantity ?? 0) || 0;
+        rollup.returnedQuantity += Number(part?.returnedQuantity ?? 0) || 0;
+        rollup.shortQuantity += Number(part?.shortQuantity ?? 0) || 0;
+        if (Number(part?.shortQuantity ?? 0) > 0) {
+          rollup.shortLineCount += 1;
+        }
+      });
+    });
+
+    return rollup;
+  }
+
+  private decorateHierarchy(order: any): any {
+    const childOrders = Array.isArray(order?.childOrders) ? order.childOrders : [];
+    const isParentWorkOrder = childOrders.length > 0;
+    const isChildWorkOrder = !!order?.parentId;
+    const childStatusSummary = this.buildChildStatusSummary(childOrders);
+    const childLaborRollup = this.buildChildLaborRollup(childOrders);
+    const childPartsRollup = this.buildChildPartsRollup(childOrders);
+
+    return {
+      ...order,
+      hierarchy: {
+        isParentWorkOrder,
+        isChildWorkOrder,
+        executionOwnedByChildren: isParentWorkOrder,
+        childStatusSummary,
+        childLaborRollup,
+        childPartsRollup,
+        childProgressLabel: isParentWorkOrder
+          ? `${childStatusSummary.completed}/${childStatusSummary.total} complete`
+          : '',
+        parentReference: order?.parentOrder
+          ? {
+              _id: order.parentOrder._id,
+              id: order.parentOrder.id || order.parentOrder._id,
+              order_no: order.parentOrder.order_no,
+              title: order.parentOrder.title,
+              status: order.parentOrder.status
+            }
+          : null
+      }
+    };
+  }
+
+  private decorateHierarchyCollection(orders: any[] = []): any[] {
+    return (orders || []).map((order: any) => this.decorateHierarchy(order));
+  }
+
   private getWorkOrderPipeline(match: any): any[] {
     return [
       { $match: match },
@@ -460,7 +685,13 @@ class OrderService {
                 start_date: 1,
                 end_date: 1,
                 estimated_time: 1,
-                actual_time: 1
+                actual_time: 1,
+                wo_asset_id: 1,
+                wo_location_id: 1,
+                parts: 1,
+                labor_entries: 1,
+                procedure_ids: 1,
+                procedure_entries: 1
               }
             }
           ],
@@ -1247,7 +1478,7 @@ class OrderService {
       item.comments = commentMap.get(String(item._id)) || [];
       result.push(item);
     }
-    return result;
+    return this.decorateHierarchyCollection(result);
   };
 
   async buildSearchMatch(params: WorkOrderSearchParams): Promise<any> {
@@ -1329,7 +1560,7 @@ class OrderService {
       item.comments = commentMap.get(String(item._id)) || [];
       result.push(item);
     }
-    return result;
+    return this.decorateHierarchyCollection(result);
   }
 
   async orderStatus(match: any): Promise<any> {
@@ -1502,9 +1733,21 @@ class OrderService {
 
   async createWorkOrder(body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
-      const normalizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body }));
+      let normalizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body }));
       this.validateIncomingParts(normalizedBody.parts || []);
-      const userIdList = Array.isArray(normalizedBody.userIdList) ? normalizedBody.userIdList.filter((userId: string) => !!userId) : [];
+      let userIdList = Array.isArray(normalizedBody.userIdList) ? normalizedBody.userIdList.filter((userId: string) => !!userId) : [];
+
+      if (normalizedBody.parentId) {
+        const parentOrder = await this.getParentOrderForInheritance(normalizedBody.parentId, user.account_id, session);
+        if (!parentOrder) {
+          throw Object.assign(new Error('Parent work order not found'), { status: 404 });
+        }
+        const parentAssignedUserIds = await this.getAssignedUserIdsForWorkOrder(parentOrder._id, session);
+        const inheritedState = this.applyParentInheritance(normalizedBody, parentOrder, parentAssignedUserIds);
+        normalizedBody = inheritedState.normalizedBody;
+        userIdList = inheritedState.userIdList;
+      }
+
       const procedureSync = await this.syncProcedureEntries(normalizedBody, user.account_id, user, []);
       let linkedRequest: any = null;
       if (normalizedBody.work_request_id) {
@@ -1537,7 +1780,7 @@ class OrderService {
         priority: normalizedBody.priority,
         status: normalizedBody.status,
         type: normalizedBody.type,
-        nature_of_work: normalizedBody.type,
+        nature_of_work: normalizedBody.nature_of_work || normalizedBody.type,
         sop_form_id: normalizedBody.sop_form_id,
         procedure_ids: procedureSync.procedure_ids,
         procedure_entries: procedureSync.procedure_entries,
@@ -1639,6 +1882,17 @@ class OrderService {
       if (!existingOrder) {
         throw Object.assign(new Error('Work Order not found'), { status: 404 });
       }
+
+      const childCount = await this.getChildOrderCount(id, session);
+      if (childCount > 0 && this.hasExecutionOwnedFieldChanges(body)) {
+        throw Object.assign(new Error('Parts, procedures, labor, and actual execution data are tracked on child work orders for parent work orders.'), { status: 400 });
+      }
+      if (childCount > 0 && Object.prototype.hasOwnProperty.call(body || {}, 'status')) {
+        const requestedStatus = String(body?.status || '').trim();
+        if (['In-Progress', 'Completed'].includes(requestedStatus)) {
+          throw Object.assign(new Error('Move child work orders through execution. Parent work orders roll up child progress.'), { status: 400 });
+        }
+      }
       
       let updatedData = { ...existingOrder.toObject(), ...body };
       if (body.hasOwnProperty('parts')) {
@@ -1719,6 +1973,7 @@ class OrderService {
     const orderId = helperService.validateObjectId(id);
     const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
     const existingOrder = orders[0];
+    const hierarchy = existingOrder?.hierarchy || {};
     const previousParts = JSON.parse(JSON.stringify(existingOrder.parts || []));
     const blockedStatuses = ['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit'];
     const isBlockedStatus = blockedStatuses.includes(status);
@@ -1728,7 +1983,15 @@ class OrderService {
       throw Object.assign(new Error('A reason is required for this status'), { status: 400 });
     }
 
-      if (status === 'Completed') {
+    if (hierarchy?.executionOwnedByChildren && status === 'In-Progress') {
+      throw Object.assign(new Error('Start child work orders to begin execution. Parent work orders roll up child progress.'), { status: 400 });
+    }
+
+    if (hierarchy?.executionOwnedByChildren && status === 'Completed' && Number(hierarchy?.childStatusSummary?.completed || 0) !== Number(hierarchy?.childStatusSummary?.total || 0)) {
+      throw Object.assign(new Error('All child work orders must be completed before the parent work order can be closed.'), { status: 400 });
+    }
+
+    if (status === 'Completed') {
       if (existingOrder.sop_form_id && !existingOrder.sop_form_submitted) {
         throw Object.assign(new Error('Form is not completed'), { status: 400 });
       }
