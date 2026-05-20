@@ -6,7 +6,7 @@ export interface IPart extends Document {
   part_name: string;
   part_number: string;
   barcode?: string;
-  part_type??: ObjectId;
+  part_type?: ObjectId;
   unit: string;
   description: string;
   quantity: number;
@@ -20,7 +20,7 @@ export interface IPart extends Document {
   currency: string;
   visible: boolean;
   createdBy: ObjectId;
-  updatedBy?: ObjectId
+  updatedBy?: ObjectId;
 }
 
 const partSchema = new Schema<IPart>({
