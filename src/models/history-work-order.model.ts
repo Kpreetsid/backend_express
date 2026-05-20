@@ -101,6 +101,12 @@ export interface IProcedureExecutionEntry {
   description?: string;
   steps: any[];
   responses?: Record<string, any>;
+  score_summary?: {
+    earned: number;
+    possible: number;
+    percentage?: number | null;
+  };
+  triggered_actions?: any[];
   submitted?: boolean;
   submitted_by?: {
     id: string;
@@ -118,6 +124,8 @@ const ProcedureExecutionEntrySchema = new Schema<IProcedureExecutionEntry>({
   description: { type: String, trim: true },
   steps: { type: [Schema.Types.Mixed] as any, default: [] },
   responses: { type: Schema.Types.Mixed, default: {} },
+  score_summary: { type: Schema.Types.Mixed },
+  triggered_actions: { type: [Schema.Types.Mixed] as any, default: [] },
   submitted: { type: Boolean, default: false },
   submitted_by: {
     id: { type: String },
