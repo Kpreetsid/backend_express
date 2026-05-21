@@ -232,37 +232,45 @@ class OrderService {
     }
 
     if (Object.prototype.hasOwnProperty.call(body || {}, 'parts')) {
-      const beforeParts = this.summarizePartsForAudit(existingOrder?.parts || []);
-      const afterParts = this.summarizePartsForAudit(updatedOrder?.parts || []);
-      await workOrderActivityService.logActivity({
-        account_id: user.account_id,
-        work_order_id: existingOrder._id,
-        workOrder: updatedOrder,
-        action_type: 'parts-updated',
-        note: `Updated parts from ${beforeParts.lineCount} to ${afterParts.lineCount} line(s). Planned quantity ${beforeParts.plannedQuantity} -> ${afterParts.plannedQuantity}.`,
-        metadata: {
-          before: beforeParts,
-          after: afterParts
-        },
-        actor: user
-      }, session);
+      const beforePartsRaw = Array.isArray(existingOrder?.parts) ? existingOrder.parts : [];
+      const afterPartsRaw = Array.isArray(updatedOrder?.parts) ? updatedOrder.parts : [];
+      if (this.hasMeaningfulChange(beforePartsRaw, afterPartsRaw)) {
+        const beforeParts = this.summarizePartsForAudit(beforePartsRaw);
+        const afterParts = this.summarizePartsForAudit(afterPartsRaw);
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'parts-updated',
+          note: `Updated parts from ${beforeParts.lineCount} to ${afterParts.lineCount} line(s). Planned quantity ${beforeParts.plannedQuantity} -> ${afterParts.plannedQuantity}.`,
+          metadata: {
+            before: beforeParts,
+            after: afterParts
+          },
+          actor: user
+        }, session);
+      }
     }
 
     if (Object.prototype.hasOwnProperty.call(body || {}, 'procedure_ids') || Object.prototype.hasOwnProperty.call(body || {}, 'procedure_entries')) {
-      const beforeProcedures = this.summarizeProcedureAudit(existingOrder?.procedure_entries || []);
-      const afterProcedures = this.summarizeProcedureAudit(updatedOrder?.procedure_entries || []);
-      await workOrderActivityService.logActivity({
-        account_id: user.account_id,
-        work_order_id: existingOrder._id,
-        workOrder: updatedOrder,
-        action_type: 'procedures-updated',
-        note: `Updated procedures. ${afterProcedures.submitted}/${afterProcedures.total} procedure${afterProcedures.total === 1 ? '' : 's'} submitted.`,
-        metadata: {
-          before: beforeProcedures,
-          after: afterProcedures
-        },
-        actor: user
-      }, session);
+      const beforeProceduresRaw = Array.isArray(existingOrder?.procedure_entries) ? existingOrder.procedure_entries : [];
+      const afterProceduresRaw = Array.isArray(updatedOrder?.procedure_entries) ? updatedOrder.procedure_entries : [];
+      if (this.hasMeaningfulChange(beforeProceduresRaw, afterProceduresRaw)) {
+        const beforeProcedures = this.summarizeProcedureAudit(beforeProceduresRaw);
+        const afterProcedures = this.summarizeProcedureAudit(afterProceduresRaw);
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'procedures-updated',
+          note: `Updated procedures. ${afterProcedures.submitted}/${afterProcedures.total} procedure${afterProcedures.total === 1 ? '' : 's'} submitted.`,
+          metadata: {
+            before: beforeProcedures,
+            after: afterProcedures
+          },
+          actor: user
+        }, session);
+      }
     }
 
     if (
@@ -273,51 +281,69 @@ class OrderService {
     ) {
       const beforeExecution = this.summarizeExecutionAudit(existingOrder);
       const afterExecution = this.summarizeExecutionAudit(updatedOrder);
-      await workOrderActivityService.logActivity({
-        account_id: user.account_id,
-        work_order_id: existingOrder._id,
-        workOrder: updatedOrder,
-        action_type: 'execution-updated',
-        note: `Updated execution capture. Labor entries ${beforeExecution.laborCount} -> ${afterExecution.laborCount}. Actual time ${beforeExecution.actualTime ?? 0}h -> ${afterExecution.actualTime ?? 0}h.`,
-        metadata: {
-          before: beforeExecution,
-          after: afterExecution
-        },
-        actor: user
-      }, session);
+      if (this.hasMeaningfulChange(beforeExecution, afterExecution)) {
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'execution-updated',
+          note: `Updated execution capture. Labor entries ${beforeExecution.laborCount} -> ${afterExecution.laborCount}. Actual time ${beforeExecution.actualTime ?? 0}h -> ${afterExecution.actualTime ?? 0}h.`,
+          metadata: {
+            before: beforeExecution,
+            after: afterExecution
+          },
+          actor: user
+        }, session);
+      }
     }
 
     if (Object.prototype.hasOwnProperty.call(body || {}, 'tasks')) {
-      const beforeTasks = this.summarizeTaskAudit(existingOrder?.tasks || []);
-      const afterTasks = this.summarizeTaskAudit(updatedOrder?.tasks || []);
-      await workOrderActivityService.logActivity({
-        account_id: user.account_id,
-        work_order_id: existingOrder._id,
-        workOrder: updatedOrder,
-        action_type: 'tasks-updated',
-        note: `Updated task tracking. ${afterTasks.completed}/${afterTasks.total} task${afterTasks.total === 1 ? '' : 's'} completed.`,
-        metadata: {
-          before: beforeTasks,
-          after: afterTasks
-        },
-        actor: user
-      }, session);
+      const beforeTasksRaw = Array.isArray(existingOrder?.tasks) ? existingOrder.tasks : [];
+      const afterTasksRaw = Array.isArray(updatedOrder?.tasks) ? updatedOrder.tasks : [];
+      if (this.hasMeaningfulChange(beforeTasksRaw, afterTasksRaw)) {
+        const beforeTasks = this.summarizeTaskAudit(beforeTasksRaw);
+        const afterTasks = this.summarizeTaskAudit(afterTasksRaw);
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'tasks-updated',
+          note: `Updated task tracking. ${afterTasks.completed}/${afterTasks.total} task${afterTasks.total === 1 ? '' : 's'} completed.`,
+          metadata: {
+            before: beforeTasks,
+            after: afterTasks
+          },
+          actor: user
+        }, session);
+      }
     }
 
     if (Object.prototype.hasOwnProperty.call(body || {}, 'sop_form_submitted') || Object.prototype.hasOwnProperty.call(body || {}, 'sop_form_data')) {
-      const submitted = Boolean(updatedOrder?.sop_form_submitted);
-      await workOrderActivityService.logActivity({
-        account_id: user.account_id,
-        work_order_id: existingOrder._id,
-        workOrder: updatedOrder,
-        action_type: 'sop-submitted',
-        note: submitted ? 'Submitted SOP / checklist data.' : 'Updated SOP / checklist draft data.',
-        metadata: {
-          submitted,
-          updated_at: updatedOrder?.sop_form_updated_at || null
-        },
-        actor: user
-      }, session);
+      const beforeSopState = {
+        submitted: Boolean(existingOrder?.sop_form_submitted),
+        data: existingOrder?.sop_form_data || null,
+        updated_at: existingOrder?.sop_form_updated_at || null
+      };
+      const afterSopState = {
+        submitted: Boolean(updatedOrder?.sop_form_submitted),
+        data: updatedOrder?.sop_form_data || null,
+        updated_at: updatedOrder?.sop_form_updated_at || null
+      };
+      if (this.hasMeaningfulChange(beforeSopState, afterSopState)) {
+        const submitted = Boolean(updatedOrder?.sop_form_submitted);
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'sop-submitted',
+          note: submitted ? 'Submitted SOP / checklist data.' : 'Updated SOP / checklist draft data.',
+          metadata: {
+            submitted,
+            updated_at: updatedOrder?.sop_form_updated_at || null
+          },
+          actor: user
+        }, session);
+      }
     }
   }
 
