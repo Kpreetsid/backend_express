@@ -115,10 +115,21 @@ class PartsController {
     }
   }
 
+  async getPartHistory(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const data = await partsService.getPartHistory(String(req.params.id), user.account_id);
+      res.status(200).json({ status: true, message: "Part history retrieved successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async createPart(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const createdData = await partsService.insert(req.body, account_id, user_id);
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const createdData = await partsService.insert(req.body, account_id, user);
       
       // Fetch populated data
       const data = await partsService.getAllParts({ _id: createdData._id });
@@ -170,7 +181,7 @@ class PartsController {
 
   async updatePart(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
       
@@ -179,7 +190,7 @@ class PartsController {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
 
-      const updated = await partsService.updatePartById(String(id), body, user_id);
+      const updated = await partsService.updatePartById(String(id), body, get(req, "user", {}) as IUser, account_id);
       if (!updated) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }

@@ -43,7 +43,8 @@ class CommentController {
 
   async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { params: { id: orderId }, body } = req;
       if (!orderId) {
         throw Object.assign(new Error('Order ID is required'), { status: 400 });
@@ -52,7 +53,7 @@ class CommentController {
         body.parentCommentId = helperService.validateObjectId(String(body.parentCommentId));
       }
       body.order_id = helperService.validateObjectId(String(orderId));
-      const data = await commentService.createComment(body, account_id, user_id);
+      const data = await commentService.createComment(body, account_id, user);
       if (!data) {
         throw Object.assign(new Error('Comment not created'), { status: 404 });
       }
@@ -65,7 +66,8 @@ class CommentController {
 
   async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { params: { id: orderId, commentId }, body } = req;
       if (!orderId) {
         throw Object.assign(new Error('Order ID is required'), { status: 400 });
@@ -78,7 +80,7 @@ class CommentController {
         throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
       body.order_id = helperService.validateObjectId(String(orderId));
-      const data = await commentService.updateComment(String(commentId), body.comments, user_id);
+      const data = await commentService.updateComment(String(commentId), body.comments, user);
       if (!data) {
         throw Object.assign(new Error('Comment not updated'), { status: 404 });
       }
@@ -90,7 +92,8 @@ class CommentController {
 
   async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { params: { id: orderId, commentId } } = req;
       if (!orderId) {
         throw Object.assign(new Error('Order ID is required'), { status: 400 });
@@ -102,7 +105,7 @@ class CommentController {
       if (!existingComment) {
         throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
-      const data = await commentService.removeComment(String(commentId), user_id);
+      const data = await commentService.removeComment(String(commentId), user);
       if (!data) {
         throw Object.assign(new Error('Comment not deleted'), { status: 404 });
       }

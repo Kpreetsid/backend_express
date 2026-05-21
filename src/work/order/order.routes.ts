@@ -11,6 +11,8 @@ export default (router: express.Router) => {
     const orderRouter = express.Router();
     orderRouter.get('/', orderController.getAll);
     orderRouter.get('/get-work-order', orderController.getAllWorkOrders);
+    orderRouter.get('/activity/:id', validateParamId, orderController.getActivity);
+    orderRouter.get('/history/:id', validateParamId, orderController.getHistory);
     orderRouter.get('/:id', validateParamId, orderController.getOrderById);
     orderRouter.post('/', hasRolePermission('workOrder', 'create_work_order'), workOrderValidator, validate, orderController.createOrder);
     orderRouter.post('/status', orderController.getOrderStatus);
@@ -24,8 +26,7 @@ export default (router: express.Router) => {
     orderRouter.patch('/:id', validateParamId, updateWorkOrderValidator, validate, orderController.updateOrderSubmitData);
     orderRouter.delete('/:id', validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
     orderRouter.post('/:id/attachments', validateParamId, (req, res, next) => { req.params.folderName = 'work_order'; next(); }, upload.array('files', 12), orderController.uploadAttachments);
-    orderRouter.get('/history/:id', validateParamId, orderController.getHistory);
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));
     router.use('/orders', orderRouter);
-};
+};

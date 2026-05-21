@@ -10,6 +10,7 @@ import { notificationService } from "../../utils/notification.service";
 import { withTransaction } from "../../utils/transaction.helper";
 import { ProcedureModel } from "../../models/procedure.model";
 import { WorkOrderAssigneeModel } from "../../models/mapUserWorkOrder.model";
+import { workOrderActivityService } from "./workOrderActivity.service";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -48,6 +49,302 @@ class OrderService {
 
   constructor() {
     this.mailerService = new MailerService();
+  }
+
+  private normalizeAuditValue(value: any): any {
+    if (value === undefined || value === null) {
+      return null;
+    }
+
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((item: any) => this.normalizeAuditValue(item));
+    }
+
+    if (typeof value === 'object') {
+      if (value?._bsontype === 'ObjectId' || value?.constructor?.name === 'ObjectId') {
+        return String(value);
+      }
+
+      return Object.keys(value).sort().reduce((acc: Record<string, any>, key: string) => {
+        acc[key] = this.normalizeAuditValue(value[key]);
+        return acc;
+      }, {});
+    }
+
+    return value;
+  }
+
+  private hasMeaningfulChange(before: any, after: any): boolean {
+    return JSON.stringify(this.normalizeAuditValue(before)) !== JSON.stringify(this.normalizeAuditValue(after));
+  }
+
+  private formatAuditList(items: string[] = []): string {
+    const sanitized = items.map((item: string) => String(item || '').trim()).filter(Boolean);
+    if (sanitized.length <= 1) {
+      return sanitized[0] || '';
+    }
+    if (sanitized.length === 2) {
+      return `${sanitized[0]} and ${sanitized[1]}`;
+    }
+    return `${sanitized.slice(0, -1).join(', ')}, and ${sanitized[sanitized.length - 1]}`;
+  }
+
+  private getGeneralChangeLabels(existingOrder: any, updatedOrder: any, body: any): string[] {
+    const fieldLabels: Record<string, string> = {
+      title: 'title',
+      description: 'description',
+      priority: 'priority',
+      type: 'type',
+      nature_of_work: 'nature of work',
+      wo_asset_id: 'asset',
+      wo_location_id: 'location',
+      start_date: 'start date',
+      end_date: 'due date',
+      estimated_time: 'estimated time',
+      parentId: 'parent work order',
+      work_request_id: 'linked work request',
+      asset_report_id: 'linked asset report',
+      block_reason: 'block reason'
+    };
+
+    return Object.keys(fieldLabels).filter((field: string) => {
+      if (!Object.prototype.hasOwnProperty.call(body || {}, field)) {
+        return false;
+      }
+      return this.hasMeaningfulChange(existingOrder?.[field], updatedOrder?.[field]);
+    }).map((field: string) => fieldLabels[field]);
+  }
+
+  private summarizePartsForAudit(parts: any[] = []): { lineCount: number; plannedQuantity: number; actualQuantity: number } {
+    return (parts || []).reduce((summary: any, part: any) => {
+      summary.lineCount += 1;
+      summary.plannedQuantity += Number(part?.plannedQuantity ?? part?.estimatedQuantity ?? 0) || 0;
+      summary.actualQuantity += Number(part?.actualQuantity ?? 0) || 0;
+      return summary;
+    }, { lineCount: 0, plannedQuantity: 0, actualQuantity: 0 });
+  }
+
+  private summarizeProcedureAudit(entries: any[] = []): { total: number; submitted: number } {
+    return (entries || []).reduce((summary: any, entry: any) => {
+      summary.total += 1;
+      if (entry?.submitted) {
+        summary.submitted += 1;
+      }
+      return summary;
+    }, { total: 0, submitted: 0 });
+  }
+
+  private summarizeExecutionAudit(order: any): { laborCount: number; actualTime: number | null; actualStartDate: any; actualEndDate: any } {
+    return {
+      laborCount: Array.isArray(order?.labor_entries) ? order.labor_entries.length : 0,
+      actualTime: Number.isFinite(Number(order?.actual_time)) ? Number(order.actual_time) : null,
+      actualStartDate: order?.actual_start_date || null,
+      actualEndDate: order?.actual_end_date || null
+    };
+  }
+
+  private summarizeTaskAudit(tasks: any[] = []): { total: number; completed: number } {
+    return (tasks || []).reduce((summary: any, task: any) => {
+      summary.total += 1;
+      if (task?.completed || String(task?.status || '').trim() === 'Completed') {
+        summary.completed += 1;
+      }
+      return summary;
+    }, { total: 0, completed: 0 });
+  }
+
+  private async getUserNameMap(userIds: string[] = [], session?: any): Promise<Map<string, string>> {
+    const ids = Array.from(new Set((userIds || []).map((userId: string) => String(userId || '').trim()).filter(Boolean)));
+    if (!ids.length) {
+      return new Map<string, string>();
+    }
+
+    const query = UserModel.find({ _id: { $in: helperService.validateObjectIds(ids.join(',')) } })
+      .select('firstName lastName username email')
+      .lean();
+    if (session) {
+      query.session(session);
+    }
+
+    const users = await query;
+    return new Map(users.map((user: any) => {
+      const fullName = `${String(user?.firstName || '').trim()} ${String(user?.lastName || '').trim()}`.trim()
+        || String(user?.username || user?.email || 'Assigned user').trim();
+      return [String(user?._id), fullName];
+    }));
+  }
+
+  private async logWorkOrderUpdateActivities(existingOrder: any, updatedOrder: any, body: any, user: IUser, session?: any, beforeAssignedUserIds: string[] = []): Promise<void> {
+    const generalChangeLabels = this.getGeneralChangeLabels(existingOrder, updatedOrder, body);
+    if (generalChangeLabels.length > 0) {
+      await workOrderActivityService.logActivity({
+        account_id: user.account_id,
+        work_order_id: existingOrder._id,
+        workOrder: updatedOrder,
+        action_type: 'updated',
+        note: `Updated ${this.formatAuditList(generalChangeLabels)}.`,
+        metadata: { changed_fields: generalChangeLabels },
+        actor: user
+      }, session);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body || {}, 'userIdList')) {
+      const beforeIds = beforeAssignedUserIds;
+      const afterIds: string[] = Array.isArray(body?.userIdList)
+        ? Array.from(new Set<string>(body.userIdList.map((userId: any) => String(userId || '').trim()).filter((userId: string) => Boolean(userId))))
+        : [];
+
+      const addedIds = afterIds.filter((userId: string) => !beforeIds.includes(userId));
+      const removedIds = beforeIds.filter((userId: string) => !afterIds.includes(userId));
+      if (addedIds.length || removedIds.length || beforeIds.length !== afterIds.length) {
+        const userNameMap = await this.getUserNameMap([...beforeIds, ...afterIds], session);
+        const addedNames = addedIds.map((userId: string) => userNameMap.get(userId) || 'Assigned user');
+        const removedNames = removedIds.map((userId: string) => userNameMap.get(userId) || 'Assigned user');
+        const noteParts: string[] = [];
+        if (addedNames.length) {
+          noteParts.push(`Added ${this.formatAuditList(addedNames)}`);
+        }
+        if (removedNames.length) {
+          noteParts.push(`Removed ${this.formatAuditList(removedNames)}`);
+        }
+        if (!noteParts.length) {
+          noteParts.push('Updated assignees');
+        }
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'assignees-updated',
+          note: `${noteParts.join('. ')}.`,
+          metadata: {
+            before_ids: beforeIds,
+            after_ids: afterIds,
+            added_ids: addedIds,
+            removed_ids: removedIds
+          },
+          actor: user
+        }, session);
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body || {}, 'parts')) {
+      const beforePartsRaw = Array.isArray(existingOrder?.parts) ? existingOrder.parts : [];
+      const afterPartsRaw = Array.isArray(updatedOrder?.parts) ? updatedOrder.parts : [];
+      if (this.hasMeaningfulChange(beforePartsRaw, afterPartsRaw)) {
+        const beforeParts = this.summarizePartsForAudit(beforePartsRaw);
+        const afterParts = this.summarizePartsForAudit(afterPartsRaw);
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'parts-updated',
+          note: `Updated parts from ${beforeParts.lineCount} to ${afterParts.lineCount} line(s). Planned quantity ${beforeParts.plannedQuantity} -> ${afterParts.plannedQuantity}.`,
+          metadata: {
+            before: beforeParts,
+            after: afterParts
+          },
+          actor: user
+        }, session);
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body || {}, 'procedure_ids') || Object.prototype.hasOwnProperty.call(body || {}, 'procedure_entries')) {
+      const beforeProceduresRaw = Array.isArray(existingOrder?.procedure_entries) ? existingOrder.procedure_entries : [];
+      const afterProceduresRaw = Array.isArray(updatedOrder?.procedure_entries) ? updatedOrder.procedure_entries : [];
+      if (this.hasMeaningfulChange(beforeProceduresRaw, afterProceduresRaw)) {
+        const beforeProcedures = this.summarizeProcedureAudit(beforeProceduresRaw);
+        const afterProcedures = this.summarizeProcedureAudit(afterProceduresRaw);
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'procedures-updated',
+          note: `Updated procedures. ${afterProcedures.submitted}/${afterProcedures.total} procedure${afterProcedures.total === 1 ? '' : 's'} submitted.`,
+          metadata: {
+            before: beforeProcedures,
+            after: afterProcedures
+          },
+          actor: user
+        }, session);
+      }
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(body || {}, 'labor_entries')
+      || Object.prototype.hasOwnProperty.call(body || {}, 'actual_start_date')
+      || Object.prototype.hasOwnProperty.call(body || {}, 'actual_end_date')
+      || Object.prototype.hasOwnProperty.call(body || {}, 'actual_time')
+    ) {
+      const beforeExecution = this.summarizeExecutionAudit(existingOrder);
+      const afterExecution = this.summarizeExecutionAudit(updatedOrder);
+      if (this.hasMeaningfulChange(beforeExecution, afterExecution)) {
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'execution-updated',
+          note: `Updated execution capture. Labor entries ${beforeExecution.laborCount} -> ${afterExecution.laborCount}. Actual time ${beforeExecution.actualTime ?? 0}h -> ${afterExecution.actualTime ?? 0}h.`,
+          metadata: {
+            before: beforeExecution,
+            after: afterExecution
+          },
+          actor: user
+        }, session);
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body || {}, 'tasks')) {
+      const beforeTasksRaw = Array.isArray(existingOrder?.tasks) ? existingOrder.tasks : [];
+      const afterTasksRaw = Array.isArray(updatedOrder?.tasks) ? updatedOrder.tasks : [];
+      if (this.hasMeaningfulChange(beforeTasksRaw, afterTasksRaw)) {
+        const beforeTasks = this.summarizeTaskAudit(beforeTasksRaw);
+        const afterTasks = this.summarizeTaskAudit(afterTasksRaw);
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'tasks-updated',
+          note: `Updated task tracking. ${afterTasks.completed}/${afterTasks.total} task${afterTasks.total === 1 ? '' : 's'} completed.`,
+          metadata: {
+            before: beforeTasks,
+            after: afterTasks
+          },
+          actor: user
+        }, session);
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body || {}, 'sop_form_submitted') || Object.prototype.hasOwnProperty.call(body || {}, 'sop_form_data')) {
+      const beforeSopState = {
+        submitted: Boolean(existingOrder?.sop_form_submitted),
+        data: existingOrder?.sop_form_data || null,
+        updated_at: existingOrder?.sop_form_updated_at || null
+      };
+      const afterSopState = {
+        submitted: Boolean(updatedOrder?.sop_form_submitted),
+        data: updatedOrder?.sop_form_data || null,
+        updated_at: updatedOrder?.sop_form_updated_at || null
+      };
+      if (this.hasMeaningfulChange(beforeSopState, afterSopState)) {
+        const submitted = Boolean(updatedOrder?.sop_form_submitted);
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: existingOrder._id,
+          workOrder: updatedOrder,
+          action_type: 'sop-submitted',
+          note: submitted ? 'Submitted SOP / checklist data.' : 'Updated SOP / checklist draft data.',
+          metadata: {
+            submitted,
+            updated_at: updatedOrder?.sop_form_updated_at || null
+          },
+          actor: user
+        }, session);
+      }
+    }
   }
 
   private isProcedureFieldAnswered(step: any, responses: Record<string, any>): boolean {
@@ -469,6 +766,13 @@ class OrderService {
     };
   }
 
+  private shouldInheritValue(value: any): boolean {
+    return value === undefined
+      || value === null
+      || value === ''
+      || (Array.isArray(value) && value.length === 0);
+  }
+
   private buildChildStatusSummary(childOrders: any[] = []): any {
     const summary = {
       total: childOrders.length,
@@ -675,6 +979,28 @@ class OrderService {
               }
             },
             {
+              $lookup: {
+                from: "wo_user_mapping",
+                let: { childWoId: "$_id" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$woId", "$$childWoId"] } } },
+                  {
+                    $lookup: {
+                      from: "users",
+                      let: { userId: '$userId' },
+                      pipeline: [
+                        { $match: { $expr: { $eq: ['$_id', '$$userId'] }, user_status: 'active' } },
+                        { $project: this.userProjection },
+                      ],
+                      as: "user"
+                    }
+                  },
+                  { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } }
+                ],
+                as: "assignedUsers"
+              }
+            },
+            {
               $project: {
                 _id: 1,
                 id: '$_id',
@@ -691,7 +1017,8 @@ class OrderService {
                 parts: 1,
                 labor_entries: 1,
                 procedure_ids: 1,
-                procedure_entries: 1
+                procedure_entries: 1,
+                assignedUsers: 1
               }
             }
           ],
@@ -1736,16 +2063,40 @@ class OrderService {
       let normalizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body }));
       this.validateIncomingParts(normalizedBody.parts || []);
       let userIdList = Array.isArray(normalizedBody.userIdList) ? normalizedBody.userIdList.filter((userId: string) => !!userId) : [];
+      let parentOrder: any = null;
+      let parentChildCount = 0;
+      let shouldClearParentExecutionFields = false;
 
       if (normalizedBody.parentId) {
-        const parentOrder = await this.getParentOrderForInheritance(normalizedBody.parentId, user.account_id, session);
+        parentOrder = await this.getParentOrderForInheritance(normalizedBody.parentId, user.account_id, session);
         if (!parentOrder) {
           throw Object.assign(new Error('Parent work order not found'), { status: 404 });
         }
+        parentChildCount = await this.getChildOrderCount(parentOrder._id, session);
         const parentAssignedUserIds = await this.getAssignedUserIdsForWorkOrder(parentOrder._id, session);
         const inheritedState = this.applyParentInheritance(normalizedBody, parentOrder, parentAssignedUserIds);
         normalizedBody = inheritedState.normalizedBody;
         userIdList = inheritedState.userIdList;
+
+        if (parentChildCount === 0) {
+          if (this.shouldInheritValue(normalizedBody.estimated_time) && !this.shouldInheritValue(parentOrder?.estimated_time)) {
+            normalizedBody.estimated_time = parentOrder.estimated_time;
+          }
+          if (this.shouldInheritValue(normalizedBody.parts) && Array.isArray(parentOrder?.parts) && parentOrder.parts.length > 0) {
+            normalizedBody.parts = JSON.parse(JSON.stringify(parentOrder.parts));
+          }
+          if (this.shouldInheritValue(normalizedBody.procedure_ids) && Array.isArray(parentOrder?.procedure_ids) && parentOrder.procedure_ids.length > 0) {
+            normalizedBody.procedure_ids = [...parentOrder.procedure_ids];
+          }
+          if (this.shouldInheritValue(normalizedBody.procedure_entries) && Array.isArray(parentOrder?.procedure_entries) && parentOrder.procedure_entries.length > 0) {
+            normalizedBody.procedure_entries = JSON.parse(JSON.stringify(parentOrder.procedure_entries));
+          }
+          if (this.shouldInheritValue(normalizedBody.sop_form_id) && parentOrder?.sop_form_id) {
+            normalizedBody.sop_form_id = parentOrder.sop_form_id;
+          }
+          shouldClearParentExecutionFields = true;
+          this.validateIncomingParts(normalizedBody.parts || []);
+        }
       }
 
       const procedureSync = await this.syncProcedureEntries(normalizedBody, user.account_id, user, []);
@@ -1834,6 +2185,41 @@ class OrderService {
         data.inventoryWarnings = inventoryResult.warnings;
       }
 
+      if (shouldClearParentExecutionFields && parentOrder) {
+        if (Array.isArray(parentOrder.parts) && parentOrder.parts.length > 0) {
+          await partsService.adjustInventoryByWorkOrder(parentOrder.parts || [], [], user, session, {
+            account_id: user.account_id,
+            work_order_id: parentOrder._id,
+            work_order_no: parentOrder.order_no,
+            location_id: parentOrder.wo_location_id,
+            previous_status: parentOrder.status,
+            next_status: parentOrder.status,
+            note: `Moved execution planning to follow-up work order ${data.order_no}`
+          });
+        }
+
+        const parentCleanup = this.normalizeTimingFields(this.sanitizeWorkOrder({
+          start_date: null,
+          end_date: null,
+          estimated_time: null,
+          parts: [],
+          sop_form_id: null,
+          procedure_ids: [],
+          procedure_entries: [],
+          sop_form_submitted: false,
+          sop_form_data: {},
+          sop_form_updated_by: null,
+          sop_form_updated_at: null,
+          actual_start_date: null,
+          actual_end_date: null,
+          actual_time: null,
+          labor_entries: [],
+          updatedBy: user._id
+        }));
+
+        await WorkOrderModel.findByIdAndUpdate(parentOrder._id, parentCleanup, { session });
+      }
+
       if (linkedRequest) {
         await requestService.markConverted(String(linkedRequest._id), {
           workOrderId: data._id,
@@ -1842,6 +2228,40 @@ class OrderService {
           approvedBy: linkedRequest.approvedBy || user._id,
           approvedAt: linkedRequest.approvedAt,
           convertedBy: user._id
+        }, session);
+      }
+
+      await workOrderActivityService.logActivity({
+        account_id: user.account_id,
+        work_order_id: data._id,
+        workOrder: data,
+        action_type: 'created',
+        note: normalizedBody.parentId
+          ? `Created follow-up work order ${data.order_no}${parentOrder?.order_no ? ` under ${parentOrder.order_no}` : ''}.`
+          : `Created work order ${data.order_no}.`,
+        metadata: {
+          status: data.status,
+          priority: data.priority,
+          parent_id: parentOrder?._id || null,
+          parent_order_no: parentOrder?.order_no || null,
+          linked_request_id: linkedRequest?._id || null
+        },
+        actor: user
+      }, session);
+
+      if (parentOrder?._id) {
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: parentOrder._id,
+          workOrder: parentOrder,
+          action_type: 'child-created',
+          note: `Created child work order ${data.order_no}${data.title ? ` (${data.title})` : ''}.`,
+          metadata: {
+            child_work_order_id: data._id,
+            child_order_no: data.order_no,
+            child_title: data.title || ''
+          },
+          actor: user
         }, session);
       }
       
@@ -1889,8 +2309,19 @@ class OrderService {
       }
       if (childCount > 0 && Object.prototype.hasOwnProperty.call(body || {}, 'status')) {
         const requestedStatus = String(body?.status || '').trim();
-        if (['In-Progress', 'Completed'].includes(requestedStatus)) {
+        if (requestedStatus === 'In-Progress') {
           throw Object.assign(new Error('Move child work orders through execution. Parent work orders roll up child progress.'), { status: 400 });
+        }
+        if (requestedStatus === 'Completed') {
+          const childOrders = await WorkOrderModel.find(
+            { parentId: existingOrder._id, visible: true },
+            { status: 1 }
+          ).session(session).lean();
+          const childStatusSummary = this.buildChildStatusSummary(childOrders);
+
+          if (Number(childStatusSummary.completed || 0) !== Number(childStatusSummary.total || 0)) {
+            throw Object.assign(new Error('All child work orders must be completed before the parent work order can be closed.'), { status: 400 });
+          }
         }
       }
       
@@ -1898,6 +2329,10 @@ class OrderService {
       if (body.hasOwnProperty('parts')) {
         this.validateIncomingParts(body.parts || []);
       }
+      const beforeAssignedUserIds = body.hasOwnProperty('userIdList')
+        ? await this.getAssignedUserIdsForWorkOrder(existingOrder._id, session)
+        : [];
+      const existingOrderSnapshot = existingOrder.toObject();
       
       if (body.hasOwnProperty('parts')) {
         const normalizedParts = partsService.normalizeWorkOrderParts(body.parts || [], updatedData.status || existingOrder.status);
@@ -1936,12 +2371,13 @@ class OrderService {
         updatedData.procedure_ids = procedureSync.procedure_ids;
         updatedData.procedure_entries = procedureSync.procedure_entries;
       }
-
+      
       updatedData = this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData));
       const data = await WorkOrderModel.findByIdAndUpdate(id, updatedData, { returnDocument: 'after', session });
       if (!data) {
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
       }
+      await this.logWorkOrderUpdateActivities(existingOrderSnapshot, data?.toObject ? data.toObject() : data, body, user, session, beforeAssignedUserIds);
       
       let responseData: any = null;
       try {
@@ -1965,8 +2401,36 @@ class OrderService {
   };
 
   async updateDataById(id: any, body: any, user: IUser): Promise<any> {
+    const existingOrder = await WorkOrderModel.findById(id);
     const sanitizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body, updatedBy: user._id }));
-    return await WorkOrderModel.findByIdAndUpdate(id, sanitizedBody, { returnDocument: 'after' });
+    const updatedOrder = await WorkOrderModel.findByIdAndUpdate(id, sanitizedBody, { returnDocument: 'after' });
+
+    if (existingOrder && updatedOrder && Object.prototype.hasOwnProperty.call(body || {}, 'files')) {
+      const beforeFiles = Array.isArray(existingOrder.files) ? existingOrder.files : [];
+      const afterFiles = Array.isArray(updatedOrder.files) ? updatedOrder.files : [];
+      const existingFileNames = new Set(beforeFiles.map((file: any) => String(file?.fileName || file?.originalName || '').trim()).filter(Boolean));
+      const addedFiles = afterFiles.filter((file: any) => {
+        const fileName = String(file?.fileName || file?.originalName || '').trim();
+        return fileName && !existingFileNames.has(fileName);
+      });
+
+      if (addedFiles.length > 0) {
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: id,
+          workOrder: updatedOrder,
+          action_type: 'attachments-added',
+          note: `Added ${addedFiles.length} attachment${addedFiles.length === 1 ? '' : 's'} to the work order.`,
+          metadata: {
+            count: addedFiles.length,
+            file_names: addedFiles.map((file: any) => file?.originalName || file?.fileName || 'Attachment')
+          },
+          actor: user
+        });
+      }
+    }
+
+    return updatedOrder;
   };
 
   async orderStatusChange(id: string, status: string, user: IUser, blockReason?: string | null): Promise<any> {
@@ -2066,6 +2530,21 @@ class OrderService {
       (data as any).inventoryWarnings = inventoryResult.warnings;
     }
     if (data) {
+      await workOrderActivityService.logActivity({
+        account_id: user.account_id,
+        work_order_id: id,
+        workOrder: data,
+        action_type: 'status-changed',
+        note: `Status changed from ${existingOrder.status} to ${status}.${existingOrder.block_reason ? ` Reason: ${existingOrder.block_reason}` : ''}`,
+        metadata: {
+          from_status: existingOrder.status,
+          to_status: status,
+          block_reason: existingOrder.block_reason || null
+        },
+        actor: user
+      });
+    }
+    if (data) {
       await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),
         module: 'Work Order',
@@ -2079,12 +2558,12 @@ class OrderService {
     return data;
   }
 
-  async removeOrder(id: any, user_id: any): Promise<any> {
+  async removeOrder(id: any, user: any): Promise<any> {
     return await withTransaction(async (session) => {
       await userWorkOrderService.removeMappedUsers(id, session);
       const order: any = await WorkOrderModel.findById(id).session(session).lean();
       if (order?.parts?.length > 0) {
-        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session, {
+        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user?._id || user }, session, {
           account_id: order.account_id,
           work_order_id: order._id,
           work_order_no: order.order_no,
@@ -2094,16 +2573,24 @@ class OrderService {
           note: 'Work order removed and reservations reversed'
         });
       }
-      return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after', session });
+      await workOrderActivityService.logActivity({
+        account_id: order?.account_id,
+        work_order_id: order?._id,
+        workOrder: order,
+        action_type: 'deleted',
+        note: 'Work order removed from the active list.',
+        actor: user
+      }, session);
+      return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user?._id || user }, { returnDocument: 'after', session });
     });
   };
 
-  async deleteWorkOrderById(id: any, user_id: any): Promise<any> {
+  async deleteWorkOrderById(id: any, user: any): Promise<any> {
     return await withTransaction(async (session) => {
       await userWorkOrderService.removeMappedUsers(id, session);
       const order: any = await WorkOrderModel.findById(id).session(session).lean();
       if (order?.parts?.length > 0) {
-        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user_id }, session, {
+        await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user?._id || user }, session, {
           account_id: order.account_id,
           work_order_id: order._id,
           work_order_no: order.order_no,
@@ -2113,6 +2600,14 @@ class OrderService {
           note: 'Work order deleted and reservations reversed'
         });
       }
+      await workOrderActivityService.logActivity({
+        account_id: order?.account_id,
+        work_order_id: order?._id,
+        workOrder: order,
+        action_type: 'deleted',
+        note: 'Work order permanently deleted.',
+        actor: user
+      }, session);
       return await WorkOrderModel.findByIdAndDelete(id, { session });
     });
   }
@@ -2127,6 +2622,14 @@ class OrderService {
       throw Object.assign(new Error('No history found for this work order'), { status: 404 });
     }
     return history;
+  }
+
+  async getActivity(id: string, account_id: any): Promise<any> {
+    const activity = await workOrderActivityService.getActivityHistory(id, account_id);
+    if (!activity || activity.length === 0) {
+      return [];
+    }
+    return activity;
   }
 }
 

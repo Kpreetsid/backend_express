@@ -119,9 +119,9 @@ class OrderController {
 
   async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { _id: user_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
       const orderId = helperService.validateObjectId(String(req.params.id));
-      await orderService.removeOrder(orderId, user_id);
+      await orderService.removeOrder(orderId, user);
       res.status(200).send({ status: true, message: 'Work order deleted successfully.' });
     } catch (error) {
       next(error);
@@ -264,6 +264,17 @@ class OrderController {
       const orderId = String(req.params.id);
       const data = await orderService.getHistory(orderId);
       res.status(200).json({ status: true, message: "Work order history fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getActivity(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id } = get(req, "user", {}) as IUser;
+      const orderId = String(req.params.id);
+      const data = await orderService.getActivity(orderId, account_id);
+      res.status(200).json({ status: true, message: "Work order activity fetched successfully.", data });
     } catch (error) {
       next(error);
     }
