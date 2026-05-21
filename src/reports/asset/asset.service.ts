@@ -52,7 +52,7 @@ class AssetReportService {
   };
 
   async updateAssetReport(id: any, body: IReportAsset, account_id: any, user_id: any, token: any) {
-    return await ReportAssetModel.findByIdAndUpdate(id, body, { new: true });
+    return await ReportAssetModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
   };
 
   async partialUpdateAssetReport(id: any, body: IReportAsset, user_id: any, token: string) {
@@ -61,11 +61,11 @@ class AssetReportService {
     if (body.status) {
       newBody.status_details = [...(newBody.status_details || []), { status: body.status, createdBy: user_id }];
     }
-    return await ReportAssetModel.findByIdAndUpdate(id, newBody, { new: true });
+    return await ReportAssetModel.findByIdAndUpdate(id, newBody, { returnDocument: 'after' });
   };
 
   async removeAssetReportById(id: any, user_id: any) {
-    return await ReportAssetModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
+    return await ReportAssetModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
   }
 
   async deleteAssetReport(id: any) {

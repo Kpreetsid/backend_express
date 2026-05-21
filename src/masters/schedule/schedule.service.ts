@@ -107,13 +107,13 @@ class ScheduleService {
 
     async updateSchedules(id: any, body: any, user_id: any): Promise<IScheduleMaster | any> {
         const normalizedBody = this.normalizeSchedulePayload(body);
-        await SchedulerModel.findByIdAndUpdate(id, { ...normalizedBody, updatedBy: user_id }, { new: true });
+        await SchedulerModel.findByIdAndUpdate(id, { ...normalizedBody, updatedBy: user_id }, { returnDocument: 'after' });
         const data = await this.getSchedules({ _id: helperService.validateObjectId(String(id)) });
         return data[0];
     };
 
     async removeSchedules(id: any, user_id: any): Promise<IScheduleMaster | null> {
-        return await SchedulerModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { new: true });
+        return await SchedulerModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
     };
 }
 

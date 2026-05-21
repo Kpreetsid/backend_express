@@ -35,7 +35,7 @@ class CompanyService {
   };
 
   async updateById(id: any, body: any) {
-    return await AccountModel.findByIdAndUpdate(id, body, { new: true });
+    return await AccountModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
   };
 
   async removeById(id: any, userId: any): Promise<boolean> {
@@ -43,7 +43,7 @@ class CompanyService {
     if (!data || !data.visible || data.account_status === 'inactive') {
       throw Object.assign(new Error('No records found'), { status: 404 });
     }
-    await AccountModel.findByIdAndUpdate(id, { visible: false, account_status: 'inactive', updated_by: userId }, { new: true });
+    await AccountModel.findByIdAndUpdate(id, { visible: false, account_status: 'inactive', updated_by: userId }, { returnDocument: 'after' });
     return true;
   };
 }

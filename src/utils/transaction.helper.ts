@@ -1,5 +1,28 @@
 import mongoose, { ClientSession } from 'mongoose';
 
+let transactionsUnsupported = false;
+let transactionsUnsupportedWarningShown = false;
+
+const isUnsupportedTransactionError = (error: any): boolean => {
+  const errorMessage = error?.message || error?.errmsg || String(error);
+  return errorMessage.includes("Transaction numbers are only allowed") ||
+    errorMessage.includes("does not support retryable writes") ||
+    errorMessage.includes("Transaction is not supported") ||
+    errorMessage.includes("replica set member or mongos") ||
+    error?.code === 20 ||
+    error?.codeName === 'IllegalOperation';
+};
+
+const warnUnsupportedTransactionsOnce = (error?: any): void => {
+  if (transactionsUnsupportedWarningShown) return;
+  transactionsUnsupportedWarningShown = true;
+  console.warn("MongoDB transactions are not supported by the current deployment. Running transaction blocks without a session.");
+  if (error) {
+    const errorMessage = error?.message || error?.errmsg || String(error);
+    console.warn(`Original transaction error: ${errorMessage}`);
+  }
+};
+
 /**
  * Executes a function within a MongoDB transaction.
  * @param fn The function to execute within the transaction. It receives the session object.
@@ -8,6 +31,9 @@ import mongoose, { ClientSession } from 'mongoose';
 export const withTransaction = async <T>(fn: (session: ClientSession) => Promise<T>, existingSession?: any): Promise<T> => {
   if (existingSession) {
     return await fn(existingSession);
+  }
+  if (transactionsUnsupported) {
+    return await fn(undefined as any);
   }
 
   const session = await mongoose.startSession();
@@ -21,18 +47,11 @@ export const withTransaction = async <T>(fn: (session: ClientSession) => Promise
     await session.endSession();
     return result;
   } catch (error: any) {
-    const errorMessage = error.message || error.errmsg || String(error);
-    const isStandaloneError =
-      errorMessage.includes("Transaction numbers are only allowed") ||
-      errorMessage.includes("does not support retryable writes") ||
-      errorMessage.includes("Transaction is not supported") ||
-      errorMessage.includes("replica set member or mongos") ||
-      error.code === 20 ||
-      error.codeName === 'IllegalOperation';
+    const isStandaloneError = isUnsupportedTransactionError(error);
 
     if (isStandaloneError) {
-      console.warn("⚠️ MongoDB Transactions are not supported (Standalone Instance). Falling back to non-transactional execution.");
-      console.warn(`Original Error: ${errorMessage}`);
+      transactionsUnsupported = true;
+      warnUnsupportedTransactionsOnce(error);
       if (!sessionEnded) {
         try {
           if (session.inTransaction()) await session.abortTransaction();

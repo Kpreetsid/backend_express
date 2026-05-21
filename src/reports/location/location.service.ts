@@ -162,14 +162,14 @@ class LocationReportService {
   };
 
   async deleteLocationsReport(id: any, accountId: any, user_id: any) {
-    return await ReportLocationModel.findOneAndUpdate({ _id: id, account_id: accountId, visible: true }, { visible: false, updatedBy: user_id }, { new: true });
+    return await ReportLocationModel.findOneAndUpdate({ _id: id, account_id: accountId, visible: true }, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
   async updateLocationReport(id: any, data: any, user: any) {
     return await ReportLocationModel.findOneAndUpdate(
       { _id: id, account_id: user.account_id, visible: true },
       { ...data, updatedBy: user._id },
-      { new: true }
+      { returnDocument: 'after' }
     );
   };
 }

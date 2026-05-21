@@ -38,11 +38,11 @@ class PostService {
   };
 
   async updatePostById(id: any, body: any, user_id: any): Promise<any> {
-    return await PostModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { new: true });
+    return await PostModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
   async removePostById(id: any, user_id: any): Promise<any> {
-    return await PostModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
+    return await PostModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
   async likePost(id: any, user_id: any): Promise<any> {
@@ -63,7 +63,7 @@ class PostService {
       }
     }
 
-    return await PostModel.findByIdAndUpdate(id, updateQuery, { new: true });
+    return await PostModel.findByIdAndUpdate(id, updateQuery, { returnDocument: 'after' });
   };
 
   async dislikePost(id: any, user_id: any): Promise<any> {
@@ -84,7 +84,7 @@ class PostService {
       }
     }
 
-    return await PostModel.findByIdAndUpdate(id, updateQuery, { new: true });
+    return await PostModel.findByIdAndUpdate(id, updateQuery, { returnDocument: 'after' });
   };
 }
 

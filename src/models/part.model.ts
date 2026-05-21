@@ -15,12 +15,12 @@ export interface IPart extends Document {
   cost: number;
   preferred_vendor?: string;
   lead_time_days?: number;
-  location_id: ObjectId;
+  location_id?: ObjectId;
   last_counted_at?: Date;
   currency: string;
   visible: boolean;
   createdBy: ObjectId;
-  updatedBy?: ObjectId
+  updatedBy?: ObjectId;
 }
 
 const partSchema = new Schema<IPart>({
@@ -37,7 +37,7 @@ const partSchema = new Schema<IPart>({
   cost: { type: Number, required: true },
   preferred_vendor: { type: String, trim: true },
   lead_time_days: { type: Number, default: 0 },
-  location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: false },
   last_counted_at: { type: Date },
   currency: { type: String, trim: true, default: 'INR' },
   visible: { type: Boolean, required: true, default: true },

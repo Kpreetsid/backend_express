@@ -32,6 +32,14 @@ interface CycleCountPayload {
   reason?: string;
 }
 
+interface PartsImportResult {
+  imported: number;
+  failed: number;
+  total: number;
+  errors: { row: number; message: string }[];
+  data: IPart[];
+}
+
 class PartsService {
   private isExecutionStatus(status?: string): boolean {
     return ['In-Progress', 'Completed'].includes(String(status || '').trim());
@@ -345,10 +353,67 @@ class PartsService {
     }).save();
   };
 
+  async importParts(parts: any[], account_id: any, user_id: any): Promise<PartsImportResult> {
+    const result: PartsImportResult = {
+      imported: 0,
+      failed: 0,
+      total: parts.length,
+      errors: [],
+      data: []
+    };
+
+    for (let index = 0; index < parts.length; index++) {
+      const rowNumber = index + 2;
+      const part = parts[index] || {};
+
+      try {
+        const payload: any = {
+          account_id,
+          part_name: String(part.part_name || '').trim(),
+          part_number: String(part.part_number || '').trim(),
+          description: String(part.description || '').trim(),
+          unit: String(part.unit || '').trim(),
+          quantity: Number(part.quantity ?? 0),
+          min_quantity: Number(part.min_quantity ?? 0),
+          cost: Number(part.cost ?? 0),
+          currency: String(part.currency || 'INR').trim(),
+          createdBy: user_id
+        };
+
+        if (!payload.part_name) throw new Error('Part name is required');
+        if (!payload.part_number) throw new Error('Part number is required');
+        if (!payload.unit) throw new Error('Unit is required');
+        if (!Number.isFinite(payload.quantity)) throw new Error('Quantity must be a number');
+        if (!Number.isFinite(payload.min_quantity)) throw new Error('Minimum quantity must be a number');
+        if (!Number.isFinite(payload.cost)) throw new Error('Cost must be a number');
+
+        if (part.part_type) {
+          payload.part_type = helperService.validateObjectId(String(part.part_type));
+        }
+
+        if (part.location_id) {
+          payload.location_id = helperService.validateObjectId(String(part.location_id));
+        }
+
+        const created = await new PartsModel(payload).save();
+        result.imported++;
+        result.data.push(created);
+      } catch (error: any) {
+        result.failed++;
+        result.errors.push({
+          row: rowNumber,
+          message: error?.message || 'Failed to import part'
+        });
+      }
+    }
+
+    return result;
+  }
+
   async updatePartById(id: string, body: IPart, user_id: any) {
     const normalizedBody: any = this.normalizePartPayload(body);
     normalizedBody.updatedBy = user_id;
-    return await PartsModel.findByIdAndUpdate(id, normalizedBody, { new: true });
+    return await PartsModel.findByIdAndUpdate(id, normalizedBody, { returnDocument: 'after' });
   };
 
   async updatePartStock(id: string, body: any, user: any, account_id: any) {
@@ -424,7 +489,7 @@ class PartsService {
   }
 
   async removeById(id: string, user_id: any) {
-    return await PartsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { new: true });
+    return await PartsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
   async assignPartToWorkOrder(body: any, user: any) {

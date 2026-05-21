@@ -115,7 +115,7 @@ class InspectionService {
     return await InspectionModel.findOneAndUpdate(
       { _id: id, account_id },
       { ...body, updatedBy: user_id },
-      { new: true, session }
+      { returnDocument: 'after', session }
     );
   });
  };
@@ -126,7 +126,7 @@ class InspectionService {
     return await InspectionModel.findOneAndUpdate(
       { _id: id, account_id },
       { visible: false, updatedBy: user_id },
-      { new: true, session }
+      { returnDocument: 'after', session }
     );
   });
  };

@@ -40,7 +40,7 @@ class UsersService {
   };
 
   async userVerified(id: string) {
-    return await UserModel.findOneAndUpdate({ _id: id }, { isVerified: true }, { new: true });
+    return await UserModel.findOneAndUpdate({ _id: id }, { isVerified: true }, { returnDocument: 'after' });
   };
 
   async getLocationWiseUser(req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -71,19 +71,19 @@ class UsersService {
 
   async updateUserPassword(user_id: any, body: any) {
     body.password = await passwordService.hashPassword(body.password);
-    const updatedUser = await UserModel.findByIdAndUpdate(user_id, body, { new: true });
+    const updatedUser = await UserModel.findByIdAndUpdate(user_id, body, { returnDocument: 'after' });
     await this.mailerService.sendPasswordChangeConfirmation(updatedUser);
     return updatedUser;
   };
 
   async updateUserDetails(id: string, body: IUser) {
-    return await UserModel.findByIdAndUpdate(id, body, { new: true });
+    return await UserModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
   }
 
   async removeById(id: string) {
     return await withTransaction(async (session) => {
       await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
-      return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { new: true, session });
+      return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { returnDocument: 'after', session });
     });
   };
 }
