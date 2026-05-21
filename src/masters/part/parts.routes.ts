@@ -37,6 +37,7 @@ export default (router: express.Router) => {
     partRouter.get('/cycle-counts', partsController.getCycleCounts);
     partRouter.get('/replenishment-suggestions', partsController.getReplenishmentSuggestions);
     partRouter.post('/import', importUpload.single('file'), partsController.importParts);
+    partRouter.get('/:id/history', validateParamId, partsController.getPartHistory);
     partRouter.get('/:id', validateParamId, partsController.getPart);
     partRouter.post('/cycle-counts', partsController.createCycleCount);
     partRouter.put('/cycle-counts/:id/approve', validateParamId, partsController.approveCycleCount);

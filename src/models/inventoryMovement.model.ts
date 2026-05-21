@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 
-export const INVENTORY_MOVEMENT_TYPES = ['reserve', 'release', 'issue', 'return', 'short', 'adjust', 'count-adjustment'] as const;
+export const INVENTORY_MOVEMENT_TYPES = ['reserve', 'release', 'issue', 'return', 'short', 'adjust', 'count-adjustment', 'transfer-out', 'transfer-in'] as const;
 export type InventoryMovementType = typeof INVENTORY_MOVEMENT_TYPES[number];
 
 export interface IInventoryMovement extends Document {

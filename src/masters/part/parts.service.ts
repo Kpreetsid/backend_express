@@ -6,6 +6,7 @@ import { InventoryMovementModel, InventoryMovementType } from "../../models/inve
 import { CycleCountModel } from "../../models/cycleCount.model";
 import { ProcedureModel } from "../../models/procedure.model";
 import { WorkOrderModel } from "../../models/workOrder.model";
+import { PartHistoryAction, PartHistoryModel } from "../../models/partHistory.model";
 
 interface InventoryAdjustmentResult {
   warnings: {
@@ -38,6 +39,18 @@ interface PartsImportResult {
   total: number;
   errors: { row: number; message: string }[];
   data: IPart[];
+}
+
+interface PartHistoryPayload {
+  account_id: any;
+  part: any;
+  action_type: PartHistoryAction;
+  user?: any;
+  note?: string;
+  quantity?: number;
+  stock_before?: number;
+  stock_after?: number;
+  metadata?: Record<string, any>;
 }
 
 class PartsService {
@@ -92,6 +105,54 @@ class PartsService {
     return `${firstName} ${lastName}`.trim() || String(user?.username || '').trim() || 'System';
   }
 
+  private async createPartHistoryEntry(payload: PartHistoryPayload, session?: any): Promise<void> {
+    const { account_id, part, action_type, user, note, quantity, stock_before, stock_after, metadata } = payload;
+    if (!part?._id) {
+      return;
+    }
+
+    await PartHistoryModel.create([{
+      account_id,
+      part_id: part._id,
+      part_name: part.part_name || '',
+      part_number: part.part_number || '',
+      location_id: part.location_id || null,
+      location_name: part.location?.location_name || metadata?.location_name || '',
+      action_type,
+      quantity: Number.isFinite(Number(quantity)) ? Number(quantity) : undefined,
+      stock_before: Number.isFinite(Number(stock_before)) ? Number(stock_before) : undefined,
+      stock_after: Number.isFinite(Number(stock_after)) ? Number(stock_after) : undefined,
+      note: String(note || '').trim(),
+      metadata: metadata || {},
+      actor_id: user?._id || null,
+      actor_name: this.formatMovementActor(user),
+      visible: true
+    }], session ? { session } : undefined);
+  }
+
+  private getChangedPartFields(previousPart: any, nextPayload: any): string[] {
+    const fieldMap: Record<string, string> = {
+      part_name: 'Part Name',
+      part_number: 'Part Number',
+      barcode: 'Barcode',
+      description: 'Description',
+      quantity: 'Quantity',
+      min_quantity: 'Minimum Quantity',
+      reorder_point: 'Reorder Point',
+      cost: 'Unit Cost',
+      preferred_vendor: 'Preferred Vendor',
+      lead_time_days: 'Lead Time (Days)',
+      unit: 'Unit',
+      location_id: 'Location'
+    };
+
+    return Object.keys(fieldMap).filter((field) => {
+      const beforeValue = previousPart?.[field];
+      const afterValue = nextPayload?.[field];
+      return String(beforeValue ?? '') !== String(afterValue ?? '');
+    }).map((field) => fieldMap[field]);
+  }
+
   private normalizePartPayload(body: any): any {
     return {
       ...body,
@@ -111,7 +172,7 @@ class PartsService {
     const partNumbers = Array.from(new Set(parts.map((part: any) => String(part.part_number || '').trim()).filter(Boolean)));
     const partIds = parts.map((part: any) => part._id);
 
-    const [networkParts, recentMovements] = await Promise.all([
+    const [networkParts, recentMovements, recentHistory] = await Promise.all([
       PartsModel.aggregate([
         {
           $match: {
@@ -160,7 +221,11 @@ class PartsService {
       InventoryMovementModel.find({
         part_id: { $in: partIds },
         visible: true
-      }).sort({ createdAt: -1 }).limit(Math.max(parts.length * 6, 12)).lean()
+      }).sort({ createdAt: -1 }).limit(Math.max(parts.length * 6, 12)).lean(),
+      PartHistoryModel.find({
+        part_id: { $in: partIds },
+        visible: true
+      }).sort({ createdAt: -1 }).limit(Math.max(parts.length * 8, 16)).lean()
     ]);
 
     const networkMap = new Map<string, any[]>();
@@ -180,6 +245,17 @@ class PartsService {
       }
       if ((movementMap.get(key)?.length || 0) < 5) {
         movementMap.get(key)?.push(movement);
+      }
+    });
+
+    const historyMap = new Map<string, any[]>();
+    recentHistory.forEach((entry: any) => {
+      const key = String(entry.part_id || '');
+      if (!historyMap.has(key)) {
+        historyMap.set(key, []);
+      }
+      if ((historyMap.get(key)?.length || 0) < 6) {
+        historyMap.get(key)?.push(entry);
       }
     });
 
@@ -212,7 +288,8 @@ class PartsService {
         network_location_count: stock_locations.length,
         network_on_hand: totalNetworkQuantity,
         preferred_stock_source: preferredStockSource,
-        recent_movements: movementMap.get(String(part._id)) || []
+        recent_movements: movementMap.get(String(part._id)) || [],
+        recent_history: historyMap.get(String(part._id)) || []
       };
     });
   }
@@ -332,9 +409,17 @@ class PartsService {
     return await this.enrichPartNetwork(parts as any);
   };
 
-  async insert(body: IPart, account_id: any, user_id: any): Promise<IPart> {
+  async getPartHistory(partId: string, account_id: any): Promise<any[]> {
+    return await PartHistoryModel.find({
+      account_id,
+      part_id: helperService.validateObjectId(String(partId)),
+      visible: true
+    }).sort({ createdAt: -1 }).lean();
+  }
+
+  async insert(body: IPart, account_id: any, user: any): Promise<IPart> {
     const normalizedBody = this.normalizePartPayload(body);
-    return await new PartsModel({
+    const created = await new PartsModel({
       account_id: account_id,
       part_name: normalizedBody.part_name,
       part_number: normalizedBody.part_number,
@@ -349,8 +434,24 @@ class PartsService {
       lead_time_days: normalizedBody.lead_time_days,
       location_id: normalizedBody.location_id,
       currency: normalizedBody.currency,
-      createdBy: user_id
+      createdBy: user?._id || user
     }).save();
+
+    await this.createPartHistoryEntry({
+      account_id,
+      part: created,
+      action_type: 'created',
+      user,
+      note: 'Part created.',
+      quantity: created.quantity,
+      stock_before: 0,
+      stock_after: created.quantity,
+      metadata: {
+        location_name: ''
+      }
+    });
+
+    return created;
   };
 
   async importParts(parts: any[], account_id: any, user_id: any): Promise<PartsImportResult> {
@@ -410,10 +511,42 @@ class PartsService {
     return result;
   }
 
-  async updatePartById(id: string, body: IPart, user_id: any) {
-    const normalizedBody: any = this.normalizePartPayload(body);
-    normalizedBody.updatedBy = user_id;
-    return await PartsModel.findByIdAndUpdate(id, normalizedBody, { returnDocument: 'after' });
+  async updatePartById(id: string, body: IPart, user: any, account_id: any) {
+    return await withTransaction(async (session) => {
+      const normalizedBody: any = this.normalizePartPayload(body);
+      const existingPart = await PartsModel.findOne({
+        _id: helperService.validateObjectId(String(id)),
+        account_id,
+        visible: true
+      }).session(session);
+
+      if (!existingPart) {
+        return null;
+      }
+
+      const changedFields = this.getChangedPartFields(existingPart.toObject(), normalizedBody);
+      normalizedBody.updatedBy = user?._id || user;
+
+      const updatedPart = await PartsModel.findByIdAndUpdate(id, normalizedBody, { returnDocument: 'after', session });
+
+      if (updatedPart && changedFields.length > 0) {
+        await this.createPartHistoryEntry({
+          account_id,
+          part: updatedPart,
+          action_type: 'updated',
+          user,
+          note: `Updated ${changedFields.join(', ')}.`,
+          quantity: updatedPart.quantity,
+          stock_before: existingPart.quantity,
+          stock_after: updatedPart.quantity,
+          metadata: {
+            changed_fields: changedFields
+          }
+        }, session);
+      }
+
+      return updatedPart;
+    });
   };
 
   async updatePartStock(id: string, body: any, user: any, account_id: any) {
@@ -431,16 +564,127 @@ class PartsService {
       const mode = String(body?.mode || 'add').trim();
       const rawQuantity = Number(body?.quantity);
       const note = String(body?.note || body?.reason || '').trim();
+      const destinationPartId = body?.destination_part_id ? helperService.validateObjectId(String(body.destination_part_id)) : null;
 
       if (!Number.isFinite(rawQuantity)) {
         throw Object.assign(new Error('Please provide a valid stock quantity'), { status: 400 });
+      }
+      if (!note) {
+        throw Object.assign(new Error('Reason / note is required for stock adjustments'), { status: 400 });
       }
 
       const stockBefore = Number(part.quantity || 0);
       let stockAfter = stockBefore;
       let movementQuantity = 0;
 
-      if (mode === 'set') {
+      if (mode === 'transfer') {
+        if (!destinationPartId) {
+          throw Object.assign(new Error('Please select a destination location for the transfer'), { status: 400 });
+        }
+        if (String(destinationPartId) === String(part._id)) {
+          throw Object.assign(new Error('Source and destination locations must be different'), { status: 400 });
+        }
+        if (rawQuantity <= 0) {
+          throw Object.assign(new Error('Please enter a quantity greater than zero'), { status: 400 });
+        }
+        if (stockBefore < rawQuantity) {
+          throw Object.assign(new Error(`Cannot transfer ${rawQuantity}. Only ${stockBefore} in stock.`), { status: 400 });
+        }
+
+        const destinationPart = await PartsModel.findOne({
+          _id: destinationPartId,
+          account_id,
+          visible: true
+        }).session(session);
+
+        if (!destinationPart) {
+          throw Object.assign(new Error('Destination part record not found'), { status: 404 });
+        }
+
+        if (String(destinationPart.part_number || '').trim() !== String(part.part_number || '').trim()) {
+          throw Object.assign(new Error('Destination location must belong to the same part number'), { status: 400 });
+        }
+
+        const destinationStockBefore = Number(destinationPart.quantity || 0);
+        const destinationStockAfter = destinationStockBefore + rawQuantity;
+
+        stockAfter = stockBefore - rawQuantity;
+        movementQuantity = rawQuantity;
+
+        part.quantity = stockAfter;
+        part.updatedBy = user?._id || user;
+        destinationPart.quantity = destinationStockAfter;
+        destinationPart.updatedBy = user?._id || user;
+
+        await part.save({ session });
+        await destinationPart.save({ session });
+
+        await InventoryMovementModel.create([
+          {
+            account_id,
+            part_id: part._id,
+            part_name: part.part_name,
+            location_id: part.location_id,
+            movement_type: 'transfer-out',
+            quantity: movementQuantity,
+            stock_before: stockBefore,
+            stock_after: stockAfter,
+            note: note || `Transferred to ${destinationPart.part_name} @ destination location`,
+            createdBy: user?._id || user,
+            createdByName: this.formatMovementActor(user),
+            visible: true
+          },
+          {
+            account_id,
+            part_id: destinationPart._id,
+            part_name: destinationPart.part_name,
+            location_id: destinationPart.location_id,
+            movement_type: 'transfer-in',
+            quantity: movementQuantity,
+            stock_before: destinationStockBefore,
+            stock_after: destinationStockAfter,
+            note: note || `Transferred from ${part.part_name} @ source location`,
+            createdBy: user?._id || user,
+            createdByName: this.formatMovementActor(user),
+            visible: true
+          }
+        ], { session });
+
+        await this.createPartHistoryEntry({
+          account_id,
+          part,
+          action_type: 'transfer-out',
+          user,
+          note,
+          quantity: movementQuantity,
+          stock_before: stockBefore,
+          stock_after: stockAfter,
+          metadata: {
+            destination_part_id: String(destinationPart._id),
+            destination_location_id: String(destinationPart.location_id || ''),
+            destination_part_name: destinationPart.part_name,
+            destination_location_name: destinationPart.location_id ? undefined : ''
+          }
+        }, session);
+
+        await this.createPartHistoryEntry({
+          account_id,
+          part: destinationPart,
+          action_type: 'transfer-in',
+          user,
+          note,
+          quantity: movementQuantity,
+          stock_before: destinationStockBefore,
+          stock_after: destinationStockAfter,
+          metadata: {
+            source_part_id: String(part._id),
+            source_location_id: String(part.location_id || ''),
+            source_part_name: part.part_name
+          }
+        }, session);
+
+        return part;
+      } else if (mode === 'set') {
         if (rawQuantity < 0) {
           throw Object.assign(new Error('Stock quantity cannot be negative'), { status: 400 });
         }
@@ -482,6 +726,23 @@ class PartsService {
           createdByName: this.formatMovementActor(user),
           visible: true
         }], { session });
+
+        const actionType: PartHistoryAction = mode === 'remove'
+          ? 'stock-removed'
+          : mode === 'set'
+            ? 'stock-set'
+            : 'stock-added';
+
+        await this.createPartHistoryEntry({
+          account_id,
+          part,
+          action_type: actionType,
+          user,
+          note,
+          quantity: movementQuantity,
+          stock_before: stockBefore,
+          stock_after: stockAfter
+        }, session);
       }
 
       return part;
@@ -739,6 +1000,21 @@ class PartsService {
       createdByName: this.formatMovementActor(user)
     });
 
+    await this.createPartHistoryEntry({
+      account_id,
+      part,
+      action_type: 'cycle-count-submitted',
+      user,
+      note: String(body.reason || '').trim() || 'Cycle count submitted.',
+      quantity: countedQuantity,
+      stock_before: systemQuantity,
+      stock_after: countedQuantity,
+      metadata: {
+        discrepancy_quantity: discrepancyQuantity,
+        discrepancy_percent: discrepancyPercent
+      }
+    });
+
     if (discrepancyQuantity === 0) {
       await PartsModel.findByIdAndUpdate(part._id, { last_counted_at: new Date(), updatedBy: user._id });
     }
@@ -799,6 +1075,41 @@ class PartsService {
         part.last_counted_at = new Date();
         part.updatedBy = user._id;
         await part.save({ session });
+
+        await this.createPartHistoryEntry({
+          account_id,
+          part,
+          action_type: 'cycle-count-approved',
+          user,
+          note: String(approvalNotes || '').trim() || `Cycle count approved${count.reason ? `: ${count.reason}` : ''}`,
+          quantity: Math.abs(stockAfter - stockBefore),
+          stock_before: stockBefore,
+          stock_after: stockAfter,
+          metadata: {
+            counted_quantity: Number(count.counted_quantity || 0),
+            discrepancy_quantity: Number(count.discrepancy_quantity || 0)
+          }
+        }, session);
+      } else {
+        await this.createPartHistoryEntry({
+          account_id,
+          part: {
+            _id: count.part_id,
+            part_name: count.part_name,
+            part_number: count.part_number,
+            location_id: count.location_id
+          },
+          action_type: 'cycle-count-rejected',
+          user,
+          note: String(approvalNotes || '').trim() || 'Cycle count rejected.',
+          quantity: Number(count.counted_quantity || 0),
+          stock_before: Number(count.system_quantity || 0),
+          stock_after: Number(count.system_quantity || 0),
+          metadata: {
+            counted_quantity: Number(count.counted_quantity || 0),
+            discrepancy_quantity: Number(count.discrepancy_quantity || 0)
+          }
+        }, session);
       }
 
       await count.save({ session });
