@@ -8,6 +8,7 @@ import { ObservationModel } from '../../models/observation.model';
 import { ReportAssetModel } from '../../models/assetReport.model';
 import { InspectionModel } from '../../models/inspection.model';
 import { WorkRequestModel } from '../../models/workRequest.model';
+import { LocationModel } from '../../models/location.model';
 
 import { withTransaction } from "../../utils/transaction.helper";
 
@@ -90,7 +91,7 @@ class AssetService {
       { $match: match },
       {
         $lookup: {
-          from: 'location_master',
+          from: LocationModel.collection.name,
           let: { locationId: '$locationId' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$locationId'] } } },

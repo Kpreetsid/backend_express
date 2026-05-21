@@ -8,6 +8,8 @@ import { ProcedureModel } from "../../models/procedure.model";
 import { WorkOrderModel } from "../../models/workOrder.model";
 import { PartsTypeModel } from "../../models/parts-types.model";
 import { PartHistoryAction, PartHistoryModel } from "../../models/partHistory.model";
+import { LocationModel } from "../../models/location.model";
+import { UserModel } from "../../models/user.model";
 
 interface InventoryAdjustmentResult {
   warnings: {
@@ -184,7 +186,7 @@ class PartsService {
         },
         {
           $lookup: {
-            from: "location_master",
+            from: LocationModel.collection.name,
             let: { location_id: "$location_id" },
             pipeline: [
               { $match: { $expr: { $eq: ["$_id", "$$location_id"] }, visible: true } },
@@ -370,7 +372,7 @@ class PartsService {
       { $match: match },
       {
         $lookup: {
-          from: "location_master",
+          from: LocationModel.collection.name,
           let: { location_id: "$location_id" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$location_id"] }, visible: true } },
@@ -394,7 +396,7 @@ class PartsService {
       { $unwind: { path: "$partTypeData", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { user_id: "$createdBy" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$user_id"] } } },
@@ -406,7 +408,7 @@ class PartsService {
       { $unwind: { path: "$createdUser", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { user_id: "$updatedBy" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$user_id"] } } },
@@ -955,7 +957,7 @@ class PartsService {
       { $match: { ...match, visible: true } },
       {
         $lookup: {
-          from: "location_master",
+          from: LocationModel.collection.name,
           let: { location_id: "$location_id" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$location_id"] }, visible: true } },

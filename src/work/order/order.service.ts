@@ -11,6 +11,12 @@ import { withTransaction } from "../../utils/transaction.helper";
 import { ProcedureModel } from "../../models/procedure.model";
 import { WorkOrderAssigneeModel } from "../../models/mapUserWorkOrder.model";
 import { workOrderActivityService } from "./workOrderActivity.service";
+import { AssetModel } from "../../models/asset.model";
+import { InventoryMovementModel } from "../../models/inventoryMovement.model";
+import { LocationModel } from "../../models/location.model";
+import { PartsModel } from "../../models/part.model";
+import { PartsTypeModel } from "../../models/parts-types.model";
+import { SOPsModel } from "../../models/sops.model";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -913,13 +919,13 @@ class OrderService {
       { $match: match },
       {
         $lookup: {
-          from: "wo_user_mapping",
+          from: WorkOrderAssigneeModel.collection.name,
           let: { woId: "$_id" },
           pipeline: [
             { $match: { $expr: { $eq: ["$woId", "$$woId"] } } },
             {
               $lookup: {
-                from: "users",
+                from: UserModel.collection.name,
                 let: { userId: '$userId' },
                 pipeline: [
                   { $match: { $expr: { $eq: ['$_id', '$$userId'] }, user_status: 'active' } },
@@ -935,7 +941,7 @@ class OrderService {
       },
       {
         $lookup: {
-          from: "work_orders",
+          from: WorkOrderModel.collection.name,
           let: { parentId: '$parentId' },
           pipeline: [
             {
@@ -969,7 +975,7 @@ class OrderService {
       },
       {
         $lookup: {
-          from: "work_orders",
+          from: WorkOrderModel.collection.name,
           let: { workOrderId: '$_id' },
           pipeline: [
             {
@@ -980,13 +986,13 @@ class OrderService {
             },
             {
               $lookup: {
-                from: "wo_user_mapping",
+                from: WorkOrderAssigneeModel.collection.name,
                 let: { childWoId: "$_id" },
                 pipeline: [
                   { $match: { $expr: { $eq: ["$woId", "$$childWoId"] } } },
                   {
                     $lookup: {
-                      from: "users",
+                      from: UserModel.collection.name,
                       let: { userId: '$userId' },
                       pipeline: [
                         { $match: { $expr: { $eq: ['$_id', '$$userId'] }, user_status: 'active' } },
@@ -1027,7 +1033,7 @@ class OrderService {
       },
       {
         $lookup: {
-          from: "asset_master",
+          from: AssetModel.collection.name,
           let: { wo_asset_id: '$wo_asset_id' },
           pipeline: [
             { 
@@ -1049,7 +1055,7 @@ class OrderService {
       { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "location_master",
+          from: LocationModel.collection.name,
           let: { wo_location_id: '$wo_location_id' },
           pipeline: [
             { 
@@ -1071,7 +1077,7 @@ class OrderService {
       { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "sops",
+          from: SOPsModel.collection.name,
           let: { sop_form_id: '$sop_form_id' },
           pipeline: [
             { 
@@ -1093,7 +1099,7 @@ class OrderService {
       { $unwind: { path: "$sopForm", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "procedures",
+          from: ProcedureModel.collection.name,
           let: { procedureIds: "$procedure_ids" },
           pipeline: [
             {
@@ -1132,7 +1138,7 @@ class OrderService {
       },
       {
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { createdBy: '$createdBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$createdBy'] }, user_status: 'active' } },
@@ -1144,7 +1150,7 @@ class OrderService {
       { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { updatedBy: '$updatedBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$updatedBy'] }, user_status: 'active' } },
@@ -1156,7 +1162,7 @@ class OrderService {
       { $unwind: { path: "$updatedBy", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { createdBy: '$status_details.createdBy' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$createdBy'] }, user_status: 'active' } },
@@ -1167,7 +1173,7 @@ class OrderService {
       },
       {
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { userIds: "$tasks.assigned_user_id" },
           pipeline: [
             {
@@ -1192,7 +1198,7 @@ class OrderService {
       },
       {
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { userIds: "$labor_entries.user_id" },
           pipeline: [
             {
@@ -1217,7 +1223,7 @@ class OrderService {
       },
       {
         $lookup: {
-          from: "mst_part_types",
+          from: PartsTypeModel.collection.name,
           let: { partTypeIds: "$parts.part_type" },
           pipeline: [
             {
@@ -1243,7 +1249,7 @@ class OrderService {
       },
       {
         $lookup: {
-          from: "parts",
+          from: PartsModel.collection.name,
           let: { partIds: "$parts.part_id" },
           pipeline: [
             {
@@ -1283,7 +1289,7 @@ class OrderService {
       },
       {
         $lookup: {
-          from: "inventory_movements",
+          from: InventoryMovementModel.collection.name,
           let: { workOrderId: "$_id" },
           pipeline: [
             {

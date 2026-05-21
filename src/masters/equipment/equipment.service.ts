@@ -6,6 +6,8 @@ import { processorAPIService } from '../../api-processor';
 import { helperService } from '../../utils/helper';
 import { withTransaction } from "../../utils/transaction.helper";
 import mongoose from 'mongoose';
+import { LocationModel } from '../../models/location.model';
+import { UserModel } from '../../models/user.model';
 
 class EquipmentService {
   async getAllEquipment(match: any) {
@@ -106,7 +108,7 @@ class EquipmentService {
       { $match: match },
       {
         $lookup: {
-          from: 'location_master',
+          from: LocationModel.collection.name,
           let: { locationId: '$locationId' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$locationId'] }, visible: true } },
@@ -123,7 +125,7 @@ class EquipmentService {
     const assetIds = assets.map(a => a._id);
     const assetUsers = await MapUserAssetLocationModel.aggregate([
       { $match: { assetId: { $in: assetIds }, userId: { $exists: true } } },
-      { $lookup: { from: 'users', localField: 'userId', foreignField: '_id', as: 'user' } },
+      { $lookup: { from: UserModel.collection.name, localField: 'userId', foreignField: '_id', as: 'user' } },
       { $unwind: '$user' },
       { $project: { assetId: 1, user: { id: '$user._id', firstName: '$user.firstName', lastName: '$user.lastName', user_role: '$user.user_role', email: '$user.email', user_status: '$user.user_status' } } }
     ]);

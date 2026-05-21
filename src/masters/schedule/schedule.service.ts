@@ -2,6 +2,8 @@ import { SchedulerModel, IScheduleMaster } from "../../models/scheduleMaster.mod
 import { UserModel } from "../../models/user.model";
 import { PartsTypeModel } from "../../models/parts-types.model";
 import { helperService } from "../../utils/helper";
+import { AssetModel } from "../../models/asset.model";
+import { LocationModel } from "../../models/location.model";
 
 class ScheduleService {
     private normalizeSchedulePayload(body: any): any {
@@ -18,7 +20,7 @@ class ScheduleService {
             { $match: match },
             {
                 $lookup: {
-                    from: "asset_master",
+                    from: AssetModel.collection.name,
                     let: { assetId: "$work_order.wo_asset_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
@@ -30,7 +32,7 @@ class ScheduleService {
             { $unwind: { path: "$work_order.asset", preserveNullAndEmptyArrays: true } },
             {
                 $lookup: {
-                    from: "location_master",
+                    from: LocationModel.collection.name,
                     let: { locId: "$work_order.wo_location_id" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$_id", "$$locId"] }, visible: true } },
@@ -42,7 +44,7 @@ class ScheduleService {
             { $unwind: { path: "$work_order.location", preserveNullAndEmptyArrays: true } },
             {
                 $lookup: {
-                    from: "users",
+                    from: UserModel.collection.name,
                     let: { userId: "$createdBy" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
@@ -54,7 +56,7 @@ class ScheduleService {
             { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
             {
                 $lookup: {
-                    from: "users",
+                    from: UserModel.collection.name,
                     let: { userId: "$updatedBy" },
                     pipeline: [
                         { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
