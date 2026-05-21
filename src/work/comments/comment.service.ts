@@ -1,4 +1,5 @@
 import { CommentsModel } from "../../models/comment.model";
+import { workOrderActivityService } from "../order/workOrderActivity.service";
 
 class CommentService {
   async getAllComments(match: any) {
@@ -99,27 +100,65 @@ class CommentService {
     );
   };
 
-  async createComment(body: any, account_id: any, user_id: any): Promise<any> {
+  async createComment(body: any, account_id: any, user: any): Promise<any> {
     const newComment = new CommentsModel({
       account_id: account_id,
       order_id: body.order_id,
       comments: body.comments,
       parentCommentId: body.parentCommentId || null,
-      createdBy: user_id
+      createdBy: user?._id || user
     });
-    return await newComment.save();
+    const createdComment = await newComment.save();
+    await workOrderActivityService.logActivity({
+      account_id,
+      work_order_id: body.order_id,
+      action_type: 'comment-added',
+      note: body.parentCommentId ? 'Added a reply to the work order discussion.' : 'Added a comment to the work order discussion.',
+      metadata: {
+        comment_id: createdComment._id,
+        parent_comment_id: createdComment.parentCommentId || null,
+        preview: String(body?.comments || '').trim().slice(0, 180)
+      },
+      actor: user
+    });
+    return createdComment;
   };
 
-  async updateComment(commentId: any, message: any, user_id: any): Promise<any> {
-    return await CommentsModel.findByIdAndUpdate(commentId, { comments: message, updatedBy: user_id }, { returnDocument: 'after' });
+  async updateComment(commentId: any, message: any, user: any): Promise<any> {
+    const updatedComment = await CommentsModel.findByIdAndUpdate(commentId, { comments: message, updatedBy: user?._id || user }, { returnDocument: 'after' });
+    if (updatedComment) {
+      await workOrderActivityService.logActivity({
+        account_id: updatedComment.account_id,
+        work_order_id: updatedComment.order_id,
+        action_type: 'comment-updated',
+        note: 'Updated a work order comment.',
+        metadata: {
+          comment_id: updatedComment._id,
+          preview: String(message || '').trim().slice(0, 180)
+        },
+        actor: user
+      });
+    }
+    return updatedComment;
   };
 
-  async removeComment(commentId: any, user_id: any): Promise<any> {
-    const deletedComment = await CommentsModel.findByIdAndUpdate(commentId, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
+  async removeComment(commentId: any, user: any): Promise<any> {
+    const deletedComment = await CommentsModel.findByIdAndUpdate(commentId, { visible: false, updatedBy: user?._id || user }, { returnDocument: 'after' });
     if (!deletedComment) {
       throw Object.assign(new Error('Comment not found'), { status: 404 });
     }
-    await this.softDeleteChildComments(commentId, user_id);
+    await workOrderActivityService.logActivity({
+      account_id: deletedComment.account_id,
+      work_order_id: deletedComment.order_id,
+      action_type: 'comment-deleted',
+      note: 'Deleted a work order comment.',
+      metadata: {
+        comment_id: deletedComment._id,
+        preview: String(deletedComment.comments || '').trim().slice(0, 180)
+      },
+      actor: user
+    });
+    await this.softDeleteChildComments(commentId, user?._id || user);
     return deletedComment;
   };
 
