@@ -310,10 +310,10 @@ class PartsService {
             { $match: { $expr: { $eq: ["$_id", "$$part_type_id"] }, visible: true } },
             { $project: { _id: 1, id: "$_id", name: 1, description: 1, visible: 1 } },
           ],
-          as: "part_type"
+          as: "partTypeData"
         }
       },
-      { $unwind: { path: "$part_type", preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: "$partTypeData", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
           from: "users",
