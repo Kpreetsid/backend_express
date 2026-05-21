@@ -469,6 +469,13 @@ class OrderService {
     };
   }
 
+  private shouldInheritValue(value: any): boolean {
+    return value === undefined
+      || value === null
+      || value === ''
+      || (Array.isArray(value) && value.length === 0);
+  }
+
   private buildChildStatusSummary(childOrders: any[] = []): any {
     const summary = {
       total: childOrders.length,
@@ -675,6 +682,28 @@ class OrderService {
               }
             },
             {
+              $lookup: {
+                from: "wo_user_mapping",
+                let: { childWoId: "$_id" },
+                pipeline: [
+                  { $match: { $expr: { $eq: ["$woId", "$$childWoId"] } } },
+                  {
+                    $lookup: {
+                      from: "users",
+                      let: { userId: '$userId' },
+                      pipeline: [
+                        { $match: { $expr: { $eq: ['$_id', '$$userId'] }, user_status: 'active' } },
+                        { $project: this.userProjection },
+                      ],
+                      as: "user"
+                    }
+                  },
+                  { $unwind: { path: "$user", preserveNullAndEmptyArrays: false } }
+                ],
+                as: "assignedUsers"
+              }
+            },
+            {
               $project: {
                 _id: 1,
                 id: '$_id',
@@ -691,7 +720,8 @@ class OrderService {
                 parts: 1,
                 labor_entries: 1,
                 procedure_ids: 1,
-                procedure_entries: 1
+                procedure_entries: 1,
+                assignedUsers: 1
               }
             }
           ],
@@ -1736,16 +1766,40 @@ class OrderService {
       let normalizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body }));
       this.validateIncomingParts(normalizedBody.parts || []);
       let userIdList = Array.isArray(normalizedBody.userIdList) ? normalizedBody.userIdList.filter((userId: string) => !!userId) : [];
+      let parentOrder: any = null;
+      let parentChildCount = 0;
+      let shouldClearParentExecutionFields = false;
 
       if (normalizedBody.parentId) {
-        const parentOrder = await this.getParentOrderForInheritance(normalizedBody.parentId, user.account_id, session);
+        parentOrder = await this.getParentOrderForInheritance(normalizedBody.parentId, user.account_id, session);
         if (!parentOrder) {
           throw Object.assign(new Error('Parent work order not found'), { status: 404 });
         }
+        parentChildCount = await this.getChildOrderCount(parentOrder._id, session);
         const parentAssignedUserIds = await this.getAssignedUserIdsForWorkOrder(parentOrder._id, session);
         const inheritedState = this.applyParentInheritance(normalizedBody, parentOrder, parentAssignedUserIds);
         normalizedBody = inheritedState.normalizedBody;
         userIdList = inheritedState.userIdList;
+
+        if (parentChildCount === 0) {
+          if (this.shouldInheritValue(normalizedBody.estimated_time) && !this.shouldInheritValue(parentOrder?.estimated_time)) {
+            normalizedBody.estimated_time = parentOrder.estimated_time;
+          }
+          if (this.shouldInheritValue(normalizedBody.parts) && Array.isArray(parentOrder?.parts) && parentOrder.parts.length > 0) {
+            normalizedBody.parts = JSON.parse(JSON.stringify(parentOrder.parts));
+          }
+          if (this.shouldInheritValue(normalizedBody.procedure_ids) && Array.isArray(parentOrder?.procedure_ids) && parentOrder.procedure_ids.length > 0) {
+            normalizedBody.procedure_ids = [...parentOrder.procedure_ids];
+          }
+          if (this.shouldInheritValue(normalizedBody.procedure_entries) && Array.isArray(parentOrder?.procedure_entries) && parentOrder.procedure_entries.length > 0) {
+            normalizedBody.procedure_entries = JSON.parse(JSON.stringify(parentOrder.procedure_entries));
+          }
+          if (this.shouldInheritValue(normalizedBody.sop_form_id) && parentOrder?.sop_form_id) {
+            normalizedBody.sop_form_id = parentOrder.sop_form_id;
+          }
+          shouldClearParentExecutionFields = true;
+          this.validateIncomingParts(normalizedBody.parts || []);
+        }
       }
 
       const procedureSync = await this.syncProcedureEntries(normalizedBody, user.account_id, user, []);
@@ -1834,6 +1888,41 @@ class OrderService {
         data.inventoryWarnings = inventoryResult.warnings;
       }
 
+      if (shouldClearParentExecutionFields && parentOrder) {
+        if (Array.isArray(parentOrder.parts) && parentOrder.parts.length > 0) {
+          await partsService.adjustInventoryByWorkOrder(parentOrder.parts || [], [], user, session, {
+            account_id: user.account_id,
+            work_order_id: parentOrder._id,
+            work_order_no: parentOrder.order_no,
+            location_id: parentOrder.wo_location_id,
+            previous_status: parentOrder.status,
+            next_status: parentOrder.status,
+            note: `Moved execution planning to follow-up work order ${data.order_no}`
+          });
+        }
+
+        const parentCleanup = this.normalizeTimingFields(this.sanitizeWorkOrder({
+          start_date: null,
+          end_date: null,
+          estimated_time: null,
+          parts: [],
+          sop_form_id: null,
+          procedure_ids: [],
+          procedure_entries: [],
+          sop_form_submitted: false,
+          sop_form_data: {},
+          sop_form_updated_by: null,
+          sop_form_updated_at: null,
+          actual_start_date: null,
+          actual_end_date: null,
+          actual_time: null,
+          labor_entries: [],
+          updatedBy: user._id
+        }));
+
+        await WorkOrderModel.findByIdAndUpdate(parentOrder._id, parentCleanup, { session });
+      }
+
       if (linkedRequest) {
         await requestService.markConverted(String(linkedRequest._id), {
           workOrderId: data._id,
@@ -1889,8 +1978,19 @@ class OrderService {
       }
       if (childCount > 0 && Object.prototype.hasOwnProperty.call(body || {}, 'status')) {
         const requestedStatus = String(body?.status || '').trim();
-        if (['In-Progress', 'Completed'].includes(requestedStatus)) {
+        if (requestedStatus === 'In-Progress') {
           throw Object.assign(new Error('Move child work orders through execution. Parent work orders roll up child progress.'), { status: 400 });
+        }
+        if (requestedStatus === 'Completed') {
+          const childOrders = await WorkOrderModel.find(
+            { parentId: existingOrder._id, visible: true },
+            { status: 1 }
+          ).session(session).lean();
+          const childStatusSummary = this.buildChildStatusSummary(childOrders);
+
+          if (Number(childStatusSummary.completed || 0) !== Number(childStatusSummary.total || 0)) {
+            throw Object.assign(new Error('All child work orders must be completed before the parent work order can be closed.'), { status: 400 });
+          }
         }
       }
       
