@@ -3640,6 +3640,9 @@ class OrderService {
         }
       }
 
+      const normalizedParts = partsService.normalizeWorkOrderParts(normalizedBody.parts || [], normalizedBody.status);
+      await partsService.validateInventoryByWorkOrder([], normalizedParts, 'Open', normalizedBody.status, session);
+
       const newAssetPayload: any = {
         account_id: user.account_id,
         order_no: await this.generateOrderNo(user.account_id),
@@ -3668,7 +3671,7 @@ class OrderService {
         createdFrom: normalizedBody.createdFrom,
         files: normalizedBody.files,
         tasks: normalizedBody.tasks,
-        parts: partsService.normalizeWorkOrderParts(normalizedBody.parts || [], normalizedBody.status),
+        parts: normalizedParts,
         labor_entries: normalizedBody.labor_entries,
         work_request_id: normalizedBody.work_request_id,
         asset_report_id: normalizedBody.asset_report_id,
@@ -3699,16 +3702,26 @@ class OrderService {
       }
       
       if (normalizedBody.parts?.length > 0) {
-        const inventoryResult = await partsService.adjustInventoryByWorkOrder([], newAsset.parts || [], user, session, {
-          account_id: user.account_id,
-          work_order_id: data._id,
-          work_order_no: data.order_no,
-          location_id: normalizedBody.wo_location_id,
-          previous_status: 'Open',
-          next_status: normalizedBody.status,
-          note: 'Initial work order parts reservation'
-        });
-        data.inventoryWarnings = inventoryResult.warnings;
+        try {
+          const inventoryResult = await partsService.adjustInventoryByWorkOrder([], newAsset.parts || [], user, session, {
+            account_id: user.account_id,
+            work_order_id: data._id,
+            work_order_no: data.order_no,
+            location_id: normalizedBody.wo_location_id,
+            previous_status: 'Open',
+            next_status: normalizedBody.status,
+            note: 'Initial work order parts reservation'
+          });
+          data.inventoryWarnings = inventoryResult.warnings;
+        } catch (inventoryError) {
+          if (!session) {
+            await Promise.all([
+              WorkOrderAssigneeModel.deleteMany({ woId: data._id }),
+              WorkOrderModel.findByIdAndDelete(data._id)
+            ]);
+          }
+          throw inventoryError;
+        }
       }
 
       if (shouldClearParentExecutionFields && parentOrder) {
@@ -3862,6 +3875,13 @@ class OrderService {
       
       if (body.hasOwnProperty('parts')) {
         const normalizedParts = partsService.normalizeWorkOrderParts(body.parts || [], updatedData.status || existingOrder.status);
+        await partsService.validateInventoryByWorkOrder(
+          body.oldParts || existingOrder.parts || [],
+          normalizedParts,
+          existingOrder.status,
+          updatedData.status || existingOrder.status,
+          session
+        );
         updatedData.parts = normalizedParts;
         const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || existingOrder.parts || [], normalizedParts, user, session, {
           account_id: user.account_id,
@@ -3875,6 +3895,13 @@ class OrderService {
         updatedData.inventoryWarnings = inventoryResult.warnings;
       } else if (body.hasOwnProperty('status') && Array.isArray(updatedData.parts)) {
         const normalizedParts = partsService.normalizeWorkOrderParts(updatedData.parts, updatedData.status || existingOrder.status);
+        await partsService.validateInventoryByWorkOrder(
+          existingOrder.parts || [],
+          normalizedParts,
+          existingOrder.status,
+          updatedData.status || existingOrder.status,
+          session
+        );
         updatedData.parts = normalizedParts;
         const inventoryResult = await partsService.adjustInventoryByWorkOrder(existingOrder.parts || [], normalizedParts, user, session, {
           account_id: user.account_id,

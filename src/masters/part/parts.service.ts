@@ -366,6 +366,64 @@ class PartsService {
     return (Array.isArray(parts) ? parts : []).map((part: any) => this.buildLifecyclePart(part, status));
   }
 
+  async validateInventoryByWorkOrder(
+    oldParts: any[] = [],
+    newParts: any[] = [],
+    previousStatus: string = 'Open',
+    nextStatus: string = 'Open',
+    session?: any
+  ): Promise<void> {
+    const normalizedOldParts = this.normalizeWorkOrderParts(oldParts, previousStatus);
+    const normalizedNewParts = this.normalizeWorkOrderParts(newParts, nextStatus);
+    const oldMap = new Map<string, any>();
+    const newMap = new Map<string, any>();
+
+    normalizedOldParts.forEach((part) => {
+      const partId = this.getPartIdValue(part);
+      if (partId) {
+        oldMap.set(partId, part);
+      }
+    });
+    normalizedNewParts.forEach((part) => {
+      const partId = this.getPartIdValue(part);
+      if (partId) {
+        newMap.set(partId, part);
+      }
+    });
+
+    const allPartIds = [...new Set([...oldMap.keys(), ...newMap.keys()])];
+
+    for (const partId of allPartIds) {
+      const oldPart = oldMap.get(partId) || null;
+      const newPart = newMap.get(partId) || null;
+      const oldReserved = this.getReservedImpact(oldPart, previousStatus);
+      const newReserved = this.getReservedImpact(newPart, nextStatus);
+      const oldIssued = this.getIssuedImpact(oldPart, previousStatus);
+      const newIssued = this.getIssuedImpact(newPart, nextStatus);
+      const netStockDelta = (oldReserved - newReserved) + (oldIssued - newIssued);
+
+      if (netStockDelta >= 0) {
+        continue;
+      }
+
+      const query = PartsModel.findById(partId);
+      if (session) {
+        query.session(session);
+      }
+
+      const part = await query;
+      if (!part) {
+        continue;
+      }
+
+      const availableQuantity = Number(part.quantity || 0);
+      const requiredQuantity = Math.abs(netStockDelta);
+      if (availableQuantity < requiredQuantity) {
+        throw Object.assign(new Error(`Insufficient stock for ${part.part_name}`), { status: 400 });
+      }
+    }
+  }
+
   async getAllParts(match: any): Promise<IPart[]> {
     match.visible = true;
     const parts = await PartsModel.aggregate([
