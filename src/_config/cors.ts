@@ -7,15 +7,21 @@ const splitOrigins = (value?: string): string[] => {
     .filter(Boolean);
 };
 
+const defaultAllowedOrigins = [
+  'http://localhost:4200',
+  'https://new.presageinsights.ai',
+  'https://app.presageinsights.ai'
+];
+
 export const getAllowedOrigins = (): string[] => {
   const configured = splitOrigins(process.env.ALLOWED_ORIGINS || process.env.SOCKET_CORS_ORIGIN);
-  if (configured.length) return configured;
+  if (configured.length) return Array.from(new Set([...configured, ...defaultAllowedOrigins]));
 
   if (process.env.NODE_ENV === 'production') {
-    return [];
+    return defaultAllowedOrigins;
   }
 
-  return [ ];
+  return defaultAllowedOrigins;
 };
 
 export const isOriginAllowed = (origin?: string): boolean => {
