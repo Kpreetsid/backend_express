@@ -64,9 +64,7 @@ apiRouter.use('/work', isAuthenticated, workRoutes());
 apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());
 apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
-
-const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
-app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], apiRouter);
+app.use(['/api/v1', '/api'], apiRouter);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const err = new Error('Requested resource not found.');
