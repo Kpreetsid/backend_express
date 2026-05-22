@@ -3,6 +3,7 @@ import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
 import { helperService } from "../../utils/helper";
 import { mapUserToAssetService } from "../mapUserAsset/userAsset.service";
+import { UserModel } from "../../models/user.model";
 
 class MapUserToLocationService {
   getLocationsMappedData = async (userId: any) => {
@@ -38,7 +39,7 @@ class MapUserToLocationService {
       pipeline.push(
         {
           $lookup: {
-            from: "location_master",
+            from: LocationModel.collection.name,
             let: { locId: "$locationId" },
             pipeline: [
               { $match: { $expr: { $eq: ["$_id", "$$locId"] }, visible: true } },
@@ -53,7 +54,7 @@ class MapUserToLocationService {
       pipeline.push(
         {
           $lookup: {
-            from: "users",
+            from: UserModel.collection.name,
             let: { userId: "$userId" },
             pipeline: [
               { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },

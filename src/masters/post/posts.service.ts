@@ -1,4 +1,6 @@
 import { PostModel, IPost } from "../../models/post.model";
+import { LocationModel } from "../../models/location.model";
+import { UserModel } from "../../models/user.model";
 
 class PostService {
   async getAllPosts(match: any): Promise<IPost[]> {
@@ -6,7 +8,7 @@ class PostService {
       { $match: match },
       {
         $lookup: {
-          from: "users", let: { uId: "$createdBy" }, pipeline: [
+          from: UserModel.collection.name, let: { uId: "$createdBy" }, pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
             { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, user_role: 1, user_profile_img: 1, username: 1, user_status: 1 } }
           ],
@@ -16,7 +18,7 @@ class PostService {
       { $unwind: "$user" },
       {
         $lookup: {
-          from: "location_master",
+          from: LocationModel.collection.name,
           let: { publishTo: "$publishTo" },
           pipeline: [
             { $addFields: { strId: { $toString: "$_id" } } },

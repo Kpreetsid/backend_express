@@ -1,4 +1,10 @@
 import { InspectionModel } from "../../models/inspection.model";
+import { AssetModel } from "../../models/asset.model";
+import { CategoryModel } from "../../models/formCategory.model";
+import { LocationModel } from "../../models/location.model";
+import { MapUserInspectionModel } from "../../models/mapUserInspection.model";
+import { SOPsModel } from "../../models/sops.model";
+import { UserModel } from "../../models/user.model";
 import { mapInspectionService } from "../../transaction/mapUserInspection/userInspection.service";
 import { withTransaction } from "../../utils/transaction.helper";
 
@@ -9,11 +15,11 @@ class InspectionService {
     { $match: filter },
     {
       $lookup: {
-        from: "map_user_inspection", let: { inspId: "$_id" }, pipeline: [
+        from: MapUserInspectionModel.collection.name, let: { inspId: "$_id" }, pipeline: [
           { $match: { $expr: { $eq: ["$inspection_id", "$$inspId"] } } },
           {
             $lookup: {
-              from: "users", let: { uId: "$user_id" }, pipeline: [
+              from: UserModel.collection.name, let: { uId: "$user_id" }, pipeline: [
                 { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
                 { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1, user_role: 1, email: 1, user_status: 1 } }
               ],
@@ -27,11 +33,11 @@ class InspectionService {
     },
     {
       $lookup: {
-        from: "sops", let: { formId: "$form_id" }, pipeline: [
+        from: SOPsModel.collection.name, let: { formId: "$form_id" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$formId"] }, visible: true } },
           {
             $lookup: {
-              from: "form_category", let: { catId: "$categoryId" }, pipeline: [
+              from: CategoryModel.collection.name, let: { catId: "$categoryId" }, pipeline: [
                 { $match: { $expr: { $eq: ["$_id", "$$catId"] }, visible: true } },
                 { $project: { _id: 1, id: "$_id", name: 1, visible: 1 } }
               ],
@@ -45,7 +51,7 @@ class InspectionService {
     { $unwind: { path: "$form_id", preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: "location_master", let: { locId: "$location_id" }, pipeline: [
+        from: LocationModel.collection.name, let: { locId: "$location_id" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$locId"] }, visible: true } },
           { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, top_level: 1, parent_id: 1, visible: 1 } }
         ],
@@ -55,7 +61,7 @@ class InspectionService {
     { $unwind: { path: "$location_id", preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: "asset_master", let: { assetId: "$asset_id" }, pipeline: [
+        from: AssetModel.collection.name, let: { assetId: "$asset_id" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
           { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, asset_model: 1, top_level: 1, parent_id: 1, visible: 1 } }
         ],
@@ -64,7 +70,7 @@ class InspectionService {
     { $unwind: { path: "$asset_id", preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: "users", let: { uId: "$createdBy" }, pipeline: [
+        from: UserModel.collection.name, let: { uId: "$createdBy" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
           { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1, user_role: 1, email: 1, user_status: 1 } }
         ],
@@ -74,7 +80,7 @@ class InspectionService {
     { $unwind: { path: "$createdBy", preserveNullAndEmptyArrays: true } },
     {
       $lookup: {
-        from: "users", let: { uId: "$updatedBy" }, pipeline: [
+        from: UserModel.collection.name, let: { uId: "$updatedBy" }, pipeline: [
           { $match: { $expr: { $eq: ["$_id", "$$uId"] } } },
           { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, user_profile_img: 1, username: 1, user_role: 1, email: 1, user_status: 1 } }
         ],

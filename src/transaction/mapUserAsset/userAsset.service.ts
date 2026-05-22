@@ -2,6 +2,7 @@ import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { LocationModel } from "../../models/location.model";
 import { AssetModel } from "../../models/asset.model";
 import { helperService } from "../../utils/helper";
+import { UserModel } from "../../models/user.model";
 
 class MapUserToAssetService {
   private buildAlarmFlags = (alarmType: string[] = []) => ({
@@ -34,7 +35,7 @@ class MapUserToAssetService {
     if (populate === "assetId") {
       pipeline.push({
         $lookup: {
-          from: "asset_master",
+          from: AssetModel.collection.name,
           let: { assetId: "$assetId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
@@ -48,7 +49,7 @@ class MapUserToAssetService {
     if (populate === "userId") {
       pipeline.push({
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { userId: "$userId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },

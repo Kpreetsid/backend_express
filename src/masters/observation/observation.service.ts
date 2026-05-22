@@ -1,4 +1,7 @@
 import { ObservationModel } from "../../models/observation.model";
+import { AssetModel } from "../../models/asset.model";
+import { LocationModel } from "../../models/location.model";
+import { UserModel } from "../../models/user.model";
 
 class ObservationService {
   async getAllObservation (match: any): Promise<any> {
@@ -6,7 +9,7 @@ class ObservationService {
       { $match: match },
       {
         $lookup: {
-          from: "asset_master",
+          from: AssetModel.collection.name,
           let: { assetId: "$assetId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
@@ -18,7 +21,7 @@ class ObservationService {
       { $unwind: { path: "$asset", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "location_master",
+          from: LocationModel.collection.name,
           let: { locationId: "$locationId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$locationId"] }, visible: true } },
@@ -30,7 +33,7 @@ class ObservationService {
       { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { userId: "$userId" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },

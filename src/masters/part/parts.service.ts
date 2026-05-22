@@ -6,7 +6,10 @@ import { InventoryMovementModel, InventoryMovementType } from "../../models/inve
 import { CycleCountModel } from "../../models/cycleCount.model";
 import { ProcedureModel } from "../../models/procedure.model";
 import { WorkOrderModel } from "../../models/workOrder.model";
+import { PartsTypeModel } from "../../models/parts-types.model";
 import { PartHistoryAction, PartHistoryModel } from "../../models/partHistory.model";
+import { LocationModel } from "../../models/location.model";
+import { UserModel } from "../../models/user.model";
 
 interface InventoryAdjustmentResult {
   warnings: {
@@ -183,7 +186,7 @@ class PartsService {
         },
         {
           $lookup: {
-            from: "location_master",
+            from: LocationModel.collection.name,
             let: { location_id: "$location_id" },
             pipeline: [
               { $match: { $expr: { $eq: ["$_id", "$$location_id"] }, visible: true } },
@@ -369,7 +372,7 @@ class PartsService {
       { $match: match },
       {
         $lookup: {
-          from: "location_master",
+          from: LocationModel.collection.name,
           let: { location_id: "$location_id" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$location_id"] }, visible: true } },
@@ -381,7 +384,19 @@ class PartsService {
       { $unwind: { path: "$location", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "users",
+          from: PartsTypeModel.collection.name,
+          let: { part_type_id: "$part_type" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$part_type_id"] }} },
+            { $project: { _id: 1, id: "$_id", name: 1, description: 1} },
+          ],
+          as: "partTypeData"
+        }
+      },
+      { $unwind: { path: "$partTypeData", preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: UserModel.collection.name,
           let: { user_id: "$createdBy" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$user_id"] } } },
@@ -393,7 +408,7 @@ class PartsService {
       { $unwind: { path: "$createdUser", preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: "users",
+          from: UserModel.collection.name,
           let: { user_id: "$updatedBy" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$user_id"] } } },
@@ -426,6 +441,7 @@ class PartsService {
       barcode: normalizedBody.barcode,
       unit: normalizedBody.unit,
       description: normalizedBody.description,
+      part_type: normalizedBody.part_type,
       quantity: normalizedBody.quantity,
       min_quantity: normalizedBody.min_quantity,
       reorder_point: normalizedBody.reorder_point,
@@ -941,7 +957,7 @@ class PartsService {
       { $match: { ...match, visible: true } },
       {
         $lookup: {
-          from: "location_master",
+          from: LocationModel.collection.name,
           let: { location_id: "$location_id" },
           pipeline: [
             { $match: { $expr: { $eq: ["$_id", "$$location_id"] }, visible: true } },
