@@ -10,8 +10,8 @@ export default (router: express.Router) => {
     roleRouter.get('/self', rolesController.myRoleData);
     roleRouter.get('/:id', validateParamId, rolesController.getDataById);
     roleRouter.post('/', rolesValidator, validate, rolesController.createRole);
-    roleRouter.put('/:id', validateParamId, rolesValidator, validate, rolesController.updateRole);
-    roleRouter.patch('/:id', validateParamId, rolesValidator, validate, rolesController.updateRole);
+    roleRouter.put('/:id', validateParamId, rolesValidator, rolesController.updateRole);
+    roleRouter.patch('/:id', validateParamId, rolesValidator, rolesController.updateRole);
     roleRouter.delete('/:id', validateParamId, rolesController.removeRole);
     router.use('/roles', roleRouter);
-}
+}
