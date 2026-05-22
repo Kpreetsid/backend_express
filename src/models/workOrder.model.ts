@@ -173,6 +173,12 @@ export interface IWorkOrder extends Document {
   end_date: Date;
   actual_start_date?: Date;
   actual_end_date?: Date;
+  completed_at?: Date;
+  completed_by?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
   actual_time?: number;
   sop_form_id: ObjectId;
   procedure_ids?: ObjectId[];
@@ -217,6 +223,12 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   end_date: { type: Date },
   actual_start_date: { type: Date },
   actual_end_date: { type: Date },
+  completed_at: { type: Date },
+  completed_by: {
+    id: { type: String },
+    firstName: { type: String },
+    lastName: { type: String }
+  },
   actual_time: { type: Number },
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
   procedure_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_Procedure', default: [] },
