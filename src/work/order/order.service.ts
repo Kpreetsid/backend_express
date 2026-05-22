@@ -11,6 +11,8 @@ import { withTransaction } from "../../utils/transaction.helper";
 import { ProcedureModel } from "../../models/procedure.model";
 import { WorkOrderAssigneeModel } from "../../models/mapUserWorkOrder.model";
 import { workOrderActivityService } from "./workOrderActivity.service";
+import { WorkRequestModel } from "../../models/workRequest.model";
+import { SchedulerModel } from "../../models/scheduleMaster.model";
 import { AssetModel } from "../../models/asset.model";
 import { InventoryMovementModel } from "../../models/inventoryMovement.model";
 import { LocationModel } from "../../models/location.model";
@@ -41,6 +43,22 @@ export interface WorkOrderSearchParams {
 
 class OrderService {
   private mailerService: MailerService;
+  private readonly natureOfWorkCanonicalValues = [
+    'General',
+    'Maintenance',
+    'Quality',
+    'Breakdown',
+    'Kaizen/improvement',
+    'Preventive',
+    'Electrical',
+    'Inspection',
+    'Corrective',
+    'Safety',
+    'Upgrade',
+    'Meter Reading',
+    'Mechanical',
+    'Other'
+  ];
   private userProjection = {
     _id: 1,
     id: "$_id",
@@ -97,6 +115,110 @@ class OrderService {
       return `${sanitized[0]} and ${sanitized[1]}`;
     }
     return `${sanitized.slice(0, -1).join(', ')}, and ${sanitized[sanitized.length - 1]}`;
+  }
+
+  private canonicalizeNatureOfWork(value: any): string {
+    const normalizedValue = String(value || '').trim();
+    if (!normalizedValue) {
+      return 'General';
+    }
+
+    const compact = normalizedValue.toLowerCase().replace(/[\s_-]+/g, '');
+    const aliasMap: Record<string, string> = {
+      general: 'General',
+      maintenance: 'Maintenance',
+      quality: 'Quality',
+      breakdown: 'Breakdown',
+      breakdwon: 'Breakdown',
+      breakdownwork: 'Breakdown',
+      breakdownmaintenance: 'Breakdown',
+      breakdowns: 'Breakdown',
+      breakdownrepair: 'Breakdown',
+      breakdownservice: 'Breakdown',
+      breakdownjob: 'Breakdown',
+      breakdowntask: 'Breakdown',
+      breakdownactivity: 'Breakdown',
+      breakdownissue: 'Breakdown',
+      breakdownevent: 'Breakdown',
+      breakdownincident: 'Breakdown',
+      breakdowncallout: 'Breakdown',
+      breakdowncalloutwork: 'Breakdown',
+      breakdowncalloutjob: 'Breakdown',
+      breakdwonwork: 'Breakdown',
+      breakdwonjob: 'Breakdown',
+      breakdownrepairwork: 'Breakdown',
+      breakdownrepairjob: 'Breakdown',
+      breakdownrepairtask: 'Breakdown',
+      kaizenimprovement: 'Kaizen/improvement',
+      kaizenimprovements: 'Kaizen/improvement',
+      kaizen: 'Kaizen/improvement',
+      improvement: 'Kaizen/improvement',
+      improvements: 'Kaizen/improvement',
+      preventive: 'Preventive',
+      preventivemaintenance: 'Preventive',
+      electircal: 'Electrical',
+      electrical: 'Electrical',
+      inspection: 'Inspection',
+      corrective: 'Corrective',
+      safety: 'Safety',
+      upgrade: 'Upgrade',
+      meterreading: 'Meter Reading',
+      meterreadings: 'Meter Reading',
+      mechenical: 'Mechanical',
+      mechanical: 'Mechanical',
+      other: 'Other'
+    };
+
+    return aliasMap[compact] || this.natureOfWorkCanonicalValues.find((item: string) => item.toLowerCase() === normalizedValue.toLowerCase()) || normalizedValue;
+  }
+
+  private normalizeNatureOfWorkPayload(body: any): any {
+    if (!body) {
+      return body;
+    }
+
+    const nextBody = { ...body };
+    const rawNatureOfWork = nextBody.nature_of_work ?? nextBody.type;
+    const canonicalNatureOfWork = this.canonicalizeNatureOfWork(rawNatureOfWork);
+    nextBody.nature_of_work = canonicalNatureOfWork;
+
+    if (!String(nextBody.type || '').trim()) {
+      nextBody.type = canonicalNatureOfWork;
+    }
+
+    return nextBody;
+  }
+
+  private buildCompletedByPayload(user: IUser | null | undefined): { id: string; firstName: string; lastName: string } | null {
+    if (!user?._id) {
+      return null;
+    }
+
+    return {
+      id: String(user._id),
+      firstName: String(user?.firstName || '').trim(),
+      lastName: String(user?.lastName || '').trim()
+    };
+  }
+
+  private syncCompletionAuditFields(order: any, previousStatus: string | null | undefined, actor: IUser): any {
+    const nextOrder = { ...order };
+    const nextStatus = String(nextOrder?.status || '').trim();
+    const prevStatus = String(previousStatus || '').trim();
+    const isTransitioningToCompleted = nextStatus === 'Completed' && prevStatus !== 'Completed';
+
+    if (nextStatus === 'Completed') {
+      const completionDate = nextOrder?.actual_end_date ? new Date(nextOrder.actual_end_date) : (nextOrder?.completed_at ? new Date(nextOrder.completed_at) : new Date());
+      nextOrder.completed_at = completionDate;
+      nextOrder.completed_by = isTransitioningToCompleted
+        ? (this.buildCompletedByPayload(actor) || nextOrder.completed_by || null)
+        : (nextOrder.completed_by || this.buildCompletedByPayload(actor) || null);
+    } else {
+      nextOrder.completed_at = null;
+      nextOrder.completed_by = null;
+    }
+
+    return nextOrder;
   }
 
   private getGeneralChangeLabels(existingOrder: any, updatedOrder: any, body: any): string[] {
@@ -1873,6 +1995,303 @@ class OrderService {
     return await WorkOrderModel.countDocuments(match);
   }
 
+  private normalizeDateRange(range: { fromDate?: string; toDate?: string } = {}): { fromDate: Date; toDate: Date } | null {
+    if (!range?.fromDate || !range?.toDate) {
+      return null;
+    }
+
+    const fromDate = new Date(range.fromDate);
+    const toDate = new Date(range.toDate);
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      return null;
+    }
+
+    return { fromDate, toDate };
+  }
+
+  private getCompletionDateExpression(): any {
+    return {
+      $let: {
+        vars: {
+          completedEntries: {
+            $filter: {
+              input: "$status_details",
+              as: "statusEntry",
+              cond: { $eq: ["$$statusEntry.status", "Completed"] }
+            }
+          }
+        },
+        in: {
+          $ifNull: [
+            "$completed_at",
+            {
+              $ifNull: [
+                "$actual_end_date",
+                {
+                  $ifNull: [
+                    {
+                      $arrayElemAt: [
+                        {
+                          $map: {
+                            input: "$$completedEntries",
+                            as: "completedEntry",
+                            in: "$$completedEntry.createdAt"
+                          }
+                        },
+                        -1
+                      ]
+                    },
+                    "$updatedAt"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    };
+  }
+
+  private getRangeBucketConfig(range: { fromDate: Date; toDate: Date }): { format: string; label: string } {
+    const diffInMs = Math.max(range.toDate.getTime() - range.fromDate.getTime(), 0);
+    const diffInDays = Math.ceil(diffInMs / 86400000);
+
+    if (diffInDays > 120) {
+      return { format: "%Y-%m", label: "month" };
+    }
+
+    return { format: "%Y-%m-%d", label: "day" };
+  }
+
+  private parseReportDate(value: any): Date | null {
+    if (!value) {
+      return null;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private isBlockedLikeStatus(status: string = ''): boolean {
+    return ['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold'].includes(String(status || '').trim());
+  }
+
+  private getAssignedUserCount(order: any): number {
+    if (!Array.isArray(order?.assignedUsers)) {
+      return 0;
+    }
+
+    return order.assignedUsers.filter((entry: any) => !!entry?.user?._id || !!entry?.user?.id).length;
+  }
+
+  private getPartLifecycleState(part: any): string {
+    if (String(part?.lifecycleStatus || '').trim()) {
+      return String(part.lifecycleStatus).trim();
+    }
+
+    if (String(part?.lifecycle_status || '').trim()) {
+      return String(part.lifecycle_status).trim();
+    }
+
+    const status = String(part?.reservationStatus || '').trim();
+    if (status === 'Short') {
+      return 'short';
+    }
+    if (status === 'Issued / Returned' || status === 'Returned') {
+      return 'returned';
+    }
+    if (status === 'Issued') {
+      return 'issued';
+    }
+    if (status === 'Reserved') {
+      return 'reserved';
+    }
+    return 'planned';
+  }
+
+  private isProcedureReadyForExecution(order: any): boolean {
+    const procedures = Array.isArray(order?.procedures) ? order.procedures : [];
+    if (!procedures.length) {
+      return false;
+    }
+
+    const incompleteProcedures = procedures.filter((procedure: any) => !procedure?.submitted);
+    return incompleteProcedures.length === 0;
+  }
+
+  private isPartsReadyForExecution(order: any): boolean {
+    const parts = Array.isArray(order?.parts) ? order.parts : [];
+    const status = String(order?.status || '').trim();
+
+    if (status === 'Waiting-on-Parts') {
+      return false;
+    }
+
+    const invalidParts = parts.filter((part: any) => !part?.part_id || !(Number(part?.estimatedQuantity) > 0));
+    if (invalidParts.length > 0) {
+      return false;
+    }
+
+    const blockedAvailability = parts.filter((part: any) => ['Missing', 'Out of Stock'].includes(String(part?.availabilityStatus || '').trim()));
+    const shortLifecycleParts = parts.filter((part: any) => this.getPartLifecycleState(part) === 'short');
+    if (blockedAvailability.length > 0 || shortLifecycleParts.length > 0) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private isScheduleReadyForExecution(order: any): boolean {
+    const startDate = this.parseReportDate(order?.start_date);
+    const dueDate = this.parseReportDate(order?.end_date);
+    const status = String(order?.status || '').trim();
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    if (status === 'Waiting-on-Permit' || status === 'Blocked' || status === 'On-Hold') {
+      return false;
+    }
+
+    if (!startDate || !dueDate) {
+      return false;
+    }
+
+    if (dueDate.getTime() < startDate.getTime()) {
+      return false;
+    }
+
+    if (status !== 'Completed' && dueDate.getTime() < startOfToday.getTime()) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private isExecutionReadyOrder(order: any): boolean {
+    const status = String(order?.status || '').trim();
+    if (status === 'Completed' || this.isBlockedLikeStatus(status)) {
+      return false;
+    }
+
+    return this.getAssignedUserCount(order) > 0
+      && this.isScheduleReadyForExecution(order)
+      && this.isPartsReadyForExecution(order)
+      && this.isProcedureReadyForExecution(order);
+  }
+
+  private isOpenOrder(order: any): boolean {
+    return String(order?.status || '').trim() !== 'Completed';
+  }
+
+  private isOrderWithinActiveExecutionRange(order: any, range: { fromDate: Date; toDate: Date }): boolean {
+    const dueDate = this.parseReportDate(order?.end_date);
+    const startDate = this.parseReportDate(order?.start_date);
+    const createdAt = this.parseReportDate(order?.createdAt);
+
+    if (dueDate && dueDate >= range.fromDate && dueDate <= range.toDate) {
+      return true;
+    }
+
+    if (startDate && startDate >= range.fromDate && startDate <= range.toDate) {
+      return true;
+    }
+
+    if (!startDate && !dueDate && createdAt && createdAt >= range.fromDate && createdAt <= range.toDate) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private getActualCompletionHours(order: any): number | null {
+    const actualStartDate = this.parseReportDate(order?.actual_start_date);
+    const actualEndDate = this.parseReportDate(order?.actual_end_date);
+
+    if (!actualStartDate || !actualEndDate) {
+      return null;
+    }
+
+    const diff = actualEndDate.getTime() - actualStartDate.getTime();
+    if (diff < 0) {
+      return null;
+    }
+
+    return Number((diff / 3600000).toFixed(2));
+  }
+
+  private hasSubmittedInspection(order: any): boolean {
+    const procedures = Array.isArray(order?.procedure_entries) ? order.procedure_entries : [];
+    return procedures.some((procedure: any) => Boolean(procedure?.submitted));
+  }
+
+  private getCompletedStatusEntry(order: any): any | null {
+    const entries = Array.isArray(order?.status_details) ? order.status_details : [];
+    return [...entries].reverse().find((entry: any) => String(entry?.status || '').trim() === 'Completed') || null;
+  }
+
+  private getPartsSpend(order: any): number {
+    const parts = Array.isArray(order?.parts) ? order.parts : [];
+    return parts.reduce((total: number, part: any) => {
+      const unitCost = Number(part?.cost || 0) || 0;
+      const quantity = Number(part?.actualQuantity ?? part?.plannedQuantity ?? part?.estimatedQuantity ?? 0) || 0;
+      return total + (unitCost * quantity);
+    }, 0);
+  }
+
+  private getPlannerBucketId(order: any): 'backlog' | 'assigned' | 'ready' | 'blocked' | 'overdue' {
+    const status = String(order?.status || '').trim();
+
+    if (!this.isOpenOrder(order)) {
+      return 'ready';
+    }
+
+    const dueDate = this.parseReportDate(order?.end_date);
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (dueDate && dueDate.getTime() < startOfToday.getTime()) {
+      return 'overdue';
+    }
+
+    if (this.getAssignedUserCount(order) === 0) {
+      return 'backlog';
+    }
+
+    if (['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold'].includes(status)) {
+      return 'blocked';
+    }
+
+    if (!this.isScheduleReadyForExecution(order)) {
+      return 'assigned';
+    }
+
+    if (!this.isPartsReadyForExecution(order) || !this.isProcedureReadyForExecution(order)) {
+      return 'blocked';
+    }
+
+    return this.isExecutionReadyOrder(order) ? 'ready' : 'assigned';
+  }
+
+  private isScheduleOverlappingRange(schedule: any, range: { fromDate: Date; toDate: Date }): boolean {
+    const startDate = this.parseReportDate(schedule?.schedule?.start_date);
+    const endDate = this.parseReportDate(schedule?.schedule?.end_date);
+
+    if (!startDate) {
+      return false;
+    }
+
+    if (endDate && endDate < range.fromDate) {
+      return false;
+    }
+
+    return startDate <= range.toDate;
+  }
+
+  private async getExecutionScopedOrders(match: any): Promise<any[]> {
+    const pipeline = this.getWorkOrderPipeline(match);
+    const data = await WorkOrderModel.aggregate(pipeline);
+    return this.decorateHierarchyCollection(data || []);
+  }
+
   async getAllWorkOrders(match: any, skip: number = 0, limit: number = 25) {
     const pipeline: any[] = this.getWorkOrderPipeline(match);
     pipeline.push({ $sort: { createdAt: -1 } });
@@ -1992,6 +2411,1104 @@ class OrderService {
     return final_result;
   };
 
+  async createdVsCompleted(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const bucketConfig = this.getRangeBucketConfig(range);
+    const completionDateExpr = this.getCompletionDateExpression();
+
+    const [createdData, completedData] = await Promise.all([
+      WorkOrderModel.aggregate([
+        {
+          $match: {
+            ...match,
+            createdAt: { $gte: range.fromDate, $lte: range.toDate }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: bucketConfig.format, date: "$createdAt" } },
+            count: { $sum: 1 }
+          }
+        },
+        { $project: { _id: 0, bucket: "$_id", count: 1 } },
+        { $sort: { bucket: 1 } }
+      ]),
+      WorkOrderModel.aggregate([
+        {
+          $match: {
+            ...match,
+            status: "Completed"
+          }
+        },
+        {
+          $addFields: {
+            completion_date: completionDateExpr
+          }
+        },
+        {
+          $match: {
+            completion_date: { $gte: range.fromDate, $lte: range.toDate }
+          }
+        },
+        {
+          $group: {
+            _id: { $dateToString: { format: bucketConfig.format, date: "$completion_date" } },
+            count: { $sum: 1 }
+          }
+        },
+        { $project: { _id: 0, bucket: "$_id", count: 1 } },
+        { $sort: { bucket: 1 } }
+      ])
+    ]);
+
+    const bucketMap = new Map<string, { created: number; completed: number }>();
+    for (const item of createdData) {
+      bucketMap.set(String(item.bucket), { created: Number(item.count || 0), completed: 0 });
+    }
+    for (const item of completedData) {
+      const existing = bucketMap.get(String(item.bucket)) || { created: 0, completed: 0 };
+      existing.completed = Number(item.count || 0);
+      bucketMap.set(String(item.bucket), existing);
+    }
+
+    const buckets = Array.from(bucketMap.keys()).sort();
+    if (!buckets.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    return {
+      granularity: bucketConfig.label,
+      date: buckets,
+      created: buckets.map((bucket: string) => Number(bucketMap.get(bucket)?.created || 0)),
+      completed: buckets.map((bucket: string) => Number(bucketMap.get(bucket)?.completed || 0))
+    };
+  }
+
+  async overviewSummaryData(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const completionDateExpr = this.getCompletionDateExpression();
+    const aggregationResults = await WorkOrderModel.aggregate([
+      { $match: match },
+      {
+        $addFields: {
+          completion_date: completionDateExpr
+        }
+      },
+      {
+        $facet: {
+          created: [
+            {
+              $match: {
+                createdAt: { $gte: range.fromDate, $lte: range.toDate }
+              }
+            },
+            { $count: "count" }
+          ],
+          completed: [
+            {
+              $match: {
+                status: "Completed",
+                completion_date: { $gte: range.fromDate, $lte: range.toDate }
+              }
+            },
+            { $count: "count" }
+          ],
+          completedOnTime: [
+            {
+              $match: {
+                status: "Completed",
+                completion_date: { $gte: range.fromDate, $lte: range.toDate },
+                end_date: { $exists: true, $ne: null },
+                $expr: { $lte: ["$completion_date", "$end_date"] }
+              }
+            },
+            { $count: "count" }
+          ],
+          overdueOpen: [
+            {
+              $match: {
+                status: { $ne: "Completed" },
+                end_date: { $gte: range.fromDate, $lte: range.toDate, $lt: new Date() }
+              }
+            },
+            { $count: "count" }
+          ]
+        }
+      }
+    ]);
+
+    const result = aggregationResults[0] || {};
+    const createdCount = Number(result.created?.[0]?.count || 0);
+    const completedCount = Number(result.completed?.[0]?.count || 0);
+    const completedOnTimeCount = Number(result.completedOnTime?.[0]?.count || 0);
+    const overdueOpenCount = Number(result.overdueOpen?.[0]?.count || 0);
+    const completionRate = completedCount ? (completedOnTimeCount / completedCount) * 100 : 0;
+
+    return {
+      created_count: createdCount,
+      completed_count: completedCount,
+      on_time_completion_rate: Number(completionRate.toFixed(2)),
+      overdue_open_count: overdueOpenCount,
+      completed_on_time_count: completedOnTimeCount,
+      completed_late_count: Math.max(completedCount - completedOnTimeCount, 0)
+    };
+  }
+
+  async executionSummaryData(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const completionMatch = {
+      ...match,
+      status: "Completed",
+      actual_end_date: { $gte: range.fromDate, $lte: range.toDate }
+    };
+    const completedOrders = await WorkOrderModel.find(completionMatch).lean();
+
+    const completedCount = completedOrders.length;
+    const onTimeCompletedCount = completedOrders.filter((order: any) => {
+      const actualEndDate = this.parseReportDate(order?.actual_end_date);
+      const dueDate = this.parseReportDate(order?.end_date);
+      return !!actualEndDate && !!dueDate && actualEndDate.getTime() <= dueDate.getTime();
+    }).length;
+
+    const completionHours = completedOrders
+      .map((order: any) => this.getActualCompletionHours(order))
+      .filter((hours: number | null) => hours !== null) as number[];
+    const avgHours = completionHours.length
+      ? Number((completionHours.reduce((total: number, hours: number) => total + hours, 0) / completionHours.length).toFixed(2))
+      : 0;
+
+    const scopedOrders = await this.getExecutionScopedOrders(match);
+    const activeOrders = scopedOrders.filter((order: any) => this.isOpenOrder(order) && this.isOrderWithinActiveExecutionRange(order, range));
+    const today = new Date();
+    const overdueOpenCount = activeOrders.filter((order: any) => {
+      const dueDate = this.parseReportDate(order?.end_date);
+      return !!dueDate && dueDate.getTime() < today.getTime();
+    }).length;
+    const waitingOnPartsCount = activeOrders.filter((order: any) => String(order?.status || '').trim() === 'Waiting-on-Parts').length;
+    const blockedWorkCount = activeOrders.filter((order: any) => ['Blocked', 'Waiting-on-Permit', 'On-Hold'].includes(String(order?.status || '').trim())).length;
+    const readyForExecutionCount = activeOrders.filter((order: any) => this.isExecutionReadyOrder(order)).length;
+
+    return {
+      completed_count: completedCount,
+      on_time_completed_count: onTimeCompletedCount,
+      on_time_completion_rate: completedCount ? Number(((onTimeCompletedCount / completedCount) * 100).toFixed(2)) : 0,
+      overdue_open_count: overdueOpenCount,
+      waiting_on_parts_count: waitingOnPartsCount,
+      blocked_work_count: blockedWorkCount,
+      ready_for_execution_count: readyForExecutionCount,
+      avg_time_to_complete_hours: avgHours
+    };
+  }
+
+  async onTimeVsOverdue(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const completionMatch = {
+      ...match,
+      status: "Completed",
+      actual_end_date: { $gte: range.fromDate, $lte: range.toDate }
+    };
+    const completedOrders = await WorkOrderModel.find(completionMatch).lean();
+
+    const onTimeCount = completedOrders.filter((order: any) => {
+      const actualEndDate = this.parseReportDate(order?.actual_end_date);
+      const dueDate = this.parseReportDate(order?.end_date);
+      return !!actualEndDate && !!dueDate && actualEndDate.getTime() <= dueDate.getTime();
+    }).length;
+    const completedLateCount = Math.max(completedOrders.length - onTimeCount, 0);
+
+    const scopedOrders = await this.getExecutionScopedOrders(match);
+    const activeOrders = scopedOrders.filter((order: any) => this.isOpenOrder(order) && this.isOrderWithinActiveExecutionRange(order, range));
+    const today = new Date();
+    const overdueOpenCount = activeOrders.filter((order: any) => {
+      const dueDate = this.parseReportDate(order?.end_date);
+      return !!dueDate && dueDate.getTime() < today.getTime();
+    }).length;
+
+    const total = onTimeCount + completedLateCount + overdueOpenCount;
+    return {
+      total,
+      data: [
+        {
+          key: 'On Time',
+          value: onTimeCount,
+          percentage: total ? Number(((onTimeCount / total) * 100).toFixed(2)) : 0
+        },
+        {
+          key: 'Completed Late',
+          value: completedLateCount,
+          percentage: total ? Number(((completedLateCount / total) * 100).toFixed(2)) : 0
+        },
+        {
+          key: 'Open Overdue',
+          value: overdueOpenCount,
+          percentage: total ? Number(((overdueOpenCount / total) * 100).toFixed(2)) : 0
+        }
+      ]
+    };
+  }
+
+  async timeToComplete(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const bucketConfig = this.getRangeBucketConfig(range);
+    const data = await WorkOrderModel.aggregate([
+      {
+        $match: {
+          ...match,
+          status: 'Completed',
+          actual_end_date: { $gte: range.fromDate, $lte: range.toDate },
+          actual_start_date: { $exists: true, $ne: null }
+        }
+      },
+      {
+        $addFields: {
+          completion_hours: {
+            $divide: [
+              { $subtract: ['$actual_end_date', '$actual_start_date'] },
+              3600000
+            ]
+          }
+        }
+      },
+      {
+        $match: {
+          completion_hours: { $gte: 0 }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: bucketConfig.format, date: '$actual_end_date' } },
+          avg_hours: { $avg: '$completion_hours' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          bucket: '$_id',
+          avg_hours: { $round: ['$avg_hours', 2] },
+          count: 1
+        }
+      },
+      { $sort: { bucket: 1 } }
+    ]);
+
+    if (!data.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const overallAverage = data.length
+      ? Number((data.reduce((total: number, entry: any) => total + Number(entry.avg_hours || 0), 0) / data.length).toFixed(2))
+      : 0;
+
+    return {
+      granularity: bucketConfig.label,
+      date: data.map((entry: any) => entry.bucket),
+      avg_hours: data.map((entry: any) => Number(entry.avg_hours || 0)),
+      count: data.map((entry: any) => Number(entry.count || 0)),
+      overall_avg_hours: overallAverage
+    };
+  }
+
+  async workOrdersByType(match: any): Promise<any> {
+    const orders = await WorkOrderModel.find(match).select('nature_of_work type').lean();
+    const rollup = new Map<string, number>();
+    orders.forEach((order: any) => {
+      const key = this.canonicalizeNatureOfWork(order?.nature_of_work || order?.type || 'General') || 'Unspecified';
+      rollup.set(key, Number(rollup.get(key) || 0) + 1);
+    });
+
+    const data = Array.from(rollup.entries())
+      .map(([key, value]) => ({ key, value }))
+      .sort((first: any, second: any) => {
+        if (second.value !== first.value) {
+          return second.value - first.value;
+        }
+        return first.key.localeCompare(second.key);
+      });
+
+    if (!data.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    return data;
+  }
+
+  async workOrderSourceMix(match: any): Promise<any> {
+    const range = match?.createdAt?.$gte && match?.createdAt?.$lte
+      ? this.normalizeDateRange({ fromDate: String(match.createdAt.$gte), toDate: String(match.createdAt.$lte) })
+      : null;
+    const bucketConfig = range ? this.getRangeBucketConfig(range) : { format: '%Y-%m', label: 'month' };
+
+    const data = await WorkOrderModel.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            createdFrom: {
+              $cond: [
+                {
+                  $or: [
+                    { $eq: [{ $ifNull: ['$createdFrom', ''] }, ''] },
+                    { $eq: [{ $trim: { input: { $ifNull: ['$createdFrom', ''] } } }, ''] }
+                  ]
+                },
+                'Work Order',
+                { $trim: { input: '$createdFrom' } }
+              ]
+            },
+            bucket: { $dateToString: { format: bucketConfig.format, date: '$createdAt' } }
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          createdFrom: '$_id.createdFrom',
+          bucket: '$_id.bucket',
+          count: 1
+        }
+      },
+      { $sort: { bucket: 1 } }
+    ]);
+
+    if (!data.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const buckets = [...new Set(data.map((item: any) => item.bucket))].sort();
+    const categories = ['Preventive', 'Work Request', 'Work Order', 'Asset Report'];
+    const finalResult: any = { date: buckets, granularity: bucketConfig.label };
+
+    for (const category of categories) {
+      finalResult[category] = buckets.map((bucket: string) => {
+        const found = data.find((item: any) => item.createdFrom === category && item.bucket === bucket);
+        return found ? Number(found.count || 0) : 0;
+      });
+    }
+
+    return finalResult;
+  }
+
+  async assetMaintenanceReport(match: any): Promise<any> {
+    const orders = await this.getExecutionScopedOrders(match);
+    if (!orders.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const assetMap = new Map<string, any>();
+    orders.forEach((order: any) => {
+      const assetId = String(order?.asset?.id || order?.asset?._id || order?.wo_asset_id || '');
+      const assetName = String(order?.asset?.asset_name || '').trim();
+      if (!assetId || !assetName) {
+        return;
+      }
+
+      const current = assetMap.get(assetId) || {
+        id: assetId,
+        asset_name: assetName,
+        location_name: order?.location?.location_name || '-',
+        wo_count: 0,
+        open_wo_count: 0,
+        blocked_wo_count: 0,
+        completed_count: 0,
+        on_time_count: 0,
+        parts_spend: 0,
+        actual_hours: 0
+      };
+
+      current.wo_count += 1;
+      const status = String(order?.status || '').trim();
+      if (status !== 'Completed') {
+        current.open_wo_count += 1;
+      } else {
+        current.completed_count += 1;
+        const actualEndDate = this.parseReportDate(order?.actual_end_date);
+        const dueDate = this.parseReportDate(order?.end_date);
+        if (actualEndDate && dueDate && actualEndDate.getTime() <= dueDate.getTime()) {
+          current.on_time_count += 1;
+        }
+      }
+
+      if (['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold'].includes(status)) {
+        current.blocked_wo_count += 1;
+      }
+
+      current.actual_hours += Number(order?.actual_time || 0);
+      current.parts_spend += (Array.isArray(order?.parts) ? order.parts : []).reduce((total: number, part: any) => {
+        const unitCost = Number(part?.cost || 0);
+        const qty = Number(part?.actualQuantity ?? part?.estimatedQuantity ?? 0);
+        return total + (unitCost * qty);
+      }, 0);
+
+      assetMap.set(assetId, current);
+    });
+
+    const data = Array.from(assetMap.values())
+      .map((item: any) => ({
+        ...item,
+        on_time_percentage: item.completed_count
+          ? Number(((item.on_time_count / item.completed_count) * 100).toFixed(2))
+          : 0,
+        parts_spend: Number(item.parts_spend.toFixed(2)),
+        actual_hours: Number(item.actual_hours.toFixed(2))
+      }))
+      .sort((first: any, second: any) => {
+        if (second.wo_count !== first.wo_count) {
+          return second.wo_count - first.wo_count;
+        }
+        return first.asset_name.localeCompare(second.asset_name);
+      });
+
+    if (!data.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    return data;
+  }
+
+  async requestFunnelReport(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const requestMatch: any = {
+      account_id: match.account_id,
+      visible: true,
+      createdAt: { $gte: range.fromDate, $lte: range.toDate }
+    };
+
+    if (match.wo_asset_id?.$in?.length) {
+      requestMatch.asset_id = { $in: match.wo_asset_id.$in };
+    }
+    if (match.wo_location_id?.$in?.length) {
+      requestMatch.location_id = { $in: match.wo_location_id.$in };
+    }
+
+    const bucketConfig = this.getRangeBucketConfig(range);
+    const aggregation = await WorkRequestModel.aggregate([
+      { $match: requestMatch },
+      {
+        $facet: {
+          totals: [
+            {
+              $group: {
+                _id: null,
+                created: { $sum: 1 },
+                approved: {
+                  $sum: {
+                    $cond: [{ $ne: ['$approvedAt', null] }, 1, 0]
+                  }
+                },
+                rejected: {
+                  $sum: {
+                    $cond: [{ $ne: ['$rejectedAt', null] }, 1, 0]
+                  }
+                },
+                converted: {
+                  $sum: {
+                    $cond: [{ $ne: ['$convertedAt', null] }, 1, 0]
+                  }
+                },
+                still_open: {
+                  $sum: {
+                    $cond: [{ $in: ['$status', ['Open', 'Pending', 'On-Hold', 'In-Progress']] }, 1, 0]
+                  }
+                }
+              }
+            }
+          ],
+          createdTrend: [
+            {
+              $group: {
+                _id: { $dateToString: { format: bucketConfig.format, date: '$createdAt' } },
+                count: { $sum: 1 }
+              }
+            },
+            { $project: { _id: 0, bucket: '$_id', count: 1 } },
+            { $sort: { bucket: 1 } }
+          ]
+        }
+      }
+    ]);
+
+    const totals = aggregation?.[0]?.totals?.[0] || {
+      created: 0,
+      approved: 0,
+      rejected: 0,
+      converted: 0,
+      still_open: 0
+    };
+    const createdTrend = aggregation?.[0]?.createdTrend || [];
+    if (!totals.created && !createdTrend.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    return {
+      created: Number(totals.created || 0),
+      approved: Number(totals.approved || 0),
+      rejected: Number(totals.rejected || 0),
+      converted: Number(totals.converted || 0),
+      still_open: Number(totals.still_open || 0),
+      conversion_rate: totals.created ? Number((((Number(totals.converted || 0)) / Number(totals.created || 1)) * 100).toFixed(2)) : 0,
+      granularity: bucketConfig.label,
+      trend: {
+        date: createdTrend.map((item: any) => item.bucket),
+        created: createdTrend.map((item: any) => Number(item.count || 0))
+      }
+    };
+  }
+
+  async partsImpactReport(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const orders = await this.getExecutionScopedOrders(match);
+    const scopedOrders = orders.filter((order: any) => {
+      const createdAt = this.parseReportDate(order?.createdAt);
+      return !!createdAt && createdAt >= range.fromDate && createdAt <= range.toDate;
+    });
+
+    if (!scopedOrders.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const bucketConfig = this.getRangeBucketConfig(range);
+    const bucketMap = new Map<string, { planned_qty: number; actual_qty: number }>();
+    const partRollupMap = new Map<string, any>();
+    const lowStockPartIds = new Set<string>();
+    let blockedWorkOrders = 0;
+    let totalPartsSpend = 0;
+    let totalPlannedQty = 0;
+    let totalActualQty = 0;
+
+    scopedOrders.forEach((order: any) => {
+      const parts = Array.isArray(order?.parts) ? order.parts : [];
+      const status = String(order?.status || '').trim();
+      const createdAt = this.parseReportDate(order?.createdAt);
+      const bucket = createdAt
+        ? new Date(createdAt.getFullYear(), createdAt.getMonth(), createdAt.getDate())
+        : null;
+      const bucketKey = bucket
+        ? (bucketConfig.label === 'month'
+          ? `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}`
+          : `${bucket.getFullYear()}-${String(bucket.getMonth() + 1).padStart(2, '0')}-${String(bucket.getDate()).padStart(2, '0')}`)
+        : null;
+
+      const hasPartsBlocker = status === 'Waiting-on-Parts'
+        || parts.some((part: any) => ['Missing', 'Out of Stock'].includes(String(part?.availabilityStatus || '').trim()) || Number(part?.shortQuantity || 0) > 0);
+      if (hasPartsBlocker) {
+        blockedWorkOrders += 1;
+      }
+
+      parts.forEach((part: any) => {
+        const plannedQty = Number(part?.plannedQuantity ?? part?.estimatedQuantity ?? 0) || 0;
+        const actualQty = Number(part?.actualQuantity ?? 0) || 0;
+        const partSpend = (Number(part?.cost || 0) || 0) * (actualQty > 0 ? actualQty : plannedQty);
+        const partId = String(part?.part_id || '').trim() || String(part?.part_name || '').trim();
+        const partName = String(part?.part_name || 'Unknown Part').trim();
+        const availabilityStatus = String(part?.availabilityStatus || '').trim();
+
+        totalPlannedQty += plannedQty;
+        totalActualQty += actualQty;
+        totalPartsSpend += partSpend;
+
+        if (availabilityStatus === 'Low Stock') {
+          lowStockPartIds.add(partId);
+        }
+
+        if (bucketKey) {
+          const currentBucket = bucketMap.get(bucketKey) || { planned_qty: 0, actual_qty: 0 };
+          currentBucket.planned_qty += plannedQty;
+          currentBucket.actual_qty += actualQty;
+          bucketMap.set(bucketKey, currentBucket);
+        }
+
+        const currentRollup = partRollupMap.get(partId) || {
+          part_id: partId,
+          part_name: partName,
+          linked_work_orders: 0,
+          low_stock: false,
+          planned_qty: 0,
+          actual_qty: 0,
+          spend: 0
+        };
+        currentRollup.linked_work_orders += 1;
+        currentRollup.low_stock = currentRollup.low_stock || availabilityStatus === 'Low Stock';
+        currentRollup.planned_qty += plannedQty;
+        currentRollup.actual_qty += actualQty;
+        currentRollup.spend += partSpend;
+        partRollupMap.set(partId, currentRollup);
+      });
+    });
+
+    const detailRows = Array.from(partRollupMap.values())
+      .map((item: any) => ({
+        ...item,
+        spend: Number(item.spend.toFixed(2))
+      }))
+      .sort((first: any, second: any) => {
+        if (second.spend !== first.spend) {
+          return second.spend - first.spend;
+        }
+        return second.linked_work_orders - first.linked_work_orders;
+      });
+
+    const bucketKeys = Array.from(bucketMap.keys()).sort();
+    return {
+      blocked_work_orders: blockedWorkOrders,
+      total_parts_spend: Number(totalPartsSpend.toFixed(2)),
+      low_stock_linked_parts: lowStockPartIds.size,
+      planned_qty: Number(totalPlannedQty.toFixed(2)),
+      actual_qty: Number(totalActualQty.toFixed(2)),
+      actual_vs_planned_percentage: totalPlannedQty
+        ? Number(((totalActualQty / totalPlannedQty) * 100).toFixed(2))
+        : 0,
+      trend: {
+        granularity: bucketConfig.label,
+        date: bucketKeys,
+        planned_qty: bucketKeys.map((key: string) => Number(bucketMap.get(key)?.planned_qty || 0)),
+        actual_qty: bucketKeys.map((key: string) => Number(bucketMap.get(key)?.actual_qty || 0))
+      },
+      details: detailRows.slice(0, 10)
+    };
+  }
+
+  async completedWithInspectionReport(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const bucketConfig = this.getRangeBucketConfig(range);
+    const completedOrders = await WorkOrderModel.find({
+      ...match,
+      status: 'Completed',
+      actual_end_date: { $gte: range.fromDate, $lte: range.toDate }
+    })
+      .select('actual_end_date procedure_entries')
+      .lean();
+
+    if (!completedOrders.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const bucketMap = new Map<string, { with_inspection: number; without_inspection: number }>();
+    let withInspectionCount = 0;
+
+    completedOrders.forEach((order: any) => {
+      const completedDate = this.parseReportDate(order?.actual_end_date);
+      if (!completedDate) {
+        return;
+      }
+
+      const bucketKey = bucketConfig.label === 'month'
+        ? `${completedDate.getFullYear()}-${String(completedDate.getMonth() + 1).padStart(2, '0')}`
+        : `${completedDate.getFullYear()}-${String(completedDate.getMonth() + 1).padStart(2, '0')}-${String(completedDate.getDate()).padStart(2, '0')}`;
+      const hasInspection = this.hasSubmittedInspection(order);
+      const currentBucket = bucketMap.get(bucketKey) || { with_inspection: 0, without_inspection: 0 };
+
+      if (hasInspection) {
+        withInspectionCount += 1;
+        currentBucket.with_inspection += 1;
+      } else {
+        currentBucket.without_inspection += 1;
+      }
+
+      bucketMap.set(bucketKey, currentBucket);
+    });
+
+    const bucketKeys = Array.from(bucketMap.keys()).sort();
+    const completedCount = completedOrders.length;
+    const withoutInspectionCount = Math.max(completedCount - withInspectionCount, 0);
+
+    return {
+      completed_count: completedCount,
+      with_inspection_count: withInspectionCount,
+      without_inspection_count: withoutInspectionCount,
+      inspection_completion_rate: completedCount
+        ? Number(((withInspectionCount / completedCount) * 100).toFixed(2))
+        : 0,
+      trend: {
+        granularity: bucketConfig.label,
+        date: bucketKeys,
+        with_inspection: bucketKeys.map((key: string) => Number(bucketMap.get(key)?.with_inspection || 0)),
+        without_inspection: bucketKeys.map((key: string) => Number(bucketMap.get(key)?.without_inspection || 0))
+      }
+    };
+  }
+
+  async completedByUserReport(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const completedOrders = await WorkOrderModel.find({
+      ...match,
+      status: 'Completed',
+      actual_end_date: { $gte: range.fromDate, $lte: range.toDate }
+    })
+      .select('order_no title actual_end_date status_details completed_by')
+      .lean();
+
+    if (!completedOrders.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const userRollup = new Map<string, { completed_count: number; recent_work_orders: string[] }>();
+    let unattributedCount = 0;
+
+    completedOrders.forEach((order: any) => {
+      const completedEntry = this.getCompletedStatusEntry(order);
+      const completedById = String(order?.completed_by?.id || completedEntry?.createdBy || '').trim();
+      if (!completedById) {
+        unattributedCount += 1;
+        return;
+      }
+
+      const current = userRollup.get(completedById) || { completed_count: 0, recent_work_orders: [] };
+      current.completed_count += 1;
+      if (order?.order_no && current.recent_work_orders.length < 5) {
+        current.recent_work_orders.push(String(order.order_no));
+      }
+      userRollup.set(completedById, current);
+    });
+
+    const userIds = Array.from(userRollup.keys());
+    const users = userIds.length
+      ? await UserModel.find({ _id: { $in: helperService.validateObjectIds(userIds.join(',')) } })
+        .select('firstName lastName username email')
+        .lean()
+      : [];
+    const userMap = new Map(users.map((user: any) => {
+      const label = `${String(user?.firstName || '').trim()} ${String(user?.lastName || '').trim()}`.trim()
+        || String(user?.username || user?.email || 'Unknown User').trim();
+      return [String(user?._id), label];
+    }));
+
+    const details = Array.from(userRollup.entries())
+      .map(([userId, item]) => ({
+        user_id: userId,
+        user_name: userMap.get(userId) || 'Unknown User',
+        completed_count: Number(item.completed_count || 0),
+        percentage: completedOrders.length
+          ? Number(((Number(item.completed_count || 0) / completedOrders.length) * 100).toFixed(2))
+          : 0,
+        recent_work_orders: item.recent_work_orders
+      }))
+      .sort((first: any, second: any) => {
+        if (second.completed_count !== first.completed_count) {
+          return second.completed_count - first.completed_count;
+        }
+        return first.user_name.localeCompare(second.user_name);
+      });
+
+    return {
+      completed_count: completedOrders.length,
+      attributed_count: details.reduce((total: number, item: any) => total + Number(item.completed_count || 0), 0),
+      unattributed_count: unattributedCount,
+      chart: {
+        labels: details.slice(0, 8).map((item: any) => item.user_name),
+        counts: details.slice(0, 8).map((item: any) => Number(item.completed_count || 0))
+      },
+      details
+    };
+  }
+
+  async timeVsCostReport(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const bucketConfig = this.getRangeBucketConfig(range);
+    const completedOrders = await WorkOrderModel.find({
+      ...match,
+      status: 'Completed',
+      actual_end_date: { $gte: range.fromDate, $lte: range.toDate }
+    })
+      .select('order_no title actual_start_date actual_end_date parts')
+      .lean();
+
+    if (!completedOrders.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const bucketMap = new Map<string, { total_hours: number; total_cost: number; count: number }>();
+    let totalHours = 0;
+    let totalPartsSpend = 0;
+
+    completedOrders.forEach((order: any) => {
+      const completedDate = this.parseReportDate(order?.actual_end_date);
+      if (!completedDate) {
+        return;
+      }
+
+      const hours = this.getActualCompletionHours(order) || 0;
+      const partsSpend = this.getPartsSpend(order);
+      totalHours += hours;
+      totalPartsSpend += partsSpend;
+
+      const bucketKey = bucketConfig.label === 'month'
+        ? `${completedDate.getFullYear()}-${String(completedDate.getMonth() + 1).padStart(2, '0')}`
+        : `${completedDate.getFullYear()}-${String(completedDate.getMonth() + 1).padStart(2, '0')}-${String(completedDate.getDate()).padStart(2, '0')}`;
+      const currentBucket = bucketMap.get(bucketKey) || { total_hours: 0, total_cost: 0, count: 0 };
+      currentBucket.total_hours += hours;
+      currentBucket.total_cost += partsSpend;
+      currentBucket.count += 1;
+      bucketMap.set(bucketKey, currentBucket);
+    });
+
+    const bucketKeys = Array.from(bucketMap.keys()).sort();
+    const detailRows = completedOrders
+      .map((order: any) => ({
+        order_no: order?.order_no,
+        title: order?.title,
+        actual_hours: Number((this.getActualCompletionHours(order) || 0).toFixed(2)),
+        parts_cost: Number(this.getPartsSpend(order).toFixed(2))
+      }))
+      .sort((first: any, second: any) => {
+        if (second.parts_cost !== first.parts_cost) {
+          return second.parts_cost - first.parts_cost;
+        }
+        return second.actual_hours - first.actual_hours;
+      });
+
+    return {
+      completed_count: completedOrders.length,
+      total_parts_spend: Number(totalPartsSpend.toFixed(2)),
+      avg_actual_hours: completedOrders.length ? Number((totalHours / completedOrders.length).toFixed(2)) : 0,
+      avg_parts_spend: completedOrders.length ? Number((totalPartsSpend / completedOrders.length).toFixed(2)) : 0,
+      trend: {
+        granularity: bucketConfig.label,
+        date: bucketKeys,
+        avg_hours: bucketKeys.map((key: string) => {
+          const bucket = bucketMap.get(key);
+          return bucket?.count ? Number((bucket.total_hours / bucket.count).toFixed(2)) : 0;
+        }),
+        avg_parts_cost: bucketKeys.map((key: string) => {
+          const bucket = bucketMap.get(key);
+          return bucket?.count ? Number((bucket.total_cost / bucket.count).toFixed(2)) : 0;
+        })
+      },
+      details: detailRows.slice(0, 10)
+    };
+  }
+
+  async plannerReadinessReport(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const orders = await this.getExecutionScopedOrders(match);
+    const activeOrders = orders.filter((order: any) => this.isOpenOrder(order) && this.isOrderWithinActiveExecutionRange(order, range));
+    if (!activeOrders.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const today = new Date();
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const bucketCounts = {
+      backlog: 0,
+      assigned: 0,
+      ready: 0,
+      blocked: 0,
+      overdue: 0
+    };
+
+    let unassignedCount = 0;
+    let dueTodayCount = 0;
+    let onHoldCount = 0;
+    let blockedByPartsCount = 0;
+    let missingEstimateCount = 0;
+    let followUpsCount = 0;
+
+    activeOrders.forEach((order: any) => {
+      const bucketId = this.getPlannerBucketId(order);
+      bucketCounts[bucketId] += 1;
+
+      const dueDate = this.parseReportDate(order?.end_date);
+      const status = String(order?.status || '').trim();
+
+      if (this.getAssignedUserCount(order) === 0) {
+        unassignedCount += 1;
+      }
+      if (dueDate && dueDate.getFullYear() === startOfToday.getFullYear() && dueDate.getMonth() === startOfToday.getMonth() && dueDate.getDate() === startOfToday.getDate()) {
+        dueTodayCount += 1;
+      }
+      if (['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold'].includes(status)) {
+        onHoldCount += 1;
+      }
+      if (status === 'Waiting-on-Parts' || !this.isPartsReadyForExecution(order)) {
+        blockedByPartsCount += 1;
+      }
+      if (this.isScheduleReadyForExecution(order) && !(Number(order?.estimated_time || 0) > 0)) {
+        missingEstimateCount += 1;
+      }
+      if (order?.parentId) {
+        followUpsCount += 1;
+      }
+    });
+
+    return {
+      total_open: activeOrders.length,
+      ready_for_execution_count: bucketCounts.ready,
+      blocked_work_count: bucketCounts.blocked,
+      overdue_open_count: bucketCounts.overdue,
+      unassigned_count: unassignedCount,
+      due_today_count: dueTodayCount,
+      on_hold_count: onHoldCount,
+      blocked_by_parts_count: blockedByPartsCount,
+      missing_estimate_count: missingEstimateCount,
+      follow_ups_count: followUpsCount,
+      buckets: [
+        { key: 'Backlog', value: bucketCounts.backlog },
+        { key: 'Assigned', value: bucketCounts.assigned },
+        { key: 'Ready', value: bucketCounts.ready },
+        { key: 'Blocked', value: bucketCounts.blocked },
+        { key: 'Overdue', value: bucketCounts.overdue }
+      ]
+    };
+  }
+
+  async repeatingWorkOrdersReport(match: any, rangeInput: { fromDate?: string; toDate?: string } = {}): Promise<any> {
+    const range = this.normalizeDateRange(rangeInput);
+    if (!range) {
+      throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+    }
+
+    const scheduleMatch: any = {
+      account_id: match.account_id,
+      visible: true
+    };
+
+    if (match.wo_asset_id?.$in?.length) {
+      scheduleMatch['work_order.wo_asset_id'] = { $in: match.wo_asset_id.$in };
+    }
+
+    if (match.wo_location_id?.$in?.length) {
+      scheduleMatch['work_order.wo_location_id'] = { $in: match.wo_location_id.$in };
+    }
+
+    const schedules = await SchedulerModel.aggregate([
+      { $match: scheduleMatch },
+      {
+        $lookup: {
+          from: 'asset_master',
+          let: { assetId: '$work_order.wo_asset_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$assetId'] }, visible: true } },
+            { $project: { _id: 1, asset_name: 1 } }
+          ],
+          as: 'asset'
+        }
+      },
+      { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'location_master',
+          let: { locationId: '$work_order.wo_location_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$locationId'] }, visible: true } },
+            { $project: { _id: 1, location_name: 1 } }
+          ],
+          as: 'location'
+        }
+      },
+      { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          description: 1,
+          createdAt: 1,
+          schedule: 1,
+          asset: 1,
+          location: 1,
+          work_order: 1
+        }
+      }
+    ]);
+
+    const filteredSchedules = schedules.filter((schedule: any) => this.isScheduleOverlappingRange(schedule, range));
+    if (!filteredSchedules.length) {
+      throw Object.assign(new Error('No data found'), { status: 404 });
+    }
+
+    const modeCounts = {
+      daily: 0,
+      weekly: 0,
+      monthly: 0
+    };
+    let enabledCount = 0;
+
+    filteredSchedules.forEach((schedule: any) => {
+      const mode = String(schedule?.schedule?.mode || '').trim() as 'daily' | 'weekly' | 'monthly';
+      if (modeCounts.hasOwnProperty(mode)) {
+        modeCounts[mode] += 1;
+      }
+      if (schedule?.schedule?.enabled) {
+        enabledCount += 1;
+      }
+    });
+
+    const details = filteredSchedules
+      .map((schedule: any) => ({
+        id: String(schedule?._id),
+        title: String(schedule?.title || schedule?.work_order?.title || 'Untitled Repeating Work Order').trim(),
+        mode: String(schedule?.schedule?.mode || '-').trim(),
+        enabled: Boolean(schedule?.schedule?.enabled),
+        start_date: schedule?.schedule?.start_date || null,
+        end_date: schedule?.schedule?.end_date || null,
+        no_of_execution: Number(schedule?.schedule?.no_of_execution || 0),
+        asset_name: String(schedule?.asset?.asset_name || '-').trim(),
+        location_name: String(schedule?.location?.location_name || '-').trim()
+      }))
+      .sort((first: any, second: any) => {
+        const firstStart = this.parseReportDate(first.start_date)?.getTime() || 0;
+        const secondStart = this.parseReportDate(second.start_date)?.getTime() || 0;
+        return secondStart - firstStart;
+      });
+
+    return {
+      total_repeating: filteredSchedules.length,
+      enabled_repeating: enabledCount,
+      disabled_repeating: Math.max(filteredSchedules.length - enabledCount, 0),
+      total_executions: filteredSchedules.reduce((total: number, schedule: any) => total + Number(schedule?.schedule?.no_of_execution || 0), 0),
+      cadence_mix: [
+        { key: 'Daily', value: modeCounts.daily },
+        { key: 'Weekly', value: modeCounts.weekly },
+        { key: 'Monthly', value: modeCounts.monthly }
+      ],
+      details: details.slice(0, 12)
+    };
+  }
+
   async summaryData(workOrderMatch: any): Promise<any> {
     try {
       const today = new Date();
@@ -2066,7 +3583,7 @@ class OrderService {
 
   async createWorkOrder(body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
-      let normalizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body }));
+      let normalizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body })));
       this.validateIncomingParts(normalizedBody.parts || []);
       let userIdList = Array.isArray(normalizedBody.userIdList) ? normalizedBody.userIdList.filter((userId: string) => !!userId) : [];
       let parentOrder: any = null;
@@ -2123,7 +3640,7 @@ class OrderService {
         }
       }
 
-      const newAsset = new WorkOrderModel({
+      const newAssetPayload: any = {
         account_id: user.account_id,
         order_no: await this.generateOrderNo(user.account_id),
         title: normalizedBody.title,
@@ -2157,7 +3674,10 @@ class OrderService {
         asset_report_id: normalizedBody.asset_report_id,
         status_details: [{ status: normalizedBody.status, createdBy: user._id }],
         createdBy: user._id
-      });
+      };
+
+      const completedPayload = this.syncCompletionAuditFields(newAssetPayload, null, user);
+      const newAsset = new WorkOrderModel(completedPayload);
 
       const data: any = await newAsset.save({ session });
       if (!data) {
@@ -2204,7 +3724,7 @@ class OrderService {
           });
         }
 
-        const parentCleanup = this.normalizeTimingFields(this.sanitizeWorkOrder({
+        const parentCleanup = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder({
           start_date: null,
           end_date: null,
           estimated_time: null,
@@ -2221,7 +3741,7 @@ class OrderService {
           actual_time: null,
           labor_entries: [],
           updatedBy: user._id
-        }));
+        })));
 
         await WorkOrderModel.findByIdAndUpdate(parentOrder._id, parentCleanup, { session });
       }
@@ -2378,7 +3898,8 @@ class OrderService {
         updatedData.procedure_entries = procedureSync.procedure_entries;
       }
       
-      updatedData = this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData));
+      updatedData = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData)));
+      updatedData = this.syncCompletionAuditFields(updatedData, existingOrder.status, user);
       const data = await WorkOrderModel.findByIdAndUpdate(id, updatedData, { returnDocument: 'after', session });
       if (!data) {
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
@@ -2408,7 +3929,10 @@ class OrderService {
 
   async updateDataById(id: any, body: any, user: IUser): Promise<any> {
     const existingOrder = await WorkOrderModel.findById(id);
-    const sanitizedBody = this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body, updatedBy: user._id }));
+    let sanitizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body, updatedBy: user._id })));
+    if (existingOrder) {
+      sanitizedBody = this.syncCompletionAuditFields({ ...existingOrder.toObject(), ...sanitizedBody }, existingOrder.status, user);
+    }
     const updatedOrder = await WorkOrderModel.findByIdAndUpdate(id, sanitizedBody, { returnDocument: 'after' });
 
     if (existingOrder && updatedOrder && Object.prototype.hasOwnProperty.call(body || {}, 'files')) {
@@ -2488,12 +4012,21 @@ class OrderService {
           existingOrder.actual_time = Number((((endTime - startTime) / 3600000)).toFixed(2));
         }
       }
-      } else if (status === 'In-Progress' && !existingOrder.actual_start_date) {
+      existingOrder.completed_at = existingOrder.actual_end_date ? new Date(existingOrder.actual_end_date) : new Date();
+      existingOrder.completed_by = this.buildCompletedByPayload(user);
+    } else if (status === 'In-Progress' && !existingOrder.actual_start_date) {
         existingOrder.actual_start_date = new Date();
-      } else if (status === 'Open') {
+      existingOrder.completed_at = null;
+      existingOrder.completed_by = null;
+    } else if (status === 'Open') {
       existingOrder.sop_form_submitted = false;
       existingOrder.sop_form_updated_by = null;
       existingOrder.sop_form_updated_at = null;
+      existingOrder.completed_at = null;
+      existingOrder.completed_by = null;
+    } else if (status !== 'Completed') {
+      existingOrder.completed_at = null;
+      existingOrder.completed_by = null;
     }
 
     if (isBlockedStatus) {
@@ -2524,6 +4057,8 @@ class OrderService {
         parts: lifecycleParts,
         actual_start_date: existingOrder.actual_start_date,
         actual_end_date: existingOrder.actual_end_date,
+        completed_at: existingOrder.completed_at,
+        completed_by: existingOrder.completed_by,
         actual_time: existingOrder.actual_time,
         block_reason: existingOrder.block_reason,
         sop_form_submitted: existingOrder.sop_form_submitted,

@@ -242,6 +242,328 @@ class OrderController {
     }
   };
 
+  async getOverviewSummary(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.overviewSummaryData(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Work order overview summary fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getCreatedVsCompleted(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.createdVsCompleted(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Work order created vs completed fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getExecutionSummary(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.executionSummaryData(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Work order execution summary fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getOnTimeVsOverdue(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.onTimeVsOverdue(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Work order on-time vs overdue fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getTimeToComplete(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.timeToComplete(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Work order time to complete fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getByType(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query: req.body
+      });
+      const data = await orderService.workOrdersByType(match);
+      res.status(200).json({ status: true, message: "Work order type mix fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getSourceMix(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query: req.body
+      });
+      const data = await orderService.workOrderSourceMix(match);
+      res.status(200).json({ status: true, message: "Work order source mix fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getAssetMaintenance(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query: req.body
+      });
+      const data = await orderService.assetMaintenanceReport(match);
+      res.status(200).json({ status: true, message: "Asset maintenance report fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getRequestFunnel(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+      const data = await orderService.requestFunnelReport(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Request funnel report fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getPartsImpact(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+      const data = await orderService.partsImpactReport(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Parts impact report fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getCompletedWithInspection(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.completedWithInspectionReport(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Completed with inspection report fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getCompletedByUser(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.completedByUserReport(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Completed by user report fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getTimeVsCost(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.timeVsCostReport(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Time vs cost report fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getPlannerReadiness(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.plannerReadinessReport(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Planner readiness report fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getRepeatingWorkOrders(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const query = { ...(req.body || {}) };
+      const fromDate = query.fromDate;
+      const toDate = query.toDate;
+      delete query.fromDate;
+      delete query.toDate;
+
+      const match = await orderService.buildSearchMatch({
+        account_id: user.account_id,
+        user_id: String(user._id),
+        user_role: user.user_role,
+        query
+      });
+
+      const data = await orderService.repeatingWorkOrdersReport(match, { fromDate, toDate });
+      res.status(200).json({ status: true, message: "Repeating work order report fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   async getPendingOrders(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
