@@ -121,6 +121,8 @@ export interface IScheduleMaster extends Document {
   description: string;
   schedule: ISchedule;
   work_order: WorkOrder;
+  cron_lock_acquired_at?: Date | null;
+  cron_lock_instance_id?: string | null;
   visible: boolean;
   createdBy: ObjectId;
   updatedBy: ObjectId;
@@ -133,6 +135,8 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     description: { type: String, trim: true },
     schedule: { type: ScheduleSchema, required: true },
     work_order: { type: WorkOrderSchema, required: true },
+    cron_lock_acquired_at: { type: Date },
+    cron_lock_instance_id: { type: String, trim: true },
     visible: { type: Boolean, default: true },
     createdBy: { type: mongoose.Types.ObjectId, ref: "UserModel", required: true },
     updatedBy: { type: mongoose.Types.ObjectId, ref: "UserModel" }

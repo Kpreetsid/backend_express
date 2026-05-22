@@ -28,10 +28,6 @@ export const observationValidator = [
     .notEmpty().withMessage('Top level asset ID is required')
     .isMongoId().withMessage('Invalid Top level asset ID format'),
 
-  body('userId')
-    .notEmpty().withMessage('User ID is required')
-    .isMongoId().withMessage('Invalid User ID format'),
-
   body('faults')
     .optional()
     .isArray().withMessage('Faults must be an array')

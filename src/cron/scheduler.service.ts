@@ -1,8 +1,12 @@
 import { usersService } from "../masters/user/user.service";
 import { IScheduleMaster, SchedulerModel } from "../models/scheduleMaster.model";
 import { orderService } from "../work/order/order.service";
+import crypto from "crypto";
 
 class SchedulerService {
+    private readonly instanceId = `${process.pid}-${crypto.randomUUID()}`;
+    private readonly lockTtlMs = Number(process.env.SCHEDULER_LOCK_TTL_MS || 10 * 60 * 1000);
+
     private getTodayDateStr(): string {
         return new Date().toISOString().split("T")[0];
     }
@@ -46,6 +50,43 @@ class SchedulerService {
         const last = schedule.schedule.last_execution_date;
         if (!last) return false;
         return this.isSameDate(last, new Date());
+    }
+
+    private async acquireScheduleLock(scheduleId: any): Promise<boolean> {
+        const lockExpiresBefore = new Date(Date.now() - this.lockTtlMs);
+        const locked = await (SchedulerModel as any).findOneAndUpdate(
+            {
+                _id: scheduleId,
+                visible: true,
+                "schedule.enabled": true,
+                $or: [
+                    { cron_lock_acquired_at: { $exists: false } },
+                    { cron_lock_acquired_at: null },
+                    { cron_lock_acquired_at: { $lt: lockExpiresBefore } }
+                ]
+            },
+            {
+                $set: {
+                    cron_lock_acquired_at: new Date(),
+                    cron_lock_instance_id: this.instanceId
+                }
+            },
+            { new: true }
+        );
+
+        return !!locked;
+    }
+
+    private async releaseScheduleLock(scheduleId: any): Promise<void> {
+        await (SchedulerModel as any).updateOne(
+            { _id: scheduleId, cron_lock_instance_id: this.instanceId },
+            {
+                $unset: {
+                    cron_lock_acquired_at: "",
+                    cron_lock_instance_id: ""
+                }
+            }
+        );
     }
 
     private async executeSchedule(schedule: IScheduleMaster): Promise<void> {
@@ -110,17 +151,23 @@ class SchedulerService {
                     if (!this.shouldRun(schedule)) continue;
                     if (this.shouldSkipToday(schedule)) continue;
                     if (this.alreadyExecutedToday(schedule)) continue;
+                    const lockAcquired = await this.acquireScheduleLock(schedule._id);
+                    if (!lockAcquired) continue;
                     
-                    if (s.mode === "daily") {
-                        await this.executeSchedule(schedule);
-                    } else if (s.mode === "weekly") {
-                        if (s.weekly.days.includes(todayName)) {
+                    try {
+                        if (s.mode === "daily") {
                             await this.executeSchedule(schedule);
+                        } else if (s.mode === "weekly") {
+                            if (s.weekly.days.includes(todayName)) {
+                                await this.executeSchedule(schedule);
+                            }
+                        } else if (s.mode === "monthly") {
+                            if (s.monthly.monthDays.includes(todayDate)) {
+                                await this.executeSchedule(schedule);
+                            }
                         }
-                    } else if (s.mode === "monthly") {
-                        if (s.monthly.monthDays.includes(todayDate)) {
-                            await this.executeSchedule(schedule);
-                        }
+                    } finally {
+                        await this.releaseScheduleLock(schedule._id);
                     }
                 } catch (indivError) {
                     console.error(`❌ Schedule execution failed for "${schedule.title}":`, indivError);

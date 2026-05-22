@@ -53,6 +53,7 @@ export interface IUserLog extends Document {
         secCHUA?: string[];
     };
     additionalData: {
+        correlationId?: string;
         params: Record<string, any>;
         body: Record<string, any>;
         query: Record<string, any>;
@@ -114,6 +115,7 @@ const userLogSchema = new Schema<IUserLog>({
         secCHUA: [String]
     },
     additionalData: {
+        correlationId: String,
         params: Schema.Types.Mixed,
         body: Schema.Types.Mixed,
         query: Schema.Types.Mixed,
@@ -136,5 +138,10 @@ userLogSchema.methods.isFromMobile = function (this: IUserLog) {
 userLogSchema.statics.findByUserId = function (userId: string) {
     return this.find({ userId: new mongoose.Types.ObjectId(userId) });
 };
+
+userLogSchema.index(
+    { createdAt: 1 },
+    { expireAfterSeconds: Number(process.env.USER_LOG_RETENTION_DAYS || 180) * 24 * 60 * 60 }
+);
 
 export const UserLogModel = mongoose.model<IUserLog>('Schema_UserLog', userLogSchema);

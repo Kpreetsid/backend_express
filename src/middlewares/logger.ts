@@ -11,6 +11,7 @@ class AppLogger {
   private fileLogger!: RequestHandler;
   private consoleLogger: RequestHandler;
   private currentLogFile: string = '';
+  private readonly sensitiveKeyPattern = /(password|passcode|token|authorization|auth|otp|secret|cookie|session|card|ssn|external_token|verificationCode|confirmNewPassword|newPassword)/i;
 
   constructor() {
     this.logDir = path.join(process.cwd(), 'logs');
@@ -133,9 +134,10 @@ class AppLogger {
           ipAddress: req.ip || (headers['x-forwarded-for'] as string) || '',
           userAgent: ua,
           additionalData: {
-            params: req.params || {},
-            body: req.body || {},
-            query: req.query || {},
+            correlationId: res.locals.correlationId,
+            params: this.redactSensitiveData(req.params || {}),
+            body: this.redactSensitiveData(req.body || {}),
+            query: this.redactSensitiveData(req.query || {}),
             durationMs: Date.now() - startTime
           }
         });
@@ -146,6 +148,22 @@ class AppLogger {
     });
     next();
   };
+
+  private redactSensitiveData(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((item) => this.redactSensitiveData(item));
+    }
+
+    if (!value || typeof value !== 'object') {
+      return value;
+    }
+
+    const redacted: Record<string, unknown> = {};
+    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+      redacted[key] = this.sensitiveKeyPattern.test(key) ? '[REDACTED]' : this.redactSensitiveData(nestedValue);
+    }
+    return redacted;
+  }
 
   private extractOS (userAgent: string | undefined): string {
     if (!userAgent) return 'Unknown';

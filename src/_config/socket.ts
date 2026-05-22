@@ -3,6 +3,7 @@ import { Server as HttpServer } from 'http';
 import jwt from 'jsonwebtoken';
 import { auth } from '../configDB';
 import { notificationService } from '../utils/notification.service';
+import { isOriginAllowed } from './cors';
 
 /**
  * Initialize Socket.io server
@@ -11,7 +12,13 @@ import { notificationService } from '../utils/notification.service';
 export const initSocket = (httpServer: HttpServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.SOCKET_CORS_ORIGIN || "*", // Use env var for production security
+      origin: (origin, callback) => {
+        if (isOriginAllowed(origin)) {
+          callback(null, true);
+          return;
+        }
+        callback(new Error('Origin is not allowed by Socket.io CORS policy'));
+      },
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       credentials: true
     }
