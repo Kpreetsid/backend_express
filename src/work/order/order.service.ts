@@ -3614,9 +3614,6 @@ class OrderService {
           if (this.shouldInheritValue(normalizedBody.procedure_entries) && Array.isArray(parentOrder?.procedure_entries) && parentOrder.procedure_entries.length > 0) {
             normalizedBody.procedure_entries = JSON.parse(JSON.stringify(parentOrder.procedure_entries));
           }
-          if (this.shouldInheritValue(normalizedBody.sop_form_id) && parentOrder?.sop_form_id) {
-            normalizedBody.sop_form_id = parentOrder.sop_form_id;
-          }
           shouldClearParentExecutionFields = true;
           this.validateIncomingParts(normalizedBody.parts || []);
         }
@@ -3658,7 +3655,6 @@ class OrderService {
         status: normalizedBody.status,
         type: normalizedBody.type,
         nature_of_work: normalizedBody.nature_of_work || normalizedBody.type,
-        sop_form_id: normalizedBody.sop_form_id,
         procedure_ids: procedureSync.procedure_ids,
         procedure_entries: procedureSync.procedure_entries,
         rescheduleEnabled: false,
@@ -3667,10 +3663,8 @@ class OrderService {
         wo_location_id: normalizedBody.wo_location_id,
         end_date: normalizedBody.end_date,
         start_date: normalizedBody.start_date,
-        sopForm: normalizedBody.sopForm,
         createdFrom: normalizedBody.createdFrom,
         files: normalizedBody.files,
-        tasks: normalizedBody.tasks,
         parts: normalizedParts,
         labor_entries: normalizedBody.labor_entries,
         work_request_id: normalizedBody.work_request_id,
@@ -3742,13 +3736,8 @@ class OrderService {
           end_date: null,
           estimated_time: null,
           parts: [],
-          sop_form_id: null,
           procedure_ids: [],
           procedure_entries: [],
-          sop_form_submitted: false,
-          sop_form_data: {},
-          sop_form_updated_by: null,
-          sop_form_updated_at: null,
           actual_start_date: null,
           actual_end_date: null,
           actual_time: null,
@@ -4013,9 +4002,6 @@ class OrderService {
     }
 
     if (status === 'Completed') {
-      if (existingOrder.sop_form_id && !existingOrder.sop_form_submitted) {
-        throw Object.assign(new Error('Form is not completed'), { status: 400 });
-      }
       const incompleteProcedures = (existingOrder.procedures || []).filter((procedure: any) => !this.areProcedureStepsComplete(procedure?.steps || [], procedure?.responses || {}));
       if (incompleteProcedures.length > 0) {
         throw Object.assign(new Error('Attached procedures must be completed before closing this work order'), { status: 400 });
@@ -4046,9 +4032,6 @@ class OrderService {
       existingOrder.completed_at = null;
       existingOrder.completed_by = null;
     } else if (status === 'Open') {
-      existingOrder.sop_form_submitted = false;
-      existingOrder.sop_form_updated_by = null;
-      existingOrder.sop_form_updated_at = null;
       existingOrder.completed_at = null;
       existingOrder.completed_by = null;
     } else if (status !== 'Completed') {
@@ -4087,10 +4070,7 @@ class OrderService {
         completed_at: existingOrder.completed_at,
         completed_by: existingOrder.completed_by,
         actual_time: existingOrder.actual_time,
-        block_reason: existingOrder.block_reason,
-        sop_form_submitted: existingOrder.sop_form_submitted,
-        sop_form_updated_by: existingOrder.sop_form_updated_by,
-        sop_form_updated_at: existingOrder.sop_form_updated_at
+        block_reason: existingOrder.block_reason
       },
       { returnDocument: 'after' }
     );
