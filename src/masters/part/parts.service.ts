@@ -351,6 +351,12 @@ class PartsService {
       ...part,
       part_id: this.getPartIdValue(part),
       part_type: part?.part_type || 'N/A',
+      part_source: ['manual', 'procedure', 'mixed'].includes(String(part?.part_source || '').trim())
+        ? String(part.part_source).trim()
+        : 'manual',
+      procedureNames: Array.isArray(part?.procedureNames)
+        ? Array.from(new Set(part.procedureNames.map((name: any) => String(name || '').trim()).filter(Boolean)))
+        : [],
       estimatedQuantity,
       actualQuantity: part?.actualQuantity ?? null,
       plannedQuantity: estimatedQuantity,

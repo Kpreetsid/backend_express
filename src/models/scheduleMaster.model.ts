@@ -5,6 +5,8 @@ interface IPart {
   part_id: string;
   part_name: string;
   part_type: string;
+  part_source?: 'manual' | 'procedure' | 'mixed';
+  procedureNames?: string[];
   estimatedQuantity: number;
   unit: string;
   cost: number;
@@ -15,6 +17,8 @@ const PartSchema = new Schema<IPart>({
   part_id: { type: String, required: true },
   part_name: { type: String, trim: true, required: true },
   part_type: { type: String, trim: true, required: true },
+  part_source: { type: String, enum: ['manual', 'procedure', 'mixed'], default: 'manual' },
+  procedureNames: { type: [String], default: [] },
   estimatedQuantity: { type: Number, required: true },
   unit: { type: String, trim: true },
   cost: { type: Number },
