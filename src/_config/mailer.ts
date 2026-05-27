@@ -71,6 +71,45 @@ export class MailerService {
     return [user.firstName, user.lastName].filter(Boolean).join(' ');
   }
 
+  private formatDate(value: any): string {
+    if (!value) {
+      return 'Not scheduled';
+    }
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 'Not scheduled';
+    }
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  }
+
+  private formatDuration(value: any): string {
+    const duration = Number(value);
+    if (!Number.isFinite(duration) || duration <= 0) {
+      return 'Not estimated';
+    }
+    return `${duration}h`;
+  }
+
+  private stripHtml(value: any): string {
+    return String(value || '')
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private truncate(value: string, maxLength: number): string {
+    if (!value || value.length <= maxLength) {
+      return value || '';
+    }
+    return `${value.slice(0, maxLength - 1).trim()}…`;
+  }
+
   async sendVerificationCode(user: any): Promise<boolean> {
     try {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -126,6 +165,23 @@ export class MailerService {
 
   async sendWorkOrderMail(workOrder: any, assignedUser: any, createdBy: any): Promise<void> {
     const fileName = this.loadTemplate(`workOrder.template.html`);
+    const descriptionPreview = this.truncate(this.stripHtml(workOrder.description), 220) || 'No description provided.';
+    const procedureCount = Array.isArray(workOrder.procedures)
+      ? workOrder.procedures.length
+      : Array.isArray(workOrder.procedure_entries)
+        ? workOrder.procedure_entries.length
+        : Array.isArray(workOrder.procedure_ids)
+          ? workOrder.procedure_ids.length
+          : 0;
+    const plannedPartsCount = Array.isArray(workOrder.parts) ? workOrder.parts.length : 0;
+    const startDate = this.formatDate(workOrder.start_date);
+    const endDate = this.formatDate(workOrder.end_date);
+    const estimatedDuration = this.formatDuration(workOrder.estimated_time);
+    const workSource = workOrder.createdFrom || 'Work Order';
+    const workType = workOrder.nature_of_work || workOrder.type || 'General';
+    const assetName = workOrder.asset?.asset_name || 'Not linked';
+    const locationName = workOrder.location?.location_name || 'Not linked';
+    const subject = `Work Order - [${workOrder.order_no}] ${workOrder.priority || 'Medium'} Priority • ${workOrder.title}`;
     const externalToken = generateExternalAccessToken(
       {
         email: assignedUser.email,
@@ -141,19 +197,26 @@ export class MailerService {
         userFullName: this.getFullName(assignedUser),
         workOrderNo: workOrder.order_no,
         title: workOrder.title,
-        workOrderDescription: workOrder.description,
-        locationName: workOrder.location?.location_name || '',
-        assetName: workOrder.asset?.asset_name || '',
+        workOrderDescription: descriptionPreview,
+        locationName,
+        assetName,
         datetime: new Date().toLocaleString(),
         createdBy: this.getFullName(createdBy),
-        startDate: workOrder.start_date.toISOString().split('T')[0],
-        endDate: workOrder.end_date.toISOString().split('T')[0],
+        assignedTo: this.getFullName(assignedUser) || assignedUser.email || 'Assigned user',
+        startDate,
+        endDate,
+        estimatedDuration,
         status: workOrder.status,
+        priority: workOrder.priority || 'Medium',
+        workType,
+        workSource,
+        procedureCount: String(procedureCount),
+        plannedPartsCount: String(plannedPartsCount),
         detailsLink: `${mailCredential.loginUrl}/external?token=${encodeURIComponent(externalToken)}`,
         YEAR: new Date().getFullYear().toString()
       }
     );
-    await this.send({to: assignedUser.email, subject: `${workOrder.title} - New Work Order Assigned`, html});
+    await this.send({to: assignedUser.email, subject, html});
   }
 
   async sendUserCreatedMail(data: { userName: string; userEmail: string;}): Promise<void> {
