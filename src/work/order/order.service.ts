@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { IWorkOrder, WorkOrderModel } from "../../models/workOrder.model";
 import { IUser, UserModel } from "../../models/user.model";
 import { MailerService } from "../../_config/mailer";
@@ -803,6 +804,17 @@ class OrderService {
         throw Object.assign(new Error(`Invalid part selection for "${part?.part_name || 'Unnamed Part'}". Please reselect the part and try again.`), { status: 400 });
       }
     }
+  }
+
+  private normalizeObjectIdArray(values: any): mongoose.Types.ObjectId[] {
+    if (!Array.isArray(values)) {
+      return [];
+    }
+
+    return values
+      .map((value: any) => String(value || '').trim())
+      .filter((value: string) => mongoose.Types.ObjectId.isValid(value))
+      .map((value: string) => helperService.validateObjectId(value));
   }
 
   private hasExecutionOwnedFieldChanges(body: any): boolean {
@@ -3638,6 +3650,7 @@ class OrderService {
       }
 
       const normalizedParts = partsService.normalizeWorkOrderParts(normalizedBody.parts || [], normalizedBody.status);
+      const excludedProcedurePartIds = this.normalizeObjectIdArray(normalizedBody.excluded_procedure_part_ids);
       await partsService.validateInventoryByWorkOrder([], normalizedParts, 'Open', normalizedBody.status, session);
 
       const newAssetPayload: any = {
@@ -3656,6 +3669,7 @@ class OrderService {
         type: normalizedBody.type,
         nature_of_work: normalizedBody.nature_of_work || normalizedBody.type,
         procedure_ids: procedureSync.procedure_ids,
+        excluded_procedure_part_ids: excludedProcedurePartIds,
         procedure_entries: procedureSync.procedure_entries,
         rescheduleEnabled: false,
         created_by: user._id,
@@ -3912,6 +3926,9 @@ class OrderService {
         const procedureSync = await this.syncProcedureEntries(updatedData, user.account_id, user, existingOrder.procedure_entries || []);
         updatedData.procedure_ids = procedureSync.procedure_ids;
         updatedData.procedure_entries = procedureSync.procedure_entries;
+      }
+      if (body.hasOwnProperty('excluded_procedure_part_ids')) {
+        updatedData.excluded_procedure_part_ids = this.normalizeObjectIdArray(body.excluded_procedure_part_ids);
       }
       
       updatedData = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData)));
