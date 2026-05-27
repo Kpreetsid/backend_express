@@ -186,6 +186,7 @@ export interface IWorkOrder extends Document {
   actual_time?: number;
   sop_form_id: ObjectId;
   procedure_ids?: ObjectId[];
+  excluded_procedure_part_ids?: ObjectId[];
   procedure_entries?: IProcedureExecutionEntry[];
   sop_form_submitted: boolean;
   sop_form_data: object;
@@ -236,6 +237,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   actual_time: { type: Number },
   sop_form_id: { type: Schema.Types.ObjectId, ref: 'SOPFormModel' },
   procedure_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_Procedure', default: [] },
+  excluded_procedure_part_ids: { type: [Schema.Types.ObjectId], default: [] },
   procedure_entries: { type: [ProcedureExecutionEntrySchema], default: [] },
   sop_form_submitted: { type: Boolean, default: false },
   sop_form_data: { type: Schema.Types.Mixed },

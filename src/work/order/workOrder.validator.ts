@@ -54,6 +54,15 @@ export const workOrderValidator = [
     .notEmpty().withMessage('Procedure ID is required')
     .isMongoId().withMessage('Invalid Procedure ID format'),
 
+  body('excluded_procedure_part_ids')
+    .optional({ nullable: true })
+    .isArray().withMessage('Excluded procedure part IDs must be an array'),
+
+  body('excluded_procedure_part_ids.*')
+    .if(body('excluded_procedure_part_ids').exists())
+    .notEmpty().withMessage('Excluded procedure part ID is required')
+    .isMongoId().withMessage('Invalid excluded procedure part ID format'),
+
   body('procedure_entries')
     .optional({ nullable: true })
     .isArray().withMessage('Procedure entries must be an array'),
@@ -159,6 +168,15 @@ export const updateWorkOrderValidator = [
     .if(body('procedure_ids').exists())
     .notEmpty().withMessage('Procedure ID is required')
     .isMongoId().withMessage('Invalid Procedure ID format'),
+
+  body('excluded_procedure_part_ids')
+    .optional({ nullable: true })
+    .isArray().withMessage('Excluded procedure part IDs must be an array'),
+
+  body('excluded_procedure_part_ids.*')
+    .if(body('excluded_procedure_part_ids').exists())
+    .notEmpty().withMessage('Excluded procedure part ID is required')
+    .isMongoId().withMessage('Invalid excluded procedure part ID format'),
 
   body('procedure_entries')
     .optional({ nullable: true })
