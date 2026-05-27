@@ -1,6 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
-export const VERIFICATION_CODE_EXPIRY_SECONDS = 60 * 60;
+export const VERIFICATION_CODE_EXPIRY_SECONDS = 30 * 60;
 
 export interface IVerificationCode {
   email: string;
