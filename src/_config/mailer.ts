@@ -110,7 +110,7 @@ export class MailerService {
     return `${value.slice(0, maxLength - 1).trim()}…`;
   }
 
-  private formatDuration(seconds: number): string {
+  private expiryDurationFormat(seconds: number): string {
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) {
       return `${minutes} minute${minutes === 1 ? '' : 's'}`;
@@ -132,7 +132,7 @@ export class MailerService {
       const html = this.replace(fileName,
         {
           OTP: otp,
-          OTP_EXPIRY: this.formatDuration(VERIFICATION_CODE_EXPIRY_SECONDS),
+          OTP_EXPIRY: this.expiryDurationFormat(VERIFICATION_CODE_EXPIRY_SECONDS),
           YEAR: new Date().getFullYear().toString(),
           NAME: this.getFullName(user)
         }
