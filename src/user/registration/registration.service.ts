@@ -24,7 +24,12 @@ class RegistrationService {
     try {
       return await withTransaction(async (session) => {
         const userVerification = otpExists;
-        const accountBody = { account_name: body.account_name, type: body.type, description: body.description };
+        const accountBody = {
+          account_name: body.account_name,
+          type: body.type,
+          experience_profile: body.experience_profile || 'standard_account',
+          description: body.description
+        };
         const account: IAccount = await companyService.createCompany(accountBody, session);
         if (!account) {
           throw Object.assign(new Error("Account creation failed"), { status: 500 });
@@ -40,7 +45,7 @@ class RegistrationService {
           throw Object.assign(new Error("User creation failed"), { status: 500 });
         }
         
-        await this.mailerService.sendRegistrationConfirmation(userDetails.userDetails);
+        await this.mailerService.sendRegistrationConfirmation(userDetails.userDetails, account);
         await userVerification.deleteOne({ session });
         return userDetails;
       });

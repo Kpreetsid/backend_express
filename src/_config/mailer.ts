@@ -71,6 +71,16 @@ export class MailerService {
     return [user.firstName, user.lastName].filter(Boolean).join(' ');
   }
 
+  private getExperienceProfileLabel(value: any): string {
+    switch (String(value || '').trim()) {
+      case 'oem':
+        return 'Pump OEM';
+      case 'standard_account':
+      default:
+        return 'Standard CMMS';
+    }
+  }
+
   private formatDate(value: any): string {
     if (!value) {
       return 'Not scheduled';
@@ -134,10 +144,14 @@ export class MailerService {
           OTP: otp,
           OTP_EXPIRY: this.expiryDurationFormat(VERIFICATION_CODE_EXPIRY_SECONDS),
           YEAR: new Date().getFullYear().toString(),
-          NAME: this.getFullName(user)
+          NAME: this.getFullName(user) || user.username || 'there',
+          EMAIL: user.email || 'your email address',
+          REQUESTED_AT: new Date().toLocaleString(),
+          OTP_VALIDITY: '60 minutes',
+          LOGIN_LINK: mailCredential.loginUrl
         }
       );
-      await this.send({to: user.email, subject: 'Email Verification Required – Presage CMMS', html});
+      await this.send({to: user.email, subject: 'Verify your email address for Presage CMMS', html});
       await VerificationCodeModel.create({email: user.email, firstName: user.firstName, code: otp});
       return true;
     } catch {
@@ -145,7 +159,7 @@ export class MailerService {
     }
   }
 
-  async sendRegistrationConfirmation(user: any): Promise<boolean> {
+  async sendRegistrationConfirmation(user: any, account?: any): Promise<boolean> {
     try {
       const fileName = this.loadTemplate(`registration.template.html`);
       const html = this.replace(fileName,
@@ -155,10 +169,14 @@ export class MailerService {
           userName: user.username,
           userEmail: user.email,
           registrationDate: new Date().toLocaleString(),
-          loginLink: mailCredential.loginUrl
+          loginLink: mailCredential.loginUrl,
+          accountName: account?.account_name || 'Your organization',
+          experienceProfile: this.getExperienceProfileLabel(account?.experience_profile),
+          roleName: 'Administrator',
+          companyType: account?.type || 'CMMS account'
         }
       );
-      await this.send({to: user.email, subject: 'Welcome to Presage CMMS - Your Registration Is Complete', html});
+      await this.send({to: user.email, subject: `Welcome to Presage CMMS - ${account?.account_name || 'Your account'} is ready`, html});
       return true;
     } catch {
       return false;
