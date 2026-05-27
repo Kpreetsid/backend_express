@@ -144,7 +144,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
     const decoded = decryptToken(external_token);
-    const { email, org_id, isExternal, isInternal } = decoded;
+    const { email, org_id, isExternal, isInternal, redirectPath } = decoded;
     if (!email && !org_id) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
@@ -174,6 +174,10 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
     });
     await userTokenData.save();
+    const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
+      ? redirectPath
+      : '/dashboard';
+
     res.status(200).json(
       { 
         status: true, 
@@ -185,7 +189,8 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
           platformControl: userRoleMenu.data, 
           roleMenu: userRoleMenu.roleMenu, 
           isExternal: !!isExternal,
-          isInternal: !!isInternal 
+          isInternal: !!isInternal,
+          redirectPath: safeRedirectPath
         } 
       });
   } catch (error) {

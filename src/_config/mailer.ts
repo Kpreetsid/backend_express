@@ -1,5 +1,6 @@
 import nodemailer, { Transporter } from 'nodemailer';
 import { mailCredential } from '../configDB';
+import { generateExternalAccessToken } from './auth';
 import fs from 'fs';
 import path from 'path';
 import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
@@ -125,6 +126,16 @@ export class MailerService {
 
   async sendWorkOrderMail(workOrder: any, assignedUser: any, createdBy: any): Promise<void> {
     const fileName = this.loadTemplate(`workOrder.template.html`);
+    const externalToken = generateExternalAccessToken(
+      {
+        email: assignedUser.email,
+        org_id: assignedUser.account_id,
+        isExternal: false,
+        isInternal: true,
+        redirectPath: `/work-order/details/${workOrder._id}?source=email`
+      },
+      7 * 24 * 60 * 60
+    );
     const html = this.replace(fileName,
       {
         userFullName: this.getFullName(assignedUser),
@@ -138,7 +149,7 @@ export class MailerService {
         startDate: workOrder.start_date.toISOString().split('T')[0],
         endDate: workOrder.end_date.toISOString().split('T')[0],
         status: workOrder.status,
-        detailsLink: `${mailCredential.loginUrl}/work-order/list/1/${workOrder._id}/info`,
+        detailsLink: `${mailCredential.loginUrl}/external?token=${encodeURIComponent(externalToken)}`,
         YEAR: new Date().getFullYear().toString()
       }
     );
