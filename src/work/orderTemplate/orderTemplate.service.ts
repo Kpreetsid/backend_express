@@ -122,6 +122,12 @@ class OrderTemplateService {
       part_id: mongoose.Types.ObjectId.isValid(String(part?.part_id || '')) ? helperService.validateObjectId(String(part.part_id)) : undefined,
       part_name: String(part?.part_name || '').trim(),
       part_number: String(part?.part_number || '').trim(),
+      part_source: ['manual', 'procedure', 'mixed'].includes(String(part?.part_source || '').trim())
+        ? String(part.part_source).trim()
+        : 'manual',
+      procedureNames: Array.isArray(part?.procedureNames)
+        ? Array.from(new Set(part.procedureNames.map((name: any) => String(name || '').trim()).filter(Boolean)))
+        : [],
       quantity: Number(part?.quantity || part?.estimatedQuantity || 0),
       unit: String(part?.unit || '').trim(),
       cost: Number.isFinite(Number(part?.cost)) ? Number(part.cost) : undefined,
@@ -199,14 +205,21 @@ class OrderTemplateService {
     const partIds = Array.from(new Set(templates.flatMap((template: any) => (template.parts || []).map((part: any) => String(part?.part_id || '')).filter(Boolean))));
 
     const [procedures, users, locations, assets, parts] = await Promise.all([
-      procedureIds.length ? ProcedureModel.find({ _id: { $in: procedureIds.map((id: string) => helperService.validateObjectId(id)) }, account_id, visible: true }, { name: 1, description: 1 }).lean() : Promise.resolve([]),
+      procedureIds.length ? ProcedureModel.find({ _id: { $in: procedureIds.map((id: string) => helperService.validateObjectId(id)) }, account_id, visible: true }, { name: 1, category: 1, description: 1, steps: 1, required_parts: 1 }).lean() : Promise.resolve([]),
       assigneeIds.length ? UserModel.find({ _id: { $in: assigneeIds.map((id: string) => helperService.validateObjectId(id)) }, account_id, visible: true }, { firstName: 1, lastName: 1, email: 1 }).lean() : Promise.resolve([]),
       locationIds.length ? LocationModel.find({ _id: { $in: locationIds.map((id: string) => helperService.validateObjectId(id)) }, account_id, visible: true }, { location_name: 1 }).lean() : Promise.resolve([]),
       assetIds.length ? AssetModel.find({ _id: { $in: assetIds.map((id: string) => helperService.validateObjectId(id)) }, account_id, visible: true }, { asset_name: 1 }).lean() : Promise.resolve([]),
       partIds.length ? PartsModel.find({ _id: { $in: partIds.map((id: string) => helperService.validateObjectId(id)) }, account_id, visible: true }, { part_name: 1, part_number: 1, unit: 1, cost: 1, currency: 1 }).lean() : Promise.resolve([])
     ]);
 
-    const procedureMap = new Map(procedures.map((item: any) => [String(item._id), { id: String(item._id), name: item.name, description: item.description || '' }]));
+    const procedureMap = new Map(procedures.map((item: any) => [String(item._id), {
+      id: String(item._id),
+      name: item.name,
+      category: item.category || '',
+      description: item.description || '',
+      steps: Array.isArray(item.steps) ? item.steps : [],
+      required_parts: Array.isArray(item.required_parts) ? item.required_parts : []
+    }]));
     const userMap = new Map(users.map((item: any) => [String(item._id), { id: String(item._id), firstName: item.firstName || '', lastName: item.lastName || '', email: item.email || '' }]));
     const locationMap = new Map(locations.map((item: any) => [String(item._id), { id: String(item._id), location_name: item.location_name || '' }]));
     const assetMap = new Map(assets.map((item: any) => [String(item._id), { id: String(item._id), asset_name: item.asset_name || '' }]));
@@ -226,6 +239,10 @@ class OrderTemplateService {
           part_id: part?.part_id ? String(part.part_id) : '',
           part_name: part?.part_name || linkedPart?.part_name || '',
           part_number: part?.part_number || linkedPart?.part_number || '',
+          part_source: ['manual', 'procedure', 'mixed'].includes(String(part?.part_source || '').trim())
+            ? String(part.part_source).trim()
+            : 'manual',
+          procedureNames: Array.isArray(part?.procedureNames) ? part.procedureNames : [],
           unit: part?.unit || linkedPart?.unit || '',
           cost: Number.isFinite(Number(part?.cost)) ? Number(part.cost) : Number(linkedPart?.cost || 0),
           currency: part?.currency || linkedPart?.currency || 'INR'

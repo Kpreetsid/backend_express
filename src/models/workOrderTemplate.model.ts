@@ -8,6 +8,8 @@ export interface IWorkOrderTemplatePart {
   part_id?: mongoose.Types.ObjectId;
   part_name: string;
   part_number?: string;
+  part_source?: 'manual' | 'procedure' | 'mixed';
+  procedureNames?: string[];
   quantity: number;
   unit?: string;
   cost?: number;
@@ -54,6 +56,8 @@ const TemplatePartSchema = new Schema<IWorkOrderTemplatePart>({
   part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' },
   part_name: { type: String, trim: true, required: true },
   part_number: { type: String, trim: true },
+  part_source: { type: String, enum: ['manual', 'procedure', 'mixed'], default: 'manual' },
+  procedureNames: { type: [String], default: [] },
   quantity: { type: Number, required: true, min: 0 },
   unit: { type: String, trim: true },
   cost: { type: Number },
