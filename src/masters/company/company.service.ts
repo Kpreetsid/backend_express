@@ -16,6 +16,7 @@ class CompanyService {
     const newCompany = new AccountModel({
       account_name: body.account_name,
       type: body.type,
+      experience_profile: body.experience_profile || 'standard_account',
       description: body.description
     });
     return await newCompany.save({ session });
