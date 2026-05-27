@@ -3,7 +3,7 @@ import { mailCredential } from '../configDB';
 import fs from 'fs';
 import path from 'path';
 import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
-import { VerificationCodeModel } from '../models/userVerification.model';
+import { VerificationCodeModel, VERIFICATION_CODE_EXPIRY_SECONDS } from '../models/userVerification.model';
 
 interface MailPayload {
   to: string;
@@ -70,6 +70,21 @@ export class MailerService {
     return [user.firstName, user.lastName].filter(Boolean).join(' ');
   }
 
+  private formatDuration(seconds: number): string {
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) {
+      return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    if (remainingMinutes === 0) {
+      return `${hours} hour${hours === 1 ? '' : 's'}`;
+    }
+
+    return `${hours} hour${hours === 1 ? '' : 's'} ${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}`;
+  }
+
   async sendVerificationCode(user: any): Promise<boolean> {
     try {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -77,6 +92,7 @@ export class MailerService {
       const html = this.replace(fileName,
         {
           OTP: otp,
+          OTP_EXPIRY: this.formatDuration(VERIFICATION_CODE_EXPIRY_SECONDS),
           YEAR: new Date().getFullYear().toString(),
           NAME: this.getFullName(user)
         }

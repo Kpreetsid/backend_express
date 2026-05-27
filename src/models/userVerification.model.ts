@@ -1,5 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
+export const VERIFICATION_CODE_EXPIRY_SECONDS = 60 * 60;
+
 export interface IVerificationCode {
   email: string;
   firstName: string;
@@ -13,7 +15,7 @@ const verificationCodeSchema = new Schema<IVerificationCode>({
   firstName: { type: String, trim: true, required: true },
   lastName: { type: String, trim: true },
   code: { type: String, trim: true, required: true },
-  createdAt: { type: Date, default: Date.now, expires: 60 * 60 }
+  createdAt: { type: Date, default: Date.now, expires: VERIFICATION_CODE_EXPIRY_SECONDS }
 }, {
   collection: 'user_verification_code',
   timestamps: true,
