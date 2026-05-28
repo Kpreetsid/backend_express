@@ -208,6 +208,7 @@ class LocationController {
       if (!location || location.length === 0) {
         throw Object.assign(new Error('Location not found'), { status: 404 });
       }
+      body.account_id = account_id;
       body.updatedBy = user_id;
       const data: any = await locationService.updateById(String(id), body);
       if (!data || !data.visible) {

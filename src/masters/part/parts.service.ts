@@ -57,6 +57,30 @@ interface PartHistoryPayload {
 }
 
 class PartsService {
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private async assertPartNameAvailable(account_id: any, partName: string, excludeId?: any): Promise<void> {
+    const normalizedName = String(partName || '').trim();
+    if (!normalizedName) return;
+
+    const match: any = {
+      account_id,
+      visible: true,
+      part_name: { $regex: `^${this.escapeRegExp(normalizedName)}$`, $options: 'i' }
+    };
+
+    if (excludeId) {
+      match._id = { $ne: helperService.validateObjectId(String(excludeId)) };
+    }
+
+    const existingPart = await PartsModel.findOne(match).select('_id').lean();
+    if (existingPart) {
+      throw Object.assign(new Error('Part name already exists for this account.'), { status: 409 });
+    }
+  }
+
   private isExecutionStatus(status?: string): boolean {
     return ['In-Progress', 'Completed'].includes(String(status || '').trim());
   }
@@ -498,6 +522,7 @@ class PartsService {
 
   async insert(body: IPart, account_id: any, user: any): Promise<IPart> {
     const normalizedBody = this.normalizePartPayload(body);
+    await this.assertPartNameAvailable(account_id, normalizedBody.part_name);
     const created = await new PartsModel({
       account_id: account_id,
       part_name: normalizedBody.part_name,
@@ -576,6 +601,7 @@ class PartsService {
           payload.location_id = helperService.validateObjectId(String(part.location_id));
         }
 
+        await this.assertPartNameAvailable(account_id, payload.part_name);
         const created = await new PartsModel(payload).save();
         result.imported++;
         result.data.push(created);
@@ -594,6 +620,7 @@ class PartsService {
   async updatePartById(id: string, body: IPart, user: any, account_id: any) {
     return await withTransaction(async (session) => {
       const normalizedBody: any = this.normalizePartPayload(body);
+      await this.assertPartNameAvailable(account_id, normalizedBody.part_name, id);
       const existingPart = await PartsModel.findOne({
         _id: helperService.validateObjectId(String(id)),
         account_id,

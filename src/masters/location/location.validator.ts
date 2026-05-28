@@ -18,8 +18,4 @@ export const locationValidator = [
   body('parent_id')
     .optional({ nullable: true })
     .isMongoId().withMessage('Invalid Parent Location ID format'),
-
-  body('image_path')
-    .optional()
-    .isString().withMessage('Image path must be a string')
 ];

@@ -16,6 +16,29 @@ import { mapUserToAssetService, updateLocationAssetMapping } from '../../transac
 import { withTransaction } from "../../utils/transaction.helper";
 
 class LocationService {
+  private escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  async assertLocationNameAvailable(account_id: any, locationName: string, excludeId?: any): Promise<void> {
+    const normalizedName = String(locationName || '').trim();
+    if (!normalizedName) return;
+
+    const match: any = {
+      account_id,
+      visible: true,
+      location_name: { $regex: `^${this.escapeRegExp(normalizedName)}$`, $options: 'i' }
+    };
+
+    if (excludeId) {
+      match._id = { $ne: helperService.validateObjectId(String(excludeId)) };
+    }
+
+    const existingLocation = await LocationModel.findOne(match).select('_id').lean();
+    if (existingLocation) {
+      throw Object.assign(new Error('Location name already exists for this account.'), { status: 409 });
+    }
+  }
 
   async getLocationsList(match: any) {
     return await LocationModel.find(match).lean();
@@ -200,6 +223,7 @@ class LocationService {
   }
 
   async insertLocation(body: any) {
+    await this.assertLocationNameAvailable(body.account_id, body.location_name);
     const newLocation: any = new LocationModel(body);
     newLocation.top_level_location_id = newLocation.top_level ? newLocation._id as mongoose.Types.ObjectId : body.top_level_location_id;
     body.parent_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
@@ -207,6 +231,7 @@ class LocationService {
   };
 
   async updateById(id: string, body: any) {
+    await this.assertLocationNameAvailable(body.account_id, body.location_name, id);
     // await mapUserToLocationService.updateUserMapping(id, body.userIdList);
     await updateLocationAssetMapping(id, body.userIdList);
     await LocationModel.updateOne({ _id: id }, body);
