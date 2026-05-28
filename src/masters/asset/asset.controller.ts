@@ -294,12 +294,11 @@ class AssetController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
-      await assetService.assertAssetNameAvailable(account_id, body.asset_name, id);
       if (body.locationId !== existingData[0].locationId) {
         await assetService.updateAllChildAssetsLocation(
           helperService.validateObjectId(String(id)), body.locationId, user_id);
       }
-      const data = await assetService.updateAssetOld(helperService.validateObjectId(String(id)), body, user_id, account_id);
+      const data = await assetService.updateAssetOld(helperService.validateObjectId(String(id)), body, user_id);
       if (!data) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }

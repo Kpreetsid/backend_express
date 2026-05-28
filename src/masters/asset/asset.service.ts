@@ -13,30 +13,6 @@ import { LocationModel } from '../../models/location.model';
 import { withTransaction } from "../../utils/transaction.helper";
 
 class AssetService {
-  private escapeRegExp(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
-
-  async assertAssetNameAvailable(account_id: any, assetName: string, excludeId?: any): Promise<void> {
-    const normalizedName = String(assetName || '').trim();
-    if (!normalizedName) return;
-
-    const match: any = {
-      account_id,
-      visible: true,
-      asset_name: { $regex: `^${this.escapeRegExp(normalizedName)}$`, $options: 'i' }
-    };
-
-    if (excludeId) {
-      match._id = { $ne: helperService.validateObjectId(String(excludeId)) };
-    }
-
-    const existingAsset = await AssetModel.findOne(match).select('_id').lean();
-    if (existingAsset) {
-      throw Object.assign(new Error('Asset name already exists for this account.'), { status: 409 });
-    }
-  }
-
   async getAllAssets(match: any) {
     const assetsData = await AssetModel.find(match).populate([
         { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible assigned_to', match: { visible: true } }, 
@@ -222,15 +198,13 @@ class AssetService {
   }
 
   async createAssetOld(body: any, account_id: any, user_id: any): Promise<any> {
-    await this.assertAssetNameAvailable(account_id, body.asset_name);
     const data: any = new AssetModel({ ...body, account_id, createdBy: user_id });
     data.top_level_asset_id = data.top_level_asset_id ? data.top_level_asset_id : data._id;
     return await data.save();
   }
 
-  async updateAssetOld(id: any, body: any, user_id: any, account_id: any): Promise<any> {
+  async updateAssetOld(id: any, body: any, user_id: any): Promise<any> {
     return await withTransaction(async (session) => {
-      await this.assertAssetNameAvailable(account_id, body.asset_name, id);
       await mapUserToAssetService.updateUserMapping(String(id), body.userIdList);
       await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType);
       return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { returnDocument: 'after', session });
