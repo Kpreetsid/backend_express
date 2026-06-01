@@ -195,9 +195,23 @@ class AssetReportController {
 
       const report = reports[0];
 
-      // Reconstruct the full payload by merging DB data with frontend labels/images
+      const {
+        labels,
+        timezone,
+        locale,
+        assetCondition,
+        faultData,
+        chartData
+      } = body || {};
+
+      // Reconstruct the PDF payload from DB data and only the frontend fields needed for rendering.
       const payload: any = {
-        ...body, // Includes labels, timezone, chartModifications, etc.
+        labels: labels || {},
+        timezone,
+        locale: locale || labels?.locale,
+        assetCondition,
+        faultData: faultData || [],
+        chartData: chartData || {},
         assetName: report.assetId?.asset_name || report.assetName || 'NA',
         assetImage: report.assetId?.image_path || report.assetImage || null,
         analysisDate: report.createdOn,
