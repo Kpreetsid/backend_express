@@ -76,14 +76,14 @@ export class PdfService {
   private getSelectedAxes(mods: any): string[] {
     const fromOptions = Array.isArray(mods?.selectedAxes) ? mods.selectedAxes.filter((axis: any) => typeof axis === 'string') : [];
     if (fromOptions.length > 0) {
-      return [...new Set(fromOptions)];
+      return Array.from(new Set<string>(fromOptions));
     }
 
     const fromChartDetail = this.normalizeChartDetail(mods?.chartDetail)
       .flatMap((item: any) => Array.isArray(item?.axis) ? item.axis : [])
       .filter((axis: any) => typeof axis === 'string');
 
-    return fromChartDetail.length > 0 ? [...new Set(fromChartDetail)] : ['Axial', 'Horizontal', 'Vertical'];
+    return fromChartDetail.length > 0 ? Array.from(new Set<string>(fromChartDetail)) : ['Axial', 'Horizontal', 'Vertical'];
   }
 
   private attachChartMetadata(chart: any, chartType: string, uniqueKey: string, endpointId: string, chartName: string): any {
