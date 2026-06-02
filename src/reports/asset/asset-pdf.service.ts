@@ -165,15 +165,8 @@ export class PdfService {
   public async generateAssetReportPdf(data: any, token?: string, userId?: string): Promise<Buffer> {
     console.log(`[PdfService] Generating PDF for asset: ${data.assetName || 'Unknown'}`);
 
-    // ── Chart data resolution ──────────────────────────────────────────────────
-    // Priority 1: Use chartData sent directly from the frontend.
-    //   This contains the FULL user-modified state: harmonics, fault frequencies,
-    //   bffData, functionType, selectedFrequencies, zoom state (_liveState), etc.
-    //   We MUST use this to faithfully reflect what the user sees in the UI.
-    //
-    // Priority 2 (legacy fallback): If no chartData was provided but chartDetail
-    //   was, re-fetch from the processor API and process from scratch.
-    //   This path loses all user modifications and should be considered deprecated.
+    // Chart data resolution: prefer legacy small chartData if present; otherwise
+    // rebuild chart configs from saved report metadata to keep client payloads small.
 
     if (data.chartData && Object.keys(data.chartData).length > 0) {
       // Sort keys alphabetically to match Angular keyvalue pipe default sort
@@ -183,8 +176,7 @@ export class PdfService {
       console.log(`[PdfService] Using frontend-supplied chartData with ${Object.keys(data.chartData).length} device(s).`);
     } else if (token && userId) {
       const composites = this.normalizeChartDetail(data.chartDetail);
-      // Legacy fallback: re-fetch from processor API
-      console.warn('[PdfService] No chartData supplied — falling back to processor API re-fetch (user modifications will be lost).');
+      console.warn('[PdfService] No frontend chartData supplied; rendering charts from saved report metadata.');
       try {
         if (composites.length > 0) {
           const res = await processorAPIService.getAccVelData({ composites }, token, userId);
