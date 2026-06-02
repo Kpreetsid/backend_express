@@ -583,9 +583,22 @@
       return String(Number(numeric.toFixed(4)));
     }
 
+    function usesCategoryAxis(chart) {
+      return Array.isArray(chart.xData) && chart.xData.length > 0;
+    }
+
+    function getXAxisLabelInterval(chart) {
+      const count = Array.isArray(chart.xData) ? chart.xData.length : 0;
+      if (count <= 34) return 0;
+      return Math.max(1, Math.ceil(count / 34) - 1);
+    }
+
     function getSeriesData(chart, seriesItem) {
       const xData = Array.isArray(chart.xData) ? chart.xData : [];
       const yData = Array.isArray(seriesItem.data) ? seriesItem.data : [];
+      if (usesCategoryAxis(chart) && xData.length === yData.length) {
+        return yData.map(value => toFiniteNumber(value, null));
+      }
       return yData.map((value, index) => {
         const xValue = xData.length === yData.length ? toFiniteNumber(xData[index], index) : index;
         const yValue = toFiniteNumber(value, null);
@@ -683,6 +696,44 @@
       return Array.from(new Set(values)).sort((a, b) => a - b);
     }
 
+    function getVisibleSeriesMax(series) {
+      let max = 0;
+      series.forEach(item => {
+        (item.data || []).forEach(point => {
+          const value = Array.isArray(point) ? point[1] : point;
+          const numeric = Number(value);
+          if (Number.isFinite(numeric)) max = Math.max(max, Math.abs(numeric));
+        });
+      });
+      return max;
+    }
+
+    function getNiceStep(value) {
+      if (!Number.isFinite(value) || value <= 0) return 1;
+      const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+      const residual = value / magnitude;
+      if (residual <= 1) return magnitude;
+      if (residual <= 2) return 2 * magnitude;
+      if (residual <= 2.5) return 2.5 * magnitude;
+      if (residual <= 5) return 5 * magnitude;
+      return 10 * magnitude;
+    }
+
+    function getYAxisRange(chart, yZoom, series) {
+      if (yZoom.min !== undefined || yZoom.max !== undefined) return yZoom;
+      if (chart.type && chart.type.includes('spectrum')) {
+        const maxValue = getVisibleSeriesMax(series);
+        if (maxValue > 0) {
+          const step = getNiceStep((maxValue * 1.25) / 2);
+          return { min: 0, max: Number((step * 2).toPrecision(12)) };
+        }
+      }
+      return {
+        min: chart.min !== undefined && chart.min !== '' ? Number(chart.min) : undefined,
+        max: chart.max !== undefined && chart.max !== '' ? Number(chart.max) : undefined
+      };
+    }
+
     function renderEChart(id, chart, labels) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -723,6 +774,8 @@
 
       const xZoom = getXAxisZoomRange(chart);
       const yZoom = getYAxisZoomRange(chart);
+      const categoryAxis = usesCategoryAxis(chart);
+      const yRange = getYAxisRange(chart, yZoom, series);
       const rotateXAxis = chart.type && chart.type.includes('spectrum');
 
       chartInstance.setOption({
@@ -732,16 +785,21 @@
         legend: { show: true, type: 'scroll', top: 0, textStyle: { fontSize: 9 } },
         tooltip: { show: false },
         xAxis: {
-          type: 'value',
+          type: categoryAxis ? 'category' : 'value',
+          data: categoryAxis ? chart.xData : undefined,
+          boundaryGap: false,
           name: chart.xLabel || '',
           nameLocation: 'middle',
           nameGap: 28,
-          min: xZoom.min,
-          max: xZoom.max,
+          min: categoryAxis ? undefined : xZoom.min,
+          max: categoryAxis ? undefined : xZoom.max,
+          splitLine: { show: false },
+          axisTick: { show: false },
           axisLabel: {
             fontSize: 9,
             rotate: rotateXAxis ? 45 : 0,
             hideOverlap: true,
+            interval: categoryAxis ? getXAxisLabelInterval(chart) : 'auto',
             formatter: formatAxisLabel
           }
         },
@@ -750,8 +808,10 @@
           name: chart.yLabel || '',
           nameLocation: 'middle',
           nameGap: 38,
-          min: yZoom.min !== undefined ? yZoom.min : (chart.min !== undefined && chart.min !== '' ? Number(chart.min) : undefined),
-          max: yZoom.max !== undefined ? yZoom.max : (chart.max !== undefined && chart.max !== '' ? Number(chart.max) : undefined),
+          min: yRange.min,
+          max: yRange.max,
+          splitNumber: chart.type && chart.type.includes('spectrum') ? 2 : undefined,
+          splitLine: { show: false },
           axisLabel: { fontSize: 9, formatter: formatAxisLabel }
         },
         series
