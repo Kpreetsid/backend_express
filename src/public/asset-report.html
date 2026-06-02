@@ -711,14 +711,10 @@
       if (Array.isArray(chart.harmonicValues) && chart.harmonicValues.length) {
         addMarkerValues(markers, chart.harmonicValues, index => (index + 1) + 'X', '#ff0000');
       } else if (Array.isArray(chart.harmonicData)) {
-        const xData = Array.isArray(chart.xData) ? chart.xData : [];
         chart.harmonicData.forEach((value, index) => {
           const numeric = Number(value);
           if (!Number.isFinite(numeric)) return;
-          const displayValue = Number.isInteger(numeric) && numeric >= 0 && numeric < xData.length
-            ? toFiniteNumber(xData[numeric], numeric)
-            : numeric;
-          addMarkerLine(markers, displayValue, { label: (index + 1) + 'X', color: '#ff0000' });
+          addMarkerLine(markers, numeric, { label: (index + 1) + 'X', color: '#ff0000' });
         });
       }
       const faultData = chart.bffData && chart.bffData.displayData ? chart.bffData.displayData : (chart.bffData && chart.bffData.data ? chart.bffData.data : {});
@@ -743,7 +739,7 @@
           closestIndex = index;
         }
       });
-      return xData[closestIndex];
+      return String(xData[closestIndex]);
     }
 
     function getMarkerLineType(marker) {
