@@ -656,44 +656,99 @@
       return min < max ? { min, max } : { min: max, max: min };
     }
 
-    function addMarkerValues(values, source) {
+    function getMarkerText(value) {
+      if (value === undefined || value === null || value === '') return '';
+      return String(value).replace(/<[^>]*>/g, '').trim();
+    }
+
+    function addMarkerLine(markers, value, options) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return;
+      const marker = {
+        value: numeric,
+        label: getMarkerText(options && options.label),
+        color: (options && options.color) || '#ff0000',
+        width: toFiniteNumber(options && options.width, 1) || 1,
+        dashStyle: (options && options.dashStyle) || 'solid'
+      };
+      const key = [marker.value, marker.label, marker.color].join('|');
+      if (!markers.some(item => [item.value, item.label, item.color].join('|') === key)) {
+        markers.push(marker);
+      }
+    }
+
+    function addMarkerValues(markers, source, labelFactory, color) {
       if (!Array.isArray(source)) return;
-      source.forEach(value => {
-        const numeric = Number(value);
-        if (Number.isFinite(numeric)) values.push(numeric);
+      source.forEach((value, index) => {
+        addMarkerLine(markers, value, {
+          label: typeof labelFactory === 'function' ? labelFactory(index, value) : labelFactory,
+          color
+        });
       });
     }
 
-    function collectNestedMarkerValues(values, source) {
-      Object.values(source || {}).forEach(axisMap => {
-        Object.values(axisMap || {}).forEach(axisValues => addMarkerValues(values, axisValues));
+    function collectNestedMarkerValues(markers, source) {
+      Object.entries(source || {}).forEach(([faultKey, axisMap]) => {
+        Object.entries(axisMap || {}).forEach(([axisName, axisValues]) => {
+          addMarkerValues(markers, axisValues, () => faultKey.toUpperCase() + ' (' + axisName + ')', '#ff0000');
+        });
       });
     }
 
     function collectMarkerLines(chart) {
-      const values = [];
+      const markers = [];
+      if (Array.isArray(chart.plotLines) && chart.plotLines.length) {
+        chart.plotLines.forEach(line => {
+          const numeric = toFiniteNumber(line && line.xValue !== undefined ? line.xValue : line?.value, null);
+          addMarkerLine(markers, numeric, {
+            label: line && line.label,
+            color: line && line.color,
+            width: line && line.width
+          });
+        });
+      }
+
       if (Array.isArray(chart.harmonicValues) && chart.harmonicValues.length) {
-        addMarkerValues(values, chart.harmonicValues);
+        addMarkerValues(markers, chart.harmonicValues, index => (index + 1) + 'X', '#ff0000');
       } else if (Array.isArray(chart.harmonicData)) {
         const xData = Array.isArray(chart.xData) ? chart.xData : [];
-        chart.harmonicData.forEach(value => {
+        chart.harmonicData.forEach((value, index) => {
           const numeric = Number(value);
           if (!Number.isFinite(numeric)) return;
           const displayValue = Number.isInteger(numeric) && numeric >= 0 && numeric < xData.length
             ? toFiniteNumber(xData[numeric], numeric)
             : numeric;
-          values.push(displayValue);
+          addMarkerLine(markers, displayValue, { label: (index + 1) + 'X', color: '#ff0000' });
         });
       }
       const faultData = chart.bffData && chart.bffData.displayData ? chart.bffData.displayData : (chart.bffData && chart.bffData.data ? chart.bffData.data : {});
-      collectNestedMarkerValues(values, faultData);
-      if (Array.isArray(chart.plotLines)) {
-        chart.plotLines.forEach(line => {
-          const numeric = toFiniteNumber(line && line.xValue !== undefined ? line.xValue : line?.value, null);
-          if (numeric !== null) values.push(numeric);
-        });
-      }
-      return Array.from(new Set(values)).sort((a, b) => a - b);
+      collectNestedMarkerValues(markers, faultData);
+
+      return markers.sort((a, b) => a.value - b.value);
+    }
+
+    function normalizeMarkerForAxis(marker, chart, categoryAxis) {
+      if (!categoryAxis) return marker.value;
+      const xData = Array.isArray(chart.xData) ? chart.xData : [];
+      if (!xData.length) return marker.value;
+
+      let closestIndex = 0;
+      let closestDiff = Infinity;
+      xData.forEach((item, index) => {
+        const numeric = Number(item);
+        if (!Number.isFinite(numeric)) return;
+        const diff = Math.abs(numeric - marker.value);
+        if (diff < closestDiff) {
+          closestDiff = diff;
+          closestIndex = index;
+        }
+      });
+      return xData[closestIndex];
+    }
+
+    function getMarkerLineType(marker) {
+      const dashStyle = String(marker.dashStyle || '').toLowerCase();
+      return dashStyle.includes('dash') ? 'dashed' : 'solid';
     }
 
     function getVisibleSeriesMax(series) {
@@ -745,6 +800,16 @@
       const chartInstance = window.echarts.init(el, null, { renderer: 'svg' });
       const markerLines = collectMarkerLines(chart);
       const visibleSeries = (chart.yData || []).filter(item => isSeriesVisible(chart, item));
+      const categoryAxis = usesCategoryAxis(chart);
+      const markerLineData = markerLines.map(marker => ({
+        xAxis: normalizeMarkerForAxis(marker, chart, categoryAxis),
+        label: marker.label,
+        lineStyle: {
+          color: marker.color,
+          width: marker.width,
+          type: getMarkerLineType(marker)
+        }
+      }));
       const series = visibleSeries.map((item, index) => ({
         name: item.name || ('Series ' + (index + 1)),
         type: item.type || 'line',
@@ -760,9 +825,17 @@
           ? {
               silent: true,
               symbol: 'none',
-              label: { show: false },
-              lineStyle: { color: '#f3b900', width: 1, type: 'dashed' },
-              data: markerLines.map(value => ({ xAxis: value }))
+              label: {
+                show: true,
+                formatter: params => params.data && params.data.label ? params.data.label : '',
+                position: 'insideEndTop',
+                rotate: 90,
+                color: '#111827',
+                fontSize: 9,
+                distance: 4
+              },
+              lineStyle: { color: '#ff0000', width: 1, type: 'solid' },
+              data: markerLineData
             }
           : undefined
       }));
@@ -774,7 +847,6 @@
 
       const xZoom = getXAxisZoomRange(chart);
       const yZoom = getYAxisZoomRange(chart);
-      const categoryAxis = usesCategoryAxis(chart);
       const yRange = getYAxisRange(chart, yZoom, series);
       const rotateXAxis = chart.type && chart.type.includes('spectrum');
 
@@ -812,6 +884,7 @@
           max: yRange.max,
           splitNumber: chart.type && chart.type.includes('spectrum') ? 2 : undefined,
           splitLine: { show: false },
+          axisTick: { show: true, lineStyle: { color: '#9ca3af', width: 1 } },
           axisLabel: { fontSize: 9, formatter: formatAxisLabel }
         },
         series
