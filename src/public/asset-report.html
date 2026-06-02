@@ -425,6 +425,7 @@
     <div class="content-area">{{recommendations}}</div>
   </div>
 
+  <script>{{echartsScript}}</script>
   <script id="chart-data" type="application/json">{{chartDataJson}}</script>
   <script id="readings-data" type="application/json">{{readingsJson}}</script>
   <script id="labels-data" type="application/json">{{labelsJson}}</script>
@@ -457,7 +458,7 @@
 
     // ── Main chart renderer ────────────────────────────────────────────────────
     function renderCharts() {
-      console.log('[PDF] Starting chart rendering from pre-captured images...');
+      console.log('[PDF] Starting chart rendering from backend chart data...');
       try {
         const chartData = JSON.parse(document.getElementById('chart-data').textContent || '{}');
         const readings = JSON.parse(document.getElementById('readings-data').textContent || '[]');
@@ -487,8 +488,8 @@
 
           chartTypes.forEach(baseType => {
             const compType = 'compare-' + baseType;
-            const hasBase = device[baseType] && device[baseType].capturedImage;
-            const hasComp = device[compType] && device[compType].capturedImage;
+            const hasBase = hasRenderableChart(device[baseType]);
+            const hasComp = hasRenderableChart(device[compType]);
 
             if (!hasBase && !hasComp) return;
 
@@ -523,15 +524,7 @@
                 block.appendChild(chartBox);
                 container.appendChild(block);
 
-                setTimeout(() => {
-                  if (device[type].capturedImage) {
-                    displayCapturedChart(chartId, device[type].capturedImage);
-                  } else {
-                    console.error('[PDF] Missing image for compared chart:', chartId);
-                    const el = document.getElementById(chartId);
-                    if (el) el.innerHTML = '<div class="no-data-msg">Comparison chart image not captured.</div>';
-                  }
-                }, 0);
+                setTimeout(() => renderChart(chartId, device[type], labels), 0);
               });
             } else {
               const activeType = hasBase ? baseType : compType;
@@ -541,15 +534,7 @@
               chartBox.id = chartId;
               container.appendChild(chartBox);
 
-              setTimeout(() => {
-                if (device[activeType].capturedImage) {
-                  displayCapturedChart(chartId, device[activeType].capturedImage);
-                } else {
-                  console.error('[PDF] Missing image for single chart:', chartId);
-                  const el = document.getElementById(chartId);
-                  if (el) el.innerHTML = '<div class="no-data-msg">Chart image not captured from browser.</div>';
-                }
-              }, 0);
+              setTimeout(() => renderChart(chartId, device[activeType], labels), 0);
             }
 
             root.appendChild(container);
@@ -567,6 +552,114 @@
         console.error('[PDF] Global rendering error:', globalErr);
         window.PDF_READY = true;
       }
+    }
+
+    function hasRenderableChart(chart) {
+      return !!(chart && (
+        chart.capturedImage ||
+        (Array.isArray(chart.xData) && Array.isArray(chart.yData) && chart.yData.length > 0)
+      ));
+    }
+
+    function renderChart(id, chart, labels) {
+      if (!chart) return;
+      if (chart.capturedImage) {
+        displayCapturedChart(id, chart.capturedImage);
+        return;
+      }
+      renderEChart(id, chart, labels);
+    }
+
+    function toFiniteNumber(value, fallback) {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? numeric : fallback;
+    }
+
+    function getSeriesData(chart, seriesItem) {
+      const xData = Array.isArray(chart.xData) ? chart.xData : [];
+      const yData = Array.isArray(seriesItem.data) ? seriesItem.data : [];
+      return yData.map((value, index) => {
+        const xValue = xData.length === yData.length ? toFiniteNumber(xData[index], index) : index;
+        const yValue = toFiniteNumber(value, null);
+        return [xValue, yValue];
+      });
+    }
+
+    function collectMarkerLines(chart) {
+      const values = [];
+      if (Array.isArray(chart.harmonicData)) {
+        chart.harmonicData.forEach(value => {
+          const numeric = Number(value);
+          if (Number.isFinite(numeric)) values.push(numeric);
+        });
+      }
+      const faultData = chart.bffData && chart.bffData.data ? chart.bffData.data : {};
+      Object.values(faultData).forEach(axisMap => {
+        Object.values(axisMap || {}).forEach(axisValues => {
+          if (!Array.isArray(axisValues)) return;
+          axisValues.forEach(value => {
+            const numeric = Number(value);
+            if (Number.isFinite(numeric)) values.push(numeric);
+          });
+        });
+      });
+      return Array.from(new Set(values)).sort((a, b) => a - b);
+    }
+
+    function renderEChart(id, chart, labels) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (!window.echarts) {
+        el.innerHTML = '<div class="no-data-msg">' + (labels.errorRenderingChartLabel || 'Error rendering this chart.') + '</div>';
+        return;
+      }
+
+      const chartInstance = window.echarts.init(el, null, { renderer: 'svg' });
+      const markerLines = collectMarkerLines(chart);
+      const series = (chart.yData || []).map((item, index) => ({
+        name: item.name || ('Series ' + (index + 1)),
+        type: item.type || 'line',
+        data: getSeriesData(chart, item),
+        showSymbol: false,
+        smooth: !!item.smooth,
+        lineStyle: item.lineStyle || { width: 1 },
+        itemStyle: item.itemStyle || undefined,
+        sampling: 'lttb',
+        markLine: index === 0 && markerLines.length
+          ? {
+              silent: true,
+              symbol: 'none',
+              label: { show: false },
+              lineStyle: { color: '#f3b900', width: 1, type: 'dashed' },
+              data: markerLines.map(value => ({ xAxis: value }))
+            }
+          : undefined
+      }));
+
+      chartInstance.setOption({
+        animation: false,
+        color: ['#ff0000', '#00d711', '#000069', '#8c54ff', '#fa8349'],
+        grid: { left: 55, right: 15, bottom: 45, top: 30, containLabel: true },
+        legend: { show: true, type: 'scroll', top: 0, textStyle: { fontSize: 9 } },
+        tooltip: { show: false },
+        xAxis: {
+          type: 'value',
+          name: chart.xLabel || '',
+          nameLocation: 'middle',
+          nameGap: 28,
+          axisLabel: { fontSize: 9 }
+        },
+        yAxis: {
+          type: 'value',
+          name: chart.yLabel || '',
+          nameLocation: 'middle',
+          nameGap: 38,
+          min: chart.min !== undefined && chart.min !== '' ? Number(chart.min) : undefined,
+          max: chart.max !== undefined && chart.max !== '' ? Number(chart.max) : undefined,
+          axisLabel: { fontSize: 9 }
+        },
+        series
+      });
     }
 
     function displayCapturedChart(id, data) {

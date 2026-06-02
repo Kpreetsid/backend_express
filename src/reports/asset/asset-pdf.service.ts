@@ -59,7 +59,108 @@ export class PdfService {
       description: 'Large prime movers with large rotating assemblies mounted on foundations soft in the direction of the measured vibration (i.e turbine, generators, gas turbines greater than 10MW)',
       ko_description: '측정된 진동 방향으로 지반이 약한 곳에 대형 회전 부품이 설치된 대형 동력 장치(예: 터빈, 발전기, 10MW 이상의 가스 터빈)'
     }
-  ]
+  ];
+
+  private readonly maxPdfChartPoints = 2500;
+
+  private normalizeChartDetail(chartDetail: any): any[] {
+    if (Array.isArray(chartDetail)) {
+      return chartDetail;
+    }
+    if (Array.isArray(chartDetail?.composites)) {
+      return chartDetail.composites;
+    }
+    return [];
+  }
+
+  private getSelectedAxes(mods: any): string[] {
+    const fromOptions = Array.isArray(mods?.selectedAxes) ? mods.selectedAxes.filter((axis: any) => typeof axis === 'string') : [];
+    if (fromOptions.length > 0) {
+      return [...new Set(fromOptions)];
+    }
+
+    const fromChartDetail = this.normalizeChartDetail(mods?.chartDetail)
+      .flatMap((item: any) => Array.isArray(item?.axis) ? item.axis : [])
+      .filter((axis: any) => typeof axis === 'string');
+
+    return fromChartDetail.length > 0 ? [...new Set(fromChartDetail)] : ['Axial', 'Horizontal', 'Vertical'];
+  }
+
+  private attachChartMetadata(chart: any, chartType: string, uniqueKey: string, endpointId: string, chartName: string): any {
+    return {
+      ...chart,
+      _id: endpointId,
+      deviceKey: uniqueKey,
+      type: chartType,
+      chartName
+    };
+  }
+
+  private applySavedHarmonics(chart: any, mods: any, uniqueKey: string, chartType: string): any {
+    if (!chart || !chartType.includes('spectrum')) {
+      return chart;
+    }
+    const match = Array.isArray(mods?.harmonicIndex)
+      ? mods.harmonicIndex.find((item: any) => item?.key === uniqueKey && item?.chartType === chartType)
+      : null;
+    if (!match?.index?.length) {
+      return chart;
+    }
+    return {
+      ...chart,
+      harmonicFlag: true,
+      harmonicData: match.index,
+      functionType: 'harmonic',
+      isHarmonicZoomed: true
+    };
+  }
+
+  private getSampleIndexes(length: number): number[] {
+    if (length <= this.maxPdfChartPoints) {
+      return Array.from({ length }, (_item, index) => index);
+    }
+    const indexes: number[] = [];
+    const step = (length - 1) / (this.maxPdfChartPoints - 1);
+    for (let i = 0; i < this.maxPdfChartPoints; i++) {
+      indexes.push(Math.min(length - 1, Math.round(i * step)));
+    }
+    return [...new Set(indexes)];
+  }
+
+  private reduceChartPoints(xData: any[], series: any[]): { xData: any[]; series: any[] } {
+    const longestSeriesLength = Math.max(0, ...series.map((item: any) => Array.isArray(item?.data) ? item.data.length : 0));
+    const chartLength = Math.max(xData?.length || 0, longestSeriesLength);
+    if (chartLength <= this.maxPdfChartPoints) {
+      return { xData, series };
+    }
+
+    const indexes = this.getSampleIndexes(chartLength);
+    const pickByIndexes = (values: any[]) => {
+      if (!Array.isArray(values) || values.length === 0) {
+        return [];
+      }
+      if (values.length !== chartLength) {
+        const localIndexes = this.getSampleIndexes(values.length);
+        return localIndexes.map(index => values[index]).filter(value => value !== undefined);
+      }
+      return indexes.map(index => values[index]).filter(value => value !== undefined);
+    };
+
+    return {
+      xData: pickByIndexes(xData || []),
+      series: series.map((item: any) => ({ ...item, data: pickByIndexes(item?.data || []) }))
+    };
+  }
+
+  private getEchartsScript(): string {
+    const scriptPath = path.join(process.cwd(), 'node_modules', 'echarts', 'dist', 'echarts.min.js');
+    try {
+      return fs.existsSync(scriptPath) ? fs.readFileSync(scriptPath, 'utf8') : '';
+    } catch (error: any) {
+      console.error('[PdfService] Failed to load ECharts renderer:', error.message);
+      return '';
+    }
+  }
 
   public async generateAssetReportPdf(data: any, token?: string, userId?: string): Promise<Buffer> {
     console.log(`[PdfService] Generating PDF for asset: ${data.assetName || 'Unknown'}`);
@@ -80,14 +181,23 @@ export class PdfService {
       Object.keys(data.chartData).sort().forEach((k: string) => { sorted[k] = data.chartData[k]; });
       data.chartData = sorted;
       console.log(`[PdfService] Using frontend-supplied chartData with ${Object.keys(data.chartData).length} device(s).`);
-    } else if (data.chartDetail && token && userId) {
+    } else if (token && userId) {
+      const composites = this.normalizeChartDetail(data.chartDetail);
       // Legacy fallback: re-fetch from processor API
       console.warn('[PdfService] No chartData supplied — falling back to processor API re-fetch (user modifications will be lost).');
       try {
-        if (data.chartDetail.composites && data.chartDetail.composites.length > 0) {
-          const res = await processorAPIService.getAccVelData({ composites: data.chartDetail }, token, userId);
+        if (composites.length > 0) {
+          const res = await processorAPIService.getAccVelData({ composites }, token, userId);
           if (res && res.data) {
-            data.chartData = this.processChartData(res.data, data.chartModifications || {}, data.labels);
+            data.chartData = this.processChartData(
+              res.data,
+              {
+                ...(data.chartOptions || {}),
+                harmonicIndex: data.harmonicIndex || [],
+                chartDetail: composites
+              },
+              data.labels
+            );
           }
         } else {
           console.log(`No Chart attached with this report`);
@@ -212,6 +322,7 @@ export class PdfService {
       readingsTable: this.buildReadingsTable(data),
       faultsTable: this.buildFaultsTable(data.faultData),
       attachmentsHtml: this.buildAttachments(data.attachments),
+      echartsScript: this.getEchartsScript(),
       chartDataJson: JSON.stringify(data.chartData || {}),
       readingsJson: JSON.stringify(data.readings || []),
       labelsJson: JSON.stringify({ ...data.labels, locale: data.locale, timezone: data.timezone })
@@ -509,20 +620,38 @@ export class PdfService {
 
       const deviceData = combinedChartObject[uniqueKey];
       const x_axis = element['x_axis_spectrum_data'] || [];
-      const selectedAxes = mods.selectedAxes || ['Axial', 'Horizontal', 'Vertical'];
+      const selectedAxes = this.getSelectedAxes(mods);
 
       // Process Base Data
       const accTwf = this.drawTwfChart(element["acceleration-twf-chart"] || [], "acceleration", selectedAxes, labels);
-      if (accTwf) deviceData['acceleration-twf'] = accTwf;
+      if (accTwf) {
+        deviceData['acceleration-twf'] = this.attachChartMetadata(accTwf, 'acceleration-twf', uniqueKey, endpointId, 'Acceleration Twf');
+      }
 
       const velTwf = this.drawTwfChart(element["velocity-twf-chart"] || [], "velocity", selectedAxes, labels);
-      if (velTwf) deviceData['velocity-twf'] = velTwf;
+      if (velTwf) {
+        deviceData['velocity-twf'] = this.attachChartMetadata(velTwf, 'velocity-twf', uniqueKey, endpointId, 'Velocity Twf');
+      }
 
       const accSpec = this.drawSpectrumChart(element["acceleration-spectrum-chart"] || [], "acceleration", x_axis, element.signal_processing_details?.rpm, selectedAxes, labels);
-      if (accSpec) deviceData['acceleration-spectrum'] = accSpec;
+      if (accSpec) {
+        deviceData['acceleration-spectrum'] = this.applySavedHarmonics(
+          this.attachChartMetadata(accSpec, 'acceleration-spectrum', uniqueKey, endpointId, 'Acceleration Spectrum'),
+          mods,
+          uniqueKey,
+          'acceleration-spectrum'
+        );
+      }
 
       const velSpec = this.drawSpectrumChart(element["velocity-spectrum-chart"] || [], "velocity", x_axis, element.signal_processing_details?.rpm, selectedAxes, labels);
-      if (velSpec) deviceData['velocity-spectrum'] = velSpec;
+      if (velSpec) {
+        deviceData['velocity-spectrum'] = this.applySavedHarmonics(
+          this.attachChartMetadata(velSpec, 'velocity-spectrum', uniqueKey, endpointId, 'Velocity Spectrum'),
+          mods,
+          uniqueKey,
+          'velocity-spectrum'
+        );
+      }
 
       // Process Comparison Data
       const compElement = data.compare_axes_data?.[index];
@@ -530,16 +659,34 @@ export class PdfService {
         const comp_x_axis = compElement['x_axis_spectrum_data'] || [];
 
         const compAccTwf = this.drawTwfChart(compElement["acceleration-twf-chart"] || [], "acceleration", selectedAxes, labels);
-        if (compAccTwf) deviceData['compare-acceleration-twf'] = compAccTwf;
+        if (compAccTwf) {
+          deviceData['compare-acceleration-twf'] = this.attachChartMetadata(compAccTwf, 'compare-acceleration-twf', uniqueKey, compElement._id, 'Acceleration Twf');
+        }
 
         const compVelTwf = this.drawTwfChart(compElement["velocity-twf-chart"] || [], "velocity", selectedAxes, labels);
-        if (compVelTwf) deviceData['compare-velocity-twf'] = compVelTwf;
+        if (compVelTwf) {
+          deviceData['compare-velocity-twf'] = this.attachChartMetadata(compVelTwf, 'compare-velocity-twf', uniqueKey, compElement._id, 'Velocity Twf');
+        }
 
         const compAccSpec = this.drawSpectrumChart(compElement["acceleration-spectrum-chart"] || [], "acceleration", comp_x_axis, compElement.signal_processing_details?.rpm, selectedAxes, labels);
-        if (compAccSpec) deviceData['compare-acceleration-spectrum'] = compAccSpec;
+        if (compAccSpec) {
+          deviceData['compare-acceleration-spectrum'] = this.applySavedHarmonics(
+            this.attachChartMetadata(compAccSpec, 'compare-acceleration-spectrum', uniqueKey, compElement._id, 'Acceleration Spectrum'),
+            mods,
+            uniqueKey,
+            'compare-acceleration-spectrum'
+          );
+        }
 
         const compVelSpec = this.drawSpectrumChart(compElement["velocity-spectrum-chart"] || [], "velocity", comp_x_axis, compElement.signal_processing_details?.rpm, selectedAxes, labels);
-        if (compVelSpec) deviceData['compare-velocity-spectrum'] = compVelSpec;
+        if (compVelSpec) {
+          deviceData['compare-velocity-spectrum'] = this.applySavedHarmonics(
+            this.attachChartMetadata(compVelSpec, 'compare-velocity-spectrum', uniqueKey, compElement._id, 'Velocity Spectrum'),
+            mods,
+            uniqueKey,
+            'compare-velocity-spectrum'
+          );
+        }
       }
     });
 
@@ -575,6 +722,7 @@ export class PdfService {
     const fsVal = chartArray[0]?.fs || 1;
     const xData = Array.from({ length: noOfSamples }, (_, i) =>
       Number(((i * (noOfSamples / fsVal)) / (noOfSamples - 1)).toFixed(5)));
+    const reduced = this.reduceChartPoints(xData, series);
 
     const yLabel = func === 'acceleration'
       ? (labels?.accelerationLabel || 'Amplitude (g)')
@@ -585,8 +733,8 @@ export class PdfService {
       yLabel,
       max: Number((Math.abs(max) * 1.2).toFixed(4)),
       min: Number(-(Math.abs(min) * 1.2).toFixed(4)),
-      xData,
-      yData: series
+      xData: reduced.xData,
+      yData: reduced.series
     };
   }
 
@@ -613,13 +761,15 @@ export class PdfService {
       ? (labels?.accelerationLabel || 'Amplitude (g)')
       : (labels?.velocityLabel || 'Amplitude (mm/s)');
 
+    const reduced = this.reduceChartPoints(xAxis || [], series);
+
     return {
       ...this.sptrmChartProto,
       yLabel,
       xLabel: 'Hz',
       max: Number(max).toFixed(4),
-      xData: xAxis || [],
-      yData: series,
+      xData: reduced.xData,
+      yData: reduced.series,
       rpm,
       no_of_axis: selectedAxes.length
     };

@@ -201,7 +201,7 @@ class AssetReportController {
         locale,
         assetCondition,
         faultData,
-        chartData
+        chartOptions
       } = body || {};
 
       // Reconstruct the PDF payload from DB data and only the frontend fields needed for rendering.
@@ -211,7 +211,7 @@ class AssetReportController {
         locale: locale || labels?.locale,
         assetCondition,
         faultData: faultData || [],
-        chartData: chartData || {},
+        chartOptions: chartOptions || {},
         assetName: report.assetId?.asset_name || report.assetName || 'NA',
         assetImage: report.assetId?.image_path || report.assetImage || null,
         analysisDate: report.createdOn,
@@ -225,6 +225,7 @@ class AssetReportController {
         createdFrom: report.createdFrom || 'Asset Report',
         // Pass chartDetail for backend chart fetching
         chartDetail: report.chartDetail || [],
+        harmonicIndex: report.harmonicIndex || [],
 
         // Construct readings from endpointRMSData — try all axes for timestamp
         readings: (report.endpointRMSData || []).map((point: any) => {
