@@ -115,6 +115,112 @@ export class PdfService {
     };
   }
 
+  private getLiveChartState(mods: any, uniqueKey: string, chartType: string): any {
+    return mods?.chartStates?.[uniqueKey]?.[chartType] || null;
+  }
+
+  private applyLiveChartState(chart: any, mods: any, uniqueKey: string, chartType: string): any {
+    const state = this.getLiveChartState(mods, uniqueKey, chartType);
+    if (!chart || !state) {
+      return chart;
+    }
+
+    const next: any = { ...chart };
+
+    if (typeof state.xLabel === 'string') next.xLabel = state.xLabel;
+    if (typeof state.functionType === 'string') next.functionType = state.functionType;
+    if (Array.isArray(state.selectedFrequencies)) next.selectedFrequencies = state.selectedFrequencies;
+    if (state.xZoom) next.xZoom = state.xZoom;
+    if (state.yZoom) next.yZoom = state.yZoom;
+    if (Array.isArray(state.dataZoom)) next.dataZoom = state.dataZoom;
+    if (Array.isArray(state.series)) next.seriesState = state.series;
+    if (Array.isArray(state.plotLines)) next.plotLines = state.plotLines;
+
+    if (state.functionType === 'none') {
+      next.harmonicFlag = false;
+      next.harmonicData = [];
+      next.harmonicValues = [];
+      next.bffData = { ...(next.bffData || {}), flag: false, data: {}, displayData: {} };
+    }
+
+    if (Array.isArray(state.harmonicData)) {
+      next.harmonicData = state.harmonicData;
+      next.harmonicFlag = state.functionType === 'harmonic' && state.harmonicData.length > 0;
+    }
+    if (Array.isArray(state.harmonicValues)) {
+      next.harmonicValues = state.harmonicValues;
+    }
+
+    if (state.bffData && typeof state.bffData === 'object') {
+      next.bffData = {
+        ...(next.bffData || {}),
+        flag: !!state.bffData.flag,
+        data: state.bffData.data || {},
+        displayData: state.bffData.displayData || {},
+        availableFreqs: {}
+      };
+    }
+
+    return next;
+  }
+
+  private toFiniteNumber(value: any): number | null {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  private getZoomRangeFromState(state: any): { min: number; max: number } | null {
+    const zoom = state?.xZoom;
+    if (!zoom || zoom.isZoomed === false) return null;
+
+    const min = this.toFiniteNumber(zoom.valueMin);
+    const max = this.toFiniteNumber(zoom.valueMax);
+    if (min === null || max === null || min === max) {
+      return null;
+    }
+
+    return min < max ? { min, max } : { min: max, max: min };
+  }
+
+  private applyZoomWindow(xData: any[], series: any[], state: any): { xData: any[]; series: any[] } {
+    const range = this.getZoomRangeFromState(state);
+    if (!range || !Array.isArray(xData) || xData.length < 2) {
+      return { xData, series };
+    }
+
+    const indexes: number[] = [];
+    xData.forEach((value, index) => {
+      const numeric = this.toFiniteNumber(value);
+      if (numeric !== null && numeric >= range.min && numeric <= range.max) {
+        indexes.push(index);
+      }
+    });
+
+    if (indexes.length < 2) {
+      return { xData, series };
+    }
+
+    return {
+      xData: indexes.map(index => xData[index]),
+      series: series.map((item: any) => {
+        if (!Array.isArray(item?.data) || item.data.length < xData.length) {
+          return item;
+        }
+        return { ...item, data: indexes.map(index => item.data[index]).filter(value => value !== undefined) };
+      })
+    };
+  }
+
+  private getSpectrumXAxis(xAxis: any[], state: any): { xData: number[]; xLabel: string } {
+    const xLabel = typeof state?.xLabel === 'string' ? state.xLabel : 'Hz';
+    const xData = (xAxis || [])
+      .map(value => this.toFiniteNumber(value))
+      .filter((value): value is number => value !== null)
+      .map(value => xLabel === 'CPM' ? Number((value * 60).toFixed(3)) : Number(value.toFixed(3)));
+
+    return { xData, xLabel };
+  }
+
   private getSampleIndexes(length: number): number[] {
     if (length <= this.maxPdfChartPoints) {
       return Array.from({ length }, (_item, index) => index);
@@ -186,7 +292,8 @@ export class PdfService {
               {
                 ...(data.chartOptions || {}),
                 harmonicIndex: data.harmonicIndex || [],
-                chartDetail: composites
+                chartDetail: composites,
+                chartStates: data.chartStates || {}
               },
               data.labels
             );
@@ -615,33 +722,85 @@ export class PdfService {
       const selectedAxes = this.getSelectedAxes(mods);
 
       // Process Base Data
-      const accTwf = this.drawTwfChart(element["acceleration-twf-chart"] || [], "acceleration", selectedAxes, labels);
+      const accTwfType = 'acceleration-twf';
+      const accTwf = this.drawTwfChart(
+        element["acceleration-twf-chart"] || [],
+        "acceleration",
+        selectedAxes,
+        labels,
+        this.getLiveChartState(mods, uniqueKey, accTwfType)
+      );
       if (accTwf) {
-        deviceData['acceleration-twf'] = this.attachChartMetadata(accTwf, 'acceleration-twf', uniqueKey, endpointId, 'Acceleration Twf');
-      }
-
-      const velTwf = this.drawTwfChart(element["velocity-twf-chart"] || [], "velocity", selectedAxes, labels);
-      if (velTwf) {
-        deviceData['velocity-twf'] = this.attachChartMetadata(velTwf, 'velocity-twf', uniqueKey, endpointId, 'Velocity Twf');
-      }
-
-      const accSpec = this.drawSpectrumChart(element["acceleration-spectrum-chart"] || [], "acceleration", x_axis, element.signal_processing_details?.rpm, selectedAxes, labels);
-      if (accSpec) {
-        deviceData['acceleration-spectrum'] = this.applySavedHarmonics(
-          this.attachChartMetadata(accSpec, 'acceleration-spectrum', uniqueKey, endpointId, 'Acceleration Spectrum'),
+        deviceData[accTwfType] = this.applyLiveChartState(
+          this.attachChartMetadata(accTwf, accTwfType, uniqueKey, endpointId, 'Acceleration Twf'),
           mods,
           uniqueKey,
-          'acceleration-spectrum'
+          accTwfType
         );
       }
 
-      const velSpec = this.drawSpectrumChart(element["velocity-spectrum-chart"] || [], "velocity", x_axis, element.signal_processing_details?.rpm, selectedAxes, labels);
-      if (velSpec) {
-        deviceData['velocity-spectrum'] = this.applySavedHarmonics(
-          this.attachChartMetadata(velSpec, 'velocity-spectrum', uniqueKey, endpointId, 'Velocity Spectrum'),
+      const velTwfType = 'velocity-twf';
+      const velTwf = this.drawTwfChart(
+        element["velocity-twf-chart"] || [],
+        "velocity",
+        selectedAxes,
+        labels,
+        this.getLiveChartState(mods, uniqueKey, velTwfType)
+      );
+      if (velTwf) {
+        deviceData[velTwfType] = this.applyLiveChartState(
+          this.attachChartMetadata(velTwf, velTwfType, uniqueKey, endpointId, 'Velocity Twf'),
           mods,
           uniqueKey,
-          'velocity-spectrum'
+          velTwfType
+        );
+      }
+
+      const accSpecType = 'acceleration-spectrum';
+      const accSpec = this.drawSpectrumChart(
+        element["acceleration-spectrum-chart"] || [],
+        "acceleration",
+        x_axis,
+        element.signal_processing_details?.rpm,
+        selectedAxes,
+        labels,
+        this.getLiveChartState(mods, uniqueKey, accSpecType)
+      );
+      if (accSpec) {
+        deviceData[accSpecType] = this.applyLiveChartState(
+          this.applySavedHarmonics(
+            this.attachChartMetadata(accSpec, accSpecType, uniqueKey, endpointId, 'Acceleration Spectrum'),
+            mods,
+            uniqueKey,
+            accSpecType
+          ),
+          mods,
+          uniqueKey,
+          accSpecType
+        );
+      }
+
+      const velSpecType = 'velocity-spectrum';
+      const velSpec = this.drawSpectrumChart(
+        element["velocity-spectrum-chart"] || [],
+        "velocity",
+        x_axis,
+        element.signal_processing_details?.rpm,
+        selectedAxes,
+        labels,
+        this.getLiveChartState(mods, uniqueKey, velSpecType)
+      );
+      if (velSpec) {
+        deviceData[velSpecType] = this.applyLiveChartState(
+          this.applySavedHarmonics(
+            this.attachChartMetadata(velSpec, velSpecType, uniqueKey, endpointId, 'Velocity Spectrum'),
+            mods,
+            uniqueKey,
+            velSpecType
+          ),
+          mods,
+          uniqueKey,
+          velSpecType
         );
       }
 
@@ -650,33 +809,85 @@ export class PdfService {
       if (compElement) {
         const comp_x_axis = compElement['x_axis_spectrum_data'] || [];
 
-        const compAccTwf = this.drawTwfChart(compElement["acceleration-twf-chart"] || [], "acceleration", selectedAxes, labels);
+        const compAccTwfType = 'compare-acceleration-twf';
+        const compAccTwf = this.drawTwfChart(
+          compElement["acceleration-twf-chart"] || [],
+          "acceleration",
+          selectedAxes,
+          labels,
+          this.getLiveChartState(mods, uniqueKey, compAccTwfType)
+        );
         if (compAccTwf) {
-          deviceData['compare-acceleration-twf'] = this.attachChartMetadata(compAccTwf, 'compare-acceleration-twf', uniqueKey, compElement._id, 'Acceleration Twf');
-        }
-
-        const compVelTwf = this.drawTwfChart(compElement["velocity-twf-chart"] || [], "velocity", selectedAxes, labels);
-        if (compVelTwf) {
-          deviceData['compare-velocity-twf'] = this.attachChartMetadata(compVelTwf, 'compare-velocity-twf', uniqueKey, compElement._id, 'Velocity Twf');
-        }
-
-        const compAccSpec = this.drawSpectrumChart(compElement["acceleration-spectrum-chart"] || [], "acceleration", comp_x_axis, compElement.signal_processing_details?.rpm, selectedAxes, labels);
-        if (compAccSpec) {
-          deviceData['compare-acceleration-spectrum'] = this.applySavedHarmonics(
-            this.attachChartMetadata(compAccSpec, 'compare-acceleration-spectrum', uniqueKey, compElement._id, 'Acceleration Spectrum'),
+          deviceData[compAccTwfType] = this.applyLiveChartState(
+            this.attachChartMetadata(compAccTwf, compAccTwfType, uniqueKey, compElement._id, 'Acceleration Twf'),
             mods,
             uniqueKey,
-            'compare-acceleration-spectrum'
+            compAccTwfType
           );
         }
 
-        const compVelSpec = this.drawSpectrumChart(compElement["velocity-spectrum-chart"] || [], "velocity", comp_x_axis, compElement.signal_processing_details?.rpm, selectedAxes, labels);
-        if (compVelSpec) {
-          deviceData['compare-velocity-spectrum'] = this.applySavedHarmonics(
-            this.attachChartMetadata(compVelSpec, 'compare-velocity-spectrum', uniqueKey, compElement._id, 'Velocity Spectrum'),
+        const compVelTwfType = 'compare-velocity-twf';
+        const compVelTwf = this.drawTwfChart(
+          compElement["velocity-twf-chart"] || [],
+          "velocity",
+          selectedAxes,
+          labels,
+          this.getLiveChartState(mods, uniqueKey, compVelTwfType)
+        );
+        if (compVelTwf) {
+          deviceData[compVelTwfType] = this.applyLiveChartState(
+            this.attachChartMetadata(compVelTwf, compVelTwfType, uniqueKey, compElement._id, 'Velocity Twf'),
             mods,
             uniqueKey,
-            'compare-velocity-spectrum'
+            compVelTwfType
+          );
+        }
+
+        const compAccSpecType = 'compare-acceleration-spectrum';
+        const compAccSpec = this.drawSpectrumChart(
+          compElement["acceleration-spectrum-chart"] || [],
+          "acceleration",
+          comp_x_axis,
+          compElement.signal_processing_details?.rpm,
+          selectedAxes,
+          labels,
+          this.getLiveChartState(mods, uniqueKey, compAccSpecType)
+        );
+        if (compAccSpec) {
+          deviceData[compAccSpecType] = this.applyLiveChartState(
+            this.applySavedHarmonics(
+              this.attachChartMetadata(compAccSpec, compAccSpecType, uniqueKey, compElement._id, 'Acceleration Spectrum'),
+              mods,
+              uniqueKey,
+              compAccSpecType
+            ),
+            mods,
+            uniqueKey,
+            compAccSpecType
+          );
+        }
+
+        const compVelSpecType = 'compare-velocity-spectrum';
+        const compVelSpec = this.drawSpectrumChart(
+          compElement["velocity-spectrum-chart"] || [],
+          "velocity",
+          comp_x_axis,
+          compElement.signal_processing_details?.rpm,
+          selectedAxes,
+          labels,
+          this.getLiveChartState(mods, uniqueKey, compVelSpecType)
+        );
+        if (compVelSpec) {
+          deviceData[compVelSpecType] = this.applyLiveChartState(
+            this.applySavedHarmonics(
+              this.attachChartMetadata(compVelSpec, compVelSpecType, uniqueKey, compElement._id, 'Velocity Spectrum'),
+              mods,
+              uniqueKey,
+              compVelSpecType
+            ),
+            mods,
+            uniqueKey,
+            compVelSpecType
           );
         }
       }
@@ -688,7 +899,7 @@ export class PdfService {
     return sorted;
   }
 
-  private drawTwfChart(chartArray: any[], func: string, selectedAxes: string[], labels?: any): any {
+  private drawTwfChart(chartArray: any[], func: string, selectedAxes: string[], labels?: any, state?: any): any {
     const series: any[] = [];
     for (const item of chartArray) {
       const axisKey = Object.keys(item).find(key => Array.isArray(item[key]));
@@ -714,7 +925,8 @@ export class PdfService {
     const fsVal = chartArray[0]?.fs || 1;
     const xData = Array.from({ length: noOfSamples }, (_, i) =>
       Number(((i * (noOfSamples / fsVal)) / (noOfSamples - 1)).toFixed(5)));
-    const reduced = this.reduceChartPoints(xData, series);
+    const windowed = this.applyZoomWindow(xData, series, state);
+    const reduced = this.reduceChartPoints(windowed.xData, windowed.series);
 
     const yLabel = func === 'acceleration'
       ? (labels?.accelerationLabel || 'Amplitude (g)')
@@ -730,7 +942,7 @@ export class PdfService {
     };
   }
 
-  private drawSpectrumChart(chartArray: any[], func: string, xAxis: any[], rpm: any, selectedAxes: string[], labels?: any): any {
+  private drawSpectrumChart(chartArray: any[], func: string, xAxis: any[], rpm: any, selectedAxes: string[], labels?: any, state?: any): any {
     const series: any[] = [];
     for (const item of chartArray) {
       const axisKey = Object.keys(item).find(key => Array.isArray(item[key]));
@@ -753,12 +965,14 @@ export class PdfService {
       ? (labels?.accelerationLabel || 'Amplitude (g)')
       : (labels?.velocityLabel || 'Amplitude (mm/s)');
 
-    const reduced = this.reduceChartPoints(xAxis || [], series);
+    const spectrumXAxis = this.getSpectrumXAxis(xAxis || [], state);
+    const windowed = this.applyZoomWindow(spectrumXAxis.xData, series, state);
+    const reduced = this.reduceChartPoints(windowed.xData, windowed.series);
 
     return {
       ...this.sptrmChartProto,
       yLabel,
-      xLabel: 'Hz',
+      xLabel: spectrumXAxis.xLabel,
       max: Number(max).toFixed(4),
       xData: reduced.xData,
       yData: reduced.series,

@@ -201,7 +201,8 @@ class AssetReportController {
         locale,
         assetCondition,
         faultData,
-        chartOptions
+        chartOptions,
+        chartStates
       } = body || {};
 
       // Reconstruct the PDF payload from DB data and only the frontend fields needed for rendering.
@@ -212,6 +213,7 @@ class AssetReportController {
         assetCondition,
         faultData: faultData || [],
         chartOptions: chartOptions || {},
+        chartStates: chartStates || {},
         assetName: report.assetId?.asset_name || report.assetName || 'NA',
         assetImage: report.assetId?.image_path || report.assetImage || null,
         analysisDate: report.createdOn,

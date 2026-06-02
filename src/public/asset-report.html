@@ -575,6 +575,14 @@
       return Number.isFinite(numeric) ? numeric : fallback;
     }
 
+    function formatAxisLabel(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return value;
+      if (Math.abs(numeric) >= 1000) return String(Math.round(numeric));
+      if (Math.abs(numeric) >= 10) return String(Number(numeric.toFixed(2)));
+      return String(Number(numeric.toFixed(4)));
+    }
+
     function getSeriesData(chart, seriesItem) {
       const xData = Array.isArray(chart.xData) ? chart.xData : [];
       const yData = Array.isArray(seriesItem.data) ? seriesItem.data : [];
@@ -585,24 +593,93 @@
       });
     }
 
+    function isSeriesVisible(chart, seriesItem) {
+      if (seriesItem && seriesItem.visible === false) return false;
+      const seriesState = Array.isArray(chart.seriesState) ? chart.seriesState : [];
+      const match = seriesState.find(item => item && item.name === seriesItem.name);
+      return !match || match.visible !== false;
+    }
+
+    function getXAxisZoomRange(chart) {
+      const zoom = chart.xZoom || {};
+      if (zoom.isZoomed === false) return {};
+
+      let min = toFiniteNumber(zoom.valueMin, null);
+      let max = toFiniteNumber(zoom.valueMax, null);
+
+      if ((min === null || max === null) && Array.isArray(chart.dataZoom)) {
+        const dataZoom = chart.dataZoom.find(item => item && (
+          item.startValue !== undefined ||
+          item.endValue !== undefined ||
+          item.start !== undefined ||
+          item.end !== undefined
+        ));
+        const xData = Array.isArray(chart.xData) ? chart.xData : [];
+        if (dataZoom) {
+          min = min ?? toFiniteNumber(dataZoom.startValue, null);
+          max = max ?? toFiniteNumber(dataZoom.endValue, null);
+
+          const start = toFiniteNumber(dataZoom.start, null);
+          const end = toFiniteNumber(dataZoom.end, null);
+          if ((min === null || max === null) && xData.length > 1 && start !== null && end !== null) {
+            const startIndex = Math.max(0, Math.min(xData.length - 1, Math.round((start / 100) * (xData.length - 1))));
+            const endIndex = Math.max(0, Math.min(xData.length - 1, Math.round((end / 100) * (xData.length - 1))));
+            min = min ?? toFiniteNumber(xData[startIndex], null);
+            max = max ?? toFiniteNumber(xData[endIndex], null);
+          }
+        }
+      }
+
+      if (min === null || max === null || min === max) return {};
+      return min < max ? { min, max } : { min: max, max: min };
+    }
+
+    function getYAxisZoomRange(chart) {
+      const zoom = chart.yZoom || {};
+      if (zoom.isZoomed === false) return {};
+      const min = toFiniteNumber(zoom.min, null);
+      const max = toFiniteNumber(zoom.max, null);
+      if (min === null || max === null || min === max) return {};
+      return min < max ? { min, max } : { min: max, max: min };
+    }
+
+    function addMarkerValues(values, source) {
+      if (!Array.isArray(source)) return;
+      source.forEach(value => {
+        const numeric = Number(value);
+        if (Number.isFinite(numeric)) values.push(numeric);
+      });
+    }
+
+    function collectNestedMarkerValues(values, source) {
+      Object.values(source || {}).forEach(axisMap => {
+        Object.values(axisMap || {}).forEach(axisValues => addMarkerValues(values, axisValues));
+      });
+    }
+
     function collectMarkerLines(chart) {
       const values = [];
-      if (Array.isArray(chart.harmonicData)) {
+      if (Array.isArray(chart.harmonicValues) && chart.harmonicValues.length) {
+        addMarkerValues(values, chart.harmonicValues);
+      } else if (Array.isArray(chart.harmonicData)) {
+        const xData = Array.isArray(chart.xData) ? chart.xData : [];
         chart.harmonicData.forEach(value => {
           const numeric = Number(value);
-          if (Number.isFinite(numeric)) values.push(numeric);
+          if (!Number.isFinite(numeric)) return;
+          const displayValue = Number.isInteger(numeric) && numeric >= 0 && numeric < xData.length
+            ? toFiniteNumber(xData[numeric], numeric)
+            : numeric;
+          values.push(displayValue);
         });
       }
-      const faultData = chart.bffData && chart.bffData.data ? chart.bffData.data : {};
-      Object.values(faultData).forEach(axisMap => {
-        Object.values(axisMap || {}).forEach(axisValues => {
-          if (!Array.isArray(axisValues)) return;
-          axisValues.forEach(value => {
-            const numeric = Number(value);
-            if (Number.isFinite(numeric)) values.push(numeric);
-          });
+      const faultData = chart.bffData && chart.bffData.displayData ? chart.bffData.displayData : (chart.bffData && chart.bffData.data ? chart.bffData.data : {});
+      collectNestedMarkerValues(values, faultData);
+      if (Array.isArray(chart.plotLines)) {
+        chart.plotLines.forEach(line => {
+          const numeric = toFiniteNumber(line && line.xValue !== undefined ? line.xValue : line?.value, null);
+          if (numeric !== null) values.push(numeric);
         });
-      });
+      }
       return Array.from(new Set(values)).sort((a, b) => a - b);
     }
 
@@ -616,11 +693,14 @@
 
       const chartInstance = window.echarts.init(el, null, { renderer: 'svg' });
       const markerLines = collectMarkerLines(chart);
-      const series = (chart.yData || []).map((item, index) => ({
+      const visibleSeries = (chart.yData || []).filter(item => isSeriesVisible(chart, item));
+      const series = visibleSeries.map((item, index) => ({
         name: item.name || ('Series ' + (index + 1)),
         type: item.type || 'line',
         data: getSeriesData(chart, item),
-        showSymbol: false,
+        showSymbol: chart.type && chart.type.includes('spectrum') && (chart.xZoom?.isZoomed || getSeriesData(chart, item).length <= 250),
+        symbol: 'circle',
+        symbolSize: chart.type && chart.type.includes('spectrum') ? 3 : 2,
         smooth: !!item.smooth,
         lineStyle: item.lineStyle || { width: 1 },
         itemStyle: item.itemStyle || undefined,
@@ -636,10 +716,19 @@
           : undefined
       }));
 
+      if (!series.length) {
+        el.innerHTML = '<div class="no-data-msg">' + (labels.noChartDataLabel || 'No chart data available.') + '</div>';
+        return;
+      }
+
+      const xZoom = getXAxisZoomRange(chart);
+      const yZoom = getYAxisZoomRange(chart);
+      const rotateXAxis = chart.type && chart.type.includes('spectrum');
+
       chartInstance.setOption({
         animation: false,
         color: ['#ff0000', '#00d711', '#000069', '#8c54ff', '#fa8349'],
-        grid: { left: 55, right: 15, bottom: 45, top: 30, containLabel: true },
+        grid: { left: 58, right: 18, bottom: rotateXAxis ? 58 : 45, top: 30, containLabel: true },
         legend: { show: true, type: 'scroll', top: 0, textStyle: { fontSize: 9 } },
         tooltip: { show: false },
         xAxis: {
@@ -647,16 +736,23 @@
           name: chart.xLabel || '',
           nameLocation: 'middle',
           nameGap: 28,
-          axisLabel: { fontSize: 9 }
+          min: xZoom.min,
+          max: xZoom.max,
+          axisLabel: {
+            fontSize: 9,
+            rotate: rotateXAxis ? 45 : 0,
+            hideOverlap: true,
+            formatter: formatAxisLabel
+          }
         },
         yAxis: {
           type: 'value',
           name: chart.yLabel || '',
           nameLocation: 'middle',
           nameGap: 38,
-          min: chart.min !== undefined && chart.min !== '' ? Number(chart.min) : undefined,
-          max: chart.max !== undefined && chart.max !== '' ? Number(chart.max) : undefined,
-          axisLabel: { fontSize: 9 }
+          min: yZoom.min !== undefined ? yZoom.min : (chart.min !== undefined && chart.min !== '' ? Number(chart.min) : undefined),
+          max: yZoom.max !== undefined ? yZoom.max : (chart.max !== undefined && chart.max !== '' ? Number(chart.max) : undefined),
+          axisLabel: { fontSize: 9, formatter: formatAxisLabel }
         },
         series
       });
