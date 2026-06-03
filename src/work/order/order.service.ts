@@ -2507,54 +2507,58 @@ class OrderService {
     }
 
     const completionDateExpr = this.getCompletionDateExpression();
-    const aggregationResults = await WorkOrderModel.aggregate([
-      { $match: match },
-      {
-        $addFields: {
-          completion_date: completionDateExpr
+    const [aggregationResults, executionMetrics, repeatingMetrics] = await Promise.all([
+      WorkOrderModel.aggregate([
+        { $match: match },
+        {
+          $addFields: {
+            completion_date: completionDateExpr
+          }
+        },
+        {
+          $facet: {
+            created: [
+              {
+                $match: {
+                  createdAt: { $gte: range.fromDate, $lte: range.toDate }
+                }
+              },
+              { $count: "count" }
+            ],
+            completed: [
+              {
+                $match: {
+                  status: "Completed",
+                  completion_date: { $gte: range.fromDate, $lte: range.toDate }
+                }
+              },
+              { $count: "count" }
+            ],
+            completedOnTime: [
+              {
+                $match: {
+                  status: "Completed",
+                  completion_date: { $gte: range.fromDate, $lte: range.toDate },
+                  end_date: { $exists: true, $ne: null },
+                  $expr: { $lte: ["$completion_date", "$end_date"] }
+                }
+              },
+              { $count: "count" }
+            ],
+            overdueOpen: [
+              {
+                $match: {
+                  status: { $ne: "Completed" },
+                  end_date: { $gte: range.fromDate, $lte: range.toDate, $lt: new Date() }
+                }
+              },
+              { $count: "count" }
+            ]
+          }
         }
-      },
-      {
-        $facet: {
-          created: [
-            {
-              $match: {
-                createdAt: { $gte: range.fromDate, $lte: range.toDate }
-              }
-            },
-            { $count: "count" }
-          ],
-          completed: [
-            {
-              $match: {
-                status: "Completed",
-                completion_date: { $gte: range.fromDate, $lte: range.toDate }
-              }
-            },
-            { $count: "count" }
-          ],
-          completedOnTime: [
-            {
-              $match: {
-                status: "Completed",
-                completion_date: { $gte: range.fromDate, $lte: range.toDate },
-                end_date: { $exists: true, $ne: null },
-                $expr: { $lte: ["$completion_date", "$end_date"] }
-              }
-            },
-            { $count: "count" }
-          ],
-          overdueOpen: [
-            {
-              $match: {
-                status: { $ne: "Completed" },
-                end_date: { $gte: range.fromDate, $lte: range.toDate, $lt: new Date() }
-              }
-            },
-            { $count: "count" }
-          ]
-        }
-      }
+      ]),
+      this.getOverviewExecutionMetrics(match, range),
+      this.getOverviewRepeatingMetrics(match, range)
     ]);
 
     const result = aggregationResults[0] || {};
@@ -2570,7 +2574,50 @@ class OrderService {
       on_time_completion_rate: Number(completionRate.toFixed(2)),
       overdue_open_count: overdueOpenCount,
       completed_on_time_count: completedOnTimeCount,
-      completed_late_count: Math.max(completedCount - completedOnTimeCount, 0)
+      completed_late_count: Math.max(completedCount - completedOnTimeCount, 0),
+      total_open_count: executionMetrics.total_open_count,
+      ready_for_execution_count: executionMetrics.ready_for_execution_count,
+      waiting_on_parts_count: executionMetrics.waiting_on_parts_count,
+      blocked_work_count: executionMetrics.blocked_work_count,
+      repeating_total_count: repeatingMetrics.total_repeating,
+      total_repeating: repeatingMetrics.total_repeating
+    };
+  }
+
+  private async getOverviewExecutionMetrics(match: any, range: { fromDate: Date; toDate: Date }): Promise<{
+    total_open_count: number;
+    ready_for_execution_count: number;
+    waiting_on_parts_count: number;
+    blocked_work_count: number;
+  }> {
+    const scopedOrders = await this.getExecutionScopedOrders(match);
+    const activeOrders = scopedOrders.filter((order: any) => this.isOpenOrder(order) && this.isOrderWithinActiveExecutionRange(order, range));
+
+    return {
+      total_open_count: activeOrders.length,
+      ready_for_execution_count: activeOrders.filter((order: any) => this.isExecutionReadyOrder(order)).length,
+      waiting_on_parts_count: activeOrders.filter((order: any) => String(order?.status || '').trim() === 'Waiting-on-Parts').length,
+      blocked_work_count: activeOrders.filter((order: any) => ['Blocked', 'Waiting-on-Permit', 'On-Hold'].includes(String(order?.status || '').trim())).length
+    };
+  }
+
+  private async getOverviewRepeatingMetrics(match: any, range: { fromDate: Date; toDate: Date }): Promise<{ total_repeating: number }> {
+    const scheduleMatch: any = {
+      account_id: match.account_id,
+      visible: true
+    };
+
+    if (match.wo_asset_id?.$in?.length) {
+      scheduleMatch['work_order.wo_asset_id'] = { $in: match.wo_asset_id.$in };
+    }
+
+    if (match.wo_location_id?.$in?.length) {
+      scheduleMatch['work_order.wo_location_id'] = { $in: match.wo_location_id.$in };
+    }
+
+    const schedules = await SchedulerModel.find(scheduleMatch).select('schedule').lean();
+    return {
+      total_repeating: schedules.filter((schedule: any) => this.isScheduleOverlappingRange(schedule, range)).length
     };
   }
 
