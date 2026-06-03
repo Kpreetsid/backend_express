@@ -338,6 +338,13 @@ export class PdfService {
         await page.waitForFunction(() => (globalThis as any).PDF_READY === true, {
           timeout: 60000
         });
+        const chartStatus = await page.evaluate(() => (globalThis as any).PDF_CHART_STATUS || null);
+        if (chartStatus) {
+          console.log(`[PdfService] Chart render status: ${chartStatus.rendered}/${chartStatus.expected} chart(s), ${chartStatus.groups} group(s).`);
+          if (chartStatus.rendered < chartStatus.expected) {
+            console.warn('[PdfService] Some report charts did not render before PDF capture.');
+          }
+        }
       } catch (e) {
         console.warn('[PdfService] PDF_READY timeout exceeded, generating PDF with available content');
       }

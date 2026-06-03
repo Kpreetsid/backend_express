@@ -297,18 +297,14 @@
       width: 100%;
       height: 250px;
       overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: block;
     }
 
     .chart-box-single {
       width: 100%;
       height: 250px;
       overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: block;
     }
 
     .attachments-grid {
@@ -457,7 +453,7 @@
     }
 
     // ── Main chart renderer ────────────────────────────────────────────────────
-    function renderCharts() {
+    async function renderCharts() {
       console.log('[PDF] Starting chart rendering from backend chart data...');
       try {
         const chartData = JSON.parse(document.getElementById('chart-data').textContent || '{}');
@@ -474,6 +470,7 @@
         }
 
         let totalChartsRendered = 0;
+        const renderQueue = [];
 
         Object.entries(chartData).forEach(([key, device], deviceIdx) => {
           const keyCompositeId = key.split('-')[0];
@@ -524,7 +521,7 @@
                 block.appendChild(chartBox);
                 container.appendChild(block);
 
-                setTimeout(() => renderChart(chartId, device[type], labels), 0);
+                renderQueue.push({ id: chartId, chart: device[type] });
               });
             } else {
               const activeType = hasBase ? baseType : compType;
@@ -534,19 +531,27 @@
               chartBox.id = chartId;
               container.appendChild(chartBox);
 
-              setTimeout(() => renderChart(chartId, device[activeType], labels), 0);
+              renderQueue.push({ id: chartId, chart: device[activeType] });
             }
 
             root.appendChild(container);
           });
         });
 
-        // Set PDF_READY after a short delay to allow images to be added to DOM
-        const waitMs = Math.min(Math.max(totalChartsRendered * 50, 500), 3000);
-        setTimeout(() => {
-          window.PDF_READY = true;
-          console.log('[PDF] PDF_READY = true');
-        }, waitMs);
+        const results = [];
+        for (const item of renderQueue) {
+          results.push(await renderChart(item.id, item.chart, labels));
+        }
+
+        window.PDF_CHART_STATUS = {
+          expected: renderQueue.length,
+          rendered: results.filter(Boolean).length,
+          groups: totalChartsRendered
+        };
+        console.log('[PDF] Chart render status:', JSON.stringify(window.PDF_CHART_STATUS));
+        await waitForPaintFrames(2);
+        window.PDF_READY = true;
+        console.log('[PDF] PDF_READY = true');
 
       } catch (globalErr) {
         console.error('[PDF] Global rendering error:', globalErr);
@@ -561,13 +566,27 @@
       ));
     }
 
-    function renderChart(id, chart, labels) {
-      if (!chart) return;
+    async function renderChart(id, chart, labels) {
+      if (!chart) return false;
       if (chart.capturedImage) {
         displayCapturedChart(id, chart.capturedImage);
-        return;
+        await waitForPaintFrames(1);
+        return true;
       }
-      renderEChart(id, chart, labels);
+      return renderEChart(id, chart, labels);
+    }
+
+    function waitForPaintFrames(count) {
+      return new Promise(resolve => {
+        const step = remaining => {
+          if (remaining <= 0) {
+            resolve();
+            return;
+          }
+          requestAnimationFrame(() => step(remaining - 1));
+        };
+        step(count);
+      });
     }
 
     function toFiniteNumber(value, fallback) {
@@ -785,12 +804,12 @@
       };
     }
 
-    function renderEChart(id, chart, labels) {
+    async function renderEChart(id, chart, labels) {
       const el = document.getElementById(id);
-      if (!el) return;
+      if (!el) return false;
       if (!window.echarts) {
         el.innerHTML = '<div class="no-data-msg">' + (labels.errorRenderingChartLabel || 'Error rendering this chart.') + '</div>';
-        return;
+        return false;
       }
 
       const chartInstance = window.echarts.init(el, null, { renderer: 'svg' });
@@ -838,7 +857,7 @@
 
       if (!series.length) {
         el.innerHTML = '<div class="no-data-msg">' + (labels.noChartDataLabel || 'No chart data available.') + '</div>';
-        return;
+        return false;
       }
 
       const xZoom = getXAxisZoomRange(chart);
@@ -846,45 +865,54 @@
       const yRange = getYAxisRange(chart, yZoom, series);
       const rotateXAxis = chart.type && chart.type.includes('spectrum');
 
-      chartInstance.setOption({
-        animation: false,
-        color: ['#ff0000', '#00d711', '#000069', '#8c54ff', '#fa8349'],
-        grid: { left: 58, right: 18, bottom: rotateXAxis ? 58 : 45, top: 30, containLabel: true },
-        legend: { show: true, type: 'scroll', top: 0, textStyle: { fontSize: 9 } },
-        tooltip: { show: false },
-        xAxis: {
-          type: categoryAxis ? 'category' : 'value',
-          data: categoryAxis ? chart.xData : undefined,
-          boundaryGap: false,
-          name: chart.xLabel || '',
-          nameLocation: 'middle',
-          nameGap: 28,
-          min: categoryAxis ? undefined : xZoom.min,
-          max: categoryAxis ? undefined : xZoom.max,
-          splitLine: { show: false },
-          axisTick: { show: false },
-          axisLabel: {
-            fontSize: 9,
-            rotate: rotateXAxis ? 45 : 0,
-            hideOverlap: true,
-            interval: categoryAxis ? getXAxisLabelInterval(chart) : 'auto',
-            formatter: formatAxisLabel
-          }
-        },
-        yAxis: {
-          type: 'value',
-          name: chart.yLabel || '',
-          nameLocation: 'middle',
-          nameGap: 38,
-          min: yRange.min,
-          max: yRange.max,
-          splitNumber: chart.type && chart.type.includes('spectrum') ? 2 : undefined,
-          splitLine: { show: false },
-          axisTick: { show: true, lineStyle: { color: '#9ca3af', width: 1 } },
-          axisLabel: { fontSize: 9, formatter: formatAxisLabel }
-        },
-        series
-      });
+      try {
+        chartInstance.setOption({
+          animation: false,
+          color: ['#ff0000', '#00d711', '#000069', '#8c54ff', '#fa8349'],
+          grid: { left: 58, right: 18, bottom: rotateXAxis ? 58 : 45, top: 30, containLabel: true },
+          legend: { show: true, type: 'scroll', top: 0, textStyle: { fontSize: 9 } },
+          tooltip: { show: false },
+          xAxis: {
+            type: categoryAxis ? 'category' : 'value',
+            data: categoryAxis ? chart.xData : undefined,
+            boundaryGap: false,
+            name: chart.xLabel || '',
+            nameLocation: 'middle',
+            nameGap: 28,
+            min: categoryAxis ? undefined : xZoom.min,
+            max: categoryAxis ? undefined : xZoom.max,
+            splitLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: {
+              fontSize: 9,
+              rotate: rotateXAxis ? 45 : 0,
+              hideOverlap: true,
+              interval: categoryAxis ? getXAxisLabelInterval(chart) : 'auto',
+              formatter: formatAxisLabel
+            }
+          },
+          yAxis: {
+            type: 'value',
+            name: chart.yLabel || '',
+            nameLocation: 'middle',
+            nameGap: 38,
+            min: yRange.min,
+            max: yRange.max,
+            splitNumber: chart.type && chart.type.includes('spectrum') ? 2 : undefined,
+            splitLine: { show: false },
+            axisTick: { show: true, lineStyle: { color: '#9ca3af', width: 1 } },
+            axisLabel: { fontSize: 9, formatter: formatAxisLabel }
+          },
+          series
+        }, true);
+        chartInstance.resize();
+        await waitForPaintFrames(2);
+        return !!el.querySelector('svg');
+      } catch (error) {
+        console.error('[PDF] Failed to render chart', id, error);
+        el.innerHTML = '<div class="no-data-msg">' + (labels.errorRenderingChartLabel || 'Error rendering this chart.') + '</div>';
+        return false;
+      }
     }
 
     function displayCapturedChart(id, data) {

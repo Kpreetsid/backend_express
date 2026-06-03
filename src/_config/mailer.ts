@@ -146,8 +146,6 @@ export class MailerService {
           YEAR: new Date().getFullYear().toString(),
           NAME: this.getFullName(user) || user.username || 'there',
           EMAIL: user.email || 'your email address',
-          REQUESTED_AT: new Date().toLocaleString(),
-          OTP_VALIDITY: '60 minutes',
           LOGIN_LINK: mailCredential.loginUrl
         }
       );
