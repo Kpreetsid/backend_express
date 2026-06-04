@@ -698,7 +698,7 @@ export class PdfService {
 
           return `
             <div class="attachment-card">
-              <img src="${b64}" style="border: 1px solid #eee; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" />
+              <img src="${b64}" />
             </div>
           `;
         }).join('')}
