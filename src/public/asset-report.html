@@ -602,6 +602,27 @@
       return String(Number(numeric.toFixed(4)));
     }
 
+    function isSpectrumChart(chart) {
+      return !!(chart && chart.type && chart.type.includes('spectrum'));
+    }
+
+    function isChartZoomed(chart) {
+      return !!(chart && chart.xZoom && chart.xZoom.isZoomed);
+    }
+
+    function formatXAxisLabel(chart, value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return value;
+      if (isSpectrumChart(chart)) {
+        return String(isChartZoomed(chart) ? Math.round(numeric) : Math.round(numeric / 100) * 100);
+      }
+      return formatAxisLabel(numeric);
+    }
+
+    function getSeriesColor(seriesItem) {
+      return seriesItem?.lineStyle?.color || seriesItem?.itemStyle?.color || seriesItem?.color;
+    }
+
     function usesCategoryAxis(chart) {
       return Array.isArray(chart.xData) && chart.xData.length > 0;
     }
@@ -844,8 +865,8 @@
         symbol: 'circle',
         symbolSize: chart.type && chart.type.includes('spectrum') ? 3 : 2,
         smooth: !!item.smooth,
-        lineStyle: item.lineStyle || { width: 1 },
-        itemStyle: item.itemStyle || undefined,
+        lineStyle: { ...(item.lineStyle || { width: 1 }), color: getSeriesColor(item) },
+        itemStyle: { ...(item.itemStyle || {}), color: getSeriesColor(item) },
         sampling: 'lttb',
         markLine: index === 0 && markerLines.length
           ? {
@@ -884,8 +905,8 @@
           legend: { show: true, type: 'scroll', top: 0, textStyle: { fontSize: 9 } },
           tooltip: { show: false },
           xAxis: {
-            type: categoryAxis ? 'category' : 'value',
-            data: categoryAxis ? chart.xData : undefined,
+          type: categoryAxis ? 'category' : 'value',
+          data: categoryAxis ? chart.xData : undefined,
             boundaryGap: false,
             name: chart.xLabel || '',
             nameLocation: 'middle',
@@ -896,12 +917,12 @@
             axisTick: { show: false },
             axisLabel: {
               fontSize: 9,
-              rotate: rotateXAxis ? 45 : 0,
-              hideOverlap: true,
-              interval: categoryAxis ? getXAxisLabelInterval(chart) : 'auto',
-              formatter: formatAxisLabel
-            }
-          },
+            rotate: rotateXAxis ? 45 : 0,
+            hideOverlap: true,
+            interval: categoryAxis ? getXAxisLabelInterval(chart) : 'auto',
+            formatter: value => formatXAxisLabel(chart, value)
+          }
+        },
           yAxis: {
             type: 'value',
             name: chart.yLabel || '',
