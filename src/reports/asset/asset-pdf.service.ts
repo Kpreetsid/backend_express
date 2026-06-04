@@ -134,6 +134,8 @@ export class PdfService {
     if (state.yZoom) next.yZoom = state.yZoom;
     if (Array.isArray(state.dataZoom)) next.dataZoom = state.dataZoom;
     if (Array.isArray(state.series)) next.seriesState = state.series;
+    if (Array.isArray(state.hiddenSeries)) next.hiddenSeries = state.hiddenSeries;
+    if (Array.isArray(state.visibleSeries)) next.visibleSeries = state.visibleSeries;
     if (Array.isArray(state.plotLines)) next.plotLines = state.plotLines;
 
     if (state.functionType === 'none') {

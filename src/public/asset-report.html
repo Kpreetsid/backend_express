@@ -627,9 +627,20 @@
 
     function isSeriesVisible(chart, seriesItem) {
       if (seriesItem && seriesItem.visible === false) return false;
+      const seriesName = normalizeSeriesName(seriesItem && seriesItem.name);
+      const hiddenSeries = Array.isArray(chart.hiddenSeries) ? chart.hiddenSeries.map(normalizeSeriesName) : [];
+      if (hiddenSeries.includes(seriesName)) return false;
+
+      const visibleSeries = Array.isArray(chart.visibleSeries) ? chart.visibleSeries.map(normalizeSeriesName) : [];
+      if (visibleSeries.length && !visibleSeries.includes(seriesName)) return false;
+
       const seriesState = Array.isArray(chart.seriesState) ? chart.seriesState : [];
-      const match = seriesState.find(item => item && item.name === seriesItem.name);
+      const match = seriesState.find(item => item && normalizeSeriesName(item.name) === seriesName);
       return !match || match.visible !== false;
+    }
+
+    function normalizeSeriesName(value) {
+      return String(value || '').trim().toLowerCase();
     }
 
     function getXAxisZoomRange(chart) {
