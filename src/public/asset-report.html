@@ -622,7 +622,9 @@
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) return value;
       if (isSpectrumChart(chart)) {
-        return String(Math.round(numeric / 100) * 100);
+        if (chart.xAxisLabelMode === 'integer' || !chart.xAxisLabelMode) {
+          return String(Math.round(numeric));
+        }
       }
       return formatAxisLabel(numeric);
     }

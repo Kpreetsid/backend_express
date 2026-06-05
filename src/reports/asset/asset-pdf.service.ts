@@ -128,6 +128,7 @@ export class PdfService {
     const next: any = { ...chart };
 
     if (typeof state.xLabel === 'string') next.xLabel = state.xLabel;
+    if (typeof state.xAxisLabelMode === 'string') next.xAxisLabelMode = state.xAxisLabelMode;
     if (typeof state.functionType === 'string') next.functionType = state.functionType;
     if (Array.isArray(state.selectedFrequencies)) next.selectedFrequencies = state.selectedFrequencies;
     if (state.xZoom) next.xZoom = state.xZoom;
