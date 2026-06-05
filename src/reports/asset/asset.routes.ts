@@ -12,11 +12,11 @@ const pdfChartUpload = multer({
         fieldSize: 2 * 1024 * 1024
     },
     fileFilter: (_req, file, cb) => {
-        if (file.mimetype === 'image/png' || file.mimetype === 'image/jpeg') {
+        if (file.mimetype === 'image/png' || file.mimetype === 'image/jpeg' || file.mimetype === 'image/svg+xml') {
             cb(null, true);
             return;
         }
-        cb(Object.assign(new Error('Only PNG and JPEG chart snapshots are allowed'), { status: 400 }));
+        cb(Object.assign(new Error('Only SVG, PNG, and JPEG chart snapshots are allowed'), { status: 400 }));
     }
 });
 
