@@ -602,18 +602,12 @@
 
     function hasRenderableChart(chart) {
       return !!(chart && (
-        chart.capturedImage ||
         (Array.isArray(chart.xData) && Array.isArray(chart.yData) && chart.yData.length > 0)
       ));
     }
 
     async function renderChart(id, chart, labels) {
       if (!chart) return false;
-      if (chart.capturedImage) {
-        displayCapturedChart(id, chart.capturedImage);
-        await waitForPaintFrames(1);
-        return true;
-      }
       return renderEChart(id, chart, labels);
     }
 
@@ -987,35 +981,6 @@
         console.error('[PDF] Failed to render chart', id, error);
         el.innerHTML = '<div class="no-data-msg">' + (labels.errorRenderingChartLabel || 'Error rendering this chart.') + '</div>';
         return false;
-      }
-    }
-
-    function displayCapturedChart(id, data) {
-      const el = document.getElementById(id);
-      if (!el || !data) return;
-      
-      if (typeof data === 'string' && (data.includes('<svg') || data.includes('<?xml'))) {
-        let svgContent = data;
-        const svgStart = data.indexOf('<svg');
-        if (svgStart !== -1) {
-          svgContent = data.substring(svgStart);
-        }
-        el.innerHTML = svgContent;
-        const svg = el.querySelector('svg');
-        if (svg) {
-          svg.setAttribute('width', '100%');
-          svg.setAttribute('height', '100%');
-          svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-          svg.style.width = '100%';
-          svg.style.height = '100%';
-        }
-      } else {
-        const img = document.createElement('img');
-        img.src = data;
-        img.style.width = '100%';
-        img.style.height = '100%';
-        img.style.objectFit = 'contain';
-        el.appendChild(img);
       }
     }
 
