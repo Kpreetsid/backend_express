@@ -13,6 +13,46 @@ class AssetReportController {
   private pdfService = new PdfService();
   private assetHealthArray: any = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
 
+  private parseJsonField<T>(value: any, fallback: T): T {
+    if (value === undefined || value === null || value === '') {
+      return fallback;
+    }
+    if (typeof value !== 'string') {
+      return value as T;
+    }
+    try {
+      return JSON.parse(value) as T;
+    } catch (_error) {
+      throw Object.assign(new Error('Invalid PDF request payload'), { status: 400 });
+    }
+  }
+
+  private getFrontendChartImages(req: Request): any[] {
+    const files = Array.isArray(req.files) ? req.files as Express.Multer.File[] : [];
+    const manifest = this.parseJsonField<any[]>(req.body?.chartManifest, []);
+
+    if (!files.length && !manifest.length) {
+      return [];
+    }
+    if (!Array.isArray(manifest) || manifest.length !== files.length) {
+      throw Object.assign(new Error('Chart image manifest does not match uploaded files'), { status: 400 });
+    }
+
+    return files.map((file, index) => {
+      const item = manifest[index] || {};
+      return {
+        key: typeof item.key === 'string' ? item.key : `chart-${index + 1}`,
+        title: typeof item.title === 'string' ? item.title : '',
+        order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+        width: Number.isFinite(Number(item.width)) ? Number(item.width) : undefined,
+        height: Number.isFinite(Number(item.height)) ? Number(item.height) : undefined,
+        mimeType: file.mimetype,
+        size: file.size,
+        dataUri: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
+      };
+    }).sort((a, b) => a.order - b.order);
+  }
+
   getAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
@@ -185,7 +225,11 @@ class AssetReportController {
 
   generateAssetReportPdf = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const { params: { id }, body } = req;
+      const { params: { id } } = req;
+      const body = req.is('multipart/form-data')
+        ? this.parseJsonField<any>(req.body?.payload, {})
+        : (req.body || {});
+      const frontendChartImages = this.getFrontendChartImages(req);
       const reportId = helperService.validateObjectId(String(id));
       const reports: any[] = await assetReportService.getAllAssetReports({ _id: reportId, visible: true });
 
@@ -228,6 +272,7 @@ class AssetReportController {
         // Pass chartDetail for backend chart fetching
         chartDetail: report.chartDetail || [],
         harmonicIndex: report.harmonicIndex || [],
+        frontendChartImages,
 
         // Construct readings from endpointRMSData — try all axes for timestamp
         readings: (report.endpointRMSData || []).map((point: any) => {

@@ -277,7 +277,10 @@ export class PdfService {
     // Chart data resolution: prefer legacy small chartData if present; otherwise
     // rebuild chart configs from saved report metadata to keep client payloads small.
 
-    if (data.chartData && Object.keys(data.chartData).length > 0) {
+    if (Array.isArray(data.frontendChartImages) && data.frontendChartImages.length > 0) {
+      data.chartData = {};
+      console.log(`[PdfService] Using ${data.frontendChartImages.length} frontend chart snapshot(s).`);
+    } else if (data.chartData && Object.keys(data.chartData).length > 0) {
       // Sort keys alphabetically to match Angular keyvalue pipe default sort
       const sorted: any = {};
       Object.keys(data.chartData).sort().forEach((k: string) => { sorted[k] = data.chartData[k]; });
@@ -410,9 +413,33 @@ export class PdfService {
     }
   }
 
+  private buildFrontendChartImages(charts: any[]): string {
+    if (!Array.isArray(charts) || charts.length === 0) {
+      return '';
+    }
+
+    return charts
+      .filter(chart => typeof chart?.dataUri === 'string' && chart.dataUri.startsWith('data:image/'))
+      .map(chart => {
+        const title = this.escapeHtml(chart.title || 'Chart');
+        return `
+          <div class="chart-container chart-container-snapshot">
+            <div class="chart-title-wrapper">
+              <div class="chart-title-main">${title}</div>
+            </div>
+            <div class="chart-snapshot-box">
+              <img src="${chart.dataUri}" alt="${title}" />
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
   private buildHtml(data: any): string {
     const templatePath = path.join(__dirname, '..', '..', 'public', 'asset-report.html');
     let template = fs.readFileSync(templatePath, 'utf8');
+    const hasFrontendChartImages = Array.isArray(data.frontendChartImages) && data.frontendChartImages.length > 0;
 
     const replacements: any = {
       generatedDate: this.formatDate(new Date(), data.timezone, false, data.locale),
@@ -431,6 +458,9 @@ export class PdfService {
       readingsTable: this.buildReadingsTable(data),
       faultsTable: this.buildFaultsTable(data.faultData),
       attachmentsHtml: this.buildAttachments(data.attachments),
+      frontendChartsHtml: this.buildFrontendChartImages(data.frontendChartImages),
+      hasFrontendChartImages: hasFrontendChartImages ? 'true' : 'false',
+      backendChartsRootStyle: hasFrontendChartImages ? 'display:none;' : '',
       echartsScript: this.getEchartsScript(),
       chartDataJson: JSON.stringify(data.chartData || {}),
       readingsJson: JSON.stringify(data.readings || []),
@@ -454,6 +484,15 @@ export class PdfService {
   private getConditionClass(val: any): string {
     const classes: any = { '1': 'critical', '2': 'danger', '3': 'alert', '4': 'healthy', '5': 'not_available' };
     return classes[String(val)] || 'not_available';
+  }
+
+  private escapeHtml(value: any): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   private toBase64(filePath: string): string {

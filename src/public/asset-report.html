@@ -308,6 +308,28 @@
       display: block;
     }
 
+    .chart-container-snapshot {
+      padding: 10px;
+    }
+
+    .chart-snapshot-box {
+      width: 100%;
+      min-height: 250px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .chart-snapshot-box img {
+      display: block;
+      width: 100%;
+      max-height: 330px;
+      object-fit: contain;
+      background: #ffffff;
+    }
+
     .attachments-grid {
       display: flex;
       flex-wrap: wrap;
@@ -417,7 +439,8 @@
     {{faultsTable}}
 
     <div class="section-title">{{chartDataLabel}}</div>
-    <div id="charts-root"></div>
+    {{frontendChartsHtml}}
+    <div id="charts-root" style="{{backendChartsRootStyle}}"></div>
 
     <div class="section-title">{{attachmentsLabel}}</div>
     {{attachmentsHtml}}
@@ -433,6 +456,7 @@
   <script id="chart-data" type="application/json">{{chartDataJson}}</script>
   <script id="readings-data" type="application/json">{{readingsJson}}</script>
   <script id="labels-data" type="application/json">{{labelsJson}}</script>
+  <script id="frontend-chart-images" type="application/json">{{hasFrontendChartImages}}</script>
 
   <script>
     window.PDF_READY = false;
@@ -464,6 +488,15 @@
     async function renderCharts() {
       console.log('[PDF] Starting chart rendering from backend chart data...');
       try {
+        const hasFrontendChartImages = JSON.parse(document.getElementById('frontend-chart-images').textContent || 'false');
+        if (hasFrontendChartImages) {
+          await waitForPaintFrames(2);
+          window.PDF_CHART_STATUS = { expected: 0, rendered: 0, groups: 0, snapshots: true };
+          window.PDF_READY = true;
+          console.log('[PDF] PDF_READY = true from frontend chart snapshots');
+          return;
+        }
+
         const chartData = JSON.parse(document.getElementById('chart-data').textContent || '{}');
         const readings = JSON.parse(document.getElementById('readings-data').textContent || '[]');
         const labels = JSON.parse(document.getElementById('labels-data').textContent || '{}');
