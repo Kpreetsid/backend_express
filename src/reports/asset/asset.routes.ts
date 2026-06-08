@@ -7,9 +7,9 @@ import { validateParamId } from '../../middlewares/validate';
 const pdfChartUpload = multer({
     storage: multer.memoryStorage(),
     limits: {
-        files: 60,
-        fileSize: 2 * 1024 * 1024,
-        fieldSize: 2 * 1024 * 1024
+        files: 25,
+        fileSize: 5 * 1024 * 1024,
+        fieldSize: 5 * 1024 * 1024
     },
     fileFilter: (_req, file, cb) => {
         if (file.mimetype === 'image/png' || file.mimetype === 'image/jpeg' || file.mimetype === 'image/svg+xml') {
