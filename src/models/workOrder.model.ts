@@ -52,6 +52,8 @@ export interface IParts {
   part_id: ObjectId;
   part_name: string;
   part_type: string;
+  location_id?: ObjectId;
+  location_name?: string;
   part_source?: 'manual' | 'procedure' | 'mixed';
   procedureNames?: string[];
   estimatedQuantity: number;
@@ -71,6 +73,8 @@ const PartsSchema = new Schema<IParts>({
   part_id: { type: Schema.Types.ObjectId, ref: 'PartModel', required: true }, 
   part_name: { type: String, trim: true, required: true },
   part_type: { type: String, trim: true, required: true },
+  location_id: { type: Schema.Types.ObjectId, ref: 'LocationModel' },
+  location_name: { type: String, trim: true },
   part_source: { type: String, enum: ['manual', 'procedure', 'mixed'], default: 'manual' },
   procedureNames: { type: [String], default: [] },
   estimatedQuantity: { type: Number, required: true },

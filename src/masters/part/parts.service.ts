@@ -317,7 +317,7 @@ class PartsService {
       part_name: part.part_name,
       work_order_id: context.work_order_id || null,
       work_order_no: context.work_order_no || '',
-      location_id: context.location_id || part.location_id || null,
+      location_id: part.location_id || context.location_id || null,
       movement_type: movementType,
       quantity: normalizedQuantity,
       stock_before: Number.isFinite(stockBefore) ? stockBefore : undefined,
@@ -351,6 +351,8 @@ class PartsService {
       ...part,
       part_id: this.getPartIdValue(part),
       part_type: part?.part_type || 'N/A',
+      location_id: part?.location_id || null,
+      location_name: part?.location_name || part?.location?.location_name || null,
       part_source: ['manual', 'procedure', 'mixed'].includes(String(part?.part_source || '').trim())
         ? String(part.part_source).trim()
         : 'manual',

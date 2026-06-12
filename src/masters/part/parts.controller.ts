@@ -228,6 +228,66 @@ class PartsController {
     }
   };
 
+  /**
+   * POST /api/master/parts/:id/transfer
+   *
+   * Dedicated stock-transfer endpoint. Moves a specified quantity from the
+   * source part document (identified by :id) to the destination part document
+   * (identified by body.destination_part_id). Both documents must belong to the
+   * same account and carry the same part_number.
+   *
+   * Body: { destination_part_id: string, quantity: number, note: string }
+   */
+  async transferStock(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const { params: { id }, body } = req;
+
+      // Ensure the source part exists and belongs to this account
+      const sourceParts = await partsService.getAllParts({
+        _id: helperService.validateObjectId(String(id)),
+        account_id,
+        visible: true
+      });
+      if (!sourceParts || sourceParts.length === 0) {
+        throw Object.assign(new Error('Source part not found'), { status: 404 });
+      }
+
+      // Delegate to the existing updatePartStock service with mode = 'transfer'.
+      // This re-uses all the existing business logic: stock validation, movement
+      // records, history entries, and transaction wrapping.
+      const transferPayload = {
+        mode: 'transfer',
+        quantity: body.quantity,
+        note: body.note,
+        destination_part_id: body.destination_part_id
+      };
+
+      const updatedSource = await partsService.updatePartStock(String(id), transferPayload, user, account_id);
+      if (!updatedSource) {
+        throw Object.assign(new Error('Transfer failed — source part not found'), { status: 404 });
+      }
+
+      // Fetch fresh, fully-populated data for the source and destination parts
+      const [sourceFresh, destinationFresh] = await Promise.all([
+        partsService.getAllParts({ _id: helperService.validateObjectId(String(id)) }),
+        partsService.getAllParts({ _id: helperService.validateObjectId(String(body.destination_part_id)) })
+      ]);
+
+      res.status(200).json({
+        status: true,
+        message: `Stock transferred successfully`,
+        data: {
+          source: sourceFresh && sourceFresh.length > 0 ? sourceFresh[0] : updatedSource,
+          destination: destinationFresh && destinationFresh.length > 0 ? destinationFresh[0] : null
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async removePart(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;

@@ -2,6 +2,7 @@ import express from 'express';
 import { partsController } from './parts.controller';
 import { validateParamId } from '../../middlewares/validate';
 import { partValidator } from './part.validator';
+import { transferValidator } from './transfer.validator';
 import { validate } from '../../middlewares/validator.middleware';
 import multer from 'multer';
 import path from 'path';
@@ -44,6 +45,9 @@ export default (router: express.Router) => {
     partRouter.post('/', partValidator, validate, partsController.createPart);
     partRouter.put('/:id', validateParamId, partValidator, validate, partsController.updatePart);
     partRouter.patch('/:id', validateParamId, partsController.updateStock);
+    // Dedicated stock-transfer endpoint — POST body: { destination_part_id, quantity, note }
+    partRouter.post('/:id/transfer', validateParamId, transferValidator, validate, partsController.transferStock);
     partRouter.delete('/:id', validateParamId, partsController.removePart);
     router.use('/parts', partRouter);
 }
+
