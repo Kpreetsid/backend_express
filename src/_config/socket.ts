@@ -53,30 +53,11 @@ export const initSocket = (httpServer: HttpServer) => {
     const userId = socket.data.user.id;
     const accountId = socket.data.accountId;
 
-    console.log(`User connected: ${userId} (Account: ${accountId})`);
+    console.log(`Notification socket connected: ${userId} (Account: ${accountId})`);
 
-    // Join User-specific room
+    // Notification delivery is user-scoped. Account-wide events are expanded to user rooms
+    // by NotificationService when a server-side API action creates notifications.
     socket.join(userId.toString());
-    
-    // Join Company-specific room (Account-based)
-    socket.join(accountId.toString());
-
-    // Send initial list of online users to the connecting user
-    notificationService.getOnlineUsers(accountId.toString()).then(userIds => {
-      socket.emit('initial_online_users', userIds);
-    });
-
-    // Broadcast "User Online" to others in the same company
-    socket.to(accountId.toString()).emit('user_status', { userId, status: 'online' });
-
-    // Handle Company Chat
-    socket.on('company_chat', (payload: { message: string }) => {
-      io.to(accountId.toString()).emit('company_chat', {
-        fromUser: socket.data.user,
-        message: payload.message,
-        timestamp: new Date()
-      });
-    });
 
     // Handle "Notification Reached" acknowledgment from client
     socket.on('notification_reached', async (payload: { notificationId: string }) => {
@@ -89,80 +70,8 @@ export const initSocket = (httpServer: HttpServer) => {
       }
     });
 
-    // Handle Collaborative Editing
-    socket.on('start_editing', (payload: { entityType: string, entityId: string }) => {
-      socket.to(accountId.toString()).emit('editing_status', {
-        userId,
-        status: 'editing',
-        entityType: payload.entityType,
-        entityId: payload.entityId
-      });
-    });
-
-    socket.on('stop_editing', (payload: { entityType: string, entityId: string }) => {
-      socket.to(accountId.toString()).emit('editing_status', {
-        userId,
-        status: 'idle',
-        entityType: payload.entityType,
-        entityId: payload.entityId
-      });
-    });
-
-    // Handle Location-Scoped Alerting
-    socket.on('join_location_room', (locationId: string) => {
-      socket.join(`location_${locationId}`);
-      console.log(`User ${userId} joined location room: location_${locationId}`);
-    });
-
-    socket.on('leave_location_room', (locationId: string) => {
-      socket.leave(`location_${locationId}`);
-      console.log(`User ${userId} left location room: location_${locationId}`);
-    });
-
-    // Handle Live Asset Telemetry
-    socket.on('asset_telemetry_update', (payload: { assetId: string, data: any }) => {
-      io.to(`asset_${payload.assetId}`).emit('telemetry_data', {
-        assetId: payload.assetId,
-        data: payload.data,
-        timestamp: new Date()
-      });
-    });
-
-    // Handle Interactive Checklists
-    socket.on('checklist_update', (payload: { workOrderId: string, taskId: string, completed: boolean }) => {
-      io.to(`wo_${payload.workOrderId}`).emit('checklist_sync', {
-        userId,
-        taskId: payload.taskId,
-        completed: payload.completed
-      });
-    });
-
-    // Handle Technician Tracking
-    socket.on('update_location', (payload: { lat: number, lng: number }) => {
-      io.to(accountId.toString()).emit('technician_location_update', {
-        userId,
-        lat: payload.lat,
-        lng: payload.lng,
-        timestamp: new Date()
-      });
-    });
-
-    // Handle Admin Broadcasts
-    socket.on('admin_broadcast', (payload: { message: string, priority: 'high' | 'medium' | 'low' }) => {
-      // Verify if user is admin (simplified check)
-      if (socket.data.user.role === 'admin') {
-        io.emit('system_announcement', {
-          message: payload.message,
-          priority: payload.priority,
-          timestamp: new Date()
-        });
-      }
-    });
-
     socket.on('disconnect', () => {
-      console.log(`User disconnected: ${userId}`);
-      // Broadcast "User Offline" to others in the same company
-      io.to(accountId.toString()).emit('user_status', { userId, status: 'offline' });
+      console.log(`Notification socket disconnected: ${userId}`);
     });
   });
 

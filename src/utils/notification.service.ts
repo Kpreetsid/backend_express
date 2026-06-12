@@ -196,29 +196,6 @@ export class NotificationService {
   }
 
   /**
-   * Send a private chat message to a user
-   */
-  public sendPrivateMessage(toUserId: string, fromUser: any, message: string): void {
-    if (!this.io) return;
-    this.io.to(toUserId.toString()).emit('private_chat', {
-      fromUser,
-      message,
-      timestamp: new Date()
-    });
-  }
-
-  /**
-   * Get all unique online user IDs in a company
-   * @param companyId Company ID
-   */
-  public async getOnlineUsers(companyId: string): Promise<string[]> {
-    if (!this.io) return [];
-    const sockets = await this.io.in(companyId.toString()).fetchSockets();
-    const userIds = sockets.map(s => s.data.user.id);
-    return [...new Set(userIds)];
-  }
-
-  /**
    * Broadcast a notification to all connected users
    */
   public broadcast(type: string, message: string, data: any = {}): void {
@@ -229,17 +206,6 @@ export class NotificationService {
       data,
       timestamp: new Date()
     });
-  }
-
-  /**
-   * Join a room (e.g., location-based room)
-   */
-  public joinRoom(socketId: string, roomName: string): void {
-    if (!this.io) return;
-    const socket = this.io.sockets.sockets.get(socketId);
-    if (socket) {
-      socket.join(roomName);
-    }
   }
 
   /**
