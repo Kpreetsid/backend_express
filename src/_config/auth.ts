@@ -76,7 +76,7 @@ export const decodedAccessToken = (token: string): JwtPayload => {
 
 export const generateAccessToken = (payload: UserLoginPayload): string => {
   return jwt.sign(payload, auth.secret, {
-    expiresIn: parseInt(auth.expiresIn as string),
+    expiresIn: auth.expiresIn,
     algorithm: auth.algorithm as jwt.Algorithm,
     issuer: auth.issuer,
     audience: auth.audience

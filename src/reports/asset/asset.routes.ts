@@ -3,6 +3,7 @@ import multer from 'multer';
 import { assetReportController } from './asset.controller';
 import { hasRolePermission } from '../../middlewares';
 import { validateParamId } from '../../middlewares/validate';
+import { payloadCryptoMultipartMiddleware } from '../../middlewares/payloadCrypto.middleware';
 
 const pdfChartUpload = multer({
     storage: multer.memoryStorage(),
@@ -26,7 +27,7 @@ export default (router: express.Router) => {
     assetReportRouter.get('/latest/:id', validateParamId, assetReportController.getLatestReport);
     assetReportRouter.get('/:id', validateParamId, assetReportController.getAssetsReportById);
     assetReportRouter.post('/', hasRolePermission('asset', 'create_report'), assetReportController.createAssetsReport);
-    assetReportRouter.post('/generate-pdf/:id', validateParamId, pdfChartUpload.array('chartImages', 60), assetReportController.generateAssetReportPdf);
+    assetReportRouter.post('/generate-pdf/:id', validateParamId, pdfChartUpload.array('chartImages', 60), payloadCryptoMultipartMiddleware, assetReportController.generateAssetReportPdf);
     assetReportRouter.put('/:id', validateParamId, hasRolePermission('asset', 'edit_report'), assetReportController.updateAssetsReport);
     assetReportRouter.patch('/:id', validateParamId, hasRolePermission('asset', 'edit_report'), assetReportController.partialUpdateAssetsReport);
     assetReportRouter.delete('/:id', validateParamId, hasRolePermission('asset', 'delete_report'), assetReportController.deleteAssetsReport);

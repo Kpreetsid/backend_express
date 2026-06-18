@@ -7,6 +7,7 @@ import { validate } from '../../middlewares/validator.middleware';
 import multer from 'multer';
 import path from 'path';
 import { uploadFilesService } from '../../upload/upload.multer';
+import { payloadCryptoMultipartMiddleware } from '../../middlewares/payloadCrypto.middleware';
 
 const importStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -37,7 +38,7 @@ export default (router: express.Router) => {
     partRouter.get('/', partsController.getParts);
     partRouter.get('/cycle-counts', partsController.getCycleCounts);
     partRouter.get('/replenishment-suggestions', partsController.getReplenishmentSuggestions);
-    partRouter.post('/import', importUpload.single('file'), partsController.importParts);
+    partRouter.post('/import', importUpload.single('file'), payloadCryptoMultipartMiddleware, partsController.importParts);
     partRouter.get('/:id/history', validateParamId, partsController.getPartHistory);
     partRouter.get('/:id', validateParamId, partsController.getPart);
     partRouter.post('/cycle-counts', partsController.createCycleCount);

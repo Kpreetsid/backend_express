@@ -11,7 +11,7 @@ class AppLogger {
   private fileLogger!: RequestHandler;
   private consoleLogger: RequestHandler;
   private currentLogFile: string = '';
-  private readonly sensitiveKeyPattern = /(password|passcode|token|authorization|auth|otp|secret|cookie|session|card|ssn|external_token|verificationCode|confirmNewPassword|newPassword)/i;
+  private readonly sensitiveKeyPattern = /(password|passcode|token|authorization|auth|otp|secret|cookie|session|card|ssn|external_token|verificationCode|confirmNewPassword|newPassword|payloadCrypto|sessionKey|_encrypted|kid|iv|tag|ct|__cmms_crypto_fields)/i;
 
   constructor() {
     this.logDir = path.join(process.cwd(), 'logs');

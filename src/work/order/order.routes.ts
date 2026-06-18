@@ -6,6 +6,7 @@ import { validateParamId } from '../../middlewares/validate';
 import { upload } from '../../upload/upload.routes';
 import { workOrderValidator, updateWorkOrderValidator } from './workOrder.validator';
 import { validate } from '../../middlewares/validator.middleware';
+import { payloadCryptoMultipartMiddleware } from '../../middlewares/payloadCrypto.middleware';
 
 export default (router: express.Router) => {
     const orderRouter = express.Router();
@@ -40,7 +41,7 @@ export default (router: express.Router) => {
     orderRouter.put('/:id', validateParamId, updateWorkOrderValidator, validate, orderController.updateOrder);
     orderRouter.patch('/:id', validateParamId, updateWorkOrderValidator, validate, orderController.updateOrderSubmitData);
     orderRouter.delete('/:id', validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
-    orderRouter.post('/:id/attachments', validateParamId, (req, res, next) => { req.params.folderName = 'work_order'; next(); }, upload.array('files', 12), orderController.uploadAttachments);
+    orderRouter.post('/:id/attachments', validateParamId, (req, res, next) => { req.params.folderName = 'work_order'; next(); }, upload.array('files', 12), payloadCryptoMultipartMiddleware, orderController.uploadAttachments);
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));
     router.use('/orders', orderRouter);

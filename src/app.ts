@@ -16,14 +16,18 @@ import { logger, errorMiddleware } from './middlewares';
 import { healthRouter, metricsRouter } from './routes/health.routes';
 import { requestContextMiddleware } from './middlewares/requestContext';
 import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
+import { cryptoRouter } from './routes/crypto.routes';
+import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
 
 const app: Express = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
-app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true }));
+app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce'] }));
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));
 app.use(express.urlencoded({ limit: process.env.URLENCODED_BODY_LIMIT || '5mb', extended: true }));
+app.use(payloadCryptoResponseMiddleware());
+app.use(payloadCryptoRequestMiddleware);
 app.use(mongoSanitizeMiddleware());
 app.use(logger.logMiddleware());
 app.use(rateLimiter.globalLimiter);
@@ -57,6 +61,7 @@ app.use('/health', healthRouter);
 app.use('/metrics', metricsRouter);
 
 const apiRouter: Router = Router();
+apiRouter.use('/crypto', cryptoRouter);
 apiRouter.use('/', routerIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
 apiRouter.use('/master', isAuthenticated, masterRoutes());

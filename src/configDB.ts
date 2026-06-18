@@ -32,6 +32,14 @@ export const auth = {
   audience: process.env.AUTH_AUDIENCE!,
 };
 
+export const payloadCrypto = {
+  enabled: process.env.PAYLOAD_CRYPTO_ENABLED !== 'false',
+  strictMode: process.env.PAYLOAD_CRYPTO_STRICT_MODE === 'true',
+  masterSecret: process.env.PAYLOAD_CRYPTO_MASTER_SECRET,
+  bootstrapTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_BOOTSTRAP_TTL_SECONDS || '300', 10),
+  replayTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_REPLAY_TTL_SECONDS || '300', 10)
+};
+
 export const mailCredential = {
   service: process.env.MAIL_SERVICE!,
   host: process.env.MAIL_HOST!,
