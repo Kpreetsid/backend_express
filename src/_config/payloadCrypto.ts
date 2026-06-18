@@ -47,6 +47,14 @@ class PayloadCryptoService {
     return payloadCrypto.strictMode;
   }
 
+  canDecryptRequests(): boolean {
+    return payloadCrypto.enabled && payloadCrypto.requestDecryptEnabled;
+  }
+
+  canEncryptResponses(): boolean {
+    return payloadCrypto.enabled && payloadCrypto.responseEncryptEnabled;
+  }
+
   createBootstrapSession(clientPublicKey: string, clientNonce: string) {
     if (!payloadCrypto.enabled) {
       throw Object.assign(new Error('Payload crypto is disabled'), { status: 404 });

@@ -34,6 +34,10 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
       return;
     }
 
+    if (!payloadCryptoService.canDecryptRequests()) {
+      throw Object.assign(new Error('Encrypted payload support is disabled on this server'), { status: 400, name: 'BadRequestError' });
+    }
+
     const keyId = String(req.headers[KEY_ID_HEADER] || bodyEnvelope?.kid || '');
     const keyRecord = payloadCryptoService.getKeyRecord(keyId);
     const replay = payloadCryptoService.validateReplay(
@@ -187,7 +191,7 @@ function shouldEncryptResponse(_req: Request, res: Response, context?: PayloadCr
   if (res.getHeader('X-CMMS-Payload-Encrypted') === 'v1') {
     return false;
   }
-  return payloadCryptoService.isEnabled() && !!context && (context.encryptedRequest || payloadCryptoService.isStrictMode());
+  return payloadCryptoService.canEncryptResponses() && !!context && (context.encryptedRequest || payloadCryptoService.isStrictMode());
 }
 
 function shouldRequireEncryption(req: Request): boolean {
