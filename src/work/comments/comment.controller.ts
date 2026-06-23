@@ -14,7 +14,7 @@ class CommentController {
         throw Object.assign(new Error('Order ID is required'), { status: 400 });
       }
       const match: any = { account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true };
-      const data = await commentService.getAllComments(match);
+      const data = await commentService.getAllCommentsForWorkOrder(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Comment not found'), { status: 404 });
       }

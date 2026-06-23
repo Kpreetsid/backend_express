@@ -30,9 +30,16 @@ export interface WorkOrderSearchParams {
     priority?: any;
     wo_asset_id?: any;
     wo_location_id?: any;
+    asset_id?: any;
+    assetIds?: any;
+    location_id?: any;
     assignedUser?: any;
     pageTYPE?: string; // assignedToMe, createdByMe, openToAll
     order_no?: string;
+    search?: string;
+    searchText?: string;
+    createdFrom?: any;
+    dashboardFilter?: string;
     fromDate?: string;
     toDate?: string;
   };
@@ -74,6 +81,21 @@ class OrderService {
 
   constructor() {
     this.mailerService = new MailerService();
+  }
+
+  private escapeRegex(value: string = ''): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  private getQueryValues(value: any): string[] {
+    if (Array.isArray(value)) {
+      return value.map((item: any) => String(item || '').trim()).filter(Boolean);
+    }
+
+    return String(value || '')
+      .split(',')
+      .map((item: string) => item.trim())
+      .filter(Boolean);
   }
 
   private normalizeAuditValue(value: any): any {
@@ -1925,6 +1947,228 @@ class OrderService {
     ];
   }
 
+  private getWorkOrderListLookupStages(): any[] {
+    return [
+      {
+        $lookup: {
+          from: WorkOrderAssigneeModel.collection.name,
+          let: { woId: '$_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$woId', '$$woId'] } } },
+            {
+              $lookup: {
+                from: UserModel.collection.name,
+                let: { userId: '$userId' },
+                pipeline: [
+                  { $match: { $expr: { $eq: ['$_id', '$$userId'] }, user_status: 'active' } },
+                  { $project: this.userProjection }
+                ],
+                as: 'user'
+              }
+            },
+            { $unwind: { path: '$user', preserveNullAndEmptyArrays: false } }
+          ],
+          as: 'assignedUsers'
+        }
+      },
+      {
+        $lookup: {
+          from: WorkOrderModel.collection.name,
+          let: { parentId: '$parentId' },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: {
+                  $eq: [
+                    '$_id',
+                    { $cond: [{ $eq: [{ $type: '$$parentId' }, 'string'] }, { $toObjectId: '$$parentId' }, '$$parentId'] }
+                  ]
+                }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                id: '$_id',
+                order_no: 1,
+                title: 1,
+                status: 1
+              }
+            }
+          ],
+          as: 'parentOrder'
+        }
+      },
+      {
+        $lookup: {
+          from: WorkOrderModel.collection.name,
+          let: { workOrderId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                visible: true,
+                $expr: { $eq: ['$parentId', '$$workOrderId'] }
+              }
+            },
+            {
+              $project: {
+                _id: 1,
+                id: '$_id',
+                order_no: 1,
+                title: 1,
+                status: 1,
+                priority: 1,
+                actual_time: 1,
+                labor_entries: 1,
+                parts: 1
+              }
+            }
+          ],
+          as: 'childOrders'
+        }
+      },
+      {
+        $lookup: {
+          from: AssetModel.collection.name,
+          let: { wo_asset_id: '$wo_asset_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [
+                    '$_id',
+                    { $cond: [{ $eq: [{ $type: '$$wo_asset_id' }, 'string'] }, { $toObjectId: '$$wo_asset_id' }, '$$wo_asset_id'] }
+                  ]
+                },
+                visible: true
+              }
+            },
+            { $project: { _id: 1, id: '$_id', asset_name: 1, asset_type: 1, asset_model: 1 } }
+          ],
+          as: 'asset'
+        }
+      },
+      { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: LocationModel.collection.name,
+          let: { wo_location_id: '$wo_location_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $eq: [
+                    '$_id',
+                    { $cond: [{ $eq: [{ $type: '$$wo_location_id' }, 'string'] }, { $toObjectId: '$$wo_location_id' }, '$$wo_location_id'] }
+                  ]
+                },
+                visible: true
+              }
+            },
+            { $project: { _id: 1, id: '$_id', location_name: 1, location_type: 1 } }
+          ],
+          as: 'location'
+        }
+      },
+      { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: UserModel.collection.name,
+          let: { createdBy: '$createdBy' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$createdBy'] }, user_status: 'active' } },
+            { $project: this.userProjection }
+          ],
+          as: 'createdBy'
+        }
+      },
+      { $unwind: { path: '$createdBy', preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          id: '$_id',
+          parentOrder: { $arrayElemAt: ['$parentOrder', 0] },
+          procedures: {
+            $cond: [
+              { $gt: [{ $size: { $ifNull: ['$procedure_entries', []] } }, 0] },
+              {
+                $map: {
+                  input: { $ifNull: ['$procedure_entries', []] },
+                  as: 'entry',
+                  in: {
+                    $mergeObjects: [
+                      '$$entry',
+                      {
+                        id: { $toString: { $ifNull: ['$$entry.procedure_id', ''] } },
+                        procedure_id: { $toString: { $ifNull: ['$$entry.procedure_id', ''] } },
+                        tags: { $ifNull: ['$$entry.tags', []] },
+                        steps: { $ifNull: ['$$entry.steps', []] },
+                        responses: { $ifNull: ['$$entry.responses', {}] },
+                        score_summary: { $ifNull: ['$$entry.score_summary', null] },
+                        triggered_actions: { $ifNull: ['$$entry.triggered_actions', []] },
+                        submitted: { $ifNull: ['$$entry.submitted', false] }
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                $map: {
+                  input: { $ifNull: ['$procedure_ids', []] },
+                  as: 'procedureId',
+                  in: {
+                    id: { $toString: '$$procedureId' },
+                    procedure_id: { $toString: '$$procedureId' },
+                    tags: [],
+                    steps: [],
+                    responses: {},
+                    score_summary: null,
+                    triggered_actions: [],
+                    submitted: false
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          id: 1,
+          order_no: 1,
+          title: 1,
+          description: 1,
+          status: 1,
+          priority: 1,
+          type: 1,
+          nature_of_work: 1,
+          createdFrom: 1,
+          block_reason: 1,
+          start_date: 1,
+          end_date: 1,
+          estimated_time: 1,
+          actual_time: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          completed_at: 1,
+          actual_end_date: 1,
+          parentId: 1,
+          wo_asset_id: 1,
+          wo_location_id: 1,
+          asset: 1,
+          location: 1,
+          assignedUsers: 1,
+          createdBy: 1,
+          parts: 1,
+          procedures: 1,
+          childOrders: 1,
+          parentOrder: 1
+        }
+      }
+    ];
+  }
+
   async getAllOrders(match: any, session?: any): Promise<any> {
     const pipeline = this.getWorkOrderPipeline(match);
     const aggregateQuery = WorkOrderModel.aggregate(pipeline);
@@ -1952,12 +2196,16 @@ class OrderService {
     const { account_id, user_id, user_role, query } = params;
     const match: any = { account_id, visible: true };
     const userObjectId = helperService.validateObjectId(String(user_id));
+    const assetIds = this.getQueryValues(query.wo_asset_id || query.asset_id || query.assetIds);
+    const locationIds = this.getQueryValues(query.wo_location_id || query.location_id);
+    const createdFromValues = this.getQueryValues(query.createdFrom);
 
     if (query.status) match.status = { $in: query.status.toString().split(',') };
     if (query.priority) match.priority = { $in: query.priority.toString().split(',') };
-    if (query.wo_asset_id) match.wo_asset_id = { $in: helperService.validateObjectIds(query.wo_asset_id.toString()) };
-    if (query.wo_location_id) match.wo_location_id = { $in: helperService.validateObjectIds(query.wo_location_id.toString()) };
+    if (assetIds.length > 0) match.wo_asset_id = { $in: helperService.validateObjectIds(assetIds.join(',')) };
+    if (locationIds.length > 0) match.wo_location_id = { $in: helperService.validateObjectIds(locationIds.join(',')) };
     if (query.order_no) match.order_no = query.order_no;
+    if (createdFromValues.length > 0) match.createdFrom = { $in: createdFromValues };
 
     if (query.fromDate && query.toDate) {
       match.createdAt = { $gte: new Date(query.fromDate), $lte: new Date(query.toDate) };
@@ -2003,8 +2251,164 @@ class OrderService {
     return match;
   }
 
-  async countOrders(match: any) {
-    return await WorkOrderModel.countDocuments(match);
+  private buildBaseQueryStages(query: WorkOrderSearchParams['query'] = {}): any[] {
+    const stages: any[] = [];
+
+    if (query.dashboardFilter === 'overdue') {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      stages.push({
+        $match: {
+          status: { $nin: ['Completed', 'Approved', 'Rejected'] },
+          end_date: { $lt: startOfToday }
+        }
+      });
+    }
+
+    if (query.dashboardFilter === 'onTime') {
+      stages.push({
+        $match: {
+          status: 'Completed',
+          end_date: { $ne: null },
+          $expr: {
+            $lte: [
+              {
+                $ifNull: [
+                  '$completed_at',
+                  {
+                    $ifNull: [
+                      '$actual_end_date',
+                      '$updatedAt'
+                    ]
+                  }
+                ]
+              },
+              '$end_date'
+            ]
+          }
+        }
+      });
+    }
+
+    if (query.dashboardFilter === 'plannedUnplanned' && !query.createdFrom) {
+      stages.push({
+        $match: {
+          createdFrom: { $in: ['Work Order', 'Preventive'] }
+        }
+      });
+    }
+
+    return stages;
+  }
+
+  private buildPostLookupQueryStages(query: WorkOrderSearchParams['query'] = {}): any[] {
+    const stages: any[] = [];
+    const searchValue = String(query.searchText || query.search || '').trim();
+
+    if (searchValue) {
+      const searchRegex = this.escapeRegex(searchValue);
+      stages.push({
+        $match: {
+          $or: [
+            { order_no: { $regex: searchRegex, $options: 'i' } },
+            { title: { $regex: searchRegex, $options: 'i' } },
+            { description: { $regex: searchRegex, $options: 'i' } },
+            { 'location.location_name': { $regex: searchRegex, $options: 'i' } },
+            { 'asset.asset_name': { $regex: searchRegex, $options: 'i' } },
+            { 'createdBy.firstName': { $regex: searchRegex, $options: 'i' } },
+            { 'createdBy.lastName': { $regex: searchRegex, $options: 'i' } },
+            {
+              $expr: {
+                $regexMatch: {
+                  input: {
+                    $trim: {
+                      input: {
+                        $concat: [
+                          { $ifNull: ['$createdBy.firstName', ''] },
+                          ' ',
+                          { $ifNull: ['$createdBy.lastName', ''] }
+                        ]
+                      }
+                    }
+                  },
+                  regex: searchRegex,
+                  options: 'i'
+                }
+              }
+            }
+          ]
+        }
+      });
+    }
+
+    return stages;
+  }
+
+  private buildFilteredWorkOrderPipeline(match: any, query: WorkOrderSearchParams['query'] = {}): any[] {
+    const pipeline = [{ $match: match }, ...this.buildBaseQueryStages(query), ...this.getWorkOrderListLookupStages()];
+    const postLookupStages = this.buildPostLookupQueryStages(query);
+
+    if (postLookupStages.length > 0) {
+      pipeline.push(...postLookupStages);
+    }
+
+    return pipeline;
+  }
+
+  async countOrders(match: any, query: WorkOrderSearchParams['query'] = {}) {
+    const searchValue = String(query.searchText || query.search || '').trim();
+    const pipeline = searchValue
+      ? this.buildFilteredWorkOrderPipeline(match, query)
+      : [{ $match: match }, ...this.buildBaseQueryStages(query)];
+
+    pipeline.push({ $count: 'totalItems' });
+
+    const [result] = await WorkOrderModel.aggregate(pipeline);
+    return Number(result?.totalItems || 0);
+  }
+
+  async getPaginatedWorkOrders(match: any, query: WorkOrderSearchParams['query'] = {}, skip: number = 0, limit: number = 25): Promise<{ data: any[]; totalItems: number }> {
+    const searchValue = String(query.searchText || query.search || '').trim();
+    const totalItems = await this.countOrders(match, query);
+    if (!totalItems) {
+      return { data: [], totalItems: 0 };
+    }
+
+    const pipeline: any[] = [{ $match: match }, ...this.buildBaseQueryStages(query)];
+
+    if (searchValue) {
+      pipeline.push(...this.getWorkOrderListLookupStages());
+      const postLookupStages = this.buildPostLookupQueryStages(query);
+      if (postLookupStages.length > 0) {
+        pipeline.push(...postLookupStages);
+      }
+      pipeline.push({ $sort: { createdAt: -1 } });
+      pipeline.push({ $skip: skip });
+      pipeline.push({ $limit: limit });
+    } else {
+      pipeline.push({ $sort: { createdAt: -1 } });
+      pipeline.push({ $skip: skip });
+      pipeline.push({ $limit: limit });
+      pipeline.push(...this.getWorkOrderListLookupStages());
+    }
+
+    const data = await WorkOrderModel.aggregate(pipeline);
+
+    if (!data.length) {
+      return { data: [], totalItems };
+    }
+
+    const orderIds = data.map((d: any) => d._id);
+    const commentMap = await commentService.getCommentsByOrderIds(orderIds);
+    const decorated = data.map((item: any) => ({
+      ...item,
+      comments: commentMap.get(String(item._id)) || []
+    }));
+
+    return {
+      data: this.decorateHierarchyCollection(decorated),
+      totalItems
+    };
   }
 
   private normalizeDateRange(range: { fromDate?: string; toDate?: string } = {}): { fromDate: Date; toDate: Date } | null {
@@ -2304,8 +2708,8 @@ class OrderService {
     return this.decorateHierarchyCollection(data || []);
   }
 
-  async getAllWorkOrders(match: any, skip: number = 0, limit: number = 25) {
-    const pipeline: any[] = this.getWorkOrderPipeline(match);
+  async getAllWorkOrders(match: any, query: WorkOrderSearchParams['query'] = {}, skip: number = 0, limit: number = 25) {
+    const pipeline: any[] = this.buildFilteredWorkOrderPipeline(match, query);
     pipeline.push({ $sort: { createdAt: -1 } });
     pipeline.push({ $skip: skip });
     pipeline.push({ $limit: limit });
@@ -2313,7 +2717,7 @@ class OrderService {
     const data = await WorkOrderModel.aggregate(pipeline);
 
     if (!data || data.length === 0) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
+      return [];
     }
 
     const orderIds = data.map((d: any) => d._id);

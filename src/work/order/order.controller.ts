@@ -3,6 +3,7 @@ import { orderService } from './order.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
+import { storageProvider } from '../../_config/storage';
 
 class OrderController {
 
@@ -26,29 +27,31 @@ class OrderController {
   async getAllWorkOrders(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const { page = 1, limit = 25, pageType } = req.query;
-      const skip = (Number(page) - 1) * Number(limit);
+      const { page = 1, limit = 15, pageType } = req.query;
+      const pageNumber = Math.max(Number(page) || 1, 1);
+      const limitNumber = Math.min(Math.max(Number(limit) || 15, 1), 100);
+      const skip = (pageNumber - 1) * limitNumber;
+      const normalizedQuery = { ...req.query, pageTYPE: pageType as string };
 
       const match = await orderService.buildSearchMatch({
         account_id: user.account_id,
         user_id: String(user._id),
         user_role: user.user_role,
-        query: { ...req.query, pageTYPE: pageType as string }
+        query: normalizedQuery
       });
 
-      const totalItems = await orderService.countOrders(match);
-      const data = await orderService.getAllWorkOrders(match, skip, Number(limit));
+      const { data, totalItems } = await orderService.getPaginatedWorkOrders(match, normalizedQuery, skip, limitNumber);
 
       res.status(200).json({
         status: true,
         message: "Work orders fetched successfully.",
         pagination: {
-          page: Number(page),
-          limit: Number(limit),
+          page: pageNumber,
+          limit: limitNumber,
           totalItems,
-          totalPages: Math.ceil(totalItems / Number(limit)),
-          hasNextPage: skip + Number(limit) < totalItems,
-          hasPrevPage: Number(page) > 1
+          totalPages: totalItems > 0 ? Math.ceil(totalItems / limitNumber) : 0,
+          hasNextPage: skip + limitNumber < totalItems,
+          hasPrevPage: pageNumber > 1
         },
         data
       });
@@ -148,7 +151,7 @@ class OrderController {
         destination: file.destination,
         fileName: file.filename,
         folderName: req.params.folderName,
-        fileUrl: `${req.protocol}://${req.get('host')}/${file.filename}`,
+        fileUrl: storageProvider.getURL(file.filename, String(req.params.folderName || '')),
         filePath: file.path,
         size: file.size
       }));
