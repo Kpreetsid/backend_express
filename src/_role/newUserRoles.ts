@@ -26,6 +26,7 @@ export class RoleManager {
     master_admin_panel: { level: 0, view: true },
     master_form: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
+    master_reliability: { level: 0, view: true },
     asset: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     child_asset: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     report_asset: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
@@ -62,6 +63,7 @@ export class RoleManager {
     asset_mail: { level: 1, parent: "master_admin_panel", view: true, add: true, edit: true, delete: true, export: true, import: true },
     location_floor_map: { level: 1, parent: "master_location", view: true, add: true, edit: true, delete: true, import: true, export: true },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    reliability_case: { level: 1, parent: "master_reliability", view: true, add: true, edit: true, delete: true, import: false, export: true },
   };
 
   private static readonly MANAGER_ROLES: RoleMenu = {
@@ -78,6 +80,7 @@ export class RoleManager {
     master_admin_panel: { level: 0, view: false },
     master_form: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
+    master_reliability: { level: 0, view: true },
     asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     child_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     report_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
@@ -114,6 +117,7 @@ export class RoleManager {
     location_floor_map: { level: 1, parent: "master_location", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    reliability_case: { level: 1, parent: "master_reliability", view: true, add: true, edit: true, delete: false, import: false, export: true },
   };
 
   private static readonly EMPLOYEE_ROLES: RoleMenu = {
@@ -130,6 +134,7 @@ export class RoleManager {
     master_admin_panel: { level: 0, view: false },
     master_form: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
+    master_reliability: { level: 0, view: true },
     asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     child_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     report_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
@@ -166,6 +171,7 @@ export class RoleManager {
     location_floor_map: { level: 1, parent: "master_location", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    reliability_case: { level: 1, parent: "master_reliability", view: true, add: false, edit: false, delete: false, import: false, export: false },
   };
 
   private static readonly CUSTOMER_ROLES: RoleMenu = {
@@ -182,6 +188,7 @@ export class RoleManager {
     master_admin_panel: { level: 0, view: false },
     master_form: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
+    master_reliability: { level: 0, view: true },
     asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     child_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     report_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
@@ -218,6 +225,7 @@ export class RoleManager {
     location_floor_map: { level: 1, parent: "master_location", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    reliability_case: { level: 1, parent: "master_reliability", view: true, add: false, edit: false, delete: false, import: false, export: false },
   };
 
   private static readonly USER_ROLES: RoleMenu = {
@@ -234,6 +242,7 @@ export class RoleManager {
     master_admin_panel: { level: 0, view: false },
     master_form: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
+    master_reliability: { level: 0, view: true },
     asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     child_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     report_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
@@ -270,6 +279,7 @@ export class RoleManager {
     location_floor_map: { level: 1, parent: "master_location", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    reliability_case: { level: 1, parent: "master_reliability", view: true, add: false, edit: false, delete: false, import: false, export: false },
   };
 
   public static async getRoleMenuData(role: any): Promise<any> {

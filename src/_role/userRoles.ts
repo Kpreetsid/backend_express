@@ -55,7 +55,20 @@ export class PlatformControlManager {
       admin_panel: { view: true, add: true, edit: true, delete: true, export: true, import: true },
       users: { view: true, add: true, edit: true, delete: true, export: true, import: true },
       permission: { view: true, add: true, edit: true, delete: true, export: true, import: true },
-      asset_mail: { view: true, add: true, edit: true, delete: true, export: true, import: true }
+      asset_mail: { view: true, add: true, edit: true, delete: true, export: true, import: true },
+      reliabilityCase: {
+        view_case: true,
+        create_case: true,
+        triage_case: true,
+        edit_case: true,
+        generate_recommendation: true,
+        approve_recommendation: true,
+        create_work_order_from_case: true,
+        add_feedback: true,
+        close_case: true,
+        view_business_impact: true,
+        manage_failure_library: true,
+      }
   }
 
   private static readonly MANAGER_ROLES: RoleMenu = {
@@ -113,6 +126,19 @@ export class PlatformControlManager {
     users: { view: false, add: false, edit: false, delete: false, export: false, import: false },
     permission: { view: false, add: false, edit: false, delete: false, export: false, import: false },
     asset_mail: { view: false, add: false, edit: false, delete: false, export: false, import: false },
+    reliabilityCase: {
+      view_case: true,
+      create_case: true,
+      triage_case: true,
+      edit_case: true,
+      generate_recommendation: true,
+      approve_recommendation: true,
+      create_work_order_from_case: true,
+      add_feedback: true,
+      close_case: true,
+      view_business_impact: true,
+      manage_failure_library: true,
+    },
   }
 
   private static readonly EMPLOYEE_ROLES: RoleMenu = {
@@ -169,7 +195,20 @@ export class PlatformControlManager {
     admin_panel: { view: false, add: false, edit: false, delete: false, export: false, import: false },
     users: { view: false, add: false, edit: false, delete: false, export: false, import: false },
     permission: { view: false, add: false, edit: false, delete: false, export: false, import: false },
-    asset_mail: { view: false, add: false, edit: false, delete: false, export: false, import: false }
+    asset_mail: { view: false, add: false, edit: false, delete: false, export: false, import: false },
+    reliabilityCase: {
+      view_case: true,
+      create_case: false,
+      triage_case: false,
+      edit_case: false,
+      generate_recommendation: false,
+      approve_recommendation: false,
+      create_work_order_from_case: false,
+      add_feedback: true,
+      close_case: false,
+      view_business_impact: false,
+      manage_failure_library: false,
+    }
   }
 
   private static readonly CUSTOMER_ROLES: RoleMenu = {
@@ -227,6 +266,19 @@ export class PlatformControlManager {
     users: { view: false, add: false, edit: false, delete: false, export: false, import: false },
     permission: { view: false, add: false, edit: false, delete: false, export: false, import: false },
     asset_mail: { view: false, add: false, edit: false, delete: false, export: false, import: false },
+    reliabilityCase: {
+      view_case: true,
+      create_case: false,
+      triage_case: false,
+      edit_case: false,
+      generate_recommendation: false,
+      approve_recommendation: false,
+      create_work_order_from_case: false,
+      add_feedback: false,
+      close_case: false,
+      view_business_impact: false,
+      manage_failure_library: false,
+    },
   }
 
   private static readonly USER_ROLES: RoleMenu  = {
@@ -284,6 +336,19 @@ export class PlatformControlManager {
     users: { view: false, add: false, edit: false, delete: false, export: false, import: false },
     permission: { view: false, add: false, edit: false, delete: false, export: false, import: false },
     asset_mail: { view: false, add: false, edit: false, delete: false, export: false, import: false },
+    reliabilityCase: {
+      view_case: true,
+      create_case: false,
+      triage_case: false,
+      edit_case: false,
+      generate_recommendation: false,
+      approve_recommendation: false,
+      create_work_order_from_case: false,
+      add_feedback: false,
+      close_case: false,
+      view_business_impact: false,
+      manage_failure_library: false,
+    },
   }
 
   public static async getRoleMenuData(role: any): Promise<any> {

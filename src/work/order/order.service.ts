@@ -3882,7 +3882,7 @@ class OrderService {
       { $match: scheduleMatch },
       {
         $lookup: {
-          from: 'asset_master',
+          from: AssetModel.collection.name,
           let: { assetId: '$work_order.wo_asset_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$assetId'] }, visible: true } },
@@ -3894,7 +3894,7 @@ class OrderService {
       { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: 'location_master',
+          from: LocationModel.collection.name,
           let: { locationId: '$work_order.wo_location_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$locationId'] }, visible: true } },

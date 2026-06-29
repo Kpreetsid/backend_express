@@ -6,6 +6,7 @@ import { rolesService } from './role/roles.service';
 import { helperService } from '../../utils/helper';
 import { MailerService } from "../../_config/mailer";
 import { RoleManager } from "../../_role/newUserRoles";
+import { PlatformControlManager } from "../../_role/userRoles";
 import { RoleMenuModel } from "../../models/userRoleMenu.model";
 
 import { withTransaction } from "../../utils/transaction.helper";
@@ -23,8 +24,9 @@ class UsersService {
     for (const user of userList) {
       if (user.user_role) {
         const newRoleMenu = await RoleManager.getRoleMenuData(user.user_role);
-        await RoleMenuModel.updateOne({ user_id: user._id }, { roleMenu: newRoleMenu });
-        console.log(`Updated user role menu for user: ${user._id}, role: ${user.user_role}`);
+        const platformControl = await PlatformControlManager.getRoleMenuData(user.user_role);
+        await RoleMenuModel.updateOne({ user_id: user._id }, { roleMenu: newRoleMenu, data: platformControl });
+        console.log(`Updated user role menu and platform control for user: ${user._id}, role: ${user.user_role}`);
       } else {
         console.log(`User role not found for user: ${user._id}`);
       }
