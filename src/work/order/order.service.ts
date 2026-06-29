@@ -222,6 +222,21 @@ class OrderService {
     return nextOrder;
   }
 
+  private syncStatusDetailAuditFields(order: any, actor: IUser): any {
+    const statusDetails = Array.isArray(order?.status_details) ? order.status_details : [];
+    const fallbackCreatedBy = actor?._id || order?.updatedBy || order?.createdBy;
+
+    return {
+      ...order,
+      status_details: statusDetails
+        .map((entry: any) => ({
+          ...entry,
+          createdBy: entry?.createdBy || fallbackCreatedBy
+        }))
+        .filter((entry: any) => !!entry?.status && !!entry?.createdBy)
+    };
+  }
+
   private getGeneralChangeLabels(existingOrder: any, updatedOrder: any, body: any): string[] {
     const fieldLabels: Record<string, string> = {
       title: 'title',
@@ -3979,7 +3994,7 @@ class OrderService {
       }
       
       updatedData = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData)));
-      updatedData = this.syncCompletionAuditFields(updatedData, existingOrder.status, user);
+      updatedData = this.syncStatusDetailAuditFields(this.syncCompletionAuditFields(updatedData, existingOrder.status, user), user);
       const data = await WorkOrderModel.findByIdAndUpdate(id, updatedData, { returnDocument: 'after', session });
       if (!data) {
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
@@ -4011,7 +4026,7 @@ class OrderService {
     const existingOrder = await WorkOrderModel.findById(id);
     let sanitizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body, updatedBy: user._id })));
     if (existingOrder) {
-      sanitizedBody = this.syncCompletionAuditFields({ ...existingOrder.toObject(), ...sanitizedBody }, existingOrder.status, user);
+      sanitizedBody = this.syncStatusDetailAuditFields(this.syncCompletionAuditFields({ ...existingOrder.toObject(), ...sanitizedBody }, existingOrder.status, user), user);
     }
     const updatedOrder = await WorkOrderModel.findByIdAndUpdate(id, sanitizedBody, { returnDocument: 'after' });
 
