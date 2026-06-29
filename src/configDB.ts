@@ -5,6 +5,22 @@ export const environment = {
   type: process.env.NODE_ENV
 }
 
+const envBoolean = (value: string | undefined, defaultValue: boolean): boolean => {
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (['true', '1', 'yes', 'enabled', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['false', '0', 'no', 'disabled', 'off'].includes(normalized)) {
+    return false;
+  }
+
+  return defaultValue;
+};
+
 export const database = {
   uri: process.env.MONGO_URI,
   host: process.env.DB_HOST!,
@@ -33,10 +49,10 @@ export const auth = {
 };
 
 export const payloadCrypto = {
-  enabled: process.env.PAYLOAD_CRYPTO_ENABLED !== 'false',
-  strictMode: process.env.PAYLOAD_CRYPTO_STRICT_MODE === 'true',
-  requestDecryptEnabled: process.env.PAYLOAD_CRYPTO_REQUEST_DECRYPT_ENABLED !== 'false',
-  responseEncryptEnabled: process.env.PAYLOAD_CRYPTO_RESPONSE_ENCRYPT_ENABLED !== 'false',
+  enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, true),
+  strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),
+  requestDecryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_REQUEST_DECRYPT_ENABLED, true),
+  responseEncryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_RESPONSE_ENCRYPT_ENABLED, true),
   masterSecret: process.env.PAYLOAD_CRYPTO_MASTER_SECRET,
   bootstrapTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_BOOTSTRAP_TTL_SECONDS || '300', 10),
   replayTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_REPLAY_TTL_SECONDS || '300', 10)

@@ -6,10 +6,13 @@ const ENCRYPTION_HEADER = 'x-cmms-payload-encrypted';
 const KEY_ID_HEADER = 'x-cmms-crypto-key-id';
 const TIMESTAMP_HEADER = 'x-cmms-crypto-timestamp';
 const NONCE_HEADER = 'x-cmms-crypto-nonce';
+const ENCRYPT_REQUEST_HEADER = 'x-cmms-crypto-encrypt-request';
+const ENCRYPT_RESPONSE_HEADER = 'x-cmms-crypto-encrypt-response';
 const FORM_FIELDS_KEY = '__cmms_crypto_fields';
 
 interface PayloadCryptoContext {
   encryptedRequest: boolean;
+  requestBodyEncrypted: boolean;
   keyRecord: PayloadCryptoKeyRecord;
   timestamp: string;
   nonce: string;
@@ -34,7 +37,8 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
       return;
     }
 
-    if (!payloadCryptoService.canDecryptRequests()) {
+    const requestBodyEncryptionEnabled = readBooleanHeader(req, ENCRYPT_REQUEST_HEADER, true);
+    if (!payloadCryptoService.canDecryptRequests() && requestBodyEncryptionEnabled) {
       throw Object.assign(new Error('Encrypted payload support is disabled on this server'), { status: 400, name: 'BadRequestError' });
     }
 
@@ -47,13 +51,14 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
     );
     const context: PayloadCryptoContext = {
       encryptedRequest: true,
+      requestBodyEncrypted: requestBodyEncryptionEnabled,
       keyRecord,
       timestamp: replay.timestamp,
       nonce: replay.nonce
     };
     (req as any).payloadCrypto = context;
 
-    if (bodyEnvelope) {
+    if (bodyEnvelope && requestBodyEncryptionEnabled) {
       req.body = payloadCryptoService.decryptJson(
         bodyEnvelope,
         keyRecord,
@@ -70,7 +75,7 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
 export const payloadCryptoMultipartMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
   try {
     const context = (req as any).payloadCrypto as PayloadCryptoContext | undefined;
-    if (!context?.encryptedRequest) {
+    if (!context?.encryptedRequest || !context.requestBodyEncrypted) {
       next();
       return;
     }
@@ -191,7 +196,19 @@ function shouldEncryptResponse(_req: Request, res: Response, context?: PayloadCr
   if (res.getHeader('X-CMMS-Payload-Encrypted') === 'v1') {
     return false;
   }
-  return payloadCryptoService.canEncryptResponses() && !!context && (context.encryptedRequest || payloadCryptoService.isStrictMode());
+  return payloadCryptoService.canEncryptResponses()
+    && readBooleanHeader(_req, ENCRYPT_RESPONSE_HEADER, true)
+    && !!context
+    && (context.encryptedRequest || payloadCryptoService.isStrictMode());
+}
+
+function readBooleanHeader(req: Request, headerName: string, defaultValue: boolean): boolean {
+  const value = req.headers[headerName];
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+  const firstValue = Array.isArray(value) ? value[0] : value;
+  return String(firstValue).toLowerCase() !== 'false';
 }
 
 function shouldRequireEncryption(req: Request): boolean {
