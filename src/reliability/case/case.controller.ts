@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { reliabilityCaseService } from './case.service';
-import { CreateCaseFromAlertsPayload, UpdateCaseStatusPayload } from './case.types';
+import { CreateCaseFromAssetReportPayload, CreateCaseFromAlertsPayload, UpdateCaseStatusPayload } from './case.types';
 
 class ReliabilityCaseController {
   getCases = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -59,6 +59,17 @@ class ReliabilityCaseController {
       const payload = req.body as CreateCaseFromAlertsPayload;
       const data = await reliabilityCaseService.createFromAlerts(payload, user as any, token);
       res.status(201).json({ status: true, message: 'Reliability case created successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  createFromAssetReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const payload = req.body as CreateCaseFromAssetReportPayload;
+      const data = await reliabilityCaseService.createFromAssetReport(payload, user as any);
+      res.status(201).json({ status: true, message: 'Reliability case created from asset report successfully.', data });
     } catch (error) {
       next(error);
     }

@@ -58,6 +58,24 @@ export const createCaseFromAlertValidator = [
     .withMessage('description must be 2000 characters or fewer')
 ];
 
+export const createCaseFromAssetReportValidator = [
+  body('asset_report_id')
+    .isMongoId()
+    .withMessage('asset_report_id must be a valid ObjectId'),
+  body('title')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 180 })
+    .withMessage('title must be 180 characters or fewer'),
+  body('description')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('description must be 2000 characters or fewer')
+];
+
 export const updateCaseStatusValidator = [
   body('status')
     .isIn([...RELIABILITY_CASE_STATUSES])

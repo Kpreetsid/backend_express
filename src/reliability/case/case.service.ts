@@ -2,10 +2,12 @@ import { Types } from 'mongoose';
 import { ObjectId } from 'mongodb';
 import { get } from 'lodash';
 import { AssetModel } from '../../models/asset.model';
+import { ReportAssetModel } from '../../models/assetReport.model';
 import { LocationModel } from '../../models/location.model';
 import { PartsModel } from '../../models/part.model';
 import {
   IReliabilityCaseAlarmRef,
+  IReliabilityCaseAssetReportRef,
   IReliabilityCaseDiagnosisSnapshot,
   IReliabilityCaseEvidenceSnapshot,
   IReliabilityCaseRecommendationSnapshot,
@@ -21,6 +23,7 @@ import { orderService } from '../../work/order/order.service';
 import {
   ApprovalPayload,
   CloseCasePayload,
+  CreateCaseFromAssetReportPayload,
   CreateCaseFromAlertsPayload,
   FeedbackPayload,
   ProcessorAlarmEvidence,
@@ -235,6 +238,82 @@ class ReliabilityCaseService {
       ...payload,
       grouping_window_hours: this.normalizeGroupingWindow(payload.grouping_window_hours)
     }, user, token);
+  }
+
+  async createFromAssetReport(payload: CreateCaseFromAssetReportPayload, user: ReliabilityCaseActor) {
+    const reportId = String(payload.asset_report_id || '').trim();
+    if (!reportId || !Types.ObjectId.isValid(reportId)) {
+      throw Object.assign(new Error('asset_report_id is required'), { status: 400 });
+    }
+
+    const report = await ReportAssetModel.findOne({
+      _id: new Types.ObjectId(reportId),
+      accountId: user.account_id,
+      visible: true
+    }).lean();
+
+    if (!report) {
+      throw Object.assign(new Error('Asset report not found'), { status: 404 });
+    }
+
+    const existing = await ReliabilityCaseModel.findOne({
+      account_id: user.account_id,
+      visible: true,
+      status: { $in: OPEN_CASE_STATUSES },
+      'linked_asset_reports.report_id': report._id
+    }).lean();
+
+    if (existing) {
+      return await this.getCaseById(user, String(existing._id));
+    }
+
+    const assetId = report.assetId || report.top_level_asset_id;
+    const asset = await AssetModel.findOne({
+      _id: new Types.ObjectId(String(assetId)),
+      account_id: user.account_id,
+      visible: true
+    }).lean();
+
+    if (!asset) {
+      throw Object.assign(new Error('Linked asset was not found in this account'), { status: 404 });
+    }
+
+    const riskLevel = this.riskFromAssetReport(report);
+    const reportRef = this.buildAssetReportRef(report);
+    const evidenceSnapshot = this.buildAssetReportEvidenceSnapshot(report);
+    const diagnosisSnapshot = this.buildAssetReportDiagnosisSnapshot(report);
+    const recommendationSnapshot = this.buildAssetReportRecommendationSnapshot(report, user);
+    const title = payload.title?.trim() || this.buildAssetReportCaseTitle(asset.asset_name, report);
+
+    const newCase = new ReliabilityCaseModel({
+      account_id: user.account_id,
+      case_no: await this.generateCaseNo(user.account_id),
+      title,
+      description: payload.description?.trim() || report.Observations || report.Recommendations,
+      asset_id: asset._id,
+      top_level_asset_id: report.top_level_asset_id || asset.top_level_asset_id || asset._id,
+      location_id: report.locationId || asset.locationId,
+      status: 'recommendation_ready',
+      risk_level: riskLevel,
+      urgency: this.urgencyFromRisk(riskLevel),
+      detected_at: report.createdOn || new Date(),
+      linked_alarms: [],
+      linked_asset_reports: [reportRef],
+      evidence_snapshot: evidenceSnapshot,
+      diagnosis_snapshot: diagnosisSnapshot,
+      recommendation_snapshot: recommendationSnapshot,
+      linked_work_order_id: report.work_order_id || undefined,
+      status_history: [
+        { status: 'open', createdBy: user._id, createdAt: new Date(), note: 'Created from asset report.' },
+        { status: 'recommendation_ready', createdBy: user._id, createdAt: new Date(), note: 'Asset report recommendation imported.' }
+      ],
+      audit_log: [this.auditEntry('created-from-asset-report', user, { asset_report_id: reportId })],
+      createdBy: user._id
+    });
+
+    await newCase.save();
+    const enriched = await this.aggregateCases({ _id: newCase._id, account_id: user.account_id, visible: true });
+    return enriched[0] || newCase;
   }
 
   async updateRecommendation(caseId: string, payload: RecommendationPayload, user: ReliabilityCaseActor) {
@@ -676,6 +755,94 @@ class ReliabilityCaseService {
     };
   }
 
+  private buildAssetReportRef(report: any): IReliabilityCaseAssetReportRef {
+    return {
+      report_id: report._id,
+      asset_id: report.assetId,
+      top_level_asset_id: report.top_level_asset_id,
+      status: report.status,
+      fault_detected: report.FaultDetected,
+      severity: report.Severity,
+      equipment_health: this.assetReportHealthLabel(report.EquipmentHealth),
+      observations: report.Observations,
+      recommendations: report.Recommendations,
+      createdFrom: report.createdFrom,
+      createdOn: report.createdOn
+    };
+  }
+
+  private buildAssetReportEvidenceSnapshot(report: any): IReliabilityCaseEvidenceSnapshot {
+    const endpointEvidence = (Array.isArray(report.endpointRMSData) ? report.endpointRMSData : []).map((point: any) => ({
+      composite: point.composite_id,
+      endpoint_name: point.point_name,
+      mount_location: point.mount_location,
+      mount_direction: point.mount_direction,
+      asset_name: point.asset_name,
+      acceleration: point.acceleration,
+      velocity: point.velocity
+    }));
+
+    return {
+      health_status: this.assetReportHealthLabel(report.EquipmentHealth),
+      symptoms: this.nonEmptyStrings([
+        report.FaultDetected,
+        report.Severity,
+        report.TrendOfAlarm
+      ]),
+      sensor_evidence: endpointEvidence,
+      chart_refs: [{
+        label: 'Asset report evidence',
+        source: 'express',
+        api: '/api/reports/assets/generate-pdf/:id',
+        payload: { asset_report_id: String(report._id) }
+      }]
+    };
+  }
+
+  private buildAssetReportDiagnosisSnapshot(report: any): IReliabilityCaseDiagnosisSnapshot {
+    return {
+      diagnosis_source: 'human',
+      likely_failure_mode: this.firstText(report.FaultDetected || report.NewFault),
+      summary: this.firstText(report.Observations || report.Recommendations),
+      observations: this.textLines(report.Observations),
+      recommendations: this.textLines(report.Recommendations),
+      severity_assessment: this.firstText(report.Severity),
+      maintenance_priority: this.assetReportHealthLabel(report.EquipmentHealth)
+    };
+  }
+
+  private buildAssetReportRecommendationSnapshot(report: any, user: ReliabilityCaseActor): IReliabilityCaseRecommendationSnapshot {
+    const actions = this.textLines(report.Recommendations);
+    return {
+      action_summary: actions[0] || report.Recommendations || `Review asset report ${String(report._id)} and plan corrective action.`,
+      inspection_steps: [
+        'Review asset report observations, RMS readings, and chart evidence.',
+        'Confirm fault condition at the asset before execution.'
+      ],
+      maintenance_actions: actions.length ? actions : ['Plan corrective maintenance from the asset report recommendation.'],
+      safety_checklist: [
+        'Confirm lockout/tagout requirements before work.',
+        'Verify asset is safe to inspect and operate.',
+        'Capture post-maintenance evidence after execution.'
+      ],
+      suggested_spares: [],
+      suggested_tools: [],
+      suggested_procedure_ids: [],
+      suggested_assignee_ids: [],
+      estimated_downtime_hours: this.estimatedDowntime(this.riskFromAssetReport(report)),
+      business_impact: {
+        source: 'asset_report',
+        asset_report_id: String(report._id),
+        report_status: report.status,
+        equipment_health: this.assetReportHealthLabel(report.EquipmentHealth)
+      },
+      explanation: 'Imported from asset report observations, recommendations, health status, and reported fault details.',
+      generated_by: 'human',
+      generatedAt: new Date(),
+      generatedBy: user._id
+    };
+  }
+
   private buildRecommendationSnapshot(caseData: any, payload: RecommendationPayload, user: ReliabilityCaseActor): IReliabilityCaseRecommendationSnapshot {
     const diagnosis = caseData.diagnosis_snapshot || {};
     const evidence = caseData.evidence_snapshot || {};
@@ -959,6 +1126,36 @@ class ReliabilityCaseService {
     return 'Low';
   }
 
+  private riskFromAssetReport(report: any): ReliabilityCaseRiskLevel {
+    const health = String(report?.EquipmentHealth || '').trim();
+    const severity = String(report?.Severity || report?.FaultDetected || '').toLowerCase();
+    if (health === '1' || /critical|severe|unacceptable/.test(severity)) return 'Urgent';
+    if (health === '2' || /danger|high/.test(severity)) return 'High';
+    if (health === '3' || /alert|medium|warning/.test(severity)) return 'Medium';
+    if (health === '4') return 'Low';
+    return 'Low';
+  }
+
+  private assetReportHealthLabel(value: unknown): string {
+    const normalized = String(value || '').trim();
+    const labels: Record<string, string> = {
+      '1': 'Critical',
+      '2': 'Danger',
+      '3': 'Alert',
+      '4': 'Healthy',
+      '5': 'Not Defined'
+    };
+    return labels[normalized] || normalized || 'Not Defined';
+  }
+
+  private buildAssetReportCaseTitle(assetName: string, report: any): string {
+    const fault = this.firstText(report?.FaultDetected || report?.NewFault);
+    if (fault) {
+      return `${assetName || report?.assetName || 'Asset'} reliability review: ${fault}`;
+    }
+    return `${assetName || report?.assetName || 'Asset'} reliability review from asset report`;
+  }
+
   private urgencyFromRisk(riskLevel: ReliabilityCaseRiskLevel) {
     if (riskLevel === 'Urgent') return 'immediate';
     if (riskLevel === 'High') return 'schedule';
@@ -1035,6 +1232,14 @@ class ReliabilityCaseService {
   private nonEmptyStrings(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
     return value.map((item) => String(item || '').trim()).filter(Boolean);
+  }
+
+  private textLines(value: unknown): string[] {
+    if (Array.isArray(value)) return this.nonEmptyStrings(value);
+    return String(value || '')
+      .split(/\r?\n|;/)
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   private objectIdStrings(value: unknown): string[] {

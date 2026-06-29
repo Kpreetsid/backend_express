@@ -41,6 +41,20 @@ export interface IReliabilityCaseAlarmRef {
   report_id?: string;
 }
 
+export interface IReliabilityCaseAssetReportRef {
+  report_id: ObjectId;
+  asset_id?: ObjectId;
+  top_level_asset_id?: ObjectId;
+  status?: string;
+  fault_detected?: string;
+  severity?: string;
+  equipment_health?: string;
+  observations?: string;
+  recommendations?: string;
+  createdFrom?: string;
+  createdOn?: Date;
+}
+
 export interface IReliabilityCaseEvidenceSnapshot {
   health_status?: string;
   health_score?: number;
@@ -146,6 +160,7 @@ export interface IReliabilityCase extends Document {
   first_alarm_at?: Date;
   latest_alarm_at?: Date;
   linked_alarms: IReliabilityCaseAlarmRef[];
+  linked_asset_reports: IReliabilityCaseAssetReportRef[];
   evidence_snapshot: IReliabilityCaseEvidenceSnapshot;
   diagnosis_snapshot?: IReliabilityCaseDiagnosisSnapshot;
   recommendation_snapshot?: IReliabilityCaseRecommendationSnapshot;
@@ -177,6 +192,20 @@ const AlarmRefSchema = new Schema<IReliabilityCaseAlarmRef>({
   diagnostic_report_id: { type: String, trim: true },
   report_created: { type: Boolean },
   report_id: { type: String, trim: true }
+}, { _id: false, versionKey: false });
+
+const AssetReportRefSchema = new Schema<IReliabilityCaseAssetReportRef>({
+  report_id: { type: Schema.Types.ObjectId, ref: 'Schema_ReportAsset', required: true },
+  asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel' },
+  top_level_asset_id: { type: Schema.Types.ObjectId, ref: 'AssetModel' },
+  status: { type: String, trim: true },
+  fault_detected: { type: String, trim: true },
+  severity: { type: String, trim: true },
+  equipment_health: { type: String, trim: true },
+  observations: { type: String, trim: true },
+  recommendations: { type: String, trim: true },
+  createdFrom: { type: String, trim: true },
+  createdOn: { type: Date }
 }, { _id: false, versionKey: false });
 
 const EvidenceSnapshotSchema = new Schema({
@@ -284,6 +313,7 @@ const ReliabilityCaseSchema = new Schema<IReliabilityCase>({
   first_alarm_at: { type: Date },
   latest_alarm_at: { type: Date },
   linked_alarms: { type: [AlarmRefSchema], default: [] },
+  linked_asset_reports: { type: [AssetReportRefSchema], default: [] },
   evidence_snapshot: { type: EvidenceSnapshotSchema, default: () => ({ symptoms: [], sensor_evidence: [], chart_refs: [] }) },
   diagnosis_snapshot: { type: DiagnosisSnapshotSchema },
   recommendation_snapshot: { type: RecommendationSnapshotSchema },
@@ -307,6 +337,7 @@ ReliabilityCaseSchema.index({ account_id: 1, case_no: 1 }, { unique: true });
 ReliabilityCaseSchema.index({ account_id: 1, visible: 1, status: 1, updatedAt: -1 });
 ReliabilityCaseSchema.index({ account_id: 1, asset_id: 1, visible: 1, status: 1 });
 ReliabilityCaseSchema.index({ 'linked_alarms.alarm_id': 1 });
+ReliabilityCaseSchema.index({ 'linked_asset_reports.report_id': 1 });
 ReliabilityCaseSchema.index({ linked_work_order_id: 1 });
 
 export const ReliabilityCaseModel = mongoose.model<IReliabilityCase>('Schema_ReliabilityCase', ReliabilityCaseSchema);

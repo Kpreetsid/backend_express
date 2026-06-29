@@ -7,6 +7,7 @@ import {
   addCaseNoteValidator,
   approvalValidator,
   closeCaseValidator,
+  createCaseFromAssetReportValidator,
   createCaseFromAlertValidator,
   createCaseFromAlertsValidator,
   feedbackValidator,
@@ -22,6 +23,7 @@ export default (router: express.Router) => {
   caseRouter.post('/group-alerts', hasReliabilityPermission('create_case'), createCaseFromAlertsValidator, validate, reliabilityCaseController.groupAlerts);
   caseRouter.get('/:id/spares', validateParamId, hasReliabilityPermission('view_case'), reliabilityCaseController.getSpareAvailability);
   caseRouter.get('/:id', validateParamId, hasReliabilityPermission('view_case'), reliabilityCaseController.getCaseById);
+  caseRouter.post('/from-asset-report', hasReliabilityPermission('create_case'), createCaseFromAssetReportValidator, validate, reliabilityCaseController.createFromAssetReport);
   caseRouter.post('/from-alert', hasReliabilityPermission('create_case'), createCaseFromAlertValidator, validate, reliabilityCaseController.createFromAlert);
   caseRouter.post('/from-alerts', hasReliabilityPermission('create_case'), createCaseFromAlertsValidator, validate, reliabilityCaseController.createFromAlerts);
   caseRouter.patch('/:id/status', validateParamId, hasReliabilityPermission('triage_case'), updateCaseStatusValidator, validate, reliabilityCaseController.updateStatus);

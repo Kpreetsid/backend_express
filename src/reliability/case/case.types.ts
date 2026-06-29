@@ -60,6 +60,12 @@ export interface CreateCaseFromAlertsPayload {
   grouping_window_hours?: number;
 }
 
+export interface CreateCaseFromAssetReportPayload {
+  asset_report_id: string;
+  title?: string;
+  description?: string;
+}
+
 export interface UpdateCaseStatusPayload {
   status: ReliabilityCaseStatus;
   note?: string;
