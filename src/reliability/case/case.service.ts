@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import { get } from 'lodash';
 import { AssetModel } from '../../models/asset.model';
 import { LocationModel } from '../../models/location.model';
+import { PartsModel } from '../../models/part.model';
 import {
   IReliabilityCaseAlarmRef,
   IReliabilityCaseDiagnosisSnapshot,
@@ -303,7 +304,7 @@ class ReliabilityCaseService {
 
   async buildWorkOrderDraft(caseId: string, user: ReliabilityCaseActor, overrides: Record<string, unknown> = {}) {
     const caseData = await this.getCaseById(user, caseId);
-    return this.buildWorkOrderPayload(caseData, overrides);
+    return await this.buildWorkOrderPayload(caseData, user, overrides);
   }
 
   async createWorkOrderFromCase(caseId: string, user: ReliabilityCaseActor, overrides: Record<string, unknown> = {}) {
@@ -315,7 +316,7 @@ class ReliabilityCaseService {
       throw Object.assign(new Error('High-risk reliability cases require approval before work-order creation.'), { status: 400 });
     }
 
-    const draft = this.buildWorkOrderPayload(caseData, overrides);
+    const draft = await this.buildWorkOrderPayload(caseData, user, overrides);
     const workOrder = await orderService.createWorkOrder(draft, user as any);
     const workOrderId = String(workOrder?._id || workOrder?.id || '');
     if (!workOrderId) {
@@ -329,6 +330,11 @@ class ReliabilityCaseService {
       case: await this.getCaseById(user, caseId),
       work_order: workOrder
     };
+  }
+
+  async getSpareAvailability(caseId: string, user: ReliabilityCaseActor) {
+    const caseData = await this.getCaseById(user, caseId);
+    return await this.resolveSpareAvailability(caseData, user);
   }
 
   async addFeedback(caseId: string, payload: FeedbackPayload, user: ReliabilityCaseActor) {
@@ -706,11 +712,13 @@ class ReliabilityCaseService {
     };
   }
 
-  private buildWorkOrderPayload(caseData: any, overrides: Record<string, unknown> = {}) {
+  private async buildWorkOrderPayload(caseData: any, user: ReliabilityCaseActor, overrides: Record<string, unknown> = {}) {
     const recommendation = caseData.recommendation_snapshot || {};
     const now = new Date();
     const estimatedHours = this.toNumber((overrides as any).estimated_time) || this.toNumber(recommendation.estimated_downtime_hours) || this.estimatedDowntime(caseData.risk_level);
     const endDate = new Date(now.getTime() + estimatedHours * 60 * 60 * 1000);
+    const hasPartsOverride = Object.prototype.hasOwnProperty.call(overrides || {}, 'parts');
+    const suggestedParts = hasPartsOverride ? [] : await this.buildAvailableWorkOrderPartsFromSpares(caseData, user);
     const tasks = [
       ...this.nonEmptyStrings(recommendation.inspection_steps).map((step) => ({ title: step, priority: caseData.risk_level || 'Medium' })),
       ...this.nonEmptyStrings(recommendation.maintenance_actions).map((action) => ({ title: action, priority: caseData.risk_level || 'Medium' }))
@@ -736,10 +744,202 @@ class ReliabilityCaseService {
       tasks,
       procedure_ids: recommendation.suggested_procedure_ids || [],
       userIdList: recommendation.suggested_assignee_ids || [],
-      parts: [],
+      parts: suggestedParts,
       labor_entries: [],
       ...overrides
     };
+  }
+
+  private async resolveSpareAvailability(caseData: any, user: ReliabilityCaseActor) {
+    const suggestedSpares = Array.isArray(caseData?.recommendation_snapshot?.suggested_spares)
+      ? caseData.recommendation_snapshot.suggested_spares
+      : [];
+
+    if (!suggestedSpares.length) {
+      return {
+        case_id: String(caseData?._id || caseData?.id || ''),
+        case_no: caseData?.case_no,
+        summary: { total: 0, available: 0, low_stock: 0, short: 0, out_of_stock: 0, unmatched: 0 },
+        spares: []
+      };
+    }
+
+    const lookupClauses = this.buildSpareLookupClauses(suggestedSpares);
+    const parts = lookupClauses.length
+      ? await PartsModel.find({
+        account_id: user.account_id,
+        visible: true,
+        $or: lookupClauses
+      }).lean()
+      : [];
+
+    const locationIds = Array.from(new Set(parts.map((part: any) => String(part.location_id || '')).filter(Boolean)));
+    const locations = locationIds.length
+      ? await LocationModel.find({ _id: { $in: locationIds.map((id) => new Types.ObjectId(id)) }, visible: true }, { location_name: 1 }).lean()
+      : [];
+    const locationMap = new Map(locations.map((location: any) => [String(location._id), location.location_name]));
+
+    const rows = suggestedSpares.map((spare: any) => {
+      const requestedQuantity = this.positiveNumber(spare?.quantity ?? spare?.estimatedQuantity ?? spare?.qty) || 1;
+      const matchedPart = this.matchSuggestedSpare(spare, parts, caseData);
+      if (!matchedPart) {
+        return {
+          requested: this.describeSuggestedSpare(spare),
+          requested_quantity: requestedQuantity,
+          status: 'unmatched',
+          available_quantity: 0,
+          projected_quantity_after_issue: null,
+          shortage_quantity: requestedQuantity,
+          reorder_recommended: false,
+          lead_time_days: null,
+          part: null,
+          alternate_locations: []
+        };
+      }
+
+      const availableQuantity = Number(matchedPart.quantity || 0);
+      const projectedQuantity = availableQuantity - requestedQuantity;
+      const reorderPoint = Number(matchedPart.reorder_point ?? matchedPart.min_quantity ?? 0) || 0;
+      const shortageQuantity = Math.max(requestedQuantity - availableQuantity, 0);
+      const status = this.spareAvailabilityStatus(availableQuantity, requestedQuantity, reorderPoint);
+      const alternates = this.findAlternateSpareLocations(matchedPart, parts, requestedQuantity, locationMap);
+
+      return {
+        requested: this.describeSuggestedSpare(spare),
+        requested_quantity: requestedQuantity,
+        status,
+        available_quantity: availableQuantity,
+        projected_quantity_after_issue: projectedQuantity,
+        shortage_quantity: shortageQuantity,
+        reorder_recommended: shortageQuantity > 0 || projectedQuantity <= reorderPoint,
+        lead_time_days: this.toNumber(matchedPart.lead_time_days),
+        part: {
+          id: String(matchedPart._id),
+          part_name: matchedPart.part_name,
+          part_number: matchedPart.part_number,
+          unit: matchedPart.unit,
+          cost: matchedPart.cost,
+          currency: matchedPart.currency,
+          location_id: matchedPart.location_id ? String(matchedPart.location_id) : null,
+          location_name: matchedPart.location_id ? locationMap.get(String(matchedPart.location_id)) || null : null,
+          min_quantity: matchedPart.min_quantity,
+          reorder_point: matchedPart.reorder_point
+        },
+        alternate_locations: alternates
+      };
+    });
+
+    const summary = rows.reduce((acc: Record<string, number>, row: any) => {
+      acc.total += 1;
+      acc[row.status] = (acc[row.status] || 0) + 1;
+      return acc;
+    }, { total: 0, available: 0, low_stock: 0, short: 0, out_of_stock: 0, unmatched: 0 });
+
+    return {
+      case_id: String(caseData?._id || caseData?.id || ''),
+      case_no: caseData?.case_no,
+      summary,
+      spares: rows
+    };
+  }
+
+  private async buildAvailableWorkOrderPartsFromSpares(caseData: any, user: ReliabilityCaseActor): Promise<any[]> {
+    const availability = await this.resolveSpareAvailability(caseData, user);
+    return (availability.spares || [])
+      .filter((row: any) => row.part?.id && ['available', 'low_stock'].includes(row.status))
+      .map((row: any) => ({
+        part_id: new Types.ObjectId(row.part.id),
+        part_name: row.part.part_name,
+        part_type: 'N/A',
+        location_id: row.part.location_id ? new Types.ObjectId(row.part.location_id) : null,
+        location_name: row.part.location_name || '',
+        part_source: 'manual',
+        estimatedQuantity: row.requested_quantity,
+        actualQuantity: 0,
+        unit: row.part.unit || '',
+        cost: Number(row.part.cost || 0),
+        currency: row.part.currency || 'INR'
+      }));
+  }
+
+  private buildSpareLookupClauses(suggestedSpares: any[]): Record<string, unknown>[] {
+    const clauses: Record<string, unknown>[] = [];
+    suggestedSpares.forEach((spare: any) => {
+      const id = String(spare?.part_id || spare?.id || spare?._id || '').trim();
+      const partNumber = String(spare?.part_number || spare?.partNo || spare?.sku || '').trim();
+      const partName = String(spare?.part_name || spare?.name || spare?.description || '').trim();
+
+      if (id && Types.ObjectId.isValid(id)) {
+        clauses.push({ _id: new Types.ObjectId(id) });
+      }
+      if (partNumber) {
+        clauses.push({ part_number: { $regex: `^${this.escapeRegex(partNumber)}$`, $options: 'i' } });
+      }
+      if (partName) {
+        clauses.push({ part_name: { $regex: `^${this.escapeRegex(partName)}$`, $options: 'i' } });
+      }
+    });
+    return clauses;
+  }
+
+  private matchSuggestedSpare(spare: any, parts: any[], caseData: any): any | null {
+    const id = String(spare?.part_id || spare?.id || spare?._id || '').trim();
+    const partNumber = String(spare?.part_number || spare?.partNo || spare?.sku || '').trim().toLowerCase();
+    const partName = String(spare?.part_name || spare?.name || spare?.description || '').trim().toLowerCase();
+
+    let candidates = parts.filter((part: any) => id && String(part._id) === id);
+    if (!candidates.length && partNumber) {
+      candidates = parts.filter((part: any) => String(part.part_number || '').trim().toLowerCase() === partNumber);
+    }
+    if (!candidates.length && partName) {
+      candidates = parts.filter((part: any) => String(part.part_name || '').trim().toLowerCase() === partName);
+    }
+
+    if (!candidates.length) return null;
+    const caseLocationId = String(caseData?.location_id || caseData?.location?.id || caseData?.location?._id || '');
+    return [...candidates].sort((left: any, right: any) => {
+      const leftLocationMatch = String(left.location_id || '') === caseLocationId ? 1 : 0;
+      const rightLocationMatch = String(right.location_id || '') === caseLocationId ? 1 : 0;
+      if (leftLocationMatch !== rightLocationMatch) return rightLocationMatch - leftLocationMatch;
+      return Number(right.quantity || 0) - Number(left.quantity || 0);
+    })[0];
+  }
+
+  private findAlternateSpareLocations(part: any, parts: any[], requestedQuantity: number, locationMap: Map<string, string>): any[] {
+    const partNumber = String(part.part_number || '').trim().toLowerCase();
+    return parts
+      .filter((candidate: any) => {
+        if (String(candidate._id) === String(part._id)) return false;
+        if (partNumber) return String(candidate.part_number || '').trim().toLowerCase() === partNumber;
+        return String(candidate.part_name || '').trim().toLowerCase() === String(part.part_name || '').trim().toLowerCase();
+      })
+      .map((candidate: any) => ({
+        part_id: String(candidate._id),
+        location_id: candidate.location_id ? String(candidate.location_id) : null,
+        location_name: candidate.location_id ? locationMap.get(String(candidate.location_id)) || null : null,
+        available_quantity: Number(candidate.quantity || 0),
+        can_cover_request: Number(candidate.quantity || 0) >= requestedQuantity
+      }));
+  }
+
+  private spareAvailabilityStatus(availableQuantity: number, requestedQuantity: number, reorderPoint: number): string {
+    if (availableQuantity <= 0) return 'out_of_stock';
+    if (availableQuantity < requestedQuantity) return 'short';
+    if ((availableQuantity - requestedQuantity) <= reorderPoint) return 'low_stock';
+    return 'available';
+  }
+
+  private describeSuggestedSpare(spare: any): string {
+    return String(spare?.part_name || spare?.name || spare?.part_number || spare?.sku || spare?.description || 'Suggested spare').trim();
+  }
+
+  private positiveNumber(value: unknown): number {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : 0;
+  }
+
+  private escapeRegex(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private assertStatusTransition(currentStatus: ReliabilityCaseStatus, nextStatus: ReliabilityCaseStatus): void {

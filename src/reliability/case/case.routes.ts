@@ -20,6 +20,7 @@ export default (router: express.Router) => {
 
   caseRouter.get('/', hasReliabilityPermission('view_case'), reliabilityCaseController.getCases);
   caseRouter.post('/group-alerts', hasReliabilityPermission('create_case'), createCaseFromAlertsValidator, validate, reliabilityCaseController.groupAlerts);
+  caseRouter.get('/:id/spares', validateParamId, hasReliabilityPermission('view_case'), reliabilityCaseController.getSpareAvailability);
   caseRouter.get('/:id', validateParamId, hasReliabilityPermission('view_case'), reliabilityCaseController.getCaseById);
   caseRouter.post('/from-alert', hasReliabilityPermission('create_case'), createCaseFromAlertValidator, validate, reliabilityCaseController.createFromAlert);
   caseRouter.post('/from-alerts', hasReliabilityPermission('create_case'), createCaseFromAlertsValidator, validate, reliabilityCaseController.createFromAlerts);

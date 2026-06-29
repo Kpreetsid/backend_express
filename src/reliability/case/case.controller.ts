@@ -25,6 +25,16 @@ class ReliabilityCaseController {
     }
   };
 
+  getSpareAvailability = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const data = await reliabilityCaseService.getSpareAvailability(String(req.params.id), user as any);
+      res.status(200).json({ status: true, message: 'Reliability spare availability fetched successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   createFromAlert = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = get(req, 'user', {}) as IUser;
