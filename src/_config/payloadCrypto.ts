@@ -19,6 +19,8 @@ export interface PayloadCryptoSessionMetadata {
   sessionKey: string;
   expiresAt: string;
   algorithm: 'AES-256-GCM';
+  userId: string;
+  accountId: string;
 }
 
 export interface PayloadCryptoKeyRecord {
@@ -130,7 +132,9 @@ class PayloadCryptoService {
       sessionId: record.sessionId,
       sessionKey: key.toString('base64'),
       expiresAt: new Date(record.expiresAt).toISOString(),
-      algorithm: 'AES-256-GCM'
+      algorithm: 'AES-256-GCM',
+      userId: input.userId,
+      accountId: input.accountId
     };
   }
 

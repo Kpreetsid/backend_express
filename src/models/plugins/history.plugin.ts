@@ -14,6 +14,27 @@ export interface IHistoryOptions {
 export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
   let HistoryModel: mongoose.Model<any>;
 
+  const getHistoryActor = (doc: any, updatedBy: any) => updatedBy || doc.updatedBy || doc.createdBy;
+
+  const normalizeHistorySnapshot = (model: mongoose.Model<any>, doc: any, updatedBy: any) => {
+    if (model.modelName !== 'Schema_WorkOrder') {
+      return { ...doc };
+    }
+
+    const fallbackCreatedBy = getHistoryActor(doc, updatedBy);
+    const statusDetails = Array.isArray(doc.status_details)
+      ? doc.status_details.map((entry: any) => ({
+        ...entry,
+        createdBy: entry?.createdBy || fallbackCreatedBy
+      })).filter((entry: any) => !!entry?.status && !!entry?.createdBy)
+      : [];
+
+    return {
+      ...doc,
+      status_details: statusDetails
+    };
+  };
+
   // Lazy initialization of the History model to ensure we have access to the original model's details
   const getHistoryModel = (model: mongoose.Model<any>) => {
     if (HistoryModel) return HistoryModel;
@@ -74,14 +95,15 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     }
 
     const historyDocs = docs.map(doc => {
-      const { _id, ...rest } = doc;
+      const normalizedDoc = normalizeHistorySnapshot(model, doc, updatedBy);
+      const { _id, ...rest } = normalizedDoc;
       const docMappings = mappings.filter(m => String(m.woId) === String(_id)).map(m => m.userId);
       
       return {
         ...rest,
         original_id: _id,
         userIdList: docMappings,
-        history_created_by: updatedBy || doc.updatedBy || doc.createdBy
+        history_created_by: getHistoryActor(doc, updatedBy)
       };
     });
 

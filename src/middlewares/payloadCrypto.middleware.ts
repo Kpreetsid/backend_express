@@ -6,10 +6,13 @@ const ENCRYPTION_HEADER = 'x-cmms-payload-encrypted';
 const KEY_ID_HEADER = 'x-cmms-crypto-key-id';
 const TIMESTAMP_HEADER = 'x-cmms-crypto-timestamp';
 const NONCE_HEADER = 'x-cmms-crypto-nonce';
+const ENCRYPT_REQUEST_HEADER = 'x-cmms-crypto-encrypt-request';
+const ENCRYPT_RESPONSE_HEADER = 'x-cmms-crypto-encrypt-response';
 const FORM_FIELDS_KEY = '__cmms_crypto_fields';
 
 interface PayloadCryptoContext {
   encryptedRequest: boolean;
+  requestBodyEncrypted: boolean;
   keyRecord: PayloadCryptoKeyRecord;
   timestamp: string;
   nonce: string;
@@ -24,9 +27,13 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
 
     const encryptedHeader = String(req.headers[ENCRYPTION_HEADER] || '');
     const bodyEnvelope = payloadCryptoService.isEnvelope(req.body) ? req.body : null;
+    const requestBodyEncryptionEnabled = readBooleanHeader(req, ENCRYPT_REQUEST_HEADER, true);
+    const responseEncryptionEnabled = readBooleanHeader(req, ENCRYPT_RESPONSE_HEADER, true);
+    const hasCryptoHeaders = !!req.headers[KEY_ID_HEADER] && !!req.headers[TIMESTAMP_HEADER] && !!req.headers[NONCE_HEADER];
     const hasEncryptedRequest = encryptedHeader === 'v1' || !!bodyEnvelope;
+    const hasCryptoContext = hasEncryptedRequest || (hasCryptoHeaders && responseEncryptionEnabled);
 
-    if (!hasEncryptedRequest) {
+    if (!hasCryptoContext) {
       if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req)) {
         throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
       }
@@ -34,7 +41,11 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
       return;
     }
 
-    if (!payloadCryptoService.canDecryptRequests()) {
+    if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && requestBodyEncryptionEnabled && !hasEncryptedRequest) {
+      throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
+    }
+
+    if (!payloadCryptoService.canDecryptRequests() && requestBodyEncryptionEnabled && hasEncryptedRequest) {
       throw Object.assign(new Error('Encrypted payload support is disabled on this server'), { status: 400, name: 'BadRequestError' });
     }
 
@@ -46,14 +57,15 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
       req.headers[NONCE_HEADER]
     );
     const context: PayloadCryptoContext = {
-      encryptedRequest: true,
+      encryptedRequest: hasCryptoContext,
+      requestBodyEncrypted: requestBodyEncryptionEnabled && hasEncryptedRequest,
       keyRecord,
       timestamp: replay.timestamp,
       nonce: replay.nonce
     };
     (req as any).payloadCrypto = context;
 
-    if (bodyEnvelope) {
+    if (bodyEnvelope && context.requestBodyEncrypted) {
       req.body = payloadCryptoService.decryptJson(
         bodyEnvelope,
         keyRecord,
@@ -70,7 +82,7 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
 export const payloadCryptoMultipartMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
   try {
     const context = (req as any).payloadCrypto as PayloadCryptoContext | undefined;
-    if (!context?.encryptedRequest) {
+    if (!context?.encryptedRequest || !context.requestBodyEncrypted) {
       next();
       return;
     }
@@ -191,7 +203,19 @@ function shouldEncryptResponse(_req: Request, res: Response, context?: PayloadCr
   if (res.getHeader('X-CMMS-Payload-Encrypted') === 'v1') {
     return false;
   }
-  return payloadCryptoService.canEncryptResponses() && !!context && (context.encryptedRequest || payloadCryptoService.isStrictMode());
+  return payloadCryptoService.canEncryptResponses()
+    && readBooleanHeader(_req, ENCRYPT_RESPONSE_HEADER, true)
+    && !!context
+    && (context.encryptedRequest || payloadCryptoService.isStrictMode());
+}
+
+function readBooleanHeader(req: Request, headerName: string, defaultValue: boolean): boolean {
+  const value = req.headers[headerName];
+  if (value === undefined || value === null || value === '') {
+    return defaultValue;
+  }
+  const firstValue = Array.isArray(value) ? value[0] : value;
+  return String(firstValue).toLowerCase() !== 'false';
 }
 
 function shouldRequireEncryption(req: Request): boolean {
