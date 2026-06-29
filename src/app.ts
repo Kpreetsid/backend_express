@@ -38,6 +38,7 @@ app.use(compression({
     return !req.headers['x-no-compression'];
   }
 }));
+// pawan
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/assets')));
 app.use('/', express.static(path.join(__dirname, '../uploadFiles/asset_report')));
