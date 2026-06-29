@@ -13,6 +13,9 @@ export const hasReliabilityPermission = (action: string) => {
       if (user.user_role === 'admin') {
         return next();
       }
+      if (action === 'approve_recommendation' && user.user_role !== 'manager') {
+        throw Object.assign(new Error('Only admin or manager users can approve reliability recommendations.'), { status: 403 });
+      }
       if (roleMenu?.reliabilityCase?.[action]) {
         return next();
       }

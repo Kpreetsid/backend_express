@@ -21,7 +21,11 @@ export const createCaseFromAlertsValidator = [
     .isString()
     .trim()
     .isLength({ max: 2000 })
-    .withMessage('description must be 2000 characters or fewer')
+    .withMessage('description must be 2000 characters or fewer'),
+  body('grouping_window_hours')
+    .optional()
+    .isNumeric()
+    .withMessage('grouping_window_hours must be a number')
 ];
 
 export const createCaseFromAlertValidator = [
@@ -86,4 +90,139 @@ export const linkWorkOrderValidator = [
     .trim()
     .isLength({ max: 80 })
     .withMessage('work_order_no must be 80 characters or fewer')
+];
+
+export const recommendationValidator = [
+  body('action_summary')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('action_summary must be 500 characters or fewer'),
+  body('inspection_steps')
+    .optional()
+    .isArray()
+    .withMessage('inspection_steps must be an array'),
+  body('maintenance_actions')
+    .optional()
+    .isArray()
+    .withMessage('maintenance_actions must be an array'),
+  body('safety_checklist')
+    .optional()
+    .isArray()
+    .withMessage('safety_checklist must be an array'),
+  body('suggested_tools')
+    .optional()
+    .isArray()
+    .withMessage('suggested_tools must be an array'),
+  body('suggested_procedure_ids')
+    .optional()
+    .isArray()
+    .withMessage('suggested_procedure_ids must be an array'),
+  body('suggested_procedure_ids.*')
+    .if(body('suggested_procedure_ids').exists())
+    .isMongoId()
+    .withMessage('suggested_procedure_ids must contain valid ObjectIds'),
+  body('suggested_assignee_ids')
+    .optional()
+    .isArray()
+    .withMessage('suggested_assignee_ids must be an array'),
+  body('suggested_assignee_ids.*')
+    .if(body('suggested_assignee_ids').exists())
+    .isMongoId()
+    .withMessage('suggested_assignee_ids must contain valid ObjectIds'),
+  body('estimated_downtime_hours')
+    .optional()
+    .isNumeric()
+    .withMessage('estimated_downtime_hours must be a number'),
+  body('generated_by')
+    .optional()
+    .isIn(['rule', 'human', 'llm_assisted'])
+    .withMessage('generated_by is invalid')
+];
+
+export const approvalValidator = [
+  body('decision')
+    .isIn(['approved', 'rejected'])
+    .withMessage('decision must be approved or rejected'),
+  body('note')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('note must be 1000 characters or fewer')
+];
+
+export const feedbackValidator = [
+  body('work_performed')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('work_performed is required')
+    .isLength({ max: 3000 })
+    .withMessage('work_performed must be 3000 characters or fewer'),
+  body('actual_failure_mode')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 300 })
+    .withMessage('actual_failure_mode must be 300 characters or fewer'),
+  body('root_cause')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('root_cause must be 500 characters or fewer'),
+  body('parts_used')
+    .optional()
+    .isArray()
+    .withMessage('parts_used must be an array'),
+  body('downtime_hours')
+    .optional()
+    .isNumeric()
+    .withMessage('downtime_hours must be a number'),
+  body('effectiveness')
+    .optional()
+    .isIn(['resolved', 'improved', 'not_resolved', 'monitoring'])
+    .withMessage('effectiveness is invalid'),
+  body('follow_up_required')
+    .optional()
+    .isBoolean()
+    .withMessage('follow_up_required must be a boolean'),
+  body('follow_up_notes')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 1000 })
+    .withMessage('follow_up_notes must be 1000 characters or fewer')
+];
+
+export const closeCaseValidator = [
+  body('resolution_summary')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('resolution_summary is required')
+    .isLength({ max: 3000 })
+    .withMessage('resolution_summary must be 3000 characters or fewer'),
+  body('final_failure_mode')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 300 })
+    .withMessage('final_failure_mode must be 300 characters or fewer'),
+  body('final_root_cause')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('final_root_cause must be 500 characters or fewer'),
+  body('lessons_learned')
+    .optional()
+    .isArray()
+    .withMessage('lessons_learned must be an array'),
+  body('preventive_actions')
+    .optional()
+    .isArray()
+    .withMessage('preventive_actions must be an array')
 ];

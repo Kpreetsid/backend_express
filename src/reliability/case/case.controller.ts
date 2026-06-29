@@ -54,6 +54,18 @@ class ReliabilityCaseController {
     }
   };
 
+  groupAlerts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const token = get(req, 'userToken', '') as string;
+      const payload = req.body as CreateCaseFromAlertsPayload;
+      const data = await reliabilityCaseService.groupAlerts(payload, user as any, token);
+      res.status(200).json({ status: true, message: 'Reliability alerts grouped successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   updateStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = get(req, 'user', {}) as IUser;
@@ -80,6 +92,66 @@ class ReliabilityCaseController {
       const user = get(req, 'user', {}) as IUser;
       const data = await reliabilityCaseService.linkWorkOrder(String(req.params.id), req.body, user as any);
       res.status(200).json({ status: true, message: 'Work order linked successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateRecommendation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const data = await reliabilityCaseService.updateRecommendation(String(req.params.id), req.body, user as any);
+      res.status(200).json({ status: true, message: 'Reliability recommendation updated successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  decideApproval = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const data = await reliabilityCaseService.decideApproval(String(req.params.id), req.body, user as any);
+      res.status(200).json({ status: true, message: 'Reliability approval decision saved successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  workOrderDraft = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const data = await reliabilityCaseService.buildWorkOrderDraft(String(req.params.id), user as any, req.body || {});
+      res.status(200).json({ status: true, message: 'Work order draft generated successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  createWorkOrder = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const data = await reliabilityCaseService.createWorkOrderFromCase(String(req.params.id), user as any, req.body || {});
+      res.status(201).json({ status: true, message: 'Work order created from reliability case successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  addFeedback = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const data = await reliabilityCaseService.addFeedback(String(req.params.id), req.body, user as any);
+      res.status(200).json({ status: true, message: 'Reliability case feedback saved successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  closeCase = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const data = await reliabilityCaseService.closeCase(String(req.params.id), req.body, user as any);
+      res.status(200).json({ status: true, message: 'Reliability case closed successfully.', data });
     } catch (error) {
       next(error);
     }

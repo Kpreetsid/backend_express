@@ -65,6 +65,55 @@ export interface IReliabilityCaseDiagnosisSnapshot {
   limitations?: string[];
 }
 
+export interface IReliabilityCaseRecommendationSnapshot {
+  action_summary: string;
+  inspection_steps: string[];
+  maintenance_actions: string[];
+  safety_checklist: string[];
+  suggested_spares: Record<string, unknown>[];
+  suggested_tools: string[];
+  suggested_procedure_ids: ObjectId[];
+  suggested_assignee_ids: ObjectId[];
+  estimated_downtime_hours?: number;
+  business_impact?: Record<string, unknown>;
+  explanation: string;
+  generated_by: 'rule' | 'human' | 'llm_assisted';
+  generatedAt?: Date;
+  generatedBy?: ObjectId;
+}
+
+export interface IReliabilityCaseApproval {
+  status: 'pending' | 'approved' | 'rejected';
+  note?: string;
+  requestedBy?: ObjectId;
+  requestedAt?: Date;
+  decidedBy?: ObjectId;
+  decidedAt?: Date;
+}
+
+export interface IReliabilityCaseTechnicianFeedback {
+  work_performed: string;
+  actual_failure_mode?: string;
+  root_cause?: string;
+  parts_used: Record<string, unknown>[];
+  downtime_hours?: number;
+  effectiveness?: 'resolved' | 'improved' | 'not_resolved' | 'monitoring';
+  follow_up_required?: boolean;
+  follow_up_notes?: string;
+  submittedBy: ObjectId;
+  submittedAt: Date;
+}
+
+export interface IReliabilityCaseClosure {
+  resolution_summary: string;
+  final_failure_mode?: string;
+  final_root_cause?: string;
+  lessons_learned: string[];
+  preventive_actions: string[];
+  closedBy: ObjectId;
+  closedAt: Date;
+}
+
 export interface IReliabilityCaseStatusHistory {
   status: ReliabilityCaseStatus;
   createdBy: ObjectId;
@@ -99,12 +148,12 @@ export interface IReliabilityCase extends Document {
   linked_alarms: IReliabilityCaseAlarmRef[];
   evidence_snapshot: IReliabilityCaseEvidenceSnapshot;
   diagnosis_snapshot?: IReliabilityCaseDiagnosisSnapshot;
-  recommendation_snapshot?: Record<string, unknown>;
-  approval?: Record<string, unknown>;
+  recommendation_snapshot?: IReliabilityCaseRecommendationSnapshot;
+  approval?: IReliabilityCaseApproval;
   linked_work_order_id?: ObjectId;
   linked_work_order_no?: string;
-  technician_feedback?: Record<string, unknown>;
-  closure?: Record<string, unknown>;
+  technician_feedback?: IReliabilityCaseTechnicianFeedback;
+  closure?: IReliabilityCaseClosure;
   status_history: IReliabilityCaseStatusHistory[];
   audit_log: IReliabilityCaseAuditEntry[];
   visible: boolean;
@@ -154,6 +203,55 @@ const DiagnosisSnapshotSchema = new Schema<IReliabilityCaseDiagnosisSnapshot>({
   limitations: { type: [String], default: [] }
 }, { _id: false, versionKey: false });
 
+const RecommendationSnapshotSchema = new Schema({
+  action_summary: { type: String, trim: true, required: true },
+  inspection_steps: { type: [String], default: [] },
+  maintenance_actions: { type: [String], default: [] },
+  safety_checklist: { type: [String], default: [] },
+  suggested_spares: { type: Array, default: [] },
+  suggested_tools: { type: [String], default: [] },
+  suggested_procedure_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_Procedure', default: [] },
+  suggested_assignee_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_User', default: [] },
+  estimated_downtime_hours: { type: Number },
+  business_impact: { type: Schema.Types.Mixed },
+  explanation: { type: String, trim: true },
+  generated_by: { type: String, enum: ['rule', 'human', 'llm_assisted'], default: 'rule' },
+  generatedAt: { type: Date },
+  generatedBy: { type: Schema.Types.ObjectId, ref: 'Schema_User' }
+}, { _id: false, versionKey: false });
+
+const ApprovalSchema = new Schema<IReliabilityCaseApproval>({
+  status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+  note: { type: String, trim: true },
+  requestedBy: { type: Schema.Types.ObjectId, ref: 'Schema_User' },
+  requestedAt: { type: Date },
+  decidedBy: { type: Schema.Types.ObjectId, ref: 'Schema_User' },
+  decidedAt: { type: Date }
+}, { _id: false, versionKey: false });
+
+const TechnicianFeedbackSchema = new Schema({
+  work_performed: { type: String, trim: true, required: true },
+  actual_failure_mode: { type: String, trim: true },
+  root_cause: { type: String, trim: true },
+  parts_used: { type: Array, default: [] },
+  downtime_hours: { type: Number },
+  effectiveness: { type: String, enum: ['resolved', 'improved', 'not_resolved', 'monitoring'] },
+  follow_up_required: { type: Boolean, default: false },
+  follow_up_notes: { type: String, trim: true },
+  submittedBy: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true },
+  submittedAt: { type: Date, default: Date.now }
+}, { _id: false, versionKey: false });
+
+const ClosureSchema = new Schema({
+  resolution_summary: { type: String, trim: true, required: true },
+  final_failure_mode: { type: String, trim: true },
+  final_root_cause: { type: String, trim: true },
+  lessons_learned: { type: [String], default: [] },
+  preventive_actions: { type: [String], default: [] },
+  closedBy: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true },
+  closedAt: { type: Date, default: Date.now }
+}, { _id: false, versionKey: false });
+
 const StatusHistorySchema = new Schema<IReliabilityCaseStatusHistory>({
   status: { type: String, enum: RELIABILITY_CASE_STATUSES, required: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true },
@@ -188,12 +286,12 @@ const ReliabilityCaseSchema = new Schema<IReliabilityCase>({
   linked_alarms: { type: [AlarmRefSchema], default: [] },
   evidence_snapshot: { type: EvidenceSnapshotSchema, default: () => ({ symptoms: [], sensor_evidence: [], chart_refs: [] }) },
   diagnosis_snapshot: { type: DiagnosisSnapshotSchema },
-  recommendation_snapshot: { type: Schema.Types.Mixed },
-  approval: { type: Schema.Types.Mixed },
+  recommendation_snapshot: { type: RecommendationSnapshotSchema },
+  approval: { type: ApprovalSchema },
   linked_work_order_id: { type: Schema.Types.ObjectId, ref: 'Schema_WorkOrder' },
   linked_work_order_no: { type: String, trim: true },
-  technician_feedback: { type: Schema.Types.Mixed },
-  closure: { type: Schema.Types.Mixed },
+  technician_feedback: { type: TechnicianFeedbackSchema },
+  closure: { type: ClosureSchema },
   status_history: { type: [StatusHistorySchema], default: [] },
   audit_log: { type: [AuditEntrySchema], default: [] },
   visible: { type: Boolean, default: true },
