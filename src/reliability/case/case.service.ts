@@ -19,6 +19,7 @@ import {
 } from '../../models/reliabilityCase.model';
 import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../utils/roleFilter';
+import { notificationService } from '../../utils/notification.service';
 import { orderService } from '../../work/order/order.service';
 import {
   ApprovalPayload,
@@ -199,6 +200,7 @@ class ReliabilityCaseService {
     });
 
     await newCase.save();
+    await this.notifyReliabilityCase(newCase, user, 'created', 'RELIABILITY_CASE_CREATED', `Reliability case ${newCase.case_no} was created.`);
     const enriched = await this.aggregateCases({ _id: newCase._id, account_id: user.account_id, visible: true });
     return enriched[0] || newCase;
   }
@@ -230,6 +232,7 @@ class ReliabilityCaseService {
     });
     existing.audit_log.push(this.auditEntry('status-changed', user, { status: statusValue, note: payload.note }));
     await existing.save();
+    await this.notifyReliabilityCaseStatus(existing, user);
     return await this.getCaseById(user, caseId);
   }
 
@@ -312,6 +315,7 @@ class ReliabilityCaseService {
     });
 
     await newCase.save();
+    await this.notifyReliabilityCase(newCase, user, 'created', 'RELIABILITY_CASE_CREATED', `Reliability case ${newCase.case_no} was created from an asset report.`);
     const enriched = await this.aggregateCases({ _id: newCase._id, account_id: user.account_id, visible: true });
     return enriched[0] || newCase;
   }
@@ -341,6 +345,7 @@ class ReliabilityCaseService {
     }
     existing.audit_log.push(this.auditEntry('recommendation-updated', user, { generated_by: recommendation.generated_by }));
     await existing.save();
+    await this.notifyReliabilityCase(existing, user, 'updated', 'RELIABILITY_CASE_RECOMMENDATION_READY', `Recommendation is ready for reliability case ${existing.case_no}.`);
     return await this.getCaseById(user, caseId);
   }
 
@@ -378,6 +383,7 @@ class ReliabilityCaseService {
     });
     existing.audit_log.push(this.auditEntry(`recommendation-${payload.decision}`, user, { note: payload.note }));
     await existing.save();
+    await this.notifyReliabilityCase(existing, user, 'updated', payload.decision === 'approved' ? 'RELIABILITY_CASE_APPROVED' : 'RELIABILITY_CASE_REJECTED', `Reliability case ${existing.case_no} was ${payload.decision}.`);
     return await this.getCaseById(user, caseId);
   }
 
@@ -456,6 +462,7 @@ class ReliabilityCaseService {
       follow_up_required: Boolean(payload.follow_up_required)
     }));
     await existing.save();
+    await this.notifyReliabilityCase(existing, user, 'updated', 'RELIABILITY_CASE_FEEDBACK_ADDED', `Feedback was added to reliability case ${existing.case_no}.`);
     return await this.getCaseById(user, caseId);
   }
 
@@ -500,6 +507,7 @@ class ReliabilityCaseService {
       final_root_cause: existing.closure.final_root_cause
     }));
     await existing.save();
+    await this.notifyReliabilityCase(existing, user, 'updated', 'RELIABILITY_CASE_CLOSED', `Reliability case ${existing.case_no} was closed.`);
     return await this.getCaseById(user, caseId);
   }
 
@@ -519,6 +527,7 @@ class ReliabilityCaseService {
     if (!updated) {
       throw Object.assign(new Error('Reliability case not found'), { status: 404 });
     }
+    await this.notifyReliabilityCase(updated, user, 'updated', 'RELIABILITY_CASE_WORK_ORDER_LINKED', `Reliability case ${updated.case_no} was linked to a work order.`);
     return await this.getCaseById(user, caseId);
   }
 
@@ -1268,6 +1277,47 @@ class ReliabilityCaseService {
       actor_name: actorName,
       createdAt: new Date()
     };
+  }
+
+  private async notifyReliabilityCase(caseData: any, user: ReliabilityCaseActor, event: 'created' | 'updated', type: string, message: string): Promise<void> {
+    try {
+      const id = String(caseData?._id || caseData?.id || '');
+      if (!id) return;
+      await notificationService.notifyAccountUsers({
+        accountId: String(user.account_id),
+        module: 'Reliability Case',
+        event,
+        entityId: id,
+        entityName: caseData?.case_no || caseData?.title || 'Reliability Case',
+        actionUrl: `/reliability/cases/${id}`,
+        queryParams: {},
+        sourceUserId: String(user._id),
+        type,
+        message
+      });
+    } catch (error) {
+      console.error('Reliability notification failed:', error);
+    }
+  }
+
+  private async notifyReliabilityCaseStatus(caseData: any, user: ReliabilityCaseActor): Promise<void> {
+    const status = String(caseData?.status || '');
+    const typeByStatus: Record<string, string> = {
+      approval_pending: 'RELIABILITY_CASE_APPROVAL_PENDING',
+      approved: 'RELIABILITY_CASE_APPROVED',
+      rejected: 'RELIABILITY_CASE_REJECTED',
+      work_order_created: 'RELIABILITY_CASE_WORK_ORDER_LINKED',
+      feedback_pending: 'RELIABILITY_CASE_FEEDBACK_PENDING',
+      closed: 'RELIABILITY_CASE_CLOSED',
+      snoozed: 'RELIABILITY_CASE_SNOOZED'
+    };
+    const type = typeByStatus[status];
+    if (!type) return;
+    await this.notifyReliabilityCase(caseData, user, 'updated', type, `Reliability case ${caseData.case_no} is now ${this.formatStatusText(status)}.`);
+  }
+
+  private formatStatusText(status: string): string {
+    return String(status || 'updated').replace(/_/g, ' ');
   }
 
   private stringQuery(value: unknown): string | undefined {

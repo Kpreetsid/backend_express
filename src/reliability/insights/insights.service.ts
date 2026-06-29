@@ -13,7 +13,8 @@ class ReliabilityInsightsService {
       riskBreakdown,
       effectivenessBreakdown,
       topFailureModes,
-      recentLearning
+      recentLearning,
+      attentionQueue
     ] = await Promise.all([
       ReliabilityCaseModel.aggregate([
         { $match: match },
@@ -33,6 +34,8 @@ class ReliabilityInsightsService {
                 ]
               }
             },
+            approval_pending_cases: { $sum: { $cond: [{ $eq: ['$status', 'approval_pending'] }, 1, 0] } },
+            feedback_pending_cases: { $sum: { $cond: [{ $eq: ['$status', 'feedback_pending'] }, 1, 0] } },
             linked_work_orders: { $sum: { $cond: [{ $ifNull: ['$linked_work_order_id', false] }, 1, 0] } },
             avg_downtime_hours: { $avg: '$technician_feedback.downtime_hours' },
             estimated_downtime_cost: { $sum: { $ifNull: ['$recommendation_snapshot.business_impact.downtime_cost', 0] } },
@@ -45,7 +48,8 @@ class ReliabilityInsightsService {
       this.breakdown(match, 'risk_level'),
       this.breakdown(match, 'technician_feedback.effectiveness'),
       this.failureModeBreakdown(match, 5),
-      this.recentLearning(match)
+      this.recentLearning(match),
+      this.attentionQueue(match)
     ]);
 
     return {
@@ -54,7 +58,8 @@ class ReliabilityInsightsService {
       risk_breakdown: riskBreakdown,
       effectiveness_breakdown: effectivenessBreakdown,
       top_failure_modes: topFailureModes,
-      recent_learning: recentLearning
+      recent_learning: recentLearning,
+      attention_queue: attentionQueue
     };
   }
 
@@ -199,6 +204,77 @@ class ReliabilityInsightsService {
     ]);
   }
 
+  private async attentionQueue(match: Record<string, unknown>) {
+    const staleBefore = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    return await ReliabilityCaseModel.aggregate([
+      {
+        $match: {
+          ...match,
+          status: { $nin: ['closed', 'rejected'] },
+          $or: [
+            { risk_level: { $in: ['High', 'Urgent'] } },
+            { status: { $in: ['approval_pending', 'feedback_pending'] } },
+            { updatedAt: { $lte: staleBefore } }
+          ]
+        }
+      },
+      {
+        $lookup: {
+          from: AssetModel.collection.name,
+          let: { assetId: '$asset_id' },
+          pipeline: [
+            { $match: { $expr: { $eq: ['$_id', '$$assetId'] }, visible: true } },
+            { $project: { asset_name: 1 } }
+          ],
+          as: 'asset'
+        }
+      },
+      { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
+      {
+        $addFields: {
+          attention_reason: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$status', 'approval_pending'] }, then: 'Approval pending' },
+                { case: { $eq: ['$status', 'feedback_pending'] }, then: 'Feedback pending' },
+                { case: { $in: ['$risk_level', ['High', 'Urgent']] }, then: 'High-risk open case' },
+                { case: { $lte: ['$updatedAt', staleBefore] }, then: 'No update in 24h' }
+              ],
+              default: 'Needs attention'
+            }
+          },
+          attention_rank: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$risk_level', 'Urgent'] }, then: 1 },
+                { case: { $eq: ['$status', 'approval_pending'] }, then: 2 },
+                { case: { $eq: ['$risk_level', 'High'] }, then: 3 },
+                { case: { $eq: ['$status', 'feedback_pending'] }, then: 4 }
+              ],
+              default: 5
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          id: '$_id',
+          case_no: 1,
+          title: 1,
+          status: 1,
+          risk_level: 1,
+          updatedAt: 1,
+          asset_name: '$asset.asset_name',
+          attention_reason: 1,
+          attention_rank: 1
+        }
+      },
+      { $sort: { attention_rank: 1, updatedAt: 1 } },
+      { $limit: 8 }
+    ]);
+  }
+
   private emptyTotals() {
     return {
       total_cases: 0,
@@ -206,6 +282,8 @@ class ReliabilityInsightsService {
       closed_cases: 0,
       rejected_cases: 0,
       high_risk_open_cases: 0,
+      approval_pending_cases: 0,
+      feedback_pending_cases: 0,
       linked_work_orders: 0,
       avg_downtime_hours: 0,
       estimated_downtime_cost: 0,
