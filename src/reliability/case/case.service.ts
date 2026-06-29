@@ -150,6 +150,9 @@ class ReliabilityCaseService {
     if (!alarms.length) {
       throw Object.assign(new Error('No alarm history records found for selected alarms'), { status: 404 });
     }
+    if (alarms.some((alarm) => alarm.id === undefined || alarm.id === null || String(alarm.id).trim() === '')) {
+      throw Object.assign(new Error('Reliability alarm evidence is missing alarm history ids'), { status: 502 });
+    }
 
     const primaryAlarm = alarms[0];
     const assetId = this.resolvePrimaryAssetId(alarms);
