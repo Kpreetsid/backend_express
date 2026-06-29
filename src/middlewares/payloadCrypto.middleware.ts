@@ -27,9 +27,13 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
 
     const encryptedHeader = String(req.headers[ENCRYPTION_HEADER] || '');
     const bodyEnvelope = payloadCryptoService.isEnvelope(req.body) ? req.body : null;
+    const requestBodyEncryptionEnabled = readBooleanHeader(req, ENCRYPT_REQUEST_HEADER, true);
+    const responseEncryptionEnabled = readBooleanHeader(req, ENCRYPT_RESPONSE_HEADER, true);
+    const hasCryptoHeaders = !!req.headers[KEY_ID_HEADER] && !!req.headers[TIMESTAMP_HEADER] && !!req.headers[NONCE_HEADER];
     const hasEncryptedRequest = encryptedHeader === 'v1' || !!bodyEnvelope;
+    const hasCryptoContext = hasEncryptedRequest || (hasCryptoHeaders && responseEncryptionEnabled);
 
-    if (!hasEncryptedRequest) {
+    if (!hasCryptoContext) {
       if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req)) {
         throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
       }
@@ -37,8 +41,11 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
       return;
     }
 
-    const requestBodyEncryptionEnabled = readBooleanHeader(req, ENCRYPT_REQUEST_HEADER, true);
-    if (!payloadCryptoService.canDecryptRequests() && requestBodyEncryptionEnabled) {
+    if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && requestBodyEncryptionEnabled && !hasEncryptedRequest) {
+      throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
+    }
+
+    if (!payloadCryptoService.canDecryptRequests() && requestBodyEncryptionEnabled && hasEncryptedRequest) {
       throw Object.assign(new Error('Encrypted payload support is disabled on this server'), { status: 400, name: 'BadRequestError' });
     }
 
@@ -50,15 +57,15 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
       req.headers[NONCE_HEADER]
     );
     const context: PayloadCryptoContext = {
-      encryptedRequest: true,
-      requestBodyEncrypted: requestBodyEncryptionEnabled,
+      encryptedRequest: hasCryptoContext,
+      requestBodyEncrypted: requestBodyEncryptionEnabled && hasEncryptedRequest,
       keyRecord,
       timestamp: replay.timestamp,
       nonce: replay.nonce
     };
     (req as any).payloadCrypto = context;
 
-    if (bodyEnvelope && requestBodyEncryptionEnabled) {
+    if (bodyEnvelope && context.requestBodyEncrypted) {
       req.body = payloadCryptoService.decryptJson(
         bodyEnvelope,
         keyRecord,
