@@ -178,6 +178,12 @@ class ReliabilityCaseService {
     const linkedAlarms = this.buildLinkedAlarms(alarms, normalizedEvidence.diagnostic_reports || []);
     const evidenceSnapshot = this.buildEvidenceSnapshot(alarms, normalizedEvidence.asset_health || []);
     const diagnosisSnapshot = this.buildDiagnosisSnapshot(normalizedEvidence.diagnostic_reports || []);
+    const recommendationSnapshot = this.buildAlarmRecommendationSnapshot({
+      asset,
+      risk_level: riskLevel,
+      evidence_snapshot: evidenceSnapshot,
+      diagnosis_snapshot: diagnosisSnapshot
+    }, user);
     const title = payload.title?.trim() || this.buildCaseTitle(asset.asset_name, primaryAlarm);
 
     const newCase = new ReliabilityCaseModel({
@@ -197,6 +203,7 @@ class ReliabilityCaseService {
       linked_alarms: linkedAlarms,
       evidence_snapshot: evidenceSnapshot,
       diagnosis_snapshot: diagnosisSnapshot,
+      recommendation_snapshot: recommendationSnapshot,
       status_history: [{ status: 'open', createdBy: user._id, createdAt: new Date(), note: 'Created from alarm history.' }],
       audit_log: [this.auditEntry('created', user, { alarm_ids: alarmIds })],
       createdBy: user._id
@@ -589,6 +596,14 @@ class ReliabilityCaseService {
     existing.diagnosis_snapshot = diagnosisSnapshot || existing.diagnosis_snapshot;
     existing.risk_level = riskLevel;
     existing.urgency = this.urgencyFromRisk(riskLevel);
+    const autoRecommendation = this.buildAlarmRecommendationSnapshot({
+      risk_level: riskLevel,
+      evidence_snapshot: existing.evidence_snapshot,
+      diagnosis_snapshot: existing.diagnosis_snapshot
+    }, user);
+    if (autoRecommendation && (!existing.recommendation_snapshot || existing.recommendation_snapshot.generated_by !== 'human')) {
+      existing.recommendation_snapshot = autoRecommendation;
+    }
     existing.first_alarm_at = this.minDate(existing.first_alarm_at, timestamps.length ? new Date(Math.min(...timestamps.map((item) => item.getTime()))) : undefined);
     existing.latest_alarm_at = this.maxDate(existing.latest_alarm_at, timestamps.length ? new Date(Math.max(...timestamps.map((item) => item.getTime()))) : undefined);
     existing.updatedBy = user._id;
@@ -853,6 +868,20 @@ class ReliabilityCaseService {
       generatedAt: new Date(),
       generatedBy: user._id
     };
+  }
+
+  private buildAlarmRecommendationSnapshot(caseData: any, user: ReliabilityCaseActor): IReliabilityCaseRecommendationSnapshot | undefined {
+    const diagnosis = caseData?.diagnosis_snapshot || {};
+    const hasObservations = this.nonEmptyStrings(diagnosis.observations).length > 0;
+    const hasRecommendations = this.nonEmptyStrings(diagnosis.recommendations).length > 0;
+    if (!hasObservations && !hasRecommendations && !this.firstText(diagnosis.summary)) {
+      return undefined;
+    }
+
+    return this.buildRecommendationSnapshot(caseData, {
+      explanation: 'Prepared from alarm diagnostic observations and recommendations.',
+      generated_by: 'rule'
+    }, user);
   }
 
   private buildRecommendationSnapshot(caseData: any, payload: RecommendationPayload, user: ReliabilityCaseActor): IReliabilityCaseRecommendationSnapshot {
