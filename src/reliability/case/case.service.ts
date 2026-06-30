@@ -4,6 +4,7 @@ import { get } from 'lodash';
 import { AssetModel } from '../../models/asset.model';
 import { ReportAssetModel } from '../../models/assetReport.model';
 import { LocationModel } from '../../models/location.model';
+import { MapUserAssetLocationModel } from '../../models/mapUserLocation.model';
 import { PartsModel } from '../../models/part.model';
 import {
   IReliabilityCaseAlarmRef,
@@ -17,6 +18,7 @@ import {
   ReliabilityCaseRiskLevel,
   ReliabilityCaseStatus
 } from '../../models/reliabilityCase.model';
+import { UserModel } from '../../models/user.model';
 import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
@@ -194,7 +196,7 @@ class ReliabilityCaseService {
       asset_id: asset._id,
       top_level_asset_id: asset.top_level_asset_id || asset._id,
       location_id: locationId,
-      status: 'open',
+      status: 'recommendation_ready',
       risk_level: riskLevel,
       urgency: this.urgencyFromRisk(riskLevel),
       detected_at: timestamps[0] || new Date(),
@@ -204,7 +206,10 @@ class ReliabilityCaseService {
       evidence_snapshot: evidenceSnapshot,
       diagnosis_snapshot: diagnosisSnapshot,
       recommendation_snapshot: recommendationSnapshot,
-      status_history: [{ status: 'open', createdBy: user._id, createdAt: new Date(), note: 'Created from alarm history.' }],
+      status_history: [
+        { status: 'open', createdBy: user._id, createdAt: new Date(), note: 'Created from alarm history.' },
+        { status: 'recommendation_ready', createdBy: user._id, createdAt: new Date(), note: 'Alarm recommendation imported.' }
+      ],
       audit_log: [this.auditEntry('created', user, { alarm_ids: alarmIds })],
       createdBy: user._id
     });
@@ -924,38 +929,153 @@ class ReliabilityCaseService {
     const recommendation = caseData.recommendation_snapshot || {};
     const now = new Date();
     const estimatedHours = this.toNumber((overrides as any).estimated_time) || this.toNumber(recommendation.estimated_downtime_hours) || this.estimatedDowntime(caseData.risk_level);
-    const endDate = new Date(now.getTime() + estimatedHours * 60 * 60 * 1000);
+    const endDate = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000));
     const hasPartsOverride = Object.prototype.hasOwnProperty.call(overrides || {}, 'parts');
     const suggestedParts = hasPartsOverride ? [] : await this.buildAvailableWorkOrderPartsFromSpares(caseData, user);
+    const priority = this.resolveWorkOrderPriority(caseData);
+    const natureOfWork = this.resolveWorkOrderNatureOfWork(caseData);
+    const userIdList = await this.buildReliabilityWorkOrderAssigneeIds(caseData, user);
+    const assetReportId = this.resolveSourceAssetReportId(caseData);
     const tasks = [
-      ...this.nonEmptyStrings(recommendation.inspection_steps).map((step) => ({ title: step, priority: caseData.risk_level || 'Medium' })),
-      ...this.nonEmptyStrings(recommendation.maintenance_actions).map((action) => ({ title: action, priority: caseData.risk_level || 'Medium' }))
+      ...this.nonEmptyStrings(recommendation.inspection_steps).map((step) => ({ title: step, priority })),
+      ...this.nonEmptyStrings(recommendation.maintenance_actions).map((action) => ({ title: action, priority }))
     ];
 
     return {
       title: `Reliability: ${caseData.title || caseData.case_no}`,
-      description: [
-        `Reliability case: ${caseData.case_no}`,
-        recommendation.action_summary || caseData.diagnosis_snapshot?.summary || caseData.description || '',
-        recommendation.explanation || ''
-      ].filter(Boolean).join('\n\n'),
-      priority: caseData.risk_level || 'Medium',
+      description: this.buildReliabilityWorkOrderDescription(caseData),
+      priority,
       status: 'Open',
-      type: 'Corrective',
-      nature_of_work: 'Corrective',
-      createdFrom: 'Work Order',
-      wo_asset_id: caseData.asset_id,
-      wo_location_id: caseData.location_id,
+      type: natureOfWork,
+      nature_of_work: natureOfWork,
+      createdFrom: assetReportId ? 'Asset Report' : 'Work Order',
+      asset_report_id: assetReportId || undefined,
+      wo_asset_id: this.resolveWorkOrderAssetId(caseData),
+      wo_location_id: this.resolveWorkOrderLocationId(caseData),
       start_date: now,
       end_date: endDate,
       estimated_time: estimatedHours,
       tasks,
       procedure_ids: recommendation.suggested_procedure_ids || [],
-      userIdList: recommendation.suggested_assignee_ids || [],
+      userIdList,
       parts: suggestedParts,
       labor_entries: [],
       ...overrides
     };
+  }
+
+  private resolveWorkOrderAssetId(caseData: any): any {
+    return caseData?.asset_id || caseData?.asset?._id || caseData?.asset?.id || caseData?.linked_asset_reports?.[0]?.asset_id || undefined;
+  }
+
+  private resolveWorkOrderLocationId(caseData: any): any {
+    return caseData?.location_id || caseData?.location?._id || caseData?.location?.id || caseData?.asset?.locationId || undefined;
+  }
+
+  private resolveSourceAssetReportId(caseData: any): any {
+    return caseData?.linked_asset_reports?.[0]?.report_id || undefined;
+  }
+
+  private resolveWorkOrderPriority(caseData: any): ReliabilityCaseRiskLevel {
+    const candidates = [
+      caseData?.risk_level,
+      caseData?.diagnosis_snapshot?.maintenance_priority,
+      caseData?.diagnosis_snapshot?.severity_assessment,
+      caseData?.linked_asset_reports?.[0]?.severity,
+      caseData?.linked_asset_reports?.[0]?.equipment_health,
+      caseData?.linked_alarms?.[0]?.priority
+    ];
+
+    return candidates.reduce((highest: ReliabilityCaseRiskLevel, candidate: unknown) => {
+      return this.maxRisk(highest, this.normalizeWorkOrderPriorityCandidate(candidate));
+    }, 'Low');
+  }
+
+  private resolveWorkOrderNatureOfWork(caseData: any): string {
+    if (Array.isArray(caseData?.linked_alarms) && caseData.linked_alarms.length > 0) {
+      return 'Breakdown';
+    }
+    if (Array.isArray(caseData?.linked_asset_reports) && caseData.linked_asset_reports.length > 0) {
+      return 'Corrective';
+    }
+    return 'Corrective';
+  }
+
+  private async buildReliabilityWorkOrderAssigneeIds(caseData: any, user: ReliabilityCaseActor): Promise<string[]> {
+    const suggestedAssignees = this.objectIdStrings(caseData?.recommendation_snapshot?.suggested_assignee_ids);
+    const assetId = String(this.resolveWorkOrderAssetId(caseData) || '').trim();
+
+    if (!assetId || !Types.ObjectId.isValid(assetId)) {
+      return suggestedAssignees;
+    }
+
+    const mappings = await MapUserAssetLocationModel.find({
+      assetId: new Types.ObjectId(assetId),
+      userId: { $exists: true }
+    }).select('userId').lean();
+
+    const mappedUserIds = Array.from(new Set(
+      (mappings || []).map((item: any) => String(item?.userId || '').trim()).filter(Boolean)
+    ));
+
+    if (!mappedUserIds.length) {
+      return suggestedAssignees;
+    }
+
+    const activeUsers = await UserModel.find({
+      _id: { $in: mappedUserIds.map((id) => new Types.ObjectId(id)) },
+      account_id: user.account_id,
+      user_status: 'active'
+    }).select('_id').lean();
+
+    return Array.from(new Set([
+      ...mappedUserIds.filter((mappedId: string) => activeUsers.some((item: any) => String(item._id) === mappedId)),
+      ...suggestedAssignees
+    ]));
+  }
+
+  private buildReliabilityWorkOrderDescription(caseData: any): string {
+    const diagnosis = caseData?.diagnosis_snapshot || {};
+    const recommendation = caseData?.recommendation_snapshot || {};
+    const assetReport = caseData?.linked_asset_reports?.[0] || {};
+    const primaryAlarm = caseData?.linked_alarms?.[0] || {};
+    const observations = this.nonEmptyStrings([
+      ...(diagnosis.observations || []),
+      ...this.textLines(assetReport.observations)
+    ]);
+    const recommendations = this.nonEmptyStrings([
+      recommendation.action_summary,
+      ...(recommendation.maintenance_actions || []),
+      ...(diagnosis.recommendations || []),
+      ...this.textLines(assetReport.recommendations)
+    ]);
+    const symptoms = this.nonEmptyStrings(caseData?.evidence_snapshot?.symptoms || []);
+    const detailLines = [
+      `Reliability case: ${caseData?.case_no || 'NA'}`,
+      `Asset: ${caseData?.asset?.asset_name || 'Unmapped asset'}`,
+      `Location: ${caseData?.location?.location_name || 'No location'}`,
+      `Risk level: ${caseData?.risk_level || 'Medium'}`,
+      `Detected at: ${caseData?.detected_at ? new Date(caseData.detected_at).toISOString() : 'NA'}`,
+      this.firstText(diagnosis.likely_failure_mode) ? `Likely failure mode: ${diagnosis.likely_failure_mode}` : '',
+      this.firstText(diagnosis.likely_root_cause) ? `Likely root cause: ${diagnosis.likely_root_cause}` : '',
+      this.firstText(assetReport.fault_detected) ? `Reported fault: ${assetReport.fault_detected}` : '',
+      this.firstText(assetReport.severity) ? `Report severity: ${assetReport.severity}` : '',
+      this.firstText(assetReport.equipment_health) ? `Equipment health: ${assetReport.equipment_health}` : '',
+      this.firstText(primaryAlarm.alarm_id) ? `Alarm source: ${primaryAlarm.alarm_id}` : '',
+      symptoms.length ? `Symptoms: ${symptoms.join('; ')}` : '',
+      this.firstText(diagnosis.summary || caseData?.description) ? `Case summary: ${diagnosis.summary || caseData?.description}` : ''
+    ].filter(Boolean);
+
+    const sections = [
+      detailLines.join('\n'),
+      observations.length ? `Observations:\n- ${observations.join('\n- ')}` : '',
+      recommendations.length ? `Recommendations:\n- ${recommendations.join('\n- ')}` : '',
+      this.nonEmptyStrings(recommendation.inspection_steps).length
+        ? `Inspection steps:\n- ${this.nonEmptyStrings(recommendation.inspection_steps).join('\n- ')}`
+        : ''
+    ].filter(Boolean);
+
+    return sections.join('\n\n');
   }
 
   private async resolveSpareAvailability(caseData: any, user: ReliabilityCaseActor) {
@@ -1387,6 +1507,18 @@ class ReliabilityCaseService {
     const normalized = String(value || '').toLowerCase();
     if (normalized === 'high' || normalized === 'medium' || normalized === 'low') return normalized;
     return undefined;
+  }
+
+  private normalizeWorkOrderPriorityCandidate(value: unknown): ReliabilityCaseRiskLevel {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return 'Low';
+    if (normalized === 'urgent' || normalized === 'critical' || normalized === 'immediate') return 'Urgent';
+    if (normalized === 'high' || normalized === 'danger') return 'High';
+    if (normalized === 'medium' || normalized === 'alert' || normalized === 'schedule') return 'Medium';
+    if (normalized === 'low' || normalized === 'healthy' || normalized === 'plan' || normalized === 'monitor') return 'Low';
+    if (normalized === 'none' || normalized === 'not defined') return 'Low';
+    if (RELIABILITY_CASE_RISK_LEVELS.includes(value as ReliabilityCaseRiskLevel)) return value as ReliabilityCaseRiskLevel;
+    return 'Low';
   }
 }
 
