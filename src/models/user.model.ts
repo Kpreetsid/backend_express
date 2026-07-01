@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const USER_COLLECTION_NAME = 'users';
+
 
 export const STATUS = ['active', 'inactive'];
 export const USER_ROLES = ["admin", "manager", "employee", "customer", "user"];
@@ -43,7 +45,7 @@ export const userSchema = new Schema<IUser>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'users',
+  collection: USER_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

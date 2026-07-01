@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const POST_COLLECTION_NAME = 'posts';
+
 
 export interface IPost extends Document {
   account_id: ObjectId;
@@ -32,7 +34,7 @@ const PostSchema = new Schema<IPost>({
   createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' },
 }, {
-  collection: 'posts',
+  collection: POST_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import { UserModel } from './user.model';
+export const EQUIPMENT_COLLECTION_NAME = 'equipment_set';
+
 
 const EquipmentSchema = new mongoose.Schema({
     equipmentName: { type: { type: String, required: true } },
@@ -140,7 +142,7 @@ const EquipmentSetSchema = new mongoose.Schema({
         default: true
     }
 }, {
-    collection: 'equipment_set',
+    collection: EQUIPMENT_COLLECTION_NAME,
     timestamps: true,
     versionKey: false
 });

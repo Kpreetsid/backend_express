@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const HELP_COLLECTION_NAME = 'help';
+
 
 export interface IBlog extends Document {
   title?: string;
@@ -44,7 +46,7 @@ const BlogSchema = new Schema<IBlog>({
   likes: { type: [Schema.Types.Mixed] },
   visible: { type: Boolean, default: true }
 }, {
-  collection: 'help',
+  collection: HELP_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

@@ -1,4 +1,6 @@
 import mongoose, { Schema } from "mongoose";
+export const USER_VERIFICATION_COLLECTION_NAME = 'user_verification_code';
+
 
 export const VERIFICATION_CODE_EXPIRY_SECONDS = 30 * 60;
 
@@ -17,7 +19,7 @@ const verificationCodeSchema = new Schema<IVerificationCode>({
   code: { type: String, trim: true, required: true },
   createdAt: { type: Date, default: Date.now, expires: VERIFICATION_CODE_EXPIRY_SECONDS }
 }, {
-  collection: 'user_verification_code',
+  collection: USER_VERIFICATION_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

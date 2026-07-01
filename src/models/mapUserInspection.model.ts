@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const MAP_USER_INSPECTION_COLLECTION_NAME = 'map_user_inspection';
+
 
 export interface IMapUserInspection extends Document {
   account_id?: ObjectId;
@@ -14,7 +16,7 @@ const MapUserInspectionSchema = new Schema<IMapUserInspection>({
   inspection_id: { type: mongoose.Schema.Types.ObjectId, ref: 'InspectionModel', required: true },
   createdAt: { type: Date, default: Date.now }
 }, {
-  collection: 'map_user_inspection',
+  collection: MAP_USER_INSPECTION_COLLECTION_NAME,
   versionKey: false
 });
 

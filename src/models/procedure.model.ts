@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const PROCEDURE_COLLECTION_NAME = 'procedures';
+
 
 export const PROCEDURE_ITEM_TYPES = ['heading', 'section', 'field'] as const;
 export const PROCEDURE_FIELD_TYPES = ['checkbox', 'text', 'number', 'multiple-choice', 'checklist', 'inspection-check', 'yes-no-na', 'date'] as const;
@@ -86,7 +88,7 @@ const ProcedureSchema = new Schema<IProcedure>(
     updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
   },
   {
-    collection: 'procedures',
+    collection: PROCEDURE_COLLECTION_NAME,
     timestamps: true,
     versionKey: false
   }

@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const CYCLE_COUNT_COLLECTION_NAME = 'cycle_counts';
+
 
 export const CYCLE_COUNT_STATUSES = ['pending', 'pending-approval', 'approved', 'rejected'] as const;
 export type CycleCountStatus = typeof CYCLE_COUNT_STATUSES[number];
@@ -47,7 +49,7 @@ const cycleCountSchema = new Schema<ICycleCount>({
   reviewedAt: { type: Date },
   visible: { type: Boolean, default: true }
 }, {
-  collection: 'cycle_counts',
+  collection: CYCLE_COUNT_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

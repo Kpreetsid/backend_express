@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 import { IUpload } from './upload.model';
+export const WORK_REQUEST_COLLECTION_NAME = 'work_request';
+
 
 export const WORK_REQUEST_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected'];
 export const WORK_REQUEST_PRIORITIES = ['None', 'Low', 'Medium', 'High', 'Urgent'];
@@ -78,7 +80,7 @@ const WorkRequestSchema = new Schema<IWorkRequest>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'work_request',
+  collection: WORK_REQUEST_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

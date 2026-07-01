@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const PART_COLLECTION_NAME = 'parts';
+
 
 export interface IPart extends Document {
   account_id: ObjectId;
@@ -44,7 +46,7 @@ const partSchema = new Schema<IPart>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'parts',
+  collection: PART_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

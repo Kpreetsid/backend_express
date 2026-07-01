@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const USER_TOKEN_COLLECTION_NAME = 'CustomAccessToken';
+
 
 export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
   _id: string | mongoose.Types.ObjectId;
@@ -24,7 +26,7 @@ const userTokenSchema = new Schema<IUserToken>({
   isInternal: { type: Boolean, default: false },
   expiresAt: { type: Date, required: true }
 }, {
-  collection: 'CustomAccessToken',
+  collection: USER_TOKEN_COLLECTION_NAME,
   versionKey: false
 });
 

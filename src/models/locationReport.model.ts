@@ -1,5 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const LOCATION_REPORT_COLLECTION_NAME = 'location-report';
+
 
 const rmsSchema = new Schema({
     timestamp: { type: Schema.Types.Mixed },
@@ -123,7 +125,7 @@ const LocationReportSchema = new Schema<ILocationReport>({
     createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-    collection: 'location-report',
+    collection: LOCATION_REPORT_COLLECTION_NAME,
     timestamps: true,
     versionKey: false
 });

@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { ObjectId } from "mongodb";
+export const COMMENT_COLLECTION_NAME = 'work_order_comment';
+
 
 export interface IComments extends Document {
   account_id: ObjectId;
@@ -24,7 +26,7 @@ const CommentsSchema: Schema<IComments> = new Schema(
     updatedBy: { type: Schema.Types.ObjectId, ref: "UserModel" }
   },
   {
-    collection: 'work_order_comment',
+    collection: COMMENT_COLLECTION_NAME,
     timestamps: true,
     versionKey: false
   }

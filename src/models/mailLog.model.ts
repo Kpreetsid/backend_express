@@ -1,4 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
+export const MAIL_LOG_COLLECTION_NAME = 'mail_logs';
+
 
 export const MAIL_LOG_STATUSES = ['success', 'failed'];
 
@@ -21,7 +23,7 @@ const mailLogSchema = new Schema<IMailLog>({
   mailInfo: { type: Object },
   error: { type: String, trim: true },
 }, {
-  collection: 'mail_logs',
+  collection: MAIL_LOG_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });
