@@ -13,6 +13,7 @@ import { IAccount } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
+import { TokenBlacklist } from "../../_cache/auth/tokenBlacklist";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -226,12 +227,26 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
 export const userLogOutService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const user_id = get(req, 'user_id');
-    const userToken = get(req, 'userToken');
+    const userToken = get(req, 'userToken') as string;
+
+    // Remove token from MongoDB
     const [accessToken] = await Promise.all([
       TokenModel.deleteMany({ _id: userToken, userId: { $exists: true } }),
       // TokenModel.deleteMany({ _id: { $exists: true }, userId: helperService.validateObjectId(user_id) })
     ]);
     console.log({ accessToken, user_id });
+
+    // Blacklist the JWT in Redis so it cannot be reused before natural expiry
+    if (userToken) {
+      try {
+        const remainingTtl = parseInt(auth.expiresIn as string, 10) || 86400;
+        await TokenBlacklist.add(userToken, remainingTtl);
+      } catch (blacklistErr) {
+        // Non-fatal: if Redis is down, token is still removed from MongoDB
+        console.warn('[Logout] JWT blacklisting failed (non-fatal):', blacklistErr);
+      }
+    }
+
     return res.status(200).json({ status: true, message: 'Logout successful' });
   } catch (error) {
     next(error);
