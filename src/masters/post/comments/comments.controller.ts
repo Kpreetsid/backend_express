@@ -1,3 +1,4 @@
+import { controllerCache } from '../../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { commentService } from './comments.service';
@@ -77,4 +78,4 @@ class CommentController {
   }
 }
 
-export const commentController = new CommentController();
+export const commentController = controllerCache.withCache(new CommentController(), { namespace: 'post-comments', ttlSeconds: 300, tags: ['posts', 'users'] });

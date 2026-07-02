@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { formCategoryService } from './formCategory.service';
@@ -99,4 +100,4 @@ class FormCategoryController {
   }
 }
 
-export const formCategoryController = new FormCategoryController();
+export const formCategoryController = controllerCache.withCache(new FormCategoryController(), { namespace: 'form-categories', ttlSeconds: 600, tags: ['form-categories'] });

@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { get } from "lodash";
 import { USER_ROLES, IUser } from "../../models/user.model";
 import { NextFunction, Request, Response } from "express";
@@ -144,4 +145,4 @@ class CompanyController {
   }
 }
 
-export const companyController = new CompanyController();
+export const companyController = controllerCache.withCache(new CompanyController(), { namespace: 'companies', ttlSeconds: 300, tags: ['companies', 'settings', 'users'] });

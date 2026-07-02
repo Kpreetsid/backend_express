@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { usersService } from './user.service';
@@ -189,4 +190,4 @@ class UserController {
   };
 }
 
-export const userController = new UserController();
+export const userController = controllerCache.withCache(new UserController(), { namespace: 'users', ttlSeconds: 300, tags: ['users', 'roles', 'mappings'] });

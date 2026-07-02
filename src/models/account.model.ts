@@ -11,7 +11,7 @@ export interface IAccount extends Document {
   description: string;
   fileName?: string;
   default_language?: string;
-  cookies?: string;
+  cookie_status?: string;
   account_status: string;
   visible: boolean;
 }
@@ -24,7 +24,7 @@ const accountSchema = new Schema<IAccount>(
     description: { type: String, trim: true },
     fileName: { type: String, trim: true },
     default_language: { type: String, trim: true, default: 'en' },
-    cookies: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
+    cookie_status: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     account_status: { type: String, trim: true, enum: STATUS_ENUM, default: STATUS_ENUM[0] },
     visible: { type: Boolean, required: true, default: true }
   },

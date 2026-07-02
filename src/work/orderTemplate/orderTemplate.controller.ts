@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
@@ -80,4 +81,4 @@ class OrderTemplateController {
   }
 }
 
-export const orderTemplateController = new OrderTemplateController();
+export const orderTemplateController = controllerCache.withCache(new OrderTemplateController(), { namespace: 'work-order-templates', ttlSeconds: 300, tags: ['work-order-templates', 'schedules', 'work-orders'] });

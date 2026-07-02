@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { commentService } from './comment.service';
 import { IUser } from '../../models/user.model';
@@ -116,4 +117,4 @@ class CommentController {
   }
 }
 
-export const commentController = new CommentController();
+export const commentController = controllerCache.withCache(new CommentController(), { namespace: 'work-comments', ttlSeconds: 120, tags: ['work-orders'] });

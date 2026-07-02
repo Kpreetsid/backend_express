@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { assetReportService } from './asset.service';
 import { get } from 'lodash';
@@ -324,4 +325,4 @@ class AssetReportController {
   };
 }
 
-export const assetReportController = new AssetReportController();
+export const assetReportController = controllerCache.withCache(new AssetReportController(), { namespace: 'reports', ttlSeconds: 60, tags: ['reports', 'assets', 'locations', 'work-orders'] });

@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { mapUserToAssetService } from './userAsset.service';
 import { get } from 'lodash';
@@ -90,4 +91,4 @@ class MapUserAssetController {
   };
 }
 
-export const userAssetController = new MapUserAssetController();
+export const userAssetController = controllerCache.withCache(new MapUserAssetController(), { namespace: 'mappings', ttlSeconds: 120, tags: ['mappings', 'assets', 'locations', 'work-orders', 'users'] });

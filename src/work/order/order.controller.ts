@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { orderService } from './order.service';
 import { get } from 'lodash';
@@ -108,7 +109,7 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      
+
       if (!body || Object.keys(body).length === 0) {
         throw Object.assign(new Error('No data provided for update'), { status: 400 });
       }
@@ -158,7 +159,7 @@ class OrderController {
 
       const newFiles = [...(existingOrder.files || []), ...fileDataList];
       await orderService.updateDataById(id, { files: newFiles }, user);
-      
+
       res.status(200).send({ status: true, message: 'Attachments uploaded successfully.', data: newFiles });
     } catch (error) {
       next(error);
@@ -606,4 +607,4 @@ class OrderController {
   }
 }
 
-export const orderController = new OrderController();
+export const orderController = controllerCache.withCache(new OrderController(), { namespace: 'work-orders', ttlSeconds: 120, tags: ['work-orders', 'assets', 'locations', 'parts', 'requests'] });

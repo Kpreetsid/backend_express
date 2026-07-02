@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
@@ -93,4 +94,4 @@ class ProcedureController {
   }
 }
 
-export const procedureController = new ProcedureController();
+export const procedureController = controllerCache.withCache(new ProcedureController(), { namespace: 'procedures', ttlSeconds: 300, tags: ['procedures', 'work-orders', 'inspections'] });

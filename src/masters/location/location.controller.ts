@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { locationService } from './location.service';
 import { assetService } from '../asset/asset.service';
@@ -180,7 +181,7 @@ class LocationController {
       body.createdBy = user_id;
       const data: any = await locationService.insertLocation(body);
       await mapUserToLocationService.mapUserLocationData(data._id, body.userIdList, account_id);
-      
+
       await notificationService.notifyAccountUsers({
         accountId: String(account_id),
         module: 'Location',
@@ -325,4 +326,4 @@ class LocationController {
   };
 }
 
-export const locationController = new LocationController();
+export const locationController = controllerCache.withCache(new LocationController(), { namespace: 'locations', ttlSeconds: 300, tags: ['locations', 'assets', 'equipment', 'work'], skipMethods: ['getChildLocationByRecursive'] });

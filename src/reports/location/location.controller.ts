@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { locationReportService } from './location.service';
 import { get } from 'lodash';
@@ -71,4 +72,4 @@ class LocationReportController {
   }
 }
 
-export const locationReportController = new LocationReportController();
+export const locationReportController = controllerCache.withCache(new LocationReportController(), { namespace: 'reports', ttlSeconds: 60, tags: ['reports', 'assets', 'locations', 'work-orders'] });

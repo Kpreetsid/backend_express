@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { assetService } from './asset.service';
@@ -475,4 +476,4 @@ class AssetController {
   }
 }
 
-export const assetController = new AssetController();
+export const assetController = controllerCache.withCache(new AssetController(), { namespace: 'assets', ttlSeconds: 300, tags: ['assets', 'locations', 'work'] });

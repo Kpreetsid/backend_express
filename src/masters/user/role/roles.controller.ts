@@ -1,3 +1,4 @@
+import { controllerCache } from '../../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { rolesService } from './roles.service';
 import { IUser } from '../../../models/user.model';
@@ -115,4 +116,4 @@ class RolesController {
   }
 }
 
-export const rolesController = new RolesController();
+export const rolesController = controllerCache.withCache(new RolesController(), { namespace: 'roles', ttlSeconds: 300, tags: ['roles', 'users'], readMethods: ['myRoleData'] });

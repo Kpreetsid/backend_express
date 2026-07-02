@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { NextFunction, Request, Response } from "express";
 import { partsTypeService } from "./parts-type.service";
 import { IUser } from "../../models/user.model";
@@ -97,4 +98,4 @@ class PartsTypeController {
   }
 }
 
-export const partsTypeController = new PartsTypeController();
+export const partsTypeController = controllerCache.withCache(new PartsTypeController(), { namespace: 'part-types', ttlSeconds: 300, tags: ['part-types', 'parts'] });

@@ -1,5 +1,7 @@
 import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { redisConfig } from '../configDB';
+import { isRedisReady } from '../_config/redis';
 
 const mongoState = () => {
   switch (mongoose.connection.readyState) {
@@ -36,12 +38,14 @@ healthRouter.get('/startup', (_req: Request, res: Response) => {
 
 healthRouter.get('/ready', (_req: Request, res: Response) => {
   const mongodb = mongoState();
+  const redis = redisConfig.enabled ? (isRedisReady() ? 'connected' : 'degraded') : 'disabled';
   const ready = mongodb === 'connected';
 
   res.status(ready ? 200 : 503).json({
     status: ready ? 'ok' : 'degraded',
     checks: {
-      mongodb
+      mongodb,
+      redis
     },
     timestamp: Date.now()
   });
@@ -55,6 +59,9 @@ metricsRouter.get('/', (_req: Request, res: Response) => {
     `cmms_process_uptime_seconds ${process.uptime()}`,
     '# HELP cmms_mongodb_ready MongoDB readiness, 1 when connected.',
     '# TYPE cmms_mongodb_ready gauge',
-    `cmms_mongodb_ready ${mongoose.connection.readyState === 1 ? 1 : 0}`
+    `cmms_mongodb_ready ${mongoose.connection.readyState === 1 ? 1 : 0}`,
+    '# HELP cmms_redis_ready Redis readiness, 1 when enabled and connected.',
+    '# TYPE cmms_redis_ready gauge',
+    `cmms_redis_ready ${redisConfig.enabled && isRedisReady() ? 1 : 0}`
   ].join('\n'));
 });

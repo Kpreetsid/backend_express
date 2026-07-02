@@ -58,6 +58,18 @@ export const payloadCrypto = {
   replayTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_REPLAY_TTL_SECONDS || '300', 10)
 };
 
+export const redisConfig = {
+  enabled: envBoolean(process.env.REDIS_ENABLED, false),
+  host: process.env.REDIS_HOST || '127.0.0.1',
+  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  password: process.env.REDIS_PASSWORD || undefined,
+  db: parseInt(process.env.REDIS_DB || '0', 10),
+  keyPrefix: process.env.REDIS_KEY_PREFIX || 'cmms',
+  defaultTtlSeconds: parseInt(process.env.REDIS_DEFAULT_TTL_SECONDS || '300', 10),
+  statusTtlSeconds: parseInt(process.env.REDIS_STATUS_TTL_SECONDS || '30', 10),
+  connectTimeoutMs: parseInt(process.env.REDIS_CONNECT_TIMEOUT_MS || '3000', 10)
+};
+
 export const mailCredential = {
   service: process.env.MAIL_SERVICE!,
   host: process.env.MAIL_HOST!,

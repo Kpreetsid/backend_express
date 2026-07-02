@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { userWorkOrderService } from './userWorkOrder.service';
 import { get } from 'lodash';
@@ -120,4 +121,4 @@ class UserWorkOrderController {
   }
 }
 
-export const userWorkOrderController = new UserWorkOrderController();
+export const userWorkOrderController = controllerCache.withCache(new UserWorkOrderController(), { namespace: 'mappings', ttlSeconds: 120, tags: ['mappings', 'assets', 'locations', 'work-orders', 'users'] });

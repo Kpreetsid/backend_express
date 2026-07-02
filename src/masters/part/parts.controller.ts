@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { partsService } from './parts.service';
@@ -130,11 +131,11 @@ class PartsController {
       const user = get(req, "user", {}) as IUser;
       const { account_id } = user;
       const createdData = await partsService.insert(req.body, account_id, user);
-      
+
       // Fetch populated data
       const data = await partsService.getAllParts({ _id: createdData._id });
       const result = data && data.length > 0 ? data[0] : createdData;
-      
+
       res.status(201).json({ status: true, message: "Part created successfully", data: result });
     } catch (error) {
       next(error);
@@ -184,7 +185,7 @@ class PartsController {
       const { account_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
-      
+
       const isDataExists = await partsService.getAllParts(match);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
@@ -308,4 +309,4 @@ class PartsController {
   }
 }
 
-export const partsController = new PartsController();
+export const partsController = controllerCache.withCache(new PartsController(), { namespace: 'parts', ttlSeconds: 300, tags: ['parts', 'work'] });

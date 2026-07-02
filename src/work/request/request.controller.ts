@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { requestService } from './request.service';
 import { get } from 'lodash';
@@ -268,4 +269,4 @@ class RequestController {
   }
 }
 
-export const requestController = new RequestController();
+export const requestController = controllerCache.withCache(new RequestController(), { namespace: 'work-requests', ttlSeconds: 120, tags: ['work-requests', 'work-orders'] });
