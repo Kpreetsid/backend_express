@@ -4,6 +4,7 @@ import { get, merge, omit } from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import morgan from 'morgan';
+import { UserLogProducer } from '../_cache/streams/userLogProducer';
 
 class AppLogger {
   private logDir: string;
@@ -141,7 +142,7 @@ class AppLogger {
             durationMs: Date.now() - startTime
           }
         });
-        await newLog.save();
+        await UserLogProducer.pushLog(newLog);
       } catch (error) {
         console.error('Failed to log activity:', error);
       }

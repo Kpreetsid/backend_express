@@ -14,6 +14,8 @@ import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
 import { TokenBlacklist } from "../../_cache/auth/tokenBlacklist";
+import { refreshTokenService } from "./refreshToken.service";
+import { parseTtlSeconds } from "../../utils/ttl";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -51,22 +53,24 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     }
     const { password: _, ...safeUser } = user.toObject();
     safeUser.id = safeUser._id;
-    const userTokenPayload: UserLoginPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id) };
+    const token_id = new mongoose.Types.ObjectId();
+    const userTokenPayload: UserLoginPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id), jti: String(token_id) };
     const token = generateAccessToken(userTokenPayload);
     let userRoleData: any = await rolesService.verifyUserRole(String(user._id), String(user.account_id));
     if (!userRoleData) {
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
-    const token_id = new mongoose.Types.ObjectId();
+    const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
     const userTokenData = new TokenModel({
       _id: token,
       token_id: token_id,
       userId: user._id,
       principalType: 'user',
-      ttl: parseInt(auth.expiresIn as string),
-      expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
+      ttl: accessTtlSeconds,
+      expiresAt: new Date(Date.now() + accessTtlSeconds * 1000)
     });
     await userTokenData.save();
+    await refreshTokenService.issueForUser(req, res, user, token_id);
     res.status(200).json({ status: true, message: 'Login successful', data: { token, token_id, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu } });
   } catch (error) {
     next(error);
@@ -101,21 +105,25 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     }
     const { password: _, ...safeUser } = user.toObject();
     safeUser.id = safeUser._id;
-    const userTokenPayload: UserLoginPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id) };
+    const token_id = new mongoose.Types.ObjectId();
+    const userTokenPayload: UserLoginPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id), jti: String(token_id) };
     const token = generateAccessToken(userTokenPayload);
     let userRoleData: any = await rolesService.verifyUserRole(String(user._id), String(user.account_id));
     if (!userRoleData) {
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
+    const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
     const userTokenData = new TokenModel({
       _id: token,
+      token_id,
       userId: user._id,
       principalType: 'user',
-      ttl: parseInt(auth.expiresIn as string),
-      expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
+      ttl: accessTtlSeconds,
+      expiresAt: new Date(Date.now() + accessTtlSeconds * 1000)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: { token, org_id: user.account_id, user_id: user._id } });
+    await refreshTokenService.issueForUser(req, res, user, token_id);
+    res.status(200).json({ status: true, message: 'Login successful', data: { token, token_id, org_id: user.account_id, user_id: user._id } });
   } catch (error) {
     next(error);
   }
@@ -163,18 +171,22 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     if (!userRoleMenu) {
       userRoleMenu = await rolesService.createUserRole(userDetails.user_role, userDetails);
     }
-    const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id) };
+    const token_id = new mongoose.Types.ObjectId();
+    const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id), jti: String(token_id) };
     const newToken = generateAccessToken(userTokenPayload);
+    const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
     const userTokenData = new TokenModel({
       _id: newToken,
+      token_id,
       userId: userDetails._id,
       principalType: 'user',
       isExternal,
       isInternal,
-      ttl: parseInt(auth.expiresIn as string),
-      expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
+      ttl: accessTtlSeconds,
+      expiresAt: new Date(Date.now() + accessTtlSeconds * 1000)
     });
     await userTokenData.save();
+    await refreshTokenService.issueForUser(req, res, userDetails, token_id);
     const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
       ? redirectPath
       : '/dashboard';
@@ -184,7 +196,8 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
         status: true, 
         message: 'Login successful', 
         data: { 
-          token: newToken, 
+          token: newToken,
+          token_id,
           accountDetails: accountDetails[0], 
           userDetails: newSafeUserValue, 
           platformControl: userRoleMenu.data, 
@@ -227,7 +240,7 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
 export const userLogOutService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const user_id = get(req, 'user_id');
-    const userToken = get(req, 'userToken') as string;
+    const userToken = String(get(req, 'userToken') || '');
 
     // Remove token from MongoDB
     const [accessToken] = await Promise.all([
@@ -239,13 +252,14 @@ export const userLogOutService = async (req: Request, res: Response, next: NextF
     // Blacklist the JWT in Redis so it cannot be reused before natural expiry
     if (userToken) {
       try {
-        const remainingTtl = parseInt(auth.expiresIn as string, 10) || 86400;
+        const remainingTtl = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
         await TokenBlacklist.add(userToken, remainingTtl);
       } catch (blacklistErr) {
         // Non-fatal: if Redis is down, token is still removed from MongoDB
         console.warn('[Logout] JWT blacklisting failed (non-fatal):', blacklistErr);
       }
     }
+    await refreshTokenService.revokeCurrent(req, res);
 
     return res.status(200).json({ status: true, message: 'Logout successful' });
   } catch (error) {

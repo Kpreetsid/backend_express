@@ -21,6 +21,24 @@ const envBoolean = (value: string | undefined, defaultValue: boolean): boolean =
   return defaultValue;
 };
 
+const envString = (value: string | undefined, defaultValue: string): string => {
+  const normalized = String(value || '').trim();
+  if (!normalized || normalized.startsWith('||') || normalized.includes('process.env') || normalized.includes(' as ')) {
+    return defaultValue;
+  }
+  return normalized;
+};
+
+const envCookieName = (value: string | undefined, defaultValue: string): string => {
+  const normalized = envString(value, defaultValue);
+  return /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(normalized) ? normalized : defaultValue;
+};
+
+const envSameSite = (value: string | undefined, defaultValue: 'lax' | 'strict' | 'none'): 'lax' | 'strict' | 'none' => {
+  const normalized = envString(value, defaultValue).toLowerCase();
+  return ['lax', 'strict', 'none'].includes(normalized) ? normalized as 'lax' | 'strict' | 'none' : defaultValue;
+};
+
 export const database = {
   uri: process.env.MONGO_URI,
   host: process.env.DB_HOST!,
@@ -46,6 +64,16 @@ export const auth = {
   algorithm: process.env.AUTH_ALGORITHM || 'HS256',
   issuer: process.env.AUTH_ISSUER!,
   audience: process.env.AUTH_AUDIENCE!,
+};
+
+export const refreshToken = {
+  secret: envString(process.env.REFRESH_TOKEN_SECRET, process.env.AUTH_SECRET!),
+  expiresIn: envString(process.env.REFRESH_TOKEN_EXPIRES_IN, '7d'),
+  cookieName: envCookieName(process.env.REFRESH_TOKEN_COOKIE_NAME, 'cmms_refresh_token'),
+  cookiePath: envString(process.env.REFRESH_TOKEN_COOKIE_PATH, '/'),
+  cookieSecure: envBoolean(process.env.REFRESH_TOKEN_COOKIE_SECURE, environment.type === 'production'),
+  cookieSameSite: envSameSite(process.env.REFRESH_TOKEN_COOKIE_SAMESITE, 'lax'),
+  rotate: envBoolean(process.env.REFRESH_TOKEN_ROTATE, true)
 };
 
 export const payloadCrypto = {

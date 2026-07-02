@@ -10,6 +10,7 @@ export interface UserLoginPayload {
   id: string;
   companyID: string;
   username: string;
+  jti?: string;
 }
 export interface IUser extends Document {
   firstName: string;

@@ -11,14 +11,21 @@ import { WorkRequestModel } from '../../models/workRequest.model';
 import { LocationModel } from '../../models/location.model';
 
 import { withTransaction } from "../../utils/transaction.helper";
+import { Cacheable } from '../../_cache/decorators/cacheable.decorator';
+import { CacheKeys, CacheTTL } from '../../_cache/cacheKeys';
 
 class AssetService {
+  @Cacheable((args) => {
+    const match = args[0] || {};
+    if (!match.account_id) return null; // Uncachable without account isolation
+    if (match._id) return CacheKeys.asset(String(match.account_id), String(match._id));
+    return CacheKeys.assetList(String(match.account_id));
+  }, CacheTTL.ASSET_LIST)
   async getAllAssets(match: any) {
     const assetsData = await AssetModel.find(match).populate([
-        { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible assigned_to', match: { visible: true } }, 
+        { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible assigned_to', match: { visible: true } },
         { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level parent_id visible', match: { visible: true } }
     ]);
-    
     if (!assetsData.length) return [];
 
     const assetsIds = assetsData.map((asset: any) => asset._id);

@@ -222,6 +222,10 @@ function shouldRequireEncryption(req: Request): boolean {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method.toUpperCase())) {
     return false;
   }
+  const path = req.originalUrl || req.path || '';
+  if (path.includes('/api/auth/refresh') || path.includes('/api/users/refresh')) {
+    return false;
+  }
   return req.path.includes('/api/');
 }
 
