@@ -5,6 +5,7 @@ import { NextFunction, Request, Response } from "express";
 import { companyService } from "./company.service";
 import { helperService } from "../../utils/helper";
 import { applyRoleFilter } from "../../utils/roleFilter";
+import { accountFeatureService } from "./accountFeature.service";
 
 class CompanyController {
 
@@ -53,7 +54,7 @@ class CompanyController {
 
   create = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { account_name, type, description } = req.body;
+      const { account_name, type, description, cookie_status, redis_status, encrypt_payload, encrypt_response } = req.body;
       if (!account_name || !type) {
         throw Object.assign(new Error("Account name and type are required"), { status: 400 });
       }
@@ -61,10 +62,15 @@ class CompanyController {
         account_name,
         type,
         description,
+        cookie_status,
+        redis_status,
+        encrypt_payload,
+        encrypt_response,
       };
       const data = await companyService.createCompany(newCompany);
       if (!data)
         throw Object.assign(new Error("Failed to create company"), { status: 500 });
+      accountFeatureService.clear(String((data as any)._id));
       res.status(201).json({ status: true, message: "Company created successfully", data });
     } catch (error) {
       next(error);
@@ -74,7 +80,7 @@ class CompanyController {
   updateCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { account_name, type, description } = req.body;
+      const { account_name, type, description, cookie_status, redis_status, encrypt_payload, encrypt_response } = req.body;
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       if (id !== String(account_id)) {
         throw Object.assign(new Error("Invalid account ID"), { status: 400 });
@@ -86,6 +92,10 @@ class CompanyController {
         account_name,
         type,
         description,
+        cookie_status,
+        redis_status,
+        encrypt_payload,
+        encrypt_response,
         updatedBy: user_id,
       };
       const data = await companyService.updateById(
@@ -94,6 +104,7 @@ class CompanyController {
       );
       if (!data)
         throw Object.assign(new Error("Failed to update company"), { status: 500 });
+      accountFeatureService.clear(String(id));
       res.status(200).json({ status: true, message: "Company updated successfully", data });
     } catch (error) {
       next(error);
@@ -138,6 +149,7 @@ class CompanyController {
       if (!deleted) {
         return next(Object.assign(new Error("Company not found"), { status: 404 }));
       }
+      accountFeatureService.clear(String(id));
       return res.status(200).json({ status: true, message: "Company deleted successfully" });
     } catch (error) {
       return next(error);

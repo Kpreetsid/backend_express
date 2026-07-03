@@ -12,6 +12,9 @@ export interface IAccount extends Document {
   fileName?: string;
   default_language?: string;
   cookie_status?: string;
+  redis_status?: string;
+  encrypt_payload?: string;
+  encrypt_response?: string;
   account_status: string;
   visible: boolean;
 }
@@ -25,6 +28,9 @@ const accountSchema = new Schema<IAccount>(
     fileName: { type: String, trim: true },
     default_language: { type: String, trim: true, default: 'en' },
     cookie_status: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
+    redis_status: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
+    encrypt_payload: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
+    encrypt_response: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     account_status: { type: String, trim: true, enum: STATUS_ENUM, default: STATUS_ENUM[0] },
     visible: { type: Boolean, required: true, default: true }
   },

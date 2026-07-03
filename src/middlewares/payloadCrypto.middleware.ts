@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { NextFunction, Request, Response } from 'express';
 import { payloadCryptoService, PayloadCryptoKeyRecord } from '../_config/payloadCrypto';
+import { accountFeatureService } from '../masters/company/accountFeature.service';
 
 const ENCRYPTION_HEADER = 'x-cmms-payload-encrypted';
 const KEY_ID_HEADER = 'x-cmms-crypto-key-id';
@@ -13,12 +14,18 @@ const FORM_FIELDS_KEY = '__cmms_crypto_fields';
 interface PayloadCryptoContext {
   encryptedRequest: boolean;
   requestBodyEncrypted: boolean;
+  responseEncryptionEnabled: boolean;
   keyRecord: PayloadCryptoKeyRecord;
   timestamp: string;
   nonce: string;
 }
 
-export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
+interface AccountPayloadCryptoPolicy {
+  encryptPayload: boolean;
+  encryptResponse: boolean;
+}
+
+export const payloadCryptoRequestMiddleware = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!payloadCryptoService.isEnabled()) {
       next();
@@ -27,14 +34,21 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
 
     const encryptedHeader = String(req.headers[ENCRYPTION_HEADER] || '');
     const bodyEnvelope = payloadCryptoService.isEnvelope(req.body) ? req.body : null;
-    const requestBodyEncryptionEnabled = readBooleanHeader(req, ENCRYPT_REQUEST_HEADER, true);
-    const responseEncryptionEnabled = readBooleanHeader(req, ENCRYPT_RESPONSE_HEADER, true);
+    const accountPolicy = await resolveRequestPayloadCryptoPolicy(req);
+    const requestBodyEncryptionRequested = readBooleanHeader(req, ENCRYPT_REQUEST_HEADER, true);
+    const responseEncryptionRequested = readBooleanHeader(req, ENCRYPT_RESPONSE_HEADER, true);
+    const requestBodyEncryptionEnabled = requestBodyEncryptionRequested && accountPolicy.encryptPayload;
+    const responseEncryptionEnabled = responseEncryptionRequested && accountPolicy.encryptResponse;
     const hasCryptoHeaders = !!req.headers[KEY_ID_HEADER] && !!req.headers[TIMESTAMP_HEADER] && !!req.headers[NONCE_HEADER];
     const hasEncryptedRequest = encryptedHeader === 'v1' || !!bodyEnvelope;
     const hasCryptoContext = hasEncryptedRequest || (hasCryptoHeaders && responseEncryptionEnabled);
 
+    if (hasEncryptedRequest && !accountPolicy.encryptPayload) {
+      throw Object.assign(new Error('Payload encryption is disabled for this account'), { status: 400, name: 'BadRequestError' });
+    }
+
     if (!hasCryptoContext) {
-      if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req)) {
+      if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && accountPolicy.encryptPayload) {
         throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
       }
       next();
@@ -59,6 +73,7 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
     const context: PayloadCryptoContext = {
       encryptedRequest: hasCryptoContext,
       requestBodyEncrypted: requestBodyEncryptionEnabled && hasEncryptedRequest,
+      responseEncryptionEnabled,
       keyRecord,
       timestamp: replay.timestamp,
       nonce: replay.nonce
@@ -154,7 +169,7 @@ export const payloadCryptoResponseMiddleware = () => {
 function prepareResponseBody(req: Request, res: Response, body: any): any {
   const withSession = attachPayloadCryptoSessionIfNeeded(req, body);
   const context = (req as any).payloadCrypto as PayloadCryptoContext | undefined;
-  if (!shouldEncryptResponse(req, res, context)) {
+  if (!shouldEncryptResponse(req, res, context, withSession)) {
     return withSession;
   }
   return encryptResponseValue(req, res, withSession, context!);
@@ -175,6 +190,10 @@ function encryptResponseValue(req: Request, res: Response, body: any, context: P
 
 function attachPayloadCryptoSessionIfNeeded(_req: Request, body: any): any {
   if (!payloadCryptoService.isEnabled() || !body?.status || !body?.data?.token || body.data.payloadCrypto) {
+    return body;
+  }
+
+  if (!shouldAttachPayloadCryptoSession(body)) {
     return body;
   }
 
@@ -199,14 +218,63 @@ function attachPayloadCryptoSessionIfNeeded(_req: Request, body: any): any {
   };
 }
 
-function shouldEncryptResponse(_req: Request, res: Response, context?: PayloadCryptoContext): boolean {
+function shouldEncryptResponse(_req: Request, res: Response, context?: PayloadCryptoContext, body?: any): boolean {
   if (res.getHeader('X-CMMS-Payload-Encrypted') === 'v1') {
     return false;
   }
   return payloadCryptoService.canEncryptResponses()
     && readBooleanHeader(_req, ENCRYPT_RESPONSE_HEADER, true)
     && !!context
+    && context.responseEncryptionEnabled
+    && isResponseEncryptionEnabledForBody(body, true)
     && (context.encryptedRequest || payloadCryptoService.isStrictMode());
+}
+
+async function resolveRequestPayloadCryptoPolicy(req: Request): Promise<AccountPayloadCryptoPolicy> {
+  const accountId = getRequestAccountId(req);
+  if (!accountId) {
+    return { encryptPayload: true, encryptResponse: true };
+  }
+
+  const flags = await accountFeatureService.getFeaturesForAccount(accountId);
+  return {
+    encryptPayload: flags.payloadEncryptionEnabled,
+    encryptResponse: flags.responseEncryptionEnabled
+  };
+}
+
+function getRequestAccountId(req: Request): string {
+  const requestData = req as any;
+  return String(
+    requestData.companyID
+    || requestData.user?.account_id
+    || req.headers.accountid
+    || ''
+  );
+}
+
+function shouldAttachPayloadCryptoSession(body: any): boolean {
+  return readPayloadCryptoFlagFromBody(body, 'encrypt_payload', true)
+    || readPayloadCryptoFlagFromBody(body, 'encrypt_response', true);
+}
+
+function isResponseEncryptionEnabledForBody(body: any, fallback: boolean): boolean {
+  return readPayloadCryptoFlagFromBody(body, 'encrypt_response', fallback);
+}
+
+function readPayloadCryptoFlagFromBody(body: any, key: 'encrypt_payload' | 'encrypt_response', fallback: boolean): boolean {
+  const candidates = [
+    body?.data?.accountDetails,
+    body?.data?.account,
+    body?.accountDetails,
+    body?.account
+  ];
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'object' && Object.prototype.hasOwnProperty.call(candidate, key)) {
+      return candidate[key] === 'enabled';
+    }
+  }
+  return fallback;
 }
 
 function readBooleanHeader(req: Request, headerName: string, defaultValue: boolean): boolean {

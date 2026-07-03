@@ -17,7 +17,11 @@ class CompanyService {
       account_name: body.account_name,
       type: body.type,
       experience_profile: body.experience_profile || 'standard_account',
-      description: body.description
+      description: body.description,
+      cookie_status: body.cookie_status,
+      redis_status: body.redis_status,
+      encrypt_payload: body.encrypt_payload,
+      encrypt_response: body.encrypt_response
     });
     return await newCompany.save({ session });
   };

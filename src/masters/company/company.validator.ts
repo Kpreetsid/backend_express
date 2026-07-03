@@ -1,4 +1,5 @@
 import { body } from 'express-validator';
+import { COOKIES_ENUM } from '../../models/account.model';
 
 export const companyValidator = [
   body('account_name')
@@ -18,5 +19,25 @@ export const companyValidator = [
 
   body('description')
     .optional()
-    .isString().withMessage('Description must be a string')
+    .isString().withMessage('Description must be a string'),
+
+  body('cookie_status')
+    .optional()
+    .isIn(COOKIES_ENUM)
+    .withMessage('Invalid cookie status'),
+
+  body('redis_status')
+    .optional()
+    .isIn(COOKIES_ENUM)
+    .withMessage('Invalid redis status'),
+
+  body('encrypt_payload')
+    .optional()
+    .isIn(COOKIES_ENUM)
+    .withMessage('Invalid payload encryption status'),
+
+  body('encrypt_response')
+    .optional()
+    .isIn(COOKIES_ENUM)
+    .withMessage('Invalid response encryption status')
 ];
