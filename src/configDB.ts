@@ -130,7 +130,7 @@ export const redisConfig = {
 };
 
 export const cacheConfig = {
-  changeStreamsEnabled: envBoolean(process.env.CACHE_CHANGE_STREAMS_ENABLED, false)
+  changeStreamsEnabled: envBoolean(process.env.CACHE_CHANGE_STREAMS_ENABLED, true)
 };
 
 export const mailCredential = {
