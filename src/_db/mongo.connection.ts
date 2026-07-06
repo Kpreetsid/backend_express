@@ -4,6 +4,16 @@ import { idStandardizationPlugin } from "./mongoosePlugins";
 
 mongoose.plugin(idStandardizationPlugin);
 
+const buildHostList = (): string => {
+  const hosts = database.hosts || database.host;
+  return hosts
+    .split(',')
+    .map((host) => host.trim())
+    .filter(Boolean)
+    .map((host) => host.includes(':') ? host : `${host}:${database.port}`)
+    .join(',');
+};
+
 export class MongoConnection {
   private static instance: typeof mongoose | null = null;
 
@@ -18,20 +28,26 @@ export class MongoConnection {
         ? `${encodeURIComponent(database.userName!)}:${encodeURIComponent(database.password!)}@`
         : "";
       const query = new URLSearchParams({ retryWrites: "false" });
+      query.set("retryWrites", String(database.retryWrites));
+      query.set("readPreference", database.readPreference);
+      query.set("directConnection", String(database.directConnection));
 
       if (hasCredentials && database.authSource) {
         query.set("authSource", database.authSource);
       }
+      if (database.replicaSet) {
+        query.set("replicaSet", database.replicaSet);
+      }
 
-      const mongoUri = database.uri ||
-        `mongodb://${credentials}${database.host}:${database.port}/${database.databaseName}?${query.toString()}`;
+      const mongoUri = `mongodb://${credentials}${buildHostList()}/${database.databaseName}?${query.toString()}`;
       await mongoose.connect(mongoUri, {
-        autoIndex: true,
-        connectTimeoutMS: 10000,
+        autoIndex: database.autoIndex,
+        connectTimeoutMS: database.connectTimeoutMS,
         maxPoolSize: database.maxPoolSize,
         minPoolSize: database.minPoolSize,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
+        serverSelectionTimeoutMS: database.serverSelectionTimeoutMS,
+        socketTimeoutMS: database.socketTimeoutMS,
+        maxIdleTimeMS: database.maxIdleTimeMS,
       });
       console.log("✅ MongoDB connected (pooled connection)");
       this.instance = mongoose;

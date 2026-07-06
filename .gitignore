@@ -6,3 +6,4 @@ uploadFiles
 package-lock.json
 *.log
 *.env
+*.env.local

@@ -9,19 +9,20 @@ const BLOCK_TIME_MS = 5000;
 export class UserLogConsumer {
   private static isRunning = false;
 
+  private static consumerClient: any = null;
+
   static async initialize() {
     if (!isRedisReady()) {
       console.log('[UserLogConsumer] Redis unavailable. Consumer not starting.');
       return;
     }
 
-    const client = getRedisClient();
-    if (!client) return;
+    const mainClient = getRedisClient();
+    if (!mainClient) return;
 
     try {
       // Create consumer group if it doesn't exist
-      // MKSTREAM creates the stream if it doesn't exist
-      await client.xgroup('CREATE', USER_LOGS_STREAM_KEY, USER_LOGS_CONSUMER_GROUP, '0', 'MKSTREAM');
+      await mainClient.xgroup('CREATE', USER_LOGS_STREAM_KEY, USER_LOGS_CONSUMER_GROUP, '0', 'MKSTREAM');
       console.log(`[UserLogConsumer] Consumer group ${USER_LOGS_CONSUMER_GROUP} created.`);
     } catch (error: any) {
       if (!error.message.includes('BUSYGROUP')) {
@@ -32,6 +33,8 @@ export class UserLogConsumer {
     if (!this.isRunning) {
       this.isRunning = true;
       console.log(`[UserLogConsumer] Starting polling loop on ${CONSUMER_NAME}...`);
+      // Duplicate client for blocking operations
+      this.consumerClient = (mainClient as any).duplicate();
       this.poll();
     }
   }
@@ -39,15 +42,23 @@ export class UserLogConsumer {
   private static async poll() {
     while (this.isRunning) {
       try {
-        const client = getRedisClient();
-        if (!client || !isRedisReady()) {
+        if (!this.consumerClient) {
           await new Promise(r => setTimeout(r, 5000));
+          continue;
+        }
+
+        if (this.consumerClient.status === 'wait') {
+           this.consumerClient.connect().catch(() => {});
+        }
+
+        if (this.consumerClient.status !== 'ready') {
+          await new Promise(r => setTimeout(r, 1000));
           continue;
         }
 
         // Read messages from the stream
         // '>' means "messages that have never been delivered to other consumers in this group"
-        const results = await client.xreadgroup(
+        const results = await this.consumerClient.xreadgroup(
           'GROUP', USER_LOGS_CONSUMER_GROUP, CONSUMER_NAME,
           'COUNT', BATCH_SIZE,
           'BLOCK', BLOCK_TIME_MS,
@@ -59,7 +70,7 @@ export class UserLogConsumer {
           const messages = streamData[1]; // Array of [messageId, [field1, value1, ...]]
 
           if (messages.length > 0) {
-            await this.processBatch(messages, client);
+            await this.processBatch(messages, this.consumerClient);
           }
         }
       } catch (error) {

@@ -10,6 +10,7 @@
  */
 
 import mongoose from 'mongoose';
+import { cacheConfig } from '../../configDB';
 import { watchAssets } from './asset.stream';
 import { watchLocations } from './location.stream';
 import { watchUsers } from './user.stream';
@@ -21,6 +22,11 @@ import { watchRoles } from './role.stream';
 import { watchMappings } from './mapping.stream';
 
 export const initChangeStreams = async (connection: mongoose.Connection): Promise<void> => {
+  if (!cacheConfig.changeStreamsEnabled) {
+    console.log('[CDC] MongoDB Change Streams disabled by CACHE_CHANGE_STREAMS_ENABLED=false');
+    return;
+  }
+
   if (!connection) {
     console.warn('[CDC] No mongoose connection provided — skipping change streams');
     return;

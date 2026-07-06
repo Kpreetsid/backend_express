@@ -1,4 +1,14 @@
 import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+
+// First load .env.local if it exists (for local overrides)
+const localEnvPath = path.join(process.cwd(), '.env.local');
+if (fs.existsSync(localEnvPath)) {
+  dotenv.config({ path: localEnvPath, override: true });
+}
+
+// Then load .env (won't override what's already set)
 dotenv.config();
 
 export const environment = {
@@ -39,16 +49,37 @@ const envSameSite = (value: string | undefined, defaultValue: 'lax' | 'strict' |
   return ['lax', 'strict', 'none'].includes(normalized) ? normalized as 'lax' | 'strict' | 'none' : defaultValue;
 };
 
+const envNumber = (value: string | undefined, defaultValue: number): number => {
+  const parsed = Number.parseInt(String(value || ''), 10);
+  return Number.isFinite(parsed) ? parsed : defaultValue;
+};
+
+const envReadPreference = (value: string | undefined, defaultValue: string): string => {
+  const normalized = envString(value, defaultValue);
+  return ['primary', 'primaryPreferred', 'secondary', 'secondaryPreferred', 'nearest'].includes(normalized)
+    ? normalized
+    : defaultValue;
+};
+
 export const database = {
-  uri: process.env.MONGO_URI,
-  host: process.env.DB_HOST!,
-  port: parseInt(process.env.DB_PORT!),
+  hosts: envString(process.env.DB_HOSTS, ''),
+  host: envString(process.env.DB_HOST, 'localhost'),
+  port: envNumber(process.env.DB_PORT, 27017),
   userName: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
-  databaseName: process.env.DB_NAME!,
+  databaseName: envString(process.env.DB_NAME, 'cmms'),
   authSource: process.env.DB_AUTH_SOURCE || 'admin',
-  maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE || '100'),
-  minPoolSize: parseInt(process.env.DB_MIN_POOL_SIZE || '10')
+  maxPoolSize: envNumber(process.env.DB_MAX_POOL_SIZE, 100),
+  minPoolSize: envNumber(process.env.DB_MIN_POOL_SIZE, 10),
+  replicaSet: envString(process.env.DB_REPLICA_SET, ''),
+  directConnection: envBoolean(process.env.DB_DIRECT_CONNECTION, false),
+  readPreference: envReadPreference(process.env.DB_READ_PREFERENCE, 'primary'),
+  retryWrites: envBoolean(process.env.DB_RETRY_WRITES, false),
+  autoIndex: envBoolean(process.env.DB_AUTO_INDEX, environment.type !== 'production'),
+  connectTimeoutMS: envNumber(process.env.DB_CONNECT_TIMEOUT_MS, 10000),
+  serverSelectionTimeoutMS: envNumber(process.env.DB_SERVER_SELECTION_TIMEOUT_MS, 5000),
+  socketTimeoutMS: envNumber(process.env.DB_SOCKET_TIMEOUT_MS, 45000),
+  maxIdleTimeMS: envNumber(process.env.DB_MAX_IDLE_TIME_MS, 60000)
 };
 
 export const server = {
@@ -96,6 +127,10 @@ export const redisConfig = {
   defaultTtlSeconds: parseInt(process.env.REDIS_DEFAULT_TTL_SECONDS || '300', 10),
   statusTtlSeconds: parseInt(process.env.REDIS_STATUS_TTL_SECONDS || '30', 10),
   connectTimeoutMs: parseInt(process.env.REDIS_CONNECT_TIMEOUT_MS || '3000', 10)
+};
+
+export const cacheConfig = {
+  changeStreamsEnabled: envBoolean(process.env.CACHE_CHANGE_STREAMS_ENABLED, false)
 };
 
 export const mailCredential = {
