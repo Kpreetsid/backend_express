@@ -26,7 +26,11 @@ export const getRequestAccountId = (req: Request): string => {
 };
 
 export const canUseRedisForRequest = async (req: Request): Promise<boolean> => {
-  if (!redisConfig.enabled || !isRedisReady()) {
+  if (!redisConfig.enabled) {
+    return false;
+  }
+
+  if (!isRedisReady()) {
     return false;
   }
 

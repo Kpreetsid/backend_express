@@ -38,7 +38,7 @@ export const getRedisClient = (): Redis | null => {
 
 export const connectRedis = async (): Promise<void> => {
   if (!redisConfig.enabled) {
-    console.log('Redis disabled by REDIS_ENABLED');
+    console.log('Redis disabled by REDIS_ENABLED=false');
     return;
   }
 
