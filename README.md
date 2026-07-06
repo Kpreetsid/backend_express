@@ -5,17 +5,18 @@
 Redis is optional and is used only when all runtime gates are open:
 
 ```ts
-redisConfig.enabled === true
-&& SettingsModel.redis_status === 'enabled'
+REDIS_ENABLED !== 'false'
+&& account_master.redis_status === 'enabled'
 && Redis client is ready
 ```
 
-`REDIS_ENABLED` is the server-wide safety switch. `SettingsModel.redis_status` is the per-company runtime switch stored in `app_settings`. Missing settings, disabled Redis, or Redis connection errors all fall back to normal MongoDB/service execution.
+`account_master.redis_status` is the per-company runtime switch and is the primary cache control. `REDIS_ENABLED` is not required for Redis to run; leave it unset or set it to `true`. Set `REDIS_ENABLED=false` only when you need a server-wide emergency kill switch. Missing account settings, disabled account Redis, or Redis connection errors all fall back to normal MongoDB/service execution.
 
 ### Environment variables
 
 ```env
-REDIS_ENABLED=false
+# Optional global kill switch. Unset/true allows account-level redis_status to control caching.
+REDIS_ENABLED=true
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 REDIS_PASSWORD=
@@ -36,7 +37,7 @@ cmms:{accountId}:{userId}:{namespace}:{operation}:{hash(params,query,body)}
 
 Routes should keep only routing/auth/validation/permission responsibilities. Redis decisions belong to controllers through each controller's namespace, tags, TTL, read method overrides, mutation method overrides, and skip method overrides.
 
-`RedisUtils` in `src/utils/redis.service.ts` is the shared low-level Redis command wrapper. Use it for Redis strings, hashes, lists, sets, sorted sets, counters, and scan-based pattern deletion. Request-scoped cache code must still call the controller/cache gate before reading or writing Redis; `RedisUtils` does not replace `REDIS_ENABLED`, `SettingsModel.redis_status`, or client-readiness checks.
+`RedisUtils` in `src/utils/redis.service.ts` is the shared low-level Redis command wrapper. Use it for Redis strings, hashes, lists, sets, sorted sets, counters, and scan-based pattern deletion. Request-scoped cache code must still call the controller/cache gate before reading or writing Redis; `RedisUtils` does not replace account `redis_status`, client-readiness checks, or the optional `REDIS_ENABLED=false` kill switch.
 
 ### Verification
 
