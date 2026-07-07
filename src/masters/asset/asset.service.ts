@@ -22,7 +22,7 @@ class AssetService {
     return CacheKeys.assetList(String(match.account_id));
   }, CacheTTL.ASSET_LIST)
   async getAllAssets(match: any) {
-    const assetsData = await AssetModel.find(match).populate([
+    const assetsData = await AssetModel.find(match).lean().populate([
         { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible assigned_to', match: { visible: true } },
         { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level parent_id visible', match: { visible: true } }
     ]);
@@ -46,7 +46,7 @@ class AssetService {
     });
 
     const result: any = assetsData.map((doc: any) => {
-      const obj = doc.toObject();
+      const obj = helperService.toPlainObject(doc);
       const id = String(obj._id);
       
       if (obj.locationId) {
@@ -64,7 +64,7 @@ class AssetService {
   }
 
   async buzzerAssetList(match: any): Promise<any> {
-    return await AssetModel.find(match).select('id asset_name isBuzzerActive');
+    return await AssetModel.find(match).select('id asset_name isBuzzerActive').lean();
   }
 
   async updateBuzzerAssetList(body: any) {
@@ -79,7 +79,7 @@ class AssetService {
   }
 
   async getAllChildAssetIDs(assetId: any): Promise<string[]> {
-    const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id');
+    const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id').lean();
     if (!children || children.length === 0) {
       return [assetId];
     }
@@ -181,7 +181,7 @@ class AssetService {
   }
 
   async getAssetDataSensorList(match: any): Promise<any> {
-    const data = await AssetModel.find(match).populate([
+    const data = await AssetModel.find(match).lean().populate([
       { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
       { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
       { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
@@ -190,7 +190,7 @@ class AssetService {
       throw Object.assign(new Error('No records found'), { status: 404 });
     }
     const result = data.map((doc: any) => {
-      doc = doc.toObject();
+      doc = helperService.toPlainObject(doc);
       return {
         "asset_id": doc._id,
         "asset_name": doc.asset_name,
@@ -229,29 +229,36 @@ class AssetService {
   }
 
   async deleteAssetsById(assetId: any) {
-    const childData = await AssetModel.find({ parent_id: assetId });
-    if (childData.length > 0) {
-      for (const asset of childData) {
-        await mapUserToAssetService.removeAssetMapping(`${asset._id}`);
-      }
-      await AssetModel.deleteMany({ _id: { $in: childData.map(doc => doc._id) } });
+    const allChildIds = (await this.getAllChildAssetsRecursive(assetId, null)).map(c => c._id);
+    const idsToDelete = [assetId, ...allChildIds];
+    
+    for (const id of idsToDelete) {
+       await mapUserToAssetService.removeAssetMapping(id.toString());
     }
-    await AssetModel.deleteMany({ _id: assetId });
-    await mapUserToAssetService.removeAssetMapping(assetId);
+
+    await AssetModel.deleteMany({ _id: { $in: idsToDelete } });
   }
 
   async getAllChildAssetsRecursive(parentId: string, account_id: any): Promise<any[]> {
-    const children = await AssetModel.find({ parent_id: parentId, account_id, visible: true }).lean();
-    const all: any[] = [];
-    for (const child of children) {
-      if (child._id?.toString() === parentId) continue;
-      all.push(child);
-      const subChildren = await this.getAllChildAssetsRecursive(child._id.toString(), account_id);
-      all.push(...subChildren);
-    }
-    return all;
-  };
+    const match: any = { _id: helperService.validateObjectId(parentId), visible: true };
+    if (account_id) match.account_id = account_id;
 
+    const result = await AssetModel.aggregate([
+      { $match: match },
+      {
+        $graphLookup: {
+          from: 'assets',
+          startWith: '$_id',
+          connectFromField: '_id',
+          connectToField: 'parent_id',
+          as: 'children',
+          restrictSearchWithMatch: { visible: true }
+        }
+      }
+    ]);
+
+    return result.length > 0 ? result[0].children : [];
+  };
   async makeAssetCopyRecursive(id: string, user_id: any, token: string, account_id: any, targetLocationId?: any, session?: any): Promise<any> {
     const dataExists: any = await AssetModel.find({
       _id: helperService.validateObjectId(String(id)),

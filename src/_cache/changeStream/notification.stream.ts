@@ -1,38 +1,23 @@
-/**
- * Notification CDC Change Stream Handler
- * Short TTL: 30s — only used for REST polling, not realtime.
- */
-
 import mongoose from 'mongoose';
 import { CacheManager } from '../cacheManager';
 import { CacheKeys } from '../cacheKeys';
+import { BaseChangeStream } from './base.stream';
 
-export const watchNotifications = (connection: mongoose.Connection): void => {
-  if (!connection || connection.readyState !== 1) return;
-
-  let changeStream: mongoose.mongo.ChangeStream;
-  try {
-    changeStream = connection.collection('notifications').watch([], { fullDocument: 'updateLookup' });
-  } catch (err) {
-    console.warn('[CDC:Notification] Change stream not available:', (err as Error).message);
-    return;
+export class NotificationChangeStream extends BaseChangeStream {
+  constructor(connection: mongoose.Connection) {
+    super(connection, 'notifications');
   }
 
-  changeStream.on('change', async (event: mongoose.mongo.ChangeStreamDocument) => {
-    try {
-      const doc = event as any;
-      // Notification keys are per-user
-      const userId = doc.fullDocument?.userId?.toString()
-        ?? doc.updateDescription?.updatedFields?.userId?.toString();
-      if (!userId) return;
+  protected async handleChange(event: any): Promise<void> {
+    const accountId = event.effectiveDocument?.account_id?.toString() ?? event.updateDescription?.updatedFields?.account_id?.toString();
+    const docId = event.documentKey?._id?.toString() ?? event.effectiveDocument?._id?.toString();
 
-      await CacheManager.del(CacheKeys.notificationList(userId));
-      console.debug(`[CDC:Notification] Invalidated for user=${userId}`);
-    } catch (err) {
-      console.error('[CDC:Notification] Error:', err);
-    }
-  });
+    if (!accountId || !docId) return;
 
-  changeStream.on('error', (err) => console.error('[CDC:Notification] Stream error:', err.message));
-  console.log('✅ [CDC] Notification change stream active');
+    await CacheManager.del(CacheKeys.notificationList(accountId));
+  }
+}
+
+export const watchNotifications = (connection: mongoose.Connection): void => {
+  new NotificationChangeStream(connection).start();
 };

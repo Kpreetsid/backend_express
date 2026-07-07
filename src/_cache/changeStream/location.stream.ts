@@ -1,50 +1,28 @@
-/**
- * Location CDC Change Stream Handler
- *
- * Watches the Location collection and invalidates location and
- * asset list caches (since assets are joined to locations).
- *
- * Keys invalidated:
- *   - location:{id}
- *   - location:list
- *   - asset:list  (locations are embedded in asset responses)
- */
-
 import mongoose from 'mongoose';
 import { CacheManager } from '../cacheManager';
 import { CacheKeys } from '../cacheKeys';
+import { BaseChangeStream } from './base.stream';
 
-export const watchLocations = (connection: mongoose.Connection): void => {
-  if (!connection || connection.readyState !== 1) return;
-
-  let changeStream: mongoose.mongo.ChangeStream;
-  try {
-    changeStream = connection.collection('locations').watch([], { fullDocument: 'updateLookup' });
-  } catch (err) {
-    console.warn('[CDC:Location] Change stream not available:', (err as Error).message);
-    return;
+export class LocationChangeStream extends BaseChangeStream {
+  constructor(connection: mongoose.Connection) {
+    super(connection, 'locations');
   }
 
-  changeStream.on('change', async (event: mongoose.mongo.ChangeStreamDocument) => {
-    try {
-      const doc = event as any;
-      const accountId = doc.fullDocument?.account_id?.toString()
-        ?? doc.updateDescription?.updatedFields?.account_id?.toString();
-      const docId = doc.documentKey?._id?.toString();
+  protected async handleChange(event: any): Promise<void> {
+    const accountId = event.effectiveDocument?.account_id?.toString() ?? event.updateDescription?.updatedFields?.account_id?.toString();
+    const docId = event.documentKey?._id?.toString() ?? event.effectiveDocument?._id?.toString();
 
-      if (!accountId || !docId) return;
+    if (!accountId || !docId) return;
 
-      await CacheManager.del(
-        CacheKeys.location(accountId, docId),
-        CacheKeys.locationList(accountId),
-        CacheKeys.assetList(accountId),   // assets embed location data
-      );
-      console.debug(`[CDC:Location] Invalidated for location=${docId} account=${accountId}`);
-    } catch (err) {
-      console.error('[CDC:Location] Error:', err);
-    }
-  });
+    await CacheManager.del(
+      CacheKeys.location(accountId, docId),
+      CacheKeys.locationList(accountId),
+      CacheKeys.assetList(accountId),
+    );
+    console.debug(`[CDC:Location] Invalidated for location=${docId} account=${accountId}`);
+  }
+}
 
-  changeStream.on('error', (err) => console.error('[CDC:Location] Stream error:', err.message));
-  console.log('✅ [CDC] Location change stream active');
+export const watchLocations = (connection: mongoose.Connection): void => {
+  new LocationChangeStream(connection).start();
 };

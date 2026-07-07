@@ -1,40 +1,26 @@
-/**
- * Part CDC Change Stream Handler
- */
-
 import mongoose from 'mongoose';
 import { CacheManager } from '../cacheManager';
 import { CacheKeys } from '../cacheKeys';
+import { BaseChangeStream } from './base.stream';
 
-export const watchParts = (connection: mongoose.Connection): void => {
-  if (!connection || connection.readyState !== 1) return;
-
-  let changeStream: mongoose.mongo.ChangeStream;
-  try {
-    changeStream = connection.collection('parts').watch([], { fullDocument: 'updateLookup' });
-  } catch (err) {
-    console.warn('[CDC:Part] Change stream not available:', (err as Error).message);
-    return;
+export class PartChangeStream extends BaseChangeStream {
+  constructor(connection: mongoose.Connection) {
+    super(connection, 'parts');
   }
 
-  changeStream.on('change', async (event: mongoose.mongo.ChangeStreamDocument) => {
-    try {
-      const doc = event as any;
-      const accountId = doc.fullDocument?.account_id?.toString()
-        ?? doc.updateDescription?.updatedFields?.account_id?.toString();
-      const docId = doc.documentKey?._id?.toString();
-      if (!accountId || !docId) return;
+  protected async handleChange(event: any): Promise<void> {
+    const accountId = event.effectiveDocument?.account_id?.toString() ?? event.updateDescription?.updatedFields?.account_id?.toString();
+    const docId = event.documentKey?._id?.toString() ?? event.effectiveDocument?._id?.toString();
 
-      await CacheManager.del(
-        CacheKeys.part(accountId, docId),
-        CacheKeys.partList(accountId),
-      );
-      console.debug(`[CDC:Part] Invalidated for part=${docId} account=${accountId}`);
-    } catch (err) {
-      console.error('[CDC:Part] Error:', err);
-    }
-  });
+    if (!accountId || !docId) return;
 
-  changeStream.on('error', (err) => console.error('[CDC:Part] Stream error:', err.message));
-  console.log('✅ [CDC] Part change stream active');
+    await CacheManager.del(
+      CacheKeys.part(accountId, docId),
+      CacheKeys.partList(accountId),
+    );
+  }
+}
+
+export const watchParts = (connection: mongoose.Connection): void => {
+  new PartChangeStream(connection).start();
 };

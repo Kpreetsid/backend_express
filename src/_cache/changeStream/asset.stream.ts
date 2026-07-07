@@ -14,54 +14,41 @@
 import mongoose from 'mongoose';
 import { CacheManager } from '../cacheManager';
 import { CacheKeys } from '../cacheKeys';
+import { BaseChangeStream } from './base.stream';
 
-export const watchAssets = (connection: mongoose.Connection): void => {
-  if (!connection || connection.readyState !== 1) return;
-
-  const collection = connection.collection('assets');
-
-  let changeStream: mongoose.mongo.ChangeStream;
-  try {
-    changeStream = collection.watch([], { fullDocument: 'updateLookup' });
-  } catch (err) {
-    console.warn('[CDC:Asset] Change stream not available (Replica Set required):', (err as Error).message);
-    return;
+export class AssetChangeStream extends BaseChangeStream {
+  constructor(connection: mongoose.Connection) {
+    super(connection, 'assets');
   }
 
-  changeStream.on('change', async (event: mongoose.mongo.ChangeStreamDocument) => {
-    try {
-      const accountId = getAccountId(event);
-      const docId = getDocumentId(event);
+  protected async handleChange(event: any): Promise<void> {
+    const accountId = this.getAccountId(event);
+    const docId = this.getDocumentId(event);
 
-      if (!accountId || !docId) return;
+    if (!accountId || !docId) return;
 
-      const keysToDelete = [
-        CacheKeys.asset(accountId, docId),
-        CacheKeys.assetList(accountId),
-        CacheKeys.workOrderList(accountId),
-        CacheKeys.report(accountId, docId),
-      ];
+    const keysToDelete = [
+      CacheKeys.asset(accountId, docId),
+      CacheKeys.assetList(accountId),
+      CacheKeys.workOrderList(accountId),
+      CacheKeys.report(accountId, docId),
+    ];
 
-      await CacheManager.del(...keysToDelete);
-      console.debug(`[CDC:Asset] Invalidated keys for asset=${docId} account=${accountId}`);
-    } catch (err) {
-      console.error('[CDC:Asset] Error processing change event:', err);
-    }
-  });
+    await CacheManager.del(...keysToDelete);
+    console.debug(`[CDC:Asset] Invalidated keys for asset=${docId} account=${accountId}`);
+  }
 
-  changeStream.on('error', (err) => {
-    console.error('[CDC:Asset] Stream error:', err.message);
-  });
+  private getDocumentId(event: any): string | null {
+    return event.documentKey?._id?.toString() ?? event.effectiveDocument?._id?.toString() ?? null;
+  }
 
-  console.log('✅ [CDC] Asset change stream active');
+  private getAccountId(event: any): string | null {
+    return event.effectiveDocument?.account_id?.toString() ?? event.updateDescription?.updatedFields?.account_id?.toString() ?? null;
+  }
+}
+
+export const watchAssets = (connection: mongoose.Connection): void => {
+  const stream = new AssetChangeStream(connection);
+  stream.start();
 };
 
-function getDocumentId(event: mongoose.mongo.ChangeStreamDocument): string | null {
-  const doc = event as any;
-  return doc.documentKey?._id?.toString() ?? doc.fullDocument?._id?.toString() ?? null;
-}
-
-function getAccountId(event: mongoose.mongo.ChangeStreamDocument): string | null {
-  const doc = event as any;
-  return doc.fullDocument?.account_id?.toString() ?? doc.updateDescription?.updatedFields?.account_id?.toString() ?? null;
-}

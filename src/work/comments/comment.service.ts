@@ -19,7 +19,7 @@ class CommentService {
   };
 
   async getComments(match: any) {
-    return await CommentsModel.find(match).sort({ _id: -1 });
+    return await CommentsModel.find(match).sort({ _id: -1 }).lean();
   };
 
   async getAllCommentsForWorkOrder(match: any) {

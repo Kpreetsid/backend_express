@@ -1,62 +1,13 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import { UserLogModel } from '../models/userLogs.model';
 import { get, merge, omit } from 'lodash';
-import fs from 'fs';
-import path from 'path';
-import morgan from 'morgan';
 import { UserLogProducer } from '../_cache/streams/userLogProducer';
 
 class AppLogger {
-  private logDir: string;
-  private accessLogStream!: fs.WriteStream;
-  private fileLogger!: RequestHandler;
-  private consoleLogger: RequestHandler;
-  private currentLogFile: string = '';
   private readonly sensitiveKeyPattern = /(password|passcode|token|authorization|auth|otp|secret|cookie|session|card|ssn|external_token|verificationCode|confirmNewPassword|newPassword|payloadCrypto|sessionKey|_encrypted|kid|iv|tag|ct|__cmms_crypto_fields)/i;
-
-  constructor() {
-    this.logDir = path.join(process.cwd(), 'logs');
-    if (!fs.existsSync(this.logDir)) {
-      fs.mkdirSync(this.logDir, { recursive: true });
-    }
-    this.registerMorganTokens();
-    this.refreshFileLogger();
-    const consoleFormat = ':date_ist | :status | :userId | :userName | :action | :method | :response-time ms | :url';
-    this.consoleLogger = morgan(consoleFormat);
-  }
-
-  private getMonthlyLogFileName(): string {
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istDate = new Date(now.getTime() + istOffset);
-    const month = istDate.toLocaleString('en-US', { month: 'long' });
-    const year = istDate.getFullYear();
-    return `${month}_${year}.log`;
-  }
-
-  private refreshFileLogger(): void {
-    const fileName = this.getMonthlyLogFileName();
-    if (this.currentLogFile === fileName && this.accessLogStream) {
-      return;
-    }
-
-    if (this.accessLogStream) {
-      this.accessLogStream.end();
-    }
-    this.currentLogFile = fileName;
-    const logFilePath = path.join(this.logDir, fileName);
-    this.accessLogStream = fs.createWriteStream(logFilePath, { flags: 'a' });
-    const fileFormat = ':date_ist | :userId | :userName | :action | :method | :url | :module | :status | :res[content-length] | :response-time ms | IP: :remote-addr | Device: :device';
-    this.fileLogger = morgan(fileFormat, { stream: this.accessLogStream });
-  }
 
   public logMiddleware(): RequestHandler {
     return (req: Request, res: Response, next: NextFunction) => {
-      this.refreshFileLogger();
-      this.consoleLogger(req, res, () => {
-      });
-      this.fileLogger(req, res, () => {
-      });
       this.activityLogger(req, res, next);
     };
   }
@@ -142,9 +93,11 @@ class AppLogger {
             durationMs: Date.now() - startTime
           }
         });
+        
+        // Asynchronously push to Redis stream (no blocking I/O)
         await UserLogProducer.pushLog(newLog);
       } catch (error) {
-        console.error('Failed to log activity:', error);
+        console.error('Failed to push activity log to Redis:', error);
       }
     });
     next();
@@ -213,30 +166,6 @@ class AppLogger {
       const [name, version] = entry.split(';v=');
       return `${name} v${version}`;
     });
-  }
-
-  private registerMorganTokens(): void {
-    morgan.token('device', (req) => req.headers['user-agent'] || 'unknown');
-    morgan.token('userName', (req: any) => req.user?.username || 'Anonymous');
-    morgan.token('userId', (req: any) => req.user?._id?.toString() || 'Anonymous');
-    morgan.token('action', (req) => this.mapAction(req.method));
-    morgan.token('module', (req) => this.extractModule(req.url));
-    morgan.token('date_ist', () => {
-      const now = new Date();
-      const istOffset = 5.5 * 60 * 60 * 1000;
-      const istDate = new Date(now.getTime() + istOffset);
-      return istDate.toISOString().replace('Z', '+05:30');
-    });
-  }
-
-  private mapAction(method: any): string {
-    switch (method.toUpperCase()) {
-      case 'GET': return 'READ';
-      case 'POST': return 'CREATE';
-      case 'PUT': return 'UPDATE';
-      case 'DELETE': return 'DELETE';
-      default: return method.toUpperCase();
-    }
   }
 
   private extractModule(url: any): string {

@@ -1,37 +1,23 @@
-/**
- * Schedule CDC Change Stream Handler
- * Cron jobs that update ScheduleMaster automatically trigger this.
- */
-
 import mongoose from 'mongoose';
 import { CacheManager } from '../cacheManager';
 import { CacheKeys } from '../cacheKeys';
+import { BaseChangeStream } from './base.stream';
 
-export const watchSchedules = (connection: mongoose.Connection): void => {
-  if (!connection || connection.readyState !== 1) return;
-
-  let changeStream: mongoose.mongo.ChangeStream;
-  try {
-    changeStream = connection.collection('schedulemasters').watch([], { fullDocument: 'updateLookup' });
-  } catch (err) {
-    console.warn('[CDC:Schedule] Change stream not available:', (err as Error).message);
-    return;
+export class ScheduleChangeStream extends BaseChangeStream {
+  constructor(connection: mongoose.Connection) {
+    super(connection, 'schedulemasters');
   }
 
-  changeStream.on('change', async (event: mongoose.mongo.ChangeStreamDocument) => {
-    try {
-      const doc = event as any;
-      const accountId = doc.fullDocument?.account_id?.toString()
-        ?? doc.updateDescription?.updatedFields?.account_id?.toString();
-      if (!accountId) return;
+  protected async handleChange(event: any): Promise<void> {
+    const accountId = event.effectiveDocument?.account_id?.toString() ?? event.updateDescription?.updatedFields?.account_id?.toString();
+    const docId = event.documentKey?._id?.toString() ?? event.effectiveDocument?._id?.toString();
 
-      await CacheManager.del(CacheKeys.schedule(accountId));
-      console.debug(`[CDC:Schedule] Invalidated schedule:list for account=${accountId}`);
-    } catch (err) {
-      console.error('[CDC:Schedule] Error:', err);
-    }
-  });
+    if (!accountId || !docId) return;
 
-  changeStream.on('error', (err) => console.error('[CDC:Schedule] Stream error:', err.message));
-  console.log('✅ [CDC] Schedule change stream active');
+    await CacheManager.del(CacheKeys.schedule(accountId));
+  }
+}
+
+export const watchSchedules = (connection: mongoose.Connection): void => {
+  new ScheduleChangeStream(connection).start();
 };

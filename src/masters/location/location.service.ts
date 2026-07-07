@@ -21,11 +21,11 @@ class LocationService {
   };
 
   async getAllLocations(match: any) {
-    const locationData = await LocationModel.find(match).populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible', match: { visible: true } }]);
+    const locationData = await LocationModel.find(match).lean().populate([{ path: 'parent_id', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible', match: { visible: true } }]);
     const locationIds = locationData.map(doc => `${doc._id}`);
-    const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }]);
+    const mapData = await MapUserAssetLocationModel.find({ locationId: { $in: locationIds }, userId: { $exists: true } }).lean().populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }]);
     const result: any = locationData.map((doc: any) => {
-      const { _id: id, ...obj } = doc.toObject();
+      const { _id: id, ...obj } = helperService.toPlainObject(doc);
       obj.id = id;
       const mappedUser = mapData.filter(map => `${map.locationId}` === `${id}`);
       obj.userList = mappedUser.length > 0 ? mappedUser.map((a: any) => a.userId).filter((user: any) => user) : [];
@@ -252,7 +252,7 @@ class LocationService {
         }
         match._id = { $in: mappedData.map(doc => doc.locationId) };
       }
-      const data = await LocationModel.find(match).populate([{ path: 'account_id', model: "Schema_Account", select: 'id account_name' }, { path: 'top_level_location_id', model: "Schema_Location", select: 'id location_name', match: { visible: true } }]);
+      const data = await LocationModel.find(match).lean().populate([{ path: 'account_id', model: "Schema_Account", select: 'id account_name' }, { path: 'top_level_location_id', model: "Schema_Location", select: 'id location_name', match: { visible: true } }]);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('No records found'), { status: 404 });
       }
@@ -276,14 +276,23 @@ class LocationService {
   };
 
   async getAllChildHierarchy(parentId: any, account_id: any): Promise<any[]> {
-    const children = await LocationModel.find({ parent_id: parentId, account_id, visible: true }).lean();
-    const all: any[] = [];
-    for (const child of children) {
-      all.push(child);
-      const subChildren = await this.getAllChildHierarchy(child._id.toString(), account_id);
-      all.push(...subChildren);
-    }
-    return all;
+    const match: any = { _id: helperService.validateObjectId(parentId), visible: true };
+    if (account_id) match['account_id'] = account_id;
+
+    const result = await LocationModel.aggregate([
+      { $match: match },
+      {
+        $graphLookup: {
+          from: 'locations',
+          startWith: '$_id',
+          connectFromField: '_id',
+          connectToField: 'parent_id',
+          as: 'children',
+          restrictSearchWithMatch: { visible: true }
+        }
+      }
+    ]);
+    return result.length > 0 ? result[0].children : [];
   };
 
   async cloneLocationNode(source: any, user_id: any, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any): Promise<any> {

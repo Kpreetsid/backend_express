@@ -1,37 +1,23 @@
-/**
- * Role CDC Change Stream Handler
- * Invalidates role list when user role menu is updated.
- */
-
 import mongoose from 'mongoose';
 import { CacheManager } from '../cacheManager';
 import { CacheKeys } from '../cacheKeys';
+import { BaseChangeStream } from './base.stream';
 
-export const watchRoles = (connection: mongoose.Connection): void => {
-  if (!connection || connection.readyState !== 1) return;
-
-  let changeStream: mongoose.mongo.ChangeStream;
-  try {
-    changeStream = connection.collection('userrolemenus').watch([], { fullDocument: 'updateLookup' });
-  } catch (err) {
-    console.warn('[CDC:Role] Change stream not available:', (err as Error).message);
-    return;
+export class RoleChangeStream extends BaseChangeStream {
+  constructor(connection: mongoose.Connection) {
+    super(connection, 'userrolemenus');
   }
 
-  changeStream.on('change', async (event: mongoose.mongo.ChangeStreamDocument) => {
-    try {
-      const doc = event as any;
-      const accountId = doc.fullDocument?.account_id?.toString()
-        ?? doc.updateDescription?.updatedFields?.account_id?.toString();
-      if (!accountId) return;
+  protected async handleChange(event: any): Promise<void> {
+    const accountId = event.effectiveDocument?.account_id?.toString() ?? event.updateDescription?.updatedFields?.account_id?.toString();
+    const docId = event.documentKey?._id?.toString() ?? event.effectiveDocument?._id?.toString();
 
-      await CacheManager.del(CacheKeys.role(accountId));
-      console.debug(`[CDC:Role] Invalidated role:list for account=${accountId}`);
-    } catch (err) {
-      console.error('[CDC:Role] Error:', err);
-    }
-  });
+    if (!accountId || !docId) return;
 
-  changeStream.on('error', (err) => console.error('[CDC:Role] Stream error:', err.message));
-  console.log('✅ [CDC] Role change stream active');
+    await CacheManager.del(CacheKeys.role(accountId));
+  }
+}
+
+export const watchRoles = (connection: mongoose.Connection): void => {
+  new RoleChangeStream(connection).start();
 };
