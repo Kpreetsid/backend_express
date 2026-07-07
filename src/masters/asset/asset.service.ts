@@ -13,13 +13,16 @@ import { LocationModel } from '../../models/location.model';
 import { withTransaction } from "../../utils/transaction.helper";
 import { Cacheable } from '../../_cache/decorators/cacheable.decorator';
 import { CacheKeys, CacheTTL } from '../../_cache/cacheKeys';
+import { generateDeterministicObjectKey } from '../../utils/cacheHelper';
 
 class AssetService {
   @Cacheable((args) => {
     const match = args[0] || {};
     if (!match.account_id) return null; // Uncachable without account isolation
-    if (match._id) return CacheKeys.asset(String(match.account_id), String(match._id));
-    return CacheKeys.assetList(String(match.account_id));
+    
+    // Completely hash the exact match query to prevent [object Object] generic duplication
+    const queryHash = generateDeterministicObjectKey(match);
+    return CacheKeys.assetListQuery(String(match.account_id), queryHash);
   }, CacheTTL.ASSET_LIST)
   async getAllAssets(match: any) {
     const assetsData = await AssetModel.find(match).lean().populate([

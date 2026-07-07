@@ -1,14 +1,5 @@
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-
-// First load .env.local if it exists (for local overrides)
-const localEnvPath = path.join(process.cwd(), '.env.local');
-if (fs.existsSync(localEnvPath)) {
-  dotenv.config({ path: localEnvPath, override: true });
-}
-
-// Then load .env (won't override what's already set)
+// Load .env
 dotenv.config();
 
 export const environment = {
@@ -73,7 +64,7 @@ export const database = {
   minPoolSize: envNumber(process.env.DB_MIN_POOL_SIZE, 10),
   replicaSet: envString(process.env.DB_REPLICA_SET, ''),
   directConnection: envBoolean(process.env.DB_DIRECT_CONNECTION, false),
-  readPreference: envReadPreference(process.env.DB_READ_PREFERENCE, 'primary'),
+  readPreference: envReadPreference(process.env.DB_READ_PREFERENCE, 'secondaryPreferred'),
   retryWrites: envBoolean(process.env.DB_RETRY_WRITES, false),
   autoIndex: envBoolean(process.env.DB_AUTO_INDEX, environment.type !== 'production'),
   connectTimeoutMS: envNumber(process.env.DB_CONNECT_TIMEOUT_MS, 10000),

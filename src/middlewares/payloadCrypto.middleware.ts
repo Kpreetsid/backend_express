@@ -40,10 +40,11 @@ export const payloadCryptoRequestMiddleware = async (req: Request, _res: Respons
     const requestBodyEncryptionEnabled = requestBodyEncryptionRequested && accountPolicy.encryptPayload;
     const responseEncryptionEnabled = responseEncryptionRequested && accountPolicy.encryptResponse;
     const hasCryptoHeaders = !!req.headers[KEY_ID_HEADER] && !!req.headers[TIMESTAMP_HEADER] && !!req.headers[NONCE_HEADER];
-    const hasEncryptedRequest = encryptedHeader === 'v1' || !!bodyEnvelope;
-    const hasCryptoContext = hasEncryptedRequest || (hasCryptoHeaders && responseEncryptionEnabled);
+    const encryptedPayloadHeaderPresent = encryptedHeader === 'v1';
+    const hasEncryptedRequestBody = !!bodyEnvelope || (encryptedPayloadHeaderPresent && canRequestCarryEncryptedPayload(req));
+    const hasCryptoContext = hasEncryptedRequestBody || (hasCryptoHeaders && responseEncryptionEnabled);
 
-    if (hasEncryptedRequest && !accountPolicy.encryptPayload) {
+    if (hasEncryptedRequestBody && !accountPolicy.encryptPayload) {
       throw Object.assign(new Error('Payload encryption is disabled for this account'), { status: 400, name: 'BadRequestError' });
     }
 
@@ -55,11 +56,11 @@ export const payloadCryptoRequestMiddleware = async (req: Request, _res: Respons
       return;
     }
 
-    if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && requestBodyEncryptionEnabled && !hasEncryptedRequest) {
+    if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && requestBodyEncryptionEnabled && !hasEncryptedRequestBody) {
       throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
     }
 
-    if (!payloadCryptoService.canDecryptRequests() && requestBodyEncryptionEnabled && hasEncryptedRequest) {
+    if (!payloadCryptoService.canDecryptRequests() && requestBodyEncryptionEnabled && hasEncryptedRequestBody) {
       throw Object.assign(new Error('Encrypted payload support is disabled on this server'), { status: 400, name: 'BadRequestError' });
     }
 
@@ -72,7 +73,7 @@ export const payloadCryptoRequestMiddleware = async (req: Request, _res: Respons
     );
     const context: PayloadCryptoContext = {
       encryptedRequest: hasCryptoContext,
-      requestBodyEncrypted: requestBodyEncryptionEnabled && hasEncryptedRequest,
+      requestBodyEncrypted: requestBodyEncryptionEnabled && hasEncryptedRequestBody,
       responseEncryptionEnabled,
       keyRecord,
       timestamp: replay.timestamp,
@@ -295,6 +296,10 @@ function shouldRequireEncryption(req: Request): boolean {
     return false;
   }
   return req.path.includes('/api/');
+}
+
+function canRequestCarryEncryptedPayload(req: Request): boolean {
+  return !['GET', 'HEAD', 'OPTIONS'].includes(req.method.toUpperCase());
 }
 
 function normalizeFiles(req: Request): any[] {

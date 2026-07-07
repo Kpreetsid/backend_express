@@ -14,6 +14,7 @@ export const CacheKeys = {
   /* ─────────── MASTERS ─────────── */
   asset:              (accountId: string, id: string) => `cmms:${ENV}:${accountId}:asset:${id}`,
   assetList:          (accountId: string)             => `cmms:${ENV}:${accountId}:asset:list`,
+  assetListQuery:     (accountId: string, queryHash: string) => `cmms:${ENV}:${accountId}:asset:list:query:${queryHash}`,
 
   location:           (accountId: string, id: string) => `cmms:${ENV}:${accountId}:location:${id}`,
   locationList:       (accountId: string)             => `cmms:${ENV}:${accountId}:location:list`,

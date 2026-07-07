@@ -81,9 +81,10 @@ const buildCacheKey = (
   return `${redisConfig.keyPrefix}:${accountId}:${userId}:${namespace}:${operation}:${keyHash}`;
 };
 
+import { generateDeterministicUrl } from '../utils/cacheHelper';
+
 const defaultKeyParts = (req: Request): unknown[] => [
-  req.params || {},
-  req.query || {},
+  generateDeterministicUrl(req.originalUrl || req.url),
   req.body || {}
 ];
 

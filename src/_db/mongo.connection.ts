@@ -40,6 +40,7 @@ export class MongoConnection {
       }
 
       const mongoUri = `mongodb://${credentials}${buildHostList()}/${database.databaseName}?${query.toString()}`;
+
       await mongoose.connect(mongoUri, {
         autoIndex: database.autoIndex,
         connectTimeoutMS: database.connectTimeoutMS,
