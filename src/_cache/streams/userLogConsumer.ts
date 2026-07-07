@@ -168,7 +168,7 @@ export class UserLogConsumer {
     if (documentsToInsert.length > 0) {
       try {
         await UserLogModel.insertMany(documentsToInsert, { ordered: false });
-        console.log(`[UserLogConsumer] Batch inserted ${documentsToInsert.length} logs to MongoDB.`);
+        // console.log(`[UserLogConsumer] Batch inserted ${documentsToInsert.length} logs to MongoDB.`);
       } catch (dbError: any) {
         console.error('[UserLogConsumer] Failed to insertMany:', dbError.message);
         return;
