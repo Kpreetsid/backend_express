@@ -44,7 +44,7 @@ export function Cacheable(keyResolver: KeyResolver, ttlSeconds: number): MethodD
       );
 
       if (process.env.NODE_ENV !== 'production') {
-        console.debug(`[Cacheable] ${hit ? 'HIT' : 'MISS'} key="${key}"`);
+        console.log(`${hit ? 'GET' : 'SET'} data with key = ${key}`)
       }
 
       return value;

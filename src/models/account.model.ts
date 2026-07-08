@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { RoleManager } from '../_role/accountRoleMenu';
 export const COMPANY_COLLECTION_NAME = `account_master`;
 export const STATUS_ENUM = ['active', 'inactive'];
 export const EXPERIENCE_PROFILES = ['standard_account', 'oem'] as const;
@@ -15,6 +16,7 @@ export interface IAccount extends Document {
   redis_status?: string;
   encrypt_payload?: string;
   encrypt_response?: string;
+  account_role_menu?: object;
   account_status: string;
   visible: boolean;
 }
@@ -31,6 +33,7 @@ const accountSchema = new Schema<IAccount>(
     redis_status: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     encrypt_payload: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     encrypt_response: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
+    account_role_menu: { type: Object, required: true, default: () => RoleManager.getRoleMenu(EXPERIENCE_PROFILES[0]) },
     account_status: { type: String, trim: true, enum: STATUS_ENUM, default: STATUS_ENUM[0] },
     visible: { type: Boolean, required: true, default: true }
   },

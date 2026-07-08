@@ -1,0 +1,132 @@
+type Permission = {
+  level: number;
+  parent?: string;
+  view: boolean;
+  add?: boolean;
+  edit?: boolean;
+  delete?: boolean;
+  import?: boolean;
+  export?: boolean;
+};
+
+type RoleMenu = Record<string, Permission>;
+
+export class RoleManager {
+  private static readonly STANDARD_ACCOUNT_ROLES: RoleMenu = {
+    master_asset: { level: 0, view: true },
+    master_location: { level: 0, view: true },
+    master_dashboard: { level: 0, view: true },
+    master_report: { level: 0, view: true },
+    master_work_order: { level: 0, view: true },
+    master_work_request: { level: 0, view: true },
+    master_preventive: { level: 0, view: true },
+    master_posts: { level: 0, view: true },
+    master_inventory: { level: 0, view: true },
+    master_devices: { level: 0, view: true },
+    master_admin_panel: { level: 0, view: true },
+    master_form: { level: 0, view: true },
+    master_inspections: { level: 0, view: true },
+    asset: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    child_asset: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    report_asset: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    location: { level: 1, parent: "master_location", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    child_location: { level: 1, parent: "master_location", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    location_report: { level: 1, parent: "master_location", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    work_order: { level: 1, parent: "master_work_order", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    inspections: { level: 1, parent: "master_inspections", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    comment_work_order: { level: 1, parent: "master_work_order", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    parts_work_order: { level: 1, parent: "master_work_order", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    work_order_status: { level: 1, parent: "master_work_order", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    floor_map: { level: 1, parent: "master_dashboard", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    pdm: { level: 1, parent: "master_dashboard", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    cmms: { level: 1, parent: "master_dashboard", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    reports_monitoring: { level: 1, parent: "master_report", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    reports_health_monitoring: { level: 1, parent: "master_report", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    reports_sensor_data_tracking: { level: 1, parent: "master_report", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    asset_sensors: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    endpoint: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    observation: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    config: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    config_alarm: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    attach_sensor: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    preventive: { level: 1, parent: "master_preventive", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    form: { level: 1, parent: "master_form", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    form_category: { level: 1, parent: "master_form", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    work_request: { level: 1, parent: "master_work_request", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    posts: { level: 1, parent: "master_posts", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    inventory: { level: 1, parent: "master_inventory", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    peripheral_sensors: { level: 1, parent: "master_devices", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    gateways: { level: 1, parent: "master_devices", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    users: { level: 1, parent: "master_admin_panel", view: true, add: true, edit: true, delete: true, export: true, import: true },
+    permission: { level: 1, parent: "master_admin_panel", view: true, add: true, edit: true, delete: true, export: true, import: true },
+    asset_mail: { level: 1, parent: "master_admin_panel", view: true, add: true, edit: true, delete: true, export: true, import: true },
+    location_floor_map: { level: 1, parent: "master_location", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    work_request_status: { level: 1, parent: "master_work_request", view: true, add: true, edit: true, delete: true, import: true, export: true },
+  };
+
+  private static readonly OEM_ACCOUNT_ROLES: RoleMenu = {
+    master_asset: { level: 0, view: true },
+    master_location: { level: 0, view: true },
+    master_dashboard: { level: 0, view: true },
+    master_report: { level: 0, view: true },
+    master_work_order: { level: 0, view: true },
+    master_work_request: { level: 0, view: true },
+    master_preventive: { level: 0, view: true },
+    master_posts: { level: 0, view: true },
+    master_inventory: { level: 0, view: true },
+    master_devices: { level: 0, view: true },
+    master_admin_panel: { level: 0, view: false },
+    master_form: { level: 0, view: true },
+    master_inspections: { level: 0, view: true },
+    asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    child_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    report_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    location: { level: 1, parent: "master_location", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    child_location: { level: 1, parent: "master_location", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    location_report: { level: 1, parent: "master_location", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    work_order: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    inspections: { level: 1, parent: "master_inspections", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    comment_work_order: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    parts_work_order: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    floor_map: { level: 1, parent: "master_dashboard", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pdm: { level: 1, parent: "master_dashboard", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    cmms: { level: 1, parent: "master_dashboard", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    reports_monitoring: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    reports_health_monitoring: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    reports_sensor_data_tracking: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    asset_sensors: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    endpoint: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    observation: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    config: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    config_alarm: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    attach_sensor: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    preventive: { level: 1, parent: "master_preventive", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form: { level: 1, parent: "master_form", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    form_category: { level: 1, parent: "master_form", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    work_request: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    posts: { level: 1, parent: "master_posts", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    inventory: { level: 1, parent: "master_inventory", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    peripheral_sensors: { level: 1, parent: "master_devices", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    gateways: { level: 1, parent: "master_devices", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    users: { level: 1, parent: "master_admin_panel", view: true, add: false, edit: false, delete: false, export: false, import: false },
+    permission: { level: 1, parent: "master_admin_panel", view: true, add: false, edit: false, delete: false, export: false, import: false },
+    asset_mail: { level: 1, parent: "master_admin_panel", view: true, add: false, edit: false, delete: false, export: false, import: false },
+    location_floor_map: { level: 1, parent: "master_location", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
+  };
+
+  public static async getRoleMenu(role: string): Promise<any> {
+    switch (role) {
+      case "standard_account": {
+        return this.STANDARD_ACCOUNT_ROLES;
+      }
+      case "oem_account": {
+        return this.OEM_ACCOUNT_ROLES;
+      }
+      default: {
+        return this.STANDARD_ACCOUNT_ROLES;
+      }
+    }
+  }
+}
