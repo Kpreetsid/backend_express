@@ -2171,6 +2171,7 @@ class OrderService {
           parentId: 1,
           wo_asset_id: 1,
           wo_location_id: 1,
+          files: 1,
           asset: 1,
           location: 1,
           assignedUsers: 1,
