@@ -168,11 +168,11 @@ export const payloadCryptoResponseMiddleware = () => {
 };
 
 function prepareResponseBody(req: Request, res: Response, body: any): any {
-  const withSession = attachPayloadCryptoSessionIfNeeded(req, body);
   const context = (req as any).payloadCrypto as PayloadCryptoContext | undefined;
-  if (!shouldEncryptResponse(req, res, context, withSession)) {
-    return withSession;
+  if (!shouldEncryptResponse(req, res, context, body)) {
+    return body;
   }
+  const withSession = attachPayloadCryptoSessionIfNeeded(req, body);
   return encryptResponseValue(req, res, withSession, context!);
 }
 

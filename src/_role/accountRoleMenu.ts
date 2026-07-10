@@ -1,4 +1,4 @@
-type Permission = {
+export type Permission = {
   level: number;
   parent?: string;
   view: boolean;
@@ -9,7 +9,7 @@ type Permission = {
   export?: boolean;
 };
 
-type RoleMenu = Record<string, Permission>;
+export type RoleMenu = Record<string, Permission>;
 
 export class RoleManager {
   private static readonly STANDARD_ACCOUNT_ROLES: RoleMenu = {
@@ -62,6 +62,9 @@ export class RoleManager {
     asset_mail: { level: 1, parent: "master_admin_panel", view: true, add: true, edit: true, delete: true, export: true, import: true },
     location_floor_map: { level: 1, parent: "master_location", view: true, add: true, edit: true, delete: true, import: true, export: true },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    oem_report: { level: 1, parent: "master_report", view: false, add: false, edit: false, delete: false, import: false, export: false },
+    pump_asset_health: { level: 1, parent: "master_asset", view: false, add: false, edit: false, delete: false, import: false, export: false },
+    pdm_location_filter: { level: 1, parent: "master_dashboard", view: true, add: true, edit: true, delete: true, import: true, export: true },
   };
 
   private static readonly OEM_ACCOUNT_ROLES: RoleMenu = {
@@ -114,18 +117,26 @@ export class RoleManager {
     location_floor_map: { level: 1, parent: "master_location", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    oem_report: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pump_asset_health: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pdm_location_filter: { level: 1, parent: "master_dashboard", view: false, add: false, edit: false, delete: false, import: false, export: false },
   };
 
-  public static async getRoleMenu(role: string): Promise<any> {
+  private static cloneRoleMenu(roleMenu: RoleMenu): RoleMenu {
+    return JSON.parse(JSON.stringify(roleMenu));
+  }
+
+  public static getRoleMenu(role: string = "standard_account"): RoleMenu {
     switch (role) {
       case "standard_account": {
-        return this.STANDARD_ACCOUNT_ROLES;
+        return this.cloneRoleMenu(this.STANDARD_ACCOUNT_ROLES);
       }
+      case "oem":
       case "oem_account": {
-        return this.OEM_ACCOUNT_ROLES;
+        return this.cloneRoleMenu(this.OEM_ACCOUNT_ROLES);
       }
       default: {
-        return this.STANDARD_ACCOUNT_ROLES;
+        return this.cloneRoleMenu(this.STANDARD_ACCOUNT_ROLES);
       }
     }
   }

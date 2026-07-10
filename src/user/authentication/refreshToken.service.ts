@@ -10,6 +10,7 @@ import { accountFeatureService } from '../../masters/company/accountFeature.serv
 import { rolesService } from '../../masters/user/role/roles.service';
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { parseTtlSeconds } from '../../utils/ttl';
+import { accountAccessService } from '../../_role/accountAccess.service';
 
 const REFRESH_HEADER = 'x-cmms-refresh-request';
 const REFRESH_PRINCIPAL_TYPE = 'refresh_token';
@@ -215,6 +216,7 @@ class RefreshTokenService {
     if (!userRoleData) {
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
+    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails[0]);
 
     const accessSession = await this.createAccessSession(user);
     if (refreshTokenConfig.rotate) {
@@ -236,8 +238,8 @@ class RefreshTokenService {
       token_id: accessSession.token_id,
       accountDetails: accountDetails[0],
       userDetails: getSafeUser(user),
-      platformControl: userRoleData.data,
-      roleMenu: userRoleData.roleMenu
+      platformControl: effectivePermissions.platformControl,
+      roleMenu: effectivePermissions.roleMenu
     };
   }
 

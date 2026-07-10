@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { createAuthenticationByToken, userAuthentication, userAuthenticationByToken, userAuthenticationToken, userLogOutService, userResetPassword } from './authentication.service';
+import { createAuthenticationByToken, userAuthentication, userAuthenticationByToken, userAuthenticationToken, userLogOutService, userResetPassword, userGetMeService } from './authentication.service';
 import { refreshTokenService } from './refreshToken.service';
 
 export const authentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -33,4 +33,8 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
     } catch (error) {
         next(error);
     }
+};
+
+export const getMe = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    await userGetMeService(req, res, next);
 };

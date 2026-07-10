@@ -17,6 +17,9 @@ export interface IAccount extends Document {
   encrypt_payload?: string;
   encrypt_response?: string;
   account_role_menu?: object;
+  account_permission_version?: number;
+  account_role_menu_updated_by?: Schema.Types.ObjectId;
+  account_role_menu_updated_at?: Date;
   account_status: string;
   visible: boolean;
 }
@@ -34,6 +37,9 @@ const accountSchema = new Schema<IAccount>(
     encrypt_payload: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     encrypt_response: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     account_role_menu: { type: Object, required: true, default: () => RoleManager.getRoleMenu(EXPERIENCE_PROFILES[0]) },
+    account_permission_version: { type: Number, default: 1 },
+    account_role_menu_updated_by: { type: mongoose.Schema.Types.ObjectId },
+    account_role_menu_updated_at: { type: Date },
     account_status: { type: String, trim: true, enum: STATUS_ENUM, default: STATUS_ENUM[0] },
     visible: { type: Boolean, required: true, default: true }
   },

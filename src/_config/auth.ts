@@ -12,8 +12,16 @@ import { TokenModel } from '../models/userToken.model';
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const headerToken = req.headers.authorization?.split(' ')[1];
-    const headerAccountID = req.headers.accountid;
+    let headerToken = req.headers.authorization?.split(' ')[1];
+    let headerAccountID = req.headers.accountid as string;
+
+    if (!headerToken && req.cookies?.access_token) {
+      headerToken = req.cookies.access_token;
+    }
+    if (!headerAccountID && req.cookies?.account_id) {
+      headerAccountID = req.cookies.account_id;
+    }
+
     if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
@@ -23,7 +31,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     }
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
-    const accountID = req.headers.accountid as string;
+    const accountID = headerAccountID;
 
     if (!id || !username || !companyID || headerAccountID !== accountID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
@@ -52,14 +60,22 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
 
 export const isLogOutAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const headerToken = req.headers.authorization?.split(' ')[1];
-    const headerAccountID = req.headers.accountid;
+    let headerToken = req.headers.authorization?.split(' ')[1];
+    let headerAccountID = req.headers.accountid as string;
+
+    if (!headerToken && req.cookies?.access_token) {
+      headerToken = req.cookies.access_token;
+    }
+    if (!headerAccountID && req.cookies?.account_id) {
+      headerAccountID = req.cookies.account_id;
+    }
+
     if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
-    const accountID = req.headers.accountid as string;
+    const accountID = headerAccountID;
     if (!id || !username || !companyID || headerAccountID !== accountID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }

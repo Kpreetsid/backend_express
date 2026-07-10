@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { decodedAccessToken } from "../../_config/auth";
 import { rolesService } from "../../masters/user/role/roles.service";
+import { companyService } from "../../masters/company/company.service";
+import { accountAccessService } from "../../_role/accountAccess.service";
 import { usersService } from "../../masters/user/user.service";
 import { TokenModel } from "../../models/userToken.model";
 
@@ -28,7 +30,13 @@ class UserTokenService {
       if (!userRoleData) {
         throw Object.assign(new Error('User does not have any permission'), { status: 403 });
       }
-      return res.status(200).json({ status: true, message: "Data fetched successfully", data: {userDetails: safeUser, token, platformControl: userRoleData.data} });
+      const accountDetails = await companyService.getAllCompanies({ _id: getUserDetails.account_id });
+      const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails?.[0]);
+      return res.status(200).json({
+        status: true,
+        message: "Data fetched successfully",
+        data: { userDetails: safeUser, token, platformControl: effectivePermissions.platformControl }
+      });
     } catch (error) {
       next(error);     
     }

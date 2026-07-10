@@ -16,6 +16,7 @@ import { mapUserToLocationService } from "../../transaction/mapUserLocation/user
 import { TokenBlacklist } from "../../_cache/auth/tokenBlacklist";
 import { refreshTokenService } from "./refreshToken.service";
 import { parseTtlSeconds } from "../../utils/ttl";
+import { accountAccessService } from "../../_role/accountAccess.service";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -71,7 +72,52 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     });
     await userTokenData.save();
     await refreshTokenService.issueForUser(req, res, user, token_id);
-    res.status(200).json({ status: true, message: 'Login successful', data: { token, token_id, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu } });
+    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, userAccount[0]);
+    
+    const isCookieAuth = userAccount[0].cookie_status === 'enabled';
+    if (isCookieAuth) {
+      const cookieOptions = {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none' as const,
+        maxAge: accessTtlSeconds * 1000
+      };
+
+      res.cookie('access_token', token, cookieOptions);
+      res.cookie('account_id', String(user.account_id), cookieOptions);
+
+      const stateToEncrypt = {
+        accountDetails: userAccount[0],
+        userDetails: safeUser,
+        platformControl: effectivePermissions.platformControl,
+        roleMenu: effectivePermissions.roleMenu
+      };
+      const encryptedState = generateExternalAccessToken(stateToEncrypt, accessTtlSeconds);
+      res.cookie('auth_state', encryptedState, cookieOptions);
+
+      res.status(200).json({
+        status: true,
+        message: 'Login successful',
+        data: {
+          authMethod: 'cookie',
+          token_id
+        }
+      });
+    } else {
+      res.status(200).json({
+        status: true,
+        message: 'Login successful',
+        data: {
+          authMethod: 'localStorage',
+          token,
+          token_id,
+          accountDetails: userAccount[0],
+          userDetails: safeUser,
+          platformControl: effectivePermissions.platformControl,
+          roleMenu: effectivePermissions.roleMenu
+        }
+      });
+    }
   } catch (error) {
     next(error);
   }
@@ -190,6 +236,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
       ? redirectPath
       : '/dashboard';
+    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleMenu, accountDetails[0]);
 
     res.status(200).json(
       { 
@@ -200,8 +247,8 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
           token_id,
           accountDetails: accountDetails[0], 
           userDetails: newSafeUserValue, 
-          platformControl: userRoleMenu.data, 
-          roleMenu: userRoleMenu.roleMenu, 
+          platformControl: effectivePermissions.platformControl, 
+          roleMenu: effectivePermissions.roleMenu, 
           isExternal: !!isExternal,
           isInternal: !!isInternal,
           redirectPath: safeRedirectPath
@@ -232,10 +279,12 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
     await mailerService.sendPasswordChangeConfirmation(user);
     await VerificationCodeModel.deleteOne({ email: user.email, code: token.toString() });
     return res.status(200).json({ status: true, message: 'Password reset successful' });
+
   } catch (error) {
     next(error);
   }
-}
+};
+
 
 export const userLogOutService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -261,7 +310,29 @@ export const userLogOutService = async (req: Request, res: Response, next: NextF
     }
     await refreshTokenService.revokeCurrent(req, res);
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none' as const
+    };
+    res.clearCookie('access_token', cookieOptions);
+    res.clearCookie('account_id', cookieOptions);
+    res.clearCookie('auth_state', cookieOptions);
+
     return res.status(200).json({ status: true, message: 'Logout successful' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const userGetMeService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+  try {
+    const authState = req.cookies?.auth_state;
+    if (!authState) {
+      throw Object.assign(new Error('No auth state cookie found'), { status: 401 });
+    }
+    const decryptedState = decryptToken(authState);
+    return res.status(200).json({ status: true, data: decryptedState });
   } catch (error) {
     next(error);
   }
