@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 class RateLimiterService {
   public readonly globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000,
+    max: 3000,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -14,7 +14,7 @@ class RateLimiterService {
 
   public readonly authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 300,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -26,7 +26,7 @@ class RateLimiterService {
 
   public readonly uploadLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 25,
+    max: 75,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -37,7 +37,7 @@ class RateLimiterService {
 
   public readonly otpLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 25,
+    max: 75,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -48,7 +48,7 @@ class RateLimiterService {
 
   public readonly otpValidateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 25,
+    max: 75,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -59,7 +59,7 @@ class RateLimiterService {
 
   public readonly emailLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 25,
+    max: 75,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -70,7 +70,7 @@ class RateLimiterService {
 
   public readonly notificationLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 25,
+    max: 75,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -81,7 +81,7 @@ class RateLimiterService {
 
   public readonly passwordResetLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 25,
+    max: 75,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -92,7 +92,7 @@ class RateLimiterService {
 
   public readonly passwordResetValidateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 25,
+    max: 75,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -103,7 +103,7 @@ class RateLimiterService {
 
   public readonly unauthorizedRequestLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 25,
+    max: 75,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -114,7 +114,7 @@ class RateLimiterService {
 
   public readonly reportLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 50,
+    max: 150,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -125,7 +125,7 @@ class RateLimiterService {
 
   public readonly searchLimiter = rateLimit({
     windowMs: 1 * 60 * 1000,
-    max: 60,
+    max: 180,
     standardHeaders: true,
     legacyHeaders: false,
     message: {
