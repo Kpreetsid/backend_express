@@ -98,6 +98,17 @@ export const refreshToken = {
   rotate: envBoolean(process.env.REFRESH_TOKEN_ROTATE, true)
 };
 
+export const cookieAuth = {
+  accessCookieName: envCookieName(process.env.AUTH_ACCESS_COOKIE_NAME, 'cmms_access_token'),
+  accountCookieName: envCookieName(process.env.AUTH_ACCOUNT_COOKIE_NAME, 'cmms_account_id'),
+  stateCookieName: envCookieName(process.env.AUTH_STATE_COOKIE_NAME, 'cmms_auth_state'),
+  csrfCookieName: envCookieName(process.env.AUTH_CSRF_COOKIE_NAME, 'cmms_csrf'),
+  path: envString(process.env.AUTH_COOKIE_PATH, '/'),
+  secure: envBoolean(process.env.AUTH_COOKIE_SECURE, environment.type === 'production'),
+  sameSite: envSameSite(process.env.AUTH_COOKIE_SAMESITE, 'lax'),
+  domain: envString(process.env.AUTH_COOKIE_DOMAIN, '')
+};
+
 export const payloadCrypto = {
   enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, true),
   strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),
@@ -117,11 +128,12 @@ export const redisConfig = {
   keyPrefix: process.env.REDIS_KEY_PREFIX || 'cmms',
   defaultTtlSeconds: parseInt(process.env.REDIS_DEFAULT_TTL_SECONDS || '300', 10),
   statusTtlSeconds: parseInt(process.env.REDIS_STATUS_TTL_SECONDS || '30', 10),
-  connectTimeoutMs: parseInt(process.env.REDIS_CONNECT_TIMEOUT_MS || '3000', 10)
+  connectTimeoutMs: parseInt(process.env.REDIS_CONNECT_TIMEOUT_MS || '3000', 10),
+  sessionEnabled: envBoolean(process.env.REDIS_SESSION_ENABLED, true)
 };
 
 export const cacheConfig = {
-  changeStreamsEnabled: envBoolean(process.env.CACHE_CHANGE_STREAMS_ENABLED, true)
+  changeStreamsEnabled: envBoolean(process.env.CACHE_CHANGE_STREAMS_ENABLED, false)
 };
 
 export const mailCredential = {

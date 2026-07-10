@@ -1,6 +1,6 @@
 import express from 'express';
 import { authentication, authenticationToken, externalToken, authenticationByToken, resetPassword, userLogOut, refreshAccessToken, getMe } from '../authentication/authentication.controller';
-import { isLogOutAuthenticated, verifyEncryptedToken } from '../../_config/auth';
+import { isAuthenticated, isLogOutAuthenticated, verifyEncryptedToken } from '../../_config/auth';
 import { rateLimiter } from '../../middlewares/rateLimits';
 
 export default (router: express.Router) => {
@@ -12,7 +12,7 @@ export default (router: express.Router) => {
     userRouter.post('/refresh', rateLimiter.authLimiter, refreshAccessToken);
     userRouter.post('/updatePassword', rateLimiter.passwordResetValidateLimiter, resetPassword);
     userRouter.get('/logout', isLogOutAuthenticated, userLogOut);
-    userRouter.get('/me', getMe);
+    userRouter.get('/me', isAuthenticated, getMe);
     router.post('/auth/refresh', rateLimiter.authLimiter, refreshAccessToken);
     router.use('/users', userRouter);
 }

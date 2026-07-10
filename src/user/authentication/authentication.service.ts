@@ -17,6 +17,29 @@ import { TokenBlacklist } from "../../_cache/auth/tokenBlacklist";
 import { refreshTokenService } from "./refreshToken.service";
 import { parseTtlSeconds } from "../../utils/ttl";
 import { accountAccessService } from "../../_role/accountAccess.service";
+import { tokenSessionStore } from "../../_cache/session/tokenSessionStore";
+import { clearAuthCookies, setAccessCookies } from "./authCookie.service";
+
+const persistAccessSession = async (
+  token: string,
+  tokenId: mongoose.Types.ObjectId,
+  user: IUser,
+  ttlSeconds: number,
+  expiresAt: Date,
+  flags: { isExternal?: boolean; isInternal?: boolean } = {}
+): Promise<void> => {
+  await tokenSessionStore.setAccessSession({
+    token,
+    tokenId: String(tokenId),
+    userId: String(user._id),
+    accountId: String(user.account_id || ''),
+    principalType: 'user',
+    expiresAt: expiresAt.toISOString(),
+    ttlSeconds,
+    isExternal: flags.isExternal || false,
+    isInternal: flags.isInternal || false
+  });
+};
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -62,38 +85,30 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
     const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const expiresAt = new Date(Date.now() + accessTtlSeconds * 1000);
     const userTokenData = new TokenModel({
       _id: token,
       token_id: token_id,
       userId: user._id,
+      account_id: user.account_id,
       principalType: 'user',
       ttl: accessTtlSeconds,
-      expiresAt: new Date(Date.now() + accessTtlSeconds * 1000)
+      expiresAt
     });
     await userTokenData.save();
+    await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
     await refreshTokenService.issueForUser(req, res, user, token_id);
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, userAccount[0]);
     
     const isCookieAuth = userAccount[0].cookie_status === 'enabled';
     if (isCookieAuth) {
-      const cookieOptions = {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'none' as const,
-        maxAge: accessTtlSeconds * 1000
-      };
-
-      res.cookie('access_token', token, cookieOptions);
-      res.cookie('account_id', String(user.account_id), cookieOptions);
-
-      const stateToEncrypt = {
-        accountDetails: userAccount[0],
-        userDetails: safeUser,
-        platformControl: effectivePermissions.platformControl,
-        roleMenu: effectivePermissions.roleMenu
-      };
-      const encryptedState = generateExternalAccessToken(stateToEncrypt, accessTtlSeconds);
-      res.cookie('auth_state', encryptedState, cookieOptions);
+      setAccessCookies(res, {
+        token,
+        tokenId: String(token_id),
+        userId: String(user._id),
+        accountId: String(user.account_id),
+        ttlSeconds: accessTtlSeconds
+      });
 
       res.status(200).json({
         status: true,
@@ -104,6 +119,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
         }
       });
     } else {
+      clearAuthCookies(res);
       res.status(200).json({
         status: true,
         message: 'Login successful',
@@ -159,15 +175,18 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
     const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const expiresAt = new Date(Date.now() + accessTtlSeconds * 1000);
     const userTokenData = new TokenModel({
       _id: token,
       token_id,
       userId: user._id,
+      account_id: user.account_id,
       principalType: 'user',
       ttl: accessTtlSeconds,
-      expiresAt: new Date(Date.now() + accessTtlSeconds * 1000)
+      expiresAt
     });
     await userTokenData.save();
+    await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
     await refreshTokenService.issueForUser(req, res, user, token_id);
     res.status(200).json({ status: true, message: 'Login successful', data: { token, token_id, org_id: user.account_id, user_id: user._id } });
   } catch (error) {
@@ -221,28 +240,56 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id), jti: String(token_id) };
     const newToken = generateAccessToken(userTokenPayload);
     const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const expiresAt = new Date(Date.now() + accessTtlSeconds * 1000);
     const userTokenData = new TokenModel({
       _id: newToken,
       token_id,
       userId: userDetails._id,
+      account_id: userDetails.account_id,
       principalType: 'user',
       isExternal,
       isInternal,
       ttl: accessTtlSeconds,
-      expiresAt: new Date(Date.now() + accessTtlSeconds * 1000)
+      expiresAt
     });
     await userTokenData.save();
+    await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal, isInternal });
     await refreshTokenService.issueForUser(req, res, userDetails, token_id);
     const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
       ? redirectPath
       : '/dashboard';
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleMenu, accountDetails[0]);
+    const isCookieAuth = accountDetails[0].cookie_status === 'enabled';
 
+    if (isCookieAuth) {
+      setAccessCookies(res, {
+        token: newToken,
+        tokenId: String(token_id),
+        userId: String(userDetails._id),
+        accountId: String(userDetails.account_id),
+        ttlSeconds: accessTtlSeconds
+      });
+
+      return res.status(200).json({
+        status: true,
+        message: 'Login successful',
+        data: {
+          authMethod: 'cookie',
+          token_id,
+          isExternal: !!isExternal,
+          isInternal: !!isInternal,
+          redirectPath: safeRedirectPath
+        }
+      });
+    }
+
+    clearAuthCookies(res);
     res.status(200).json(
       { 
         status: true, 
         message: 'Login successful', 
         data: { 
+          authMethod: 'localStorage',
           token: newToken,
           token_id,
           accountDetails: accountDetails[0], 
@@ -308,16 +355,10 @@ export const userLogOutService = async (req: Request, res: Response, next: NextF
         console.warn('[Logout] JWT blacklisting failed (non-fatal):', blacklistErr);
       }
     }
+    await tokenSessionStore.deleteAccessSession(userToken);
     await refreshTokenService.revokeCurrent(req, res);
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none' as const
-    };
-    res.clearCookie('access_token', cookieOptions);
-    res.clearCookie('account_id', cookieOptions);
-    res.clearCookie('auth_state', cookieOptions);
+    clearAuthCookies(res);
 
     return res.status(200).json({ status: true, message: 'Logout successful' });
   } catch (error) {
@@ -327,12 +368,44 @@ export const userLogOutService = async (req: Request, res: Response, next: NextF
 
 export const userGetMeService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const authState = req.cookies?.auth_state;
-    if (!authState) {
-      throw Object.assign(new Error('No auth state cookie found'), { status: 401 });
+    const user = get(req, 'user', {}) as any;
+    const accountId = String(get(req, 'companyID') || user.account_id || '');
+    const userId = String(user._id || user.id || '');
+
+    if (!userId || !accountId) {
+      throw Object.assign(new Error('Invalid authenticated session'), { status: 401 });
     }
-    const decryptedState = decryptToken(authState);
-    return res.status(200).json({ status: true, data: decryptedState });
+
+    const accountDetails = await companyService.getAllCompanies({ _id: helperService.validateObjectId(accountId) });
+    if (!accountDetails || accountDetails.length === 0) {
+      throw Object.assign(new Error('User account not found'), { status: 404 });
+    }
+
+    let userRoleData: any = await rolesService.verifyUserRole(userId, accountId);
+    if (!userRoleData) {
+      const userDocument = await UserModel.findOne({ _id: helperService.validateObjectId(userId), account_id: helperService.validateObjectId(accountId), user_status: 'active' });
+      if (!userDocument) {
+        throw Object.assign(new Error('User not found'), { status: 404 });
+      }
+      userRoleData = await rolesService.createUserRole(userDocument.user_role, userDocument);
+    }
+
+    const { password: _, ...safeUser } = user;
+    safeUser.id = safeUser._id || safeUser.id;
+    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails[0]);
+
+    return res.status(200).json({
+      status: true,
+      data: {
+        authMethod: 'cookie',
+        accountDetails: accountDetails[0],
+        userDetails: safeUser,
+        platformControl: effectivePermissions.platformControl,
+        roleMenu: effectivePermissions.roleMenu,
+        isExternal: !!get(req, 'authFlags.isExternal'),
+        isInternal: !!get(req, 'authFlags.isInternal')
+      }
+    });
   } catch (error) {
     next(error);
   }

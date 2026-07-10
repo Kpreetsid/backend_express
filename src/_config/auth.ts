@@ -9,49 +9,146 @@ import { IUser, UserLoginPayload } from '../models/user.model';
 import { rolesService } from '../masters/user/role/roles.service';
 import { companyService } from '../masters/company/company.service';
 import { TokenModel } from '../models/userToken.model';
+import { TokenBlacklist } from '../_cache/auth/tokenBlacklist';
+import { tokenSessionStore, TokenSessionRecord } from '../_cache/session/tokenSessionStore';
+import { getAccessTokenFromCookies, getAccountIdFromCookies } from '../user/authentication/authCookie.service';
+
+const invalidTokenError = (): Error => Object.assign(new Error('Invalid token'), { status: 401 });
+
+const remainingTtlSeconds = (expiresAt: unknown): number => {
+  const expiresAtMs = new Date(expiresAt as any).getTime();
+  if (!Number.isFinite(expiresAtMs)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000));
+};
+
+const getAccessSession = async (token: string, decoded: JwtPayload): Promise<TokenSessionRecord | null> => {
+  const cachedSession = await tokenSessionStore.getAccessSession(token);
+  if (cachedSession) {
+    return cachedSession;
+  }
+
+  const tokenDocument: any = await TokenModel
+    .findOne({ _id: token, principalType: 'user' })
+    .lean();
+  if (!tokenDocument) {
+    return null;
+  }
+
+  const ttlSeconds = remainingTtlSeconds(tokenDocument.expiresAt);
+  if (ttlSeconds <= 0) {
+    return null;
+  }
+
+  const record: TokenSessionRecord = {
+    tokenId: String(tokenDocument.token_id || decoded.jti || ''),
+    userId: String(tokenDocument.userId || decoded.id || ''),
+    accountId: String(tokenDocument.account_id || decoded.companyID || ''),
+    principalType: 'user',
+    expiresAt: new Date(tokenDocument.expiresAt).toISOString(),
+    isExternal: !!tokenDocument.isExternal,
+    isInternal: !!tokenDocument.isInternal
+  };
+
+  await tokenSessionStore.setAccessSession({
+    ...record,
+    token,
+    ttlSeconds
+  });
+  return record;
+};
+
+interface AuthenticatedTokenContext {
+  token: string;
+  accountId: string;
+  companyID: string;
+  decoded: JwtPayload;
+  userData: IUser;
+  roleData: IUserRoleMenu;
+  role: any;
+  isExternal: boolean;
+  isInternal: boolean;
+}
+
+export const authenticateTokenContext = async (token: string, accountId: string): Promise<AuthenticatedTokenContext> => {
+  if (!token || !accountId) {
+    throw Object.assign(new Error('Unauthorized access'), { status: 401 });
+  }
+
+  const decoded = verifyAccessToken(token);
+  const { id, username, companyID } = decoded;
+  const normalizedAccountId = String(accountId);
+
+  if (!id || !username || !companyID || normalizedAccountId !== String(companyID)) {
+    throw invalidTokenError();
+  }
+  if (await TokenBlacklist.isBlacklisted(token)) {
+    throw invalidTokenError();
+  }
+
+  const accessSession = await getAccessSession(token, decoded);
+  if (!accessSession) {
+    throw invalidTokenError();
+  }
+  if (accessSession.userId !== String(id) || (accessSession.accountId && accessSession.accountId !== String(companyID))) {
+    throw invalidTokenError();
+  }
+
+  const companyData = await companyService.verifyCompany(normalizedAccountId);
+  if (!companyData) {
+    throw Object.assign(new Error('Account ID is invalid'), { status: 401 });
+  }
+
+  const userData: IUser | null = await usersService.verifyUserLogin({ id, companyID, username });
+  if (!userData) {
+    throw Object.assign(new Error('User not found'), { status: 404 });
+  }
+
+  const userRole: IUserRoleMenu | null = await rolesService.verifyUserRole(id, companyID);
+  if (!userRole) {
+    throw Object.assign(new Error('User role not found'), { status: 401 });
+  }
+  if (userRole.account_id.toString() !== companyID) {
+    throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
+  }
+
+  return {
+    token,
+    accountId: normalizedAccountId,
+    companyID: String(companyID),
+    decoded,
+    userData,
+    roleData: userRole,
+    role: userRole.toObject().data,
+    isExternal: !!accessSession.isExternal,
+    isInternal: !!accessSession.isInternal
+  };
+};
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     let headerToken = req.headers.authorization?.split(' ')[1];
     let headerAccountID = req.headers.accountid as string;
 
-    if (!headerToken && req.cookies?.access_token) {
-      headerToken = req.cookies.access_token;
+    if (!headerToken) {
+      headerToken = getAccessTokenFromCookies(req);
     }
-    if (!headerAccountID && req.cookies?.account_id) {
-      headerAccountID = req.cookies.account_id;
+    if (!headerAccountID) {
+      headerAccountID = getAccountIdFromCookies(req);
     }
 
-    if (!headerToken || !headerAccountID) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
-    }
-    const isTokenExist: any = await TokenModel.findOne({ _id: headerToken });
-    if (!isTokenExist) {
-      throw Object.assign(new Error('Invalid token'), { status: 401 });
-    }
-    const decoded = verifyAccessToken(headerToken);
-    const { id, username, companyID } = decoded;
-    const accountID = headerAccountID;
-
-    if (!id || !username || !companyID || headerAccountID !== accountID) {
-      throw Object.assign(new Error('Invalid token'), { status: 401 });
-    }
-    const companyData = await companyService.verifyCompany(accountID);
-    if (!companyData) {
-      throw Object.assign(new Error('Account ID is invalid'), { status: 401 });
-    }
-    const userData: IUser | null = await usersService.verifyUserLogin({ id, companyID, username });
-    if (!userData) {
-      throw Object.assign(new Error('User not found'), { status: 404 });
-    }
-    const userRole: IUserRoleMenu | null = await rolesService.verifyUserRole(id, companyID);
-    if (!userRole) {
-      throw Object.assign(new Error('User role not found'), { status: 401 });
-    }
-    if (userRole.account_id.toString() !== companyID) {
-      throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
-    }
-    merge(req, { user: userData.toObject(), companyID, role: userRole.toObject().data, userToken: headerToken });
+    const context = await authenticateTokenContext(headerToken || '', String(headerAccountID || ''));
+    merge(req, {
+      user: context.userData.toObject(),
+      companyID: context.companyID,
+      role: context.role,
+      userToken: context.token,
+      authFlags: {
+        isExternal: context.isExternal,
+        isInternal: context.isInternal
+      }
+    });
     next();
   } catch (error) {
     next(error)
@@ -63,11 +160,11 @@ export const isLogOutAuthenticated = async (req: Request, res: Response, next: N
     let headerToken = req.headers.authorization?.split(' ')[1];
     let headerAccountID = req.headers.accountid as string;
 
-    if (!headerToken && req.cookies?.access_token) {
-      headerToken = req.cookies.access_token;
+    if (!headerToken) {
+      headerToken = getAccessTokenFromCookies(req);
     }
-    if (!headerAccountID && req.cookies?.account_id) {
-      headerAccountID = req.cookies.account_id;
+    if (!headerAccountID) {
+      headerAccountID = getAccountIdFromCookies(req);
     }
 
     if (!headerToken || !headerAccountID) {
@@ -75,8 +172,7 @@ export const isLogOutAuthenticated = async (req: Request, res: Response, next: N
     }
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
-    const accountID = headerAccountID;
-    if (!id || !username || !companyID || headerAccountID !== accountID) {
+    if (!id || !username || !companyID || String(headerAccountID) !== String(companyID)) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     merge(req, { user_id: id, userToken: headerToken });

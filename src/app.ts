@@ -19,13 +19,16 @@ import { requestContextMiddleware } from './middlewares/requestContext';
 import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
 import { cryptoRouter } from './routes/crypto.routes';
 import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
+import { corsOptions } from './_config/cors';
+import { csrfProtection } from './middlewares/csrf.middleware';
 
 const app: Express = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
-app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce'] }));
+app.use(cors({ ...corsOptions, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce'] }));
 app.use(cookieParser());
+app.use(csrfProtection);
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));
 app.use(express.urlencoded({ limit: process.env.URLENCODED_BODY_LIMIT || '5mb', extended: true }));
 app.use(payloadCryptoResponseMiddleware());
