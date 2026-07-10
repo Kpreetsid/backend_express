@@ -115,7 +115,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
         message: 'Login successful',
         data: {
           authMethod: 'cookie',
-          token_id
+          token_id,
+          token
         }
       });
     } else {
@@ -276,6 +277,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
         data: {
           authMethod: 'cookie',
           token_id,
+          token: newToken,
           isExternal: !!isExternal,
           isInternal: !!isInternal,
           redirectPath: safeRedirectPath
@@ -394,10 +396,12 @@ export const userGetMeService = async (req: Request, res: Response, next: NextFu
     safeUser.id = safeUser._id || safeUser.id;
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails[0]);
 
+    const userToken = String(get(req, 'userToken') || '');
     return res.status(200).json({
       status: true,
       data: {
         authMethod: 'cookie',
+        token: userToken,
         accountDetails: accountDetails[0],
         userDetails: safeUser,
         platformControl: effectivePermissions.platformControl,
