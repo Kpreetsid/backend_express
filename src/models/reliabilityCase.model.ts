@@ -27,6 +27,7 @@ export interface IReliabilityCaseAlarmRef {
   source: 'alarm_history';
   alarm_id: string;
   asset_id?: string;
+  overall_summary?: string;
   composite?: string;
   signal_type?: string;
   trend_type?: string;
@@ -180,6 +181,7 @@ const AlarmRefSchema = new Schema<IReliabilityCaseAlarmRef>({
   source: { type: String, enum: ['alarm_history'], default: 'alarm_history', required: true },
   alarm_id: { type: String, required: true, trim: true },
   asset_id: { type: String, trim: true },
+  overall_summary: { type: String, trim: true },
   composite: { type: String, trim: true },
   signal_type: { type: String, trim: true },
   trend_type: { type: String, trim: true },

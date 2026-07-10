@@ -80,6 +80,7 @@ class ReliabilityCaseService {
     const status = this.stringQuery(query.status);
     const riskLevel = this.stringQuery(query.risk_level);
     const assetId = this.stringQuery(query.asset_id);
+    const alarmIds = this.stringQuery(query.alarm_ids);
     const search = this.stringQuery(query.search);
 
     if (status) {
@@ -92,6 +93,13 @@ class ReliabilityCaseService {
 
     if (assetId) {
       baseFilter.asset_id = new Types.ObjectId(assetId);
+    }
+
+    if (alarmIds) {
+      const normalizedAlarmIds = alarmIds.split(',').map((item) => item.trim()).filter(Boolean);
+      if (normalizedAlarmIds.length) {
+        baseFilter['linked_alarms.alarm_id'] = { $in: normalizedAlarmIds };
+      }
     }
 
     if (search) {
@@ -168,33 +176,35 @@ class ReliabilityCaseService {
       throw Object.assign(new Error('Linked asset was not found in this account'), { status: 404 });
     }
 
+    const topLevelAsset = await this.resolveTopLevelAsset(asset, user.account_id);
+
     const windowHours = this.normalizeGroupingWindow(payload.grouping_window_hours);
-    const groupedCase = await this.findGroupingCandidate(user, asset, alarms, normalizedEvidence.diagnostic_reports || [], windowHours);
+    const groupedCase = await this.findGroupingCandidate(user, topLevelAsset, alarms, normalizedEvidence.diagnostic_reports || [], windowHours);
     if (groupedCase) {
       return await this.attachAlertsToCase(String(groupedCase._id), alarmIds, alarms, normalizedEvidence, user);
     }
 
-    const locationId = asset.locationId;
+    const locationId = topLevelAsset.locationId || asset.locationId;
     const riskLevel = this.riskFromPriority(primaryAlarm.priority);
     const timestamps = alarms.map((alarm) => this.toDate(alarm.timestamp || alarm.creation_date)).filter((value): value is Date => !!value);
     const linkedAlarms = this.buildLinkedAlarms(alarms, normalizedEvidence.diagnostic_reports || []);
     const evidenceSnapshot = this.buildEvidenceSnapshot(alarms, normalizedEvidence.asset_health || []);
     const diagnosisSnapshot = this.buildDiagnosisSnapshot(normalizedEvidence.diagnostic_reports || []);
     const recommendationSnapshot = this.buildAlarmRecommendationSnapshot({
-      asset,
+      asset: topLevelAsset,
       risk_level: riskLevel,
       evidence_snapshot: evidenceSnapshot,
       diagnosis_snapshot: diagnosisSnapshot
     }, user);
-    const title = payload.title?.trim() || this.buildCaseTitle(asset.asset_name, primaryAlarm);
+    const title = payload.title?.trim() || this.buildCaseTitle(topLevelAsset.asset_name, primaryAlarm);
 
     const newCase = new ReliabilityCaseModel({
       account_id: user.account_id,
       case_no: await this.generateCaseNo(user.account_id),
       title,
       description: payload.description,
-      asset_id: asset._id,
-      top_level_asset_id: asset.top_level_asset_id || asset._id,
+      asset_id: topLevelAsset._id,
+      top_level_asset_id: topLevelAsset._id,
       location_id: locationId,
       status: 'recommendation_ready',
       risk_level: riskLevel,
@@ -296,21 +306,23 @@ class ReliabilityCaseService {
       throw Object.assign(new Error('Linked asset was not found in this account'), { status: 404 });
     }
 
+    const topLevelAsset = await this.resolveTopLevelAsset(asset, user.account_id);
+
     const riskLevel = this.riskFromAssetReport(report);
     const reportRef = this.buildAssetReportRef(report);
     const evidenceSnapshot = this.buildAssetReportEvidenceSnapshot(report);
     const diagnosisSnapshot = this.buildAssetReportDiagnosisSnapshot(report);
     const recommendationSnapshot = this.buildAssetReportRecommendationSnapshot(report, user);
-    const title = payload.title?.trim() || this.buildAssetReportCaseTitle(asset.asset_name, report);
+    const title = payload.title?.trim() || this.buildAssetReportCaseTitle(topLevelAsset.asset_name, report);
 
     const newCase = new ReliabilityCaseModel({
       account_id: user.account_id,
       case_no: await this.generateCaseNo(user.account_id),
       title,
       description: payload.description?.trim() || report.Observations || report.Recommendations,
-      asset_id: asset._id,
-      top_level_asset_id: report.top_level_asset_id || asset.top_level_asset_id || asset._id,
-      location_id: report.locationId || asset.locationId,
+      asset_id: topLevelAsset._id,
+      top_level_asset_id: topLevelAsset._id,
+      location_id: topLevelAsset.locationId || report.locationId || asset.locationId,
       status: 'recommendation_ready',
       risk_level: riskLevel,
       urgency: this.urgencyFromRisk(riskLevel),
@@ -598,7 +610,7 @@ class ReliabilityCaseService {
 
     existing.linked_alarms.push(...linkedAlarms);
     existing.evidence_snapshot = this.mergeEvidenceSnapshots(existing.evidence_snapshot, evidenceSnapshot);
-    existing.diagnosis_snapshot = diagnosisSnapshot || existing.diagnosis_snapshot;
+    existing.diagnosis_snapshot = this.mergeDiagnosisSnapshots(existing.diagnosis_snapshot, diagnosisSnapshot);
     existing.risk_level = riskLevel;
     existing.urgency = this.urgencyFromRisk(riskLevel);
     const autoRecommendation = this.buildAlarmRecommendationSnapshot({
@@ -668,18 +680,12 @@ class ReliabilityCaseService {
       .sort((left, right) => right.getTime() - left.getTime())[0] || new Date();
     const windowStart = new Date(latestAlarmDate.getTime() - (windowHours * 60 * 60 * 1000));
     const faultFamily = this.getFaultFamily(alarms[0], reports[0]);
-    const subtreeIds = [asset._id, asset.top_level_asset_id, asset.parent_id, asset.top_level ? asset._id : undefined]
-      .filter(Boolean)
-      .map((value) => new Types.ObjectId(String(value)));
 
     const candidates = await ReliabilityCaseModel.find({
       account_id: user.account_id,
       visible: true,
       status: { $in: OPEN_CASE_STATUSES },
-      $or: [
-        { asset_id: { $in: subtreeIds } },
-        { top_level_asset_id: { $in: subtreeIds } }
-      ],
+      top_level_asset_id: new Types.ObjectId(String(asset._id)),
       latest_alarm_at: { $gte: windowStart }
     }).sort({ latest_alarm_at: -1, updatedAt: -1 }).lean();
 
@@ -706,6 +712,29 @@ class ReliabilityCaseService {
     return assetId;
   }
 
+  private async resolveTopLevelAsset(asset: any, accountId: ObjectId) {
+    const topLevelAssetId = asset?.top_level ? asset?._id : (asset?.top_level_asset_id || asset?._id);
+    if (!topLevelAssetId || !Types.ObjectId.isValid(String(topLevelAssetId))) {
+      throw Object.assign(new Error('Top-level asset was not resolved for the reliability case.'), { status: 400 });
+    }
+
+    if (String(asset?._id) === String(topLevelAssetId)) {
+      return asset;
+    }
+
+    const topLevelAsset = await AssetModel.findOne({
+      _id: new Types.ObjectId(String(topLevelAssetId)),
+      account_id: accountId,
+      visible: true
+    }).lean();
+
+    if (!topLevelAsset) {
+      throw Object.assign(new Error('Top-level asset was not found in this account.'), { status: 404 });
+    }
+
+    return topLevelAsset;
+  }
+
   private buildLinkedAlarms(alarms: ProcessorAlarmEvidence[], reports: ProcessorDiagnosticReport[]): IReliabilityCaseAlarmRef[] {
     return alarms.map((alarm) => {
       const alarmId = String(alarm.id);
@@ -714,6 +743,12 @@ class ReliabilityCaseService {
         source: 'alarm_history',
         alarm_id: alarmId,
         asset_id: alarm.asset_id,
+        overall_summary: this.firstText(
+          report?.response_json?.message?.overall_summary
+          || report?.response_json?.message?.summary
+          || report?.report_json?.overall_summary
+          || report?.report_json?.summary
+        ),
         composite: alarm.composite,
         signal_type: alarm.signal_type,
         trend_type: alarm.trend_type,
@@ -763,27 +798,78 @@ class ReliabilityCaseService {
   }
 
   private buildDiagnosisSnapshot(reports: ProcessorDiagnosticReport[]): IReliabilityCaseDiagnosisSnapshot | undefined {
-    const sortedReports = [...reports].sort((left, right) => {
-      const leftTime = new Date(left.updated_at || left.created_at || 0).getTime();
-      const rightTime = new Date(right.updated_at || right.created_at || 0).getTime();
-      return rightTime - leftTime;
+    const diagnosisRows = [...reports]
+      .sort((left, right) => this.reportTime(right) - this.reportTime(left))
+      .map((report) => this.extractDiagnosisRow(report))
+      .filter((row): row is NonNullable<typeof row> => !!row);
+
+    if (!diagnosisRows.length) return undefined;
+
+    const groupedRows = new Map<string, {
+      family: string;
+      count: number;
+      bestRow: NonNullable<ReturnType<ReliabilityCaseService['extractDiagnosisRow']>>;
+      labels: Set<string>;
+    }>();
+
+    diagnosisRows.forEach((row) => {
+      const family = this.normalizeFamily(row.failureMode || row.summary || 'general');
+      const current = groupedRows.get(family);
+      if (!current) {
+        groupedRows.set(family, {
+          family,
+          count: 1,
+          bestRow: row,
+          labels: new Set(row.failureMode ? [row.failureMode] : [])
+        });
+        return;
+      }
+
+      current.count += 1;
+      if (row.failureMode) current.labels.add(row.failureMode);
+      if (this.isBetterDiagnosisRow(row, current.bestRow)) {
+        current.bestRow = row;
+      }
     });
-    const report = sortedReports.find((item) => item.response_json || item.report_json);
-    const responseJson = report?.response_json;
-    const message = responseJson?.message || report?.report_json;
-    if (!message) return undefined;
+
+    const rankedGroups = [...groupedRows.values()].sort((left, right) => {
+      if (right.count !== left.count) return right.count - left.count;
+      if ((right.bestRow.confidenceScore || 0) !== (left.bestRow.confidenceScore || 0)) {
+        return (right.bestRow.confidenceScore || 0) - (left.bestRow.confidenceScore || 0);
+      }
+      return right.bestRow.reportedAt - left.bestRow.reportedAt;
+    });
+
+    const primaryGroup = rankedGroups[0];
+    const primaryRow = primaryGroup.bestRow;
+    const primaryLabel = primaryRow.failureMode
+      || [...primaryGroup.labels][0]
+      || 'Failure mode not classified';
+    const secondaryLabels = rankedGroups
+      .slice(1)
+      .map((group) => group.bestRow.failureMode || [...group.labels][0])
+      .filter(Boolean) as string[];
+    const observations = this.uniqueStrings([
+      ...diagnosisRows.flatMap((row) => row.observations),
+      ...(secondaryLabels.length ? [`Additional linked alarms also indicate: ${secondaryLabels.slice(0, 2).join('; ')}.`] : [])
+    ]);
+    const recommendations = this.uniqueStrings(diagnosisRows.flatMap((row) => row.recommendations));
+    const summary = secondaryLabels.length
+      ? `Linked alarms indicate ${primaryLabel} as the primary concern, with additional signs of ${secondaryLabels.slice(0, 2).join(' and ')}.`
+      : primaryRow.summary || `Linked alarms consistently indicate ${primaryLabel}.`;
+
     return {
-      diagnosis_source: 'django_rule',
-      likely_failure_mode: this.firstText(message?.possible_faults?.[0]?.fault || message?.primary_fault?.fault_key || message?.primary_fault?.label),
-      confidence: this.normalizeConfidence(message?.primary_fault?.confidence || message?.confidence),
-      confidence_score: this.toNumber(message?.primary_fault?.score),
-      summary: this.firstText(message?.overall_summary || message?.summary),
-      observations: this.arrayOfStrings(message?.observations),
-      recommendations: this.arrayOfStrings(message?.recommendations),
-      severity_assessment: this.firstText(message?.severity_assessment),
-      maintenance_priority: this.firstText(message?.maintenance_priority),
-      fault_timeline: Array.isArray(message?.fault_timeline) ? message.fault_timeline : [],
-      limitations: this.arrayOfStrings(message?.limitations)
+      diagnosis_source: diagnosisRows.length > 1 ? 'case_rule' : 'django_rule',
+      likely_failure_mode: primaryLabel,
+      confidence: primaryRow.confidence || this.confidenceFromScore(primaryRow.confidenceScore),
+      confidence_score: primaryRow.confidenceScore,
+      summary,
+      observations,
+      recommendations,
+      severity_assessment: this.pickMostCommonText(diagnosisRows.map((row) => row.severityAssessment)) || primaryRow.severityAssessment,
+      maintenance_priority: this.pickMostCommonText(diagnosisRows.map((row) => row.maintenancePriority)) || primaryRow.maintenancePriority,
+      fault_timeline: diagnosisRows.flatMap((row) => row.faultTimeline),
+      limitations: this.uniqueStrings(diagnosisRows.flatMap((row) => row.limitations))
     };
   }
 
@@ -1310,11 +1396,7 @@ class ReliabilityCaseService {
   }
 
   private buildAssetReportCaseTitle(assetName: string, report: any): string {
-    const fault = this.firstText(report?.FaultDetected || report?.NewFault);
-    if (fault) {
-      return `${assetName || report?.assetName || 'Asset'} reliability review: ${fault}`;
-    }
-    return `${assetName || report?.assetName || 'Asset'} reliability review from asset report`;
+    return assetName || report?.assetName || 'Asset';
   }
 
   private urgencyFromRisk(riskLevel: ReliabilityCaseRiskLevel) {
@@ -1343,6 +1425,39 @@ class ReliabilityCaseService {
     };
   }
 
+  private mergeDiagnosisSnapshots(
+    existing?: IReliabilityCaseDiagnosisSnapshot,
+    incoming?: IReliabilityCaseDiagnosisSnapshot
+  ): IReliabilityCaseDiagnosisSnapshot | undefined {
+    if (!existing) return incoming;
+    if (!incoming) return existing;
+
+    const existingLabel = this.firstText(existing.likely_failure_mode || existing.summary) || 'Failure mode not classified';
+    const incomingLabel = this.firstText(incoming.likely_failure_mode || incoming.summary) || 'Failure mode not classified';
+    const sameFamily = this.normalizeFamily(existingLabel) === this.normalizeFamily(incomingLabel);
+    const incomingWins = (incoming.confidence_score || 0) >= (existing.confidence_score || 0);
+    const primary = incomingWins ? incoming : existing;
+    const primaryLabel = incomingWins ? incomingLabel : existingLabel;
+    const secondaryLabel = incomingWins ? existingLabel : incomingLabel;
+
+    return {
+      diagnosis_source: 'case_rule',
+      likely_failure_mode: primaryLabel,
+      likely_root_cause: primary.likely_root_cause || existing.likely_root_cause || incoming.likely_root_cause,
+      confidence: primary.confidence || this.confidenceFromScore(primary.confidence_score),
+      confidence_score: Math.max(existing.confidence_score || 0, incoming.confidence_score || 0) || undefined,
+      summary: sameFamily
+        ? (incoming.summary || existing.summary)
+        : `Linked alarms indicate ${primaryLabel} as the primary concern, with additional signs of ${secondaryLabel}.`,
+      observations: this.uniqueStrings([...(existing.observations || []), ...(incoming.observations || [])]),
+      recommendations: this.uniqueStrings([...(existing.recommendations || []), ...(incoming.recommendations || [])]),
+      severity_assessment: incoming.severity_assessment || existing.severity_assessment,
+      maintenance_priority: incoming.maintenance_priority || existing.maintenance_priority,
+      fault_timeline: [...(existing.fault_timeline || []), ...(incoming.fault_timeline || [])],
+      limitations: this.uniqueStrings([...(existing.limitations || []), ...(incoming.limitations || [])])
+    };
+  }
+
   private minDate(left?: Date, right?: Date): Date | undefined {
     if (!left) return right;
     if (!right) return left;
@@ -1361,6 +1476,36 @@ class ReliabilityCaseService {
     if (fault) return this.normalizeFamily(fault);
     const signal = [alarm?.signal_type, alarm?.trend_type].filter(Boolean).join(' ');
     return this.normalizeFamily(signal);
+  }
+
+  private extractDiagnosisRow(report: ProcessorDiagnosticReport) {
+    const message = report?.response_json?.message || report?.report_json;
+    if (!message) return undefined;
+
+    return {
+      reportedAt: this.reportTime(report),
+      failureMode: this.firstText(message?.possible_faults?.[0]?.fault || message?.primary_fault?.fault_key || message?.primary_fault?.label),
+      confidence: this.normalizeConfidence(message?.primary_fault?.confidence || message?.confidence),
+      confidenceScore: this.toNumber(message?.primary_fault?.score),
+      summary: this.firstText(message?.overall_summary || message?.summary),
+      observations: this.arrayOfStrings(message?.observations),
+      recommendations: this.arrayOfStrings(message?.recommendations),
+      severityAssessment: this.firstText(message?.severity_assessment),
+      maintenancePriority: this.firstText(message?.maintenance_priority),
+      faultTimeline: Array.isArray(message?.fault_timeline) ? message.fault_timeline : [],
+      limitations: this.arrayOfStrings(message?.limitations)
+    };
+  }
+
+  private isBetterDiagnosisRow(left: NonNullable<ReturnType<ReliabilityCaseService['extractDiagnosisRow']>>, right: NonNullable<ReturnType<ReliabilityCaseService['extractDiagnosisRow']>>): boolean {
+    if ((left.confidenceScore || 0) !== (right.confidenceScore || 0)) {
+      return (left.confidenceScore || 0) > (right.confidenceScore || 0);
+    }
+    return left.reportedAt > right.reportedAt;
+  }
+
+  private reportTime(report: ProcessorDiagnosticReport): number {
+    return new Date(report.updated_at || report.created_at || 0).getTime() || 0;
   }
 
   private caseFaultFamily(caseData: any): string {
@@ -1408,10 +1553,8 @@ class ReliabilityCaseService {
     return value.map((item) => String(item || '').trim()).filter((item) => Types.ObjectId.isValid(item));
   }
 
-  private buildCaseTitle(assetName: string, alarm: ProcessorAlarmEvidence): string {
-    const priority = alarm.priority || 'Alarm';
-    const symptom = [alarm.signal_type, alarm.trend_type].filter(Boolean).join(' / ') || 'condition';
-    return `${assetName}: ${priority} ${symptom} anomaly`;
+  private buildCaseTitle(assetName: string, _alarm: ProcessorAlarmEvidence): string {
+    return assetName || 'Asset';
   }
 
   private describeAlarmSymptom(alarm: ProcessorAlarmEvidence): string {
@@ -1503,10 +1646,35 @@ class ReliabilityCaseService {
     return value.map((item) => typeof item === 'string' ? item : JSON.stringify(item)).filter(Boolean);
   }
 
+  private uniqueStrings(values: unknown[]): string[] {
+    return [...new Set(values
+      .map((item) => String(item || '').trim())
+      .filter(Boolean))];
+  }
+
+  private pickMostCommonText(values: Array<string | undefined>): string | undefined {
+    const counter = new Map<string, number>();
+    values
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+      .forEach((value) => counter.set(value, (counter.get(value) || 0) + 1));
+
+    return [...counter.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .map(([value]) => value)[0];
+  }
+
   private normalizeConfidence(value: unknown): 'low' | 'medium' | 'high' | undefined {
     const normalized = String(value || '').toLowerCase();
     if (normalized === 'high' || normalized === 'medium' || normalized === 'low') return normalized;
     return undefined;
+  }
+
+  private confidenceFromScore(value?: number): 'low' | 'medium' | 'high' | undefined {
+    if (!Number.isFinite(Number(value))) return undefined;
+    if (Number(value) >= 0.8) return 'high';
+    if (Number(value) >= 0.5) return 'medium';
+    return 'low';
   }
 
   private normalizeWorkOrderPriorityCandidate(value: unknown): ReliabilityCaseRiskLevel {
