@@ -759,10 +759,6 @@ class OrderService {
       normalized.actual_time = Number(normalized.actual_time);
     }
 
-    if (actualStartDate && actualEndDate && actualEndDate >= actualStartDate && !(Number(normalized.actual_time) > 0)) {
-      normalized.actual_time = Number((((actualEndDate.getTime() - actualStartDate.getTime()) / 3600000)).toFixed(2));
-    }
-
     normalized.labor_entries = Array.isArray(normalized.labor_entries)
       ? normalized.labor_entries
           .map((entry: any) => ({
@@ -775,6 +771,15 @@ class OrderService {
           }))
           .filter((entry: any) => entry.hours !== null && Number.isFinite(entry.hours) && (entry.user_id || entry.vendor_name))
       : [];
+
+    const totalLoggedHours = normalized.labor_entries.reduce((total: number, entry: any) => total + Number(entry?.hours || 0), 0);
+    if (!(Number(normalized.actual_time) > 0) && totalLoggedHours > 0) {
+      normalized.actual_time = Number(totalLoggedHours.toFixed(2));
+    }
+
+    if (actualStartDate && actualEndDate && actualEndDate >= actualStartDate && !(Number(normalized.actual_time) > 0)) {
+      normalized.actual_time = Number((((actualEndDate.getTime() - actualStartDate.getTime()) / 3600000)).toFixed(2));
+    }
 
     if (normalized.block_reason === '') {
       normalized.block_reason = null;
