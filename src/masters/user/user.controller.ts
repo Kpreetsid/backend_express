@@ -144,6 +144,7 @@ class UserController {
       const isCorrect = await passwordService.comparePassword(password, userData.password);
       if (!isCorrect) throw Object.assign(new Error("Incorrect current password"), { status: 400 });
       userData.password = newPassword;
+      userData.passwordExpiredAt = new Date();
       await usersService.updateUserPassword(user_id, userData);
       res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
@@ -164,6 +165,7 @@ class UserController {
       const otpExists = await resetPasswordService.verifyOTPExists({ email });
       if (!otpExists) throw Object.assign(new Error("OTP has expired. Please request a new one."), { status: 410 });
       userData[0].password = newPassword;
+      userData[0].passwordExpiredAt = new Date();
       await usersService.updateUserPassword(`${userData[0]._id}`, userData[0]);
       await resetPasswordService.deleteVerificationCode({ email });
       res.status(200).json({ status: true, message: "User password updated successfully" });
