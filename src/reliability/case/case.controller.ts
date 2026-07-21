@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { reliabilityCaseService } from './case.service';
-import { CreateCaseFromAssetReportPayload, CreateCaseFromAlertsPayload, UpdateCaseStatusPayload } from './case.types';
+import { CreateCaseFromAssetReportPayload, CreateCaseFromAlertsPayload, UpdateCasePayload, UpdateCaseStatusPayload } from './case.types';
 
 class ReliabilityCaseController {
   getCases = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -93,6 +93,26 @@ class ReliabilityCaseController {
       const payload = req.body as UpdateCaseStatusPayload;
       const data = await reliabilityCaseService.updateStatus(String(req.params.id), payload, user as any);
       res.status(200).json({ status: true, message: 'Reliability case status updated successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  updateCase = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const data = await reliabilityCaseService.updateCase(String(req.params.id), req.body as UpdateCasePayload, user as any);
+      res.status(200).json({ status: true, message: 'Reliability case updated successfully.', data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  deleteCase = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const user = get(req, 'user', {}) as IUser;
+      const data = await reliabilityCaseService.deleteCase(String(req.params.id), user as any);
+      res.status(200).json({ status: true, message: 'Reliability case deleted successfully.', data });
     } catch (error) {
       next(error);
     }

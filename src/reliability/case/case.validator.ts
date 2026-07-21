@@ -1,5 +1,9 @@
 import { body } from 'express-validator';
-import { RELIABILITY_CASE_STATUSES } from '../../models/reliabilityCase.model';
+import {
+  RELIABILITY_CASE_RISK_LEVELS,
+  RELIABILITY_CASE_STATUSES,
+  RELIABILITY_CASE_URGENCY_LEVELS
+} from '../../models/reliabilityCase.model';
 
 export const createCaseFromAlertsValidator = [
   body('alarm_ids')
@@ -86,6 +90,34 @@ export const updateCaseStatusValidator = [
     .trim()
     .isLength({ max: 1000 })
     .withMessage('note must be 1000 characters or fewer')
+];
+
+export const updateCaseValidator = [
+  body('title')
+    .optional()
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('title cannot be empty')
+    .isLength({ max: 180 })
+    .withMessage('title must be 180 characters or fewer'),
+  body('description')
+    .optional()
+    .isString()
+    .trim()
+    .isLength({ max: 2000 })
+    .withMessage('description must be 2000 characters or fewer'),
+  body('risk_level')
+    .optional()
+    .isIn([...RELIABILITY_CASE_RISK_LEVELS])
+    .withMessage('risk_level is invalid'),
+  body('urgency')
+    .optional()
+    .isIn([...RELIABILITY_CASE_URGENCY_LEVELS])
+    .withMessage('urgency is invalid'),
+  body()
+    .custom((value) => ['title', 'description', 'risk_level', 'urgency'].some((field) => value?.[field] !== undefined))
+    .withMessage('At least one editable case field is required')
 ];
 
 export const addCaseNoteValidator = [

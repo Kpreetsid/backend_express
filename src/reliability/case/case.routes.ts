@@ -13,6 +13,7 @@ import {
   feedbackValidator,
   linkWorkOrderValidator,
   recommendationValidator,
+  updateCaseValidator,
   updateCaseStatusValidator
 } from './case.validator';
 
@@ -26,6 +27,8 @@ export default (router: express.Router) => {
   caseRouter.post('/from-asset-report', hasReliabilityPermission('create_case'), createCaseFromAssetReportValidator, validate, reliabilityCaseController.createFromAssetReport);
   caseRouter.post('/from-alert', hasReliabilityPermission('create_case'), createCaseFromAlertValidator, validate, reliabilityCaseController.createFromAlert);
   caseRouter.post('/from-alerts', hasReliabilityPermission('create_case'), createCaseFromAlertsValidator, validate, reliabilityCaseController.createFromAlerts);
+  caseRouter.patch('/:id', validateParamId, hasReliabilityPermission('edit_case'), updateCaseValidator, validate, reliabilityCaseController.updateCase);
+  caseRouter.delete('/:id', validateParamId, hasReliabilityPermission('delete_case'), reliabilityCaseController.deleteCase);
   caseRouter.patch('/:id/status', validateParamId, hasReliabilityPermission('triage_case'), updateCaseStatusValidator, validate, reliabilityCaseController.updateStatus);
   caseRouter.post('/:id/notes', validateParamId, hasReliabilityPermission('edit_case'), addCaseNoteValidator, validate, reliabilityCaseController.addNote);
   caseRouter.post('/:id/recommendation', validateParamId, hasReliabilityPermission('generate_recommendation'), recommendationValidator, validate, reliabilityCaseController.updateRecommendation);

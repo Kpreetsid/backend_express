@@ -71,6 +71,13 @@ export interface UpdateCaseStatusPayload {
   note?: string;
 }
 
+export interface UpdateCasePayload {
+  title?: string;
+  description?: string;
+  risk_level?: 'None' | 'Low' | 'Medium' | 'High' | 'Urgent';
+  urgency?: 'monitor' | 'plan' | 'schedule' | 'immediate';
+}
+
 export interface RecommendationPayload {
   action_summary?: string;
   inspection_steps?: string[];

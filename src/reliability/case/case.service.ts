@@ -35,6 +35,7 @@ import {
   ProcessorReliabilityEvidenceResponse,
   RecommendationPayload,
   ReliabilityCaseActor,
+  UpdateCasePayload,
   UpdateCaseStatusPayload
 } from './case.types';
 
@@ -284,15 +285,14 @@ class ReliabilityCaseService {
       throw Object.assign(new Error('Asset report not found'), { status: 404 });
     }
 
-    const existing = await ReliabilityCaseModel.findOne({
+    const existingReportCase = await ReliabilityCaseModel.findOne({
       account_id: user.account_id,
       visible: true,
-      status: { $in: OPEN_CASE_STATUSES },
       'linked_asset_reports.report_id': report._id
-    }).lean();
+    });
 
-    if (existing) {
-      return await this.getCaseById(user, String(existing._id));
+    if (existingReportCase) {
+      return await this.getCaseById(user, String(existingReportCase._id));
     }
 
     const assetId = report.assetId || report.top_level_asset_id;
@@ -313,6 +313,43 @@ class ReliabilityCaseService {
     const evidenceSnapshot = this.buildAssetReportEvidenceSnapshot(report);
     const diagnosisSnapshot = this.buildAssetReportDiagnosisSnapshot(report);
     const recommendationSnapshot = this.buildAssetReportRecommendationSnapshot(report, user);
+
+    const existingAssetCase = await ReliabilityCaseModel.findOne({
+      account_id: user.account_id,
+      visible: true,
+      $or: [
+        { asset_id: topLevelAsset._id },
+        { top_level_asset_id: topLevelAsset._id }
+      ]
+    }).sort({ createdAt: 1 });
+
+    if (existingAssetCase) {
+      const mergedRiskLevel = this.maxRisk(existingAssetCase.risk_level, riskLevel);
+      existingAssetCase.linked_asset_reports.push(reportRef);
+      existingAssetCase.evidence_snapshot = this.mergeEvidenceSnapshots(existingAssetCase.evidence_snapshot, evidenceSnapshot);
+      existingAssetCase.diagnosis_snapshot = this.mergeDiagnosisSnapshots(existingAssetCase.diagnosis_snapshot, diagnosisSnapshot);
+      existingAssetCase.recommendation_snapshot = this.mergeRecommendationSnapshots(
+        existingAssetCase.recommendation_snapshot,
+        recommendationSnapshot
+      );
+      existingAssetCase.risk_level = mergedRiskLevel;
+      existingAssetCase.urgency = this.urgencyFromRisk(mergedRiskLevel);
+      existingAssetCase.updatedBy = user._id;
+      existingAssetCase.audit_log.push(this.auditEntry('asset-report-linked', user, {
+        asset_report_id: reportId,
+        asset_id: String(topLevelAsset._id)
+      }));
+      await existingAssetCase.save();
+      await this.notifyReliabilityCase(
+        existingAssetCase,
+        user,
+        'updated',
+        'RELIABILITY_CASE_ASSET_REPORT_LINKED',
+        `Asset report was linked to reliability case ${existingAssetCase.case_no}.`
+      );
+      return await this.getCaseById(user, String(existingAssetCase._id));
+    }
+
     const title = payload.title?.trim() || this.buildAssetReportCaseTitle(topLevelAsset.asset_name, report);
 
     const newCase = new ReliabilityCaseModel({
@@ -1448,13 +1485,105 @@ class ReliabilityCaseService {
       confidence_score: Math.max(existing.confidence_score || 0, incoming.confidence_score || 0) || undefined,
       summary: sameFamily
         ? (incoming.summary || existing.summary)
-        : `Linked alarms indicate ${primaryLabel} as the primary concern, with additional signs of ${secondaryLabel}.`,
+        : `Linked evidence indicates ${primaryLabel} as the primary concern, with additional signs of ${secondaryLabel}.`,
       observations: this.uniqueStrings([...(existing.observations || []), ...(incoming.observations || [])]),
       recommendations: this.uniqueStrings([...(existing.recommendations || []), ...(incoming.recommendations || [])]),
       severity_assessment: incoming.severity_assessment || existing.severity_assessment,
       maintenance_priority: incoming.maintenance_priority || existing.maintenance_priority,
       fault_timeline: [...(existing.fault_timeline || []), ...(incoming.fault_timeline || [])],
       limitations: this.uniqueStrings([...(existing.limitations || []), ...(incoming.limitations || [])])
+    };
+  }
+
+  async updateCase(caseId: string, payload: UpdateCasePayload, user: ReliabilityCaseActor) {
+    const filter = await applyRoleFilter({
+      user: user as any,
+      baseFilter: { _id: new Types.ObjectId(caseId), visible: true },
+      accountField: 'account_id',
+      mapping: 'asset',
+      idField: 'asset_id'
+    });
+    const existing = await ReliabilityCaseModel.findOne(filter);
+
+    if (!existing) {
+      throw Object.assign(new Error('Reliability case not found'), { status: 404 });
+    }
+
+    const changedFields: string[] = [];
+    if (payload.title !== undefined && payload.title.trim() !== existing.title) {
+      existing.title = payload.title.trim();
+      changedFields.push('title');
+    }
+    if (payload.description !== undefined && payload.description.trim() !== String(existing.description || '')) {
+      existing.description = payload.description.trim();
+      changedFields.push('description');
+    }
+    if (payload.risk_level !== undefined && payload.risk_level !== existing.risk_level) {
+      existing.risk_level = payload.risk_level;
+      changedFields.push('risk_level');
+      if (payload.urgency === undefined) {
+        existing.urgency = this.urgencyFromRisk(payload.risk_level);
+        changedFields.push('urgency');
+      }
+    }
+    if (payload.urgency !== undefined && payload.urgency !== existing.urgency) {
+      existing.urgency = payload.urgency;
+      changedFields.push('urgency');
+    }
+
+    if (!changedFields.length) {
+      return await this.getCaseById(user, caseId);
+    }
+
+    existing.updatedBy = user._id;
+    existing.audit_log.push(this.auditEntry('case-edited', user, { changed_fields: changedFields }));
+    await existing.save();
+    await this.notifyReliabilityCase(existing, user, 'updated', 'RELIABILITY_CASE_UPDATED', `Reliability case ${existing.case_no} was updated.`);
+    return await this.getCaseById(user, caseId);
+  }
+
+  async deleteCase(caseId: string, user: ReliabilityCaseActor) {
+    const filter = await applyRoleFilter({
+      user: user as any,
+      baseFilter: { _id: new Types.ObjectId(caseId), visible: true },
+      accountField: 'account_id',
+      mapping: 'asset',
+      idField: 'asset_id'
+    });
+    const existing = await ReliabilityCaseModel.findOne(filter);
+
+    if (!existing) {
+      throw Object.assign(new Error('Reliability case not found'), { status: 404 });
+    }
+
+    existing.visible = false;
+    existing.updatedBy = user._id;
+    existing.audit_log.push(this.auditEntry('case-deleted', user));
+    await existing.save();
+    return { _id: existing._id, case_no: existing.case_no };
+  }
+
+  private mergeRecommendationSnapshots(
+    existing: IReliabilityCaseRecommendationSnapshot | undefined,
+    incoming: IReliabilityCaseRecommendationSnapshot
+  ): IReliabilityCaseRecommendationSnapshot {
+    if (!existing) return incoming;
+
+    return {
+      action_summary: incoming.action_summary || existing.action_summary,
+      inspection_steps: this.uniqueStrings([...(existing.inspection_steps || []), ...(incoming.inspection_steps || [])]),
+      maintenance_actions: this.uniqueStrings([...(existing.maintenance_actions || []), ...(incoming.maintenance_actions || [])]),
+      safety_checklist: this.uniqueStrings([...(existing.safety_checklist || []), ...(incoming.safety_checklist || [])]),
+      suggested_spares: [...(existing.suggested_spares || []), ...(incoming.suggested_spares || [])],
+      suggested_tools: this.uniqueStrings([...(existing.suggested_tools || []), ...(incoming.suggested_tools || [])]),
+      suggested_procedure_ids: [...(existing.suggested_procedure_ids || []), ...(incoming.suggested_procedure_ids || [])],
+      suggested_assignee_ids: [...(existing.suggested_assignee_ids || []), ...(incoming.suggested_assignee_ids || [])],
+      estimated_downtime_hours: Math.max(existing.estimated_downtime_hours || 0, incoming.estimated_downtime_hours || 0) || undefined,
+      business_impact: incoming.business_impact || existing.business_impact,
+      explanation: 'Imported from all asset reports linked to this reliability case.',
+      generated_by: 'human',
+      generatedAt: incoming.generatedAt || new Date(),
+      generatedBy: incoming.generatedBy || existing.generatedBy
     };
   }
 
