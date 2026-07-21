@@ -935,15 +935,30 @@ class ReliabilityCaseService {
   }
 
   private buildAssetReportEvidenceSnapshot(report: any): IReliabilityCaseEvidenceSnapshot {
-    const endpointEvidence = (Array.isArray(report.endpointRMSData) ? report.endpointRMSData : []).map((point: any) => ({
-      composite: point.composite_id,
-      endpoint_name: point.point_name,
-      mount_location: point.mount_location,
-      mount_direction: point.mount_direction,
-      asset_name: point.asset_name,
-      acceleration: point.acceleration,
-      velocity: point.velocity
-    }));
+    const endpointEvidence = (Array.isArray(report.endpointRMSData) ? report.endpointRMSData : []).map((point: any) => {
+      const readingTimestamp = this.firstRmsTimestamp(point.acceleration) ?? this.firstRmsTimestamp(point.velocity);
+      return {
+        asset_report_id: String(report._id),
+        composite: point.composite_id,
+        endpoint_name: point.point_name,
+        mount_location: point.mount_location,
+        mount_direction: point.mount_direction,
+        asset_name: point.asset_name,
+        reading_at: this.toRmsReadingDate(readingTimestamp),
+        acceleration_rms: {
+          vertical: point?.acceleration?.Vertical?.rms ?? null,
+          horizontal: point?.acceleration?.Horizontal?.rms ?? null,
+          axial: point?.acceleration?.Axial?.rms ?? null
+        },
+        velocity_rms: {
+          vertical: point?.velocity?.Vertical?.rms ?? null,
+          horizontal: point?.velocity?.Horizontal?.rms ?? null,
+          axial: point?.velocity?.Axial?.rms ?? null
+        },
+        acceleration: point.acceleration,
+        velocity: point.velocity
+      };
+    });
 
     return {
       health_status: this.assetReportHealthLabel(report.EquipmentHealth),
@@ -1004,6 +1019,21 @@ class ReliabilityCaseService {
       generatedAt: new Date(),
       generatedBy: user._id
     };
+  }
+
+  private firstRmsTimestamp(readings: any): unknown {
+    return readings?.Axial?.timestamp
+      ?? readings?.Horizontal?.timestamp
+      ?? readings?.Vertical?.timestamp;
+  }
+
+  private toRmsReadingDate(value: unknown): Date | undefined {
+    if (value === null || value === undefined || value === '') return undefined;
+    const numericValue = Number(value);
+    const date = Number.isFinite(numericValue)
+      ? new Date(numericValue < 1_000_000_000_000 ? numericValue * 1000 : numericValue)
+      : new Date(String(value));
+    return Number.isNaN(date.getTime()) ? undefined : date;
   }
 
   private buildAlarmRecommendationSnapshot(caseData: any, user: ReliabilityCaseActor): IReliabilityCaseRecommendationSnapshot | undefined {
