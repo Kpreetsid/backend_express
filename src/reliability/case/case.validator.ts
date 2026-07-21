@@ -5,63 +5,6 @@ import {
   RELIABILITY_CASE_URGENCY_LEVELS
 } from '../../models/reliabilityCase.model';
 
-export const createCaseFromAlertsValidator = [
-  body('alarm_ids')
-    .isArray({ min: 1 })
-    .withMessage('alarm_ids must be a non-empty array'),
-  body('alarm_ids.*')
-    .isString()
-    .trim()
-    .notEmpty()
-    .withMessage('Each alarm id must be a non-empty string'),
-  body('title')
-    .optional()
-    .isString()
-    .trim()
-    .isLength({ max: 180 })
-    .withMessage('title must be 180 characters or fewer'),
-  body('description')
-    .optional()
-    .isString()
-    .trim()
-    .isLength({ max: 2000 })
-    .withMessage('description must be 2000 characters or fewer'),
-  body('grouping_window_hours')
-    .optional()
-    .isNumeric()
-    .withMessage('grouping_window_hours must be a number')
-];
-
-export const createCaseFromAlertValidator = [
-  body('alarm_id')
-    .optional()
-    .isString()
-    .trim()
-    .notEmpty()
-    .withMessage('alarm_id must be a non-empty string'),
-  body('alarmId')
-    .optional()
-    .isString()
-    .trim()
-    .notEmpty()
-    .withMessage('alarmId must be a non-empty string'),
-  body()
-    .custom((value) => Boolean(value?.alarm_id || value?.alarmId))
-    .withMessage('alarm_id is required'),
-  body('title')
-    .optional()
-    .isString()
-    .trim()
-    .isLength({ max: 180 })
-    .withMessage('title must be 180 characters or fewer'),
-  body('description')
-    .optional()
-    .isString()
-    .trim()
-    .isLength({ max: 2000 })
-    .withMessage('description must be 2000 characters or fewer')
-];
-
 export const createCaseFromAssetReportValidator = [
   body('asset_report_id')
     .isMongoId()

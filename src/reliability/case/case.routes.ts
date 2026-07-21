@@ -8,8 +8,6 @@ import {
   approvalValidator,
   closeCaseValidator,
   createCaseFromAssetReportValidator,
-  createCaseFromAlertValidator,
-  createCaseFromAlertsValidator,
   feedbackValidator,
   linkWorkOrderValidator,
   recommendationValidator,
@@ -21,12 +19,9 @@ export default (router: express.Router) => {
   const caseRouter = express.Router();
 
   caseRouter.get('/', hasReliabilityPermission('view_case'), reliabilityCaseController.getCases);
-  caseRouter.post('/group-alerts', hasReliabilityPermission('create_case'), createCaseFromAlertsValidator, validate, reliabilityCaseController.groupAlerts);
   caseRouter.get('/:id/spares', validateParamId, hasReliabilityPermission('view_case'), reliabilityCaseController.getSpareAvailability);
   caseRouter.get('/:id', validateParamId, hasReliabilityPermission('view_case'), reliabilityCaseController.getCaseById);
   caseRouter.post('/from-asset-report', hasReliabilityPermission('create_case'), createCaseFromAssetReportValidator, validate, reliabilityCaseController.createFromAssetReport);
-  caseRouter.post('/from-alert', hasReliabilityPermission('create_case'), createCaseFromAlertValidator, validate, reliabilityCaseController.createFromAlert);
-  caseRouter.post('/from-alerts', hasReliabilityPermission('create_case'), createCaseFromAlertsValidator, validate, reliabilityCaseController.createFromAlerts);
   caseRouter.patch('/:id', validateParamId, hasReliabilityPermission('edit_case'), updateCaseValidator, validate, reliabilityCaseController.updateCase);
   caseRouter.delete('/:id', validateParamId, hasReliabilityPermission('delete_case'), reliabilityCaseController.deleteCase);
   caseRouter.patch('/:id/status', validateParamId, hasReliabilityPermission('triage_case'), updateCaseStatusValidator, validate, reliabilityCaseController.updateStatus);

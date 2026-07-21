@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { reliabilityCaseService } from './case.service';
-import { CreateCaseFromAssetReportPayload, CreateCaseFromAlertsPayload, UpdateCasePayload, UpdateCaseStatusPayload } from './case.types';
+import { CreateCaseFromAssetReportPayload, UpdateCasePayload, UpdateCaseStatusPayload } from './case.types';
 
 class ReliabilityCaseController {
   getCases = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -35,53 +35,12 @@ class ReliabilityCaseController {
     }
   };
 
-  createFromAlert = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const user = get(req, 'user', {}) as IUser;
-      const token = get(req, 'userToken', '') as string;
-      const alarmId = req.body?.alarm_id || req.body?.alarmId;
-      const payload: CreateCaseFromAlertsPayload = {
-        alarm_ids: alarmId ? [String(alarmId)] : [],
-        title: req.body?.title,
-        description: req.body?.description
-      };
-      const data = await reliabilityCaseService.createFromAlerts(payload, user as any, token);
-      res.status(201).json({ status: true, message: 'Reliability case created successfully.', data });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  createFromAlerts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const user = get(req, 'user', {}) as IUser;
-      const token = get(req, 'userToken', '') as string;
-      const payload = req.body as CreateCaseFromAlertsPayload;
-      const data = await reliabilityCaseService.createFromAlerts(payload, user as any, token);
-      res.status(201).json({ status: true, message: 'Reliability case created successfully.', data });
-    } catch (error) {
-      next(error);
-    }
-  };
-
   createFromAssetReport = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const user = get(req, 'user', {}) as IUser;
       const payload = req.body as CreateCaseFromAssetReportPayload;
       const data = await reliabilityCaseService.createFromAssetReport(payload, user as any);
       res.status(201).json({ status: true, message: 'Reliability case created from asset report successfully.', data });
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  groupAlerts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    try {
-      const user = get(req, 'user', {}) as IUser;
-      const token = get(req, 'userToken', '') as string;
-      const payload = req.body as CreateCaseFromAlertsPayload;
-      const data = await reliabilityCaseService.groupAlerts(payload, user as any, token);
-      res.status(200).json({ status: true, message: 'Reliability alerts grouped successfully.', data });
     } catch (error) {
       next(error);
     }
