@@ -81,6 +81,7 @@ class ReliabilityCaseService {
     const status = this.stringQuery(query.status);
     const riskLevel = this.stringQuery(query.risk_level);
     const assetId = this.stringQuery(query.asset_id);
+    const assetReportId = this.stringQuery(query.asset_report_id);
     const alarmIds = this.stringQuery(query.alarm_ids);
     const search = this.stringQuery(query.search);
 
@@ -94,6 +95,13 @@ class ReliabilityCaseService {
 
     if (assetId) {
       baseFilter.asset_id = new Types.ObjectId(assetId);
+    }
+
+    if (assetReportId) {
+      if (!Types.ObjectId.isValid(assetReportId)) {
+        throw Object.assign(new Error('asset_report_id must be a valid ObjectId'), { status: 400 });
+      }
+      baseFilter['linked_asset_reports.report_id'] = new Types.ObjectId(assetReportId);
     }
 
     if (alarmIds) {
