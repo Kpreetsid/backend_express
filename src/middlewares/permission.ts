@@ -23,3 +23,33 @@ export const hasRolePermission = (moduleName: string, action: string) => {
     }
   };
 };
+
+export const hasAccountFeature = (menuKey: string, action: string = "view") => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const roleMenu: any = get(req, "roleMenu", {});
+    const permission = roleMenu?.[menuKey];
+
+    if (permission?.[action] === true) {
+      return next();
+    }
+
+    next(Object.assign(new Error("This feature is disabled for the account."), {
+      status: 403,
+      code: "ACCOUNT_FEATURE_DISABLED"
+    }));
+  };
+};
+
+export const hasAnyAccountFeature = (menuKeys: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const roleMenu: any = get(req, "roleMenu", {});
+    if (menuKeys.some((menuKey) => roleMenu?.[menuKey]?.view === true)) {
+      return next();
+    }
+
+    next(Object.assign(new Error("This feature is disabled for the account."), {
+      status: 403,
+      code: "ACCOUNT_FEATURE_DISABLED"
+    }));
+  };
+};

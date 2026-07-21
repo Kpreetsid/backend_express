@@ -131,7 +131,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
           accountDetails: userAccount[0],
           userDetails: safeUser,
           platformControl: effectivePermissions.platformControl,
-          roleMenu: effectivePermissions.roleMenu
+          roleMenu: effectivePermissions.roleMenu,
+          accountPermissionVersion: Number(userAccount[0].account_permission_version || 1)
         }
       });
     }
@@ -298,6 +299,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
           userDetails: newSafeUserValue, 
           platformControl: effectivePermissions.platformControl, 
           roleMenu: effectivePermissions.roleMenu, 
+          accountPermissionVersion: Number(accountDetails[0].account_permission_version || 1),
           isExternal: !!isExternal,
           isInternal: !!isInternal,
           redirectPath: safeRedirectPath
@@ -406,6 +408,7 @@ export const userGetMeService = async (req: Request, res: Response, next: NextFu
         userDetails: safeUser,
         platformControl: effectivePermissions.platformControl,
         roleMenu: effectivePermissions.roleMenu,
+        accountPermissionVersion: Number(accountDetails[0].account_permission_version || 1),
         isExternal: !!get(req, 'authFlags.isExternal'),
         isInternal: !!get(req, 'authFlags.isInternal')
       }

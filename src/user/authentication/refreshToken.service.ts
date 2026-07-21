@@ -295,7 +295,8 @@ class RefreshTokenService {
       accountDetails: accountDetails[0],
       userDetails: getSafeUser(user),
       platformControl: effectivePermissions.platformControl,
-      roleMenu: effectivePermissions.roleMenu
+      roleMenu: effectivePermissions.roleMenu,
+      accountPermissionVersion: Number(accountDetails[0].account_permission_version || 1)
     };
   }
 

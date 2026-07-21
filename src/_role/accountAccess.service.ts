@@ -6,6 +6,16 @@ type PlatformControl = Record<string, Record<string, boolean>>;
 type PlatformActionRule = { menuKey: string; action: AccountAction };
 
 const ACCOUNT_ACTIONS: AccountAction[] = ["view", "add", "edit", "delete", "import", "export"];
+const ACCOUNT_ADDITIVE_FEATURE_KEYS = [
+  "master_alarm",
+  "alarm_overview",
+  "alarm_configuration",
+  "master_library",
+  "work_order_templates",
+  "procedures",
+  "asset_alarms",
+  "ai_chatbot"
+];
 
 const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> = {
   asset: {
@@ -107,6 +117,12 @@ class AccountAccessService {
   applyRoleMenuCap(userRoleMenu: any, accountRoleMenu: RoleMenu): RoleMenu {
     const effectiveRoleMenu = clone(userRoleMenu);
 
+    for (const menuKey of ACCOUNT_ADDITIVE_FEATURE_KEYS) {
+      if (!effectiveRoleMenu[menuKey] && accountRoleMenu[menuKey]) {
+        effectiveRoleMenu[menuKey] = this.createLegacyFeaturePermission(accountRoleMenu[menuKey]);
+      }
+    }
+
     for (const [menuKey, permission] of Object.entries(effectiveRoleMenu)) {
       if (!isRecord(permission) || !accountRoleMenu[menuKey]) {
         continue;
@@ -120,6 +136,17 @@ class AccountAccessService {
     }
 
     return effectiveRoleMenu;
+  }
+
+  private createLegacyFeaturePermission(accountPermission: Permission): Permission {
+    return {
+      level: accountPermission.level,
+      ...(accountPermission.parent ? { parent: accountPermission.parent } : {}),
+      view: accountPermission.view === true,
+      ...(accountPermission.level === 1
+        ? { add: false, edit: false, delete: false, import: false, export: false }
+        : {})
+    };
   }
 
   applyPlatformControlCap(platformControl: any, accountRoleMenu: RoleMenu): PlatformControl {

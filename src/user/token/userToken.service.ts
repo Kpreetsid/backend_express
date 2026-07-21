@@ -35,7 +35,14 @@ class UserTokenService {
       return res.status(200).json({
         status: true,
         message: "Data fetched successfully",
-        data: { userDetails: safeUser, token, platformControl: effectivePermissions.platformControl }
+        data: {
+          userDetails: safeUser,
+          accountDetails: accountDetails[0],
+          token,
+          platformControl: effectivePermissions.platformControl,
+          roleMenu: effectivePermissions.roleMenu,
+          accountPermissionVersion: Number(accountDetails[0]?.account_permission_version || 1)
+        }
       });
     } catch (error) {
       next(error);     

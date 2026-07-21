@@ -12,6 +12,7 @@ import { TokenModel } from '../models/userToken.model';
 import { TokenBlacklist } from '../_cache/auth/tokenBlacklist';
 import { tokenSessionStore, TokenSessionRecord } from '../_cache/session/tokenSessionStore';
 import { getAccessTokenFromCookies, getAccountIdFromCookies } from '../user/authentication/authCookie.service';
+import { accountAccessService } from '../_role/accountAccess.service';
 
 const invalidTokenError = (): Error => Object.assign(new Error('Invalid token'), { status: 401 });
 
@@ -67,6 +68,8 @@ interface AuthenticatedTokenContext {
   userData: IUser;
   roleData: IUserRoleMenu;
   role: any;
+  roleMenu: any;
+  accountPermissionVersion: number;
   isExternal: boolean;
   isInternal: boolean;
 }
@@ -113,6 +116,8 @@ export const authenticateTokenContext = async (token: string, accountId: string)
     throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
   }
 
+  const effectivePermissions = accountAccessService.getEffectivePermissions(userRole, companyData);
+
   return {
     token,
     accountId: normalizedAccountId,
@@ -120,7 +125,9 @@ export const authenticateTokenContext = async (token: string, accountId: string)
     decoded,
     userData,
     roleData: userRole,
-    role: userRole.toObject().data,
+    role: effectivePermissions.platformControl,
+    roleMenu: effectivePermissions.roleMenu,
+    accountPermissionVersion: Number(companyData.account_permission_version || 1),
     isExternal: !!accessSession.isExternal,
     isInternal: !!accessSession.isInternal
   };
@@ -143,6 +150,8 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
       user: context.userData.toObject(),
       companyID: context.companyID,
       role: context.role,
+      roleMenu: context.roleMenu,
+      accountPermissionVersion: context.accountPermissionVersion,
       userToken: context.token,
       authFlags: {
         isExternal: context.isExternal,

@@ -11,12 +11,15 @@ export type Permission = {
 
 export type RoleMenu = Record<string, Permission>;
 
+export const ACCOUNT_ROLE_MENU_SCHEMA_VERSION = 2;
+
 export class RoleManager {
   private static readonly STANDARD_ACCOUNT_ROLES: RoleMenu = {
     master_asset: { level: 0, view: true },
     master_location: { level: 0, view: true },
     master_dashboard: { level: 0, view: true },
     master_report: { level: 0, view: true },
+    master_alarm: { level: 0, view: true },
     master_work_order: { level: 0, view: true },
     master_work_request: { level: 0, view: true },
     master_preventive: { level: 0, view: true },
@@ -26,6 +29,7 @@ export class RoleManager {
     master_admin_panel: { level: 0, view: true },
     master_form: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
+    master_library: { level: 0, view: true },
     asset: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     child_asset: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     report_asset: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
@@ -43,12 +47,16 @@ export class RoleManager {
     reports_monitoring: { level: 1, parent: "master_report", view: true, add: true, edit: true, delete: true, import: true, export: true },
     reports_health_monitoring: { level: 1, parent: "master_report", view: true, add: true, edit: true, delete: true, import: true, export: true },
     reports_sensor_data_tracking: { level: 1, parent: "master_report", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    alarm_overview: { level: 1, parent: "master_alarm", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    alarm_configuration: { level: 1, parent: "master_alarm", view: true, add: true, edit: true, delete: true, import: true, export: true },
     asset_sensors: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     endpoint: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     observation: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     config: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     config_alarm: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     attach_sensor: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    asset_alarms: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    ai_chatbot: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
     preventive: { level: 1, parent: "master_preventive", view: true, add: true, edit: true, delete: true, import: true, export: true },
     form: { level: 1, parent: "master_form", view: true, add: true, edit: true, delete: true, import: true, export: true },
     form_category: { level: 1, parent: "master_form", view: true, add: true, edit: true, delete: true, import: true, export: true },
@@ -65,6 +73,8 @@ export class RoleManager {
     oem_report: { level: 1, parent: "master_report", view: false, add: false, edit: false, delete: false, import: false, export: false },
     pump_asset_health: { level: 1, parent: "master_asset", view: false, add: false, edit: false, delete: false, import: false, export: false },
     pdm_location_filter: { level: 1, parent: "master_dashboard", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    work_order_templates: { level: 1, parent: "master_library", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    procedures: { level: 1, parent: "master_library", view: true, add: true, edit: true, delete: true, import: true, export: true },
   };
 
   private static readonly OEM_ACCOUNT_ROLES: RoleMenu = {
@@ -72,6 +82,7 @@ export class RoleManager {
     master_location: { level: 0, view: true },
     master_dashboard: { level: 0, view: true },
     master_report: { level: 0, view: true },
+    master_alarm: { level: 0, view: true },
     master_work_order: { level: 0, view: true },
     master_work_request: { level: 0, view: true },
     master_preventive: { level: 0, view: true },
@@ -81,6 +92,7 @@ export class RoleManager {
     master_admin_panel: { level: 0, view: false },
     master_form: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
+    master_library: { level: 0, view: true },
     asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     child_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     report_asset: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
@@ -97,12 +109,16 @@ export class RoleManager {
     reports_monitoring: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
     reports_health_monitoring: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
     reports_sensor_data_tracking: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    alarm_overview: { level: 1, parent: "master_alarm", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    alarm_configuration: { level: 1, parent: "master_alarm", view: true, add: false, edit: false, delete: false, import: false, export: false },
     asset_sensors: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     endpoint: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     observation: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     config: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     config_alarm: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     attach_sensor: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    asset_alarms: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    ai_chatbot: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     preventive: { level: 1, parent: "master_preventive", view: true, add: false, edit: false, delete: false, import: false, export: false },
     form: { level: 1, parent: "master_form", view: true, add: false, edit: false, delete: false, import: false, export: false },
     form_category: { level: 1, parent: "master_form", view: true, add: false, edit: false, delete: false, import: false, export: false },
@@ -120,6 +136,8 @@ export class RoleManager {
     oem_report: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
     pump_asset_health: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
     pdm_location_filter: { level: 1, parent: "master_dashboard", view: false, add: false, edit: false, delete: false, import: false, export: false },
+    work_order_templates: { level: 1, parent: "master_library", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    procedures: { level: 1, parent: "master_library", view: true, add: false, edit: false, delete: false, import: false, export: false },
   };
 
   private static cloneRoleMenu(roleMenu: RoleMenu): RoleMenu {

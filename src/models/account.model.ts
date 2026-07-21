@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { RoleManager } from '../_role/accountRoleMenu';
+import { ACCOUNT_ROLE_MENU_SCHEMA_VERSION, RoleManager } from '../_role/accountRoleMenu';
 export const COMPANY_COLLECTION_NAME = `account_master`;
 export const STATUS_ENUM = ['active', 'inactive'];
 export const EXPERIENCE_PROFILES = ['standard_account', 'oem'] as const;
@@ -18,6 +18,7 @@ export interface IAccount extends Document {
   encrypt_response?: string;
   account_role_menu?: object;
   account_permission_version?: number;
+  account_role_menu_schema_version?: number;
   account_role_menu_updated_by?: Schema.Types.ObjectId;
   account_role_menu_updated_at?: Date;
   account_status: string;
@@ -38,6 +39,7 @@ const accountSchema = new Schema<IAccount>(
     encrypt_response: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     account_role_menu: { type: Object, required: true, default: () => RoleManager.getRoleMenu(EXPERIENCE_PROFILES[0]) },
     account_permission_version: { type: Number, default: 1 },
+    account_role_menu_schema_version: { type: Number, default: ACCOUNT_ROLE_MENU_SCHEMA_VERSION },
     account_role_menu_updated_by: { type: mongoose.Schema.Types.ObjectId },
     account_role_menu_updated_at: { type: Date },
     account_status: { type: String, trim: true, enum: STATUS_ENUM, default: STATUS_ENUM[0] },
