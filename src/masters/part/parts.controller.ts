@@ -4,6 +4,7 @@ import { partsService } from './parts.service';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
+import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
 
 class PartsController {
 
@@ -109,6 +110,7 @@ class PartsController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
+      setSyncVersionEtag(res, data[0]);
       res.status(200).json({ status: true, message: "Part retrieved successfully", data: data[0] });
     } catch (error) {
       next(error);
@@ -134,7 +136,8 @@ class PartsController {
       // Fetch populated data
       const data = await partsService.getAllParts({ _id: createdData._id });
       const result = data && data.length > 0 ? data[0] : createdData;
-      
+
+      setSyncVersionEtag(res, result);
       res.status(201).json({ status: true, message: "Part created successfully", data: result });
     } catch (error) {
       next(error);
@@ -190,7 +193,10 @@ class PartsController {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
 
-      const updated = await partsService.updatePartById(String(id), body, get(req, "user", {}) as IUser, account_id);
+      const expectedVersion = getExpectedSyncVersion(req);
+      assertSyncVersion(isDataExists[0], expectedVersion);
+
+      const updated = await partsService.updatePartById(String(id), body, get(req, "user", {}) as IUser, account_id, expectedVersion);
       if (!updated) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
@@ -198,6 +204,7 @@ class PartsController {
       // Fetch populated data
       const data = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)) });
 
+      setSyncVersionEtag(res, data[0]);
       res.status(200).json({ status: true, message: "Part updated successfully", data: data[0] });
     } catch (error) {
       next(error);

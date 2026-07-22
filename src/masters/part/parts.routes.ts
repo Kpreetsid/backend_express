@@ -8,6 +8,7 @@ import multer from 'multer';
 import path from 'path';
 import { uploadFilesService } from '../../upload/upload.multer';
 import { payloadCryptoMultipartMiddleware } from '../../middlewares/payloadCrypto.middleware';
+import { idempotencyMiddleware } from '../../middlewares/idempotency.middleware';
 
 const importStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -35,6 +36,7 @@ const importUpload = multer({
 
 export default (router: express.Router) => {
     const partRouter = express.Router();
+    partRouter.use(idempotencyMiddleware);
     partRouter.get('/', partsController.getParts);
     partRouter.get('/cycle-counts', partsController.getCycleCounts);
     partRouter.get('/replenishment-suggestions', partsController.getReplenishmentSuggestions);

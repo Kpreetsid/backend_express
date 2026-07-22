@@ -10,6 +10,7 @@ import { PartsTypeModel } from "../../models/parts-types.model";
 import { PartHistoryAction, PartHistoryModel } from "../../models/partHistory.model";
 import { LocationModel } from "../../models/location.model";
 import { UserModel } from "../../models/user.model";
+import { assertSyncVersion, createSyncConflict } from "../../utils/sync-concurrency";
 
 interface InventoryAdjustmentResult {
   warnings: {
@@ -593,7 +594,7 @@ class PartsService {
     return result;
   }
 
-  async updatePartById(id: string, body: IPart, user: any, account_id: any) {
+  async updatePartById(id: string, body: IPart, user: any, account_id: any, expectedVersion?: number) {
     return await withTransaction(async (session) => {
       const normalizedBody: any = this.normalizePartPayload(body);
       const existingPart = await PartsModel.findOne({
@@ -605,11 +606,18 @@ class PartsService {
       if (!existingPart) {
         return null;
       }
+      assertSyncVersion(existingPart, expectedVersion);
 
       const changedFields = this.getChangedPartFields(existingPart.toObject(), normalizedBody);
       normalizedBody.updatedBy = user?._id || user;
 
-      const updatedPart = await PartsModel.findByIdAndUpdate(id, normalizedBody, { returnDocument: 'after', session });
+      const updateFilter: any = { _id: id, account_id, visible: true };
+      if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
+      delete normalizedBody.sync_version;
+      const updatedPart = await PartsModel.findOneAndUpdate(updateFilter, normalizedBody, { returnDocument: 'after', session });
+      if (!updatedPart && expectedVersion !== undefined) {
+        throw createSyncConflict(await PartsModel.findById(id).session(session));
+      }
 
       if (updatedPart && changedFields.length > 0) {
         await this.createPartHistoryEntry({

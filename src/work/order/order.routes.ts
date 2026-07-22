@@ -7,9 +7,11 @@ import { upload } from '../../upload/upload.routes';
 import { workOrderValidator, updateWorkOrderValidator } from './workOrder.validator';
 import { validate } from '../../middlewares/validator.middleware';
 import { payloadCryptoMultipartMiddleware } from '../../middlewares/payloadCrypto.middleware';
+import { idempotencyMiddleware } from '../../middlewares/idempotency.middleware';
 
 export default (router: express.Router) => {
     const orderRouter = express.Router();
+    orderRouter.use(idempotencyMiddleware);
     orderRouter.get('/', orderController.getAll);
     orderRouter.get('/get-work-order', orderController.getAllWorkOrders);
     orderRouter.get('/activity/:id', validateParamId, orderController.getActivity);

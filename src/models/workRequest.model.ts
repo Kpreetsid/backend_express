@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 import { IUpload } from './upload.model';
+import { syncVersionPlugin } from './plugins/sync-version.plugin';
 
 export const WORK_REQUEST_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected'];
 export const WORK_REQUEST_PRIORITIES = ['None', 'Low', 'Medium', 'High', 'Urgent'];
@@ -20,6 +21,7 @@ export const WORK_REQUEST_ORDER_SLA_HOURS: Record<string, number> = {
 };
 
 export interface IWorkRequest extends Document {
+  sync_version: number;
   account_id: ObjectId;
   request_no: string;
   title: string;
@@ -82,5 +84,7 @@ const WorkRequestSchema = new Schema<IWorkRequest>({
   timestamps: true,
   versionKey: false
 });
+
+WorkRequestSchema.plugin(syncVersionPlugin);
 
 export const WorkRequestModel = mongoose.model<IWorkRequest>('Schema_WorkRequest', WorkRequestSchema);
