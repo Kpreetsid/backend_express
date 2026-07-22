@@ -59,6 +59,9 @@ export interface IProcedure extends Document {
   version_notes?: string;
   supersedes_id?: ObjectId;
   published_at?: Date;
+  source_kind?: 'reliability_case';
+  source_case_id?: ObjectId;
+  source_case_no?: string;
   visible: boolean;
   createdBy: ObjectId;
   updatedBy?: ObjectId;
@@ -81,6 +84,9 @@ const ProcedureSchema = new Schema<IProcedure>(
     version_notes: { type: String, trim: true },
     supersedes_id: { type: Schema.Types.ObjectId, ref: 'Schema_Procedure' },
     published_at: { type: Date, default: Date.now },
+    source_kind: { type: String, enum: ['reliability_case'] },
+    source_case_id: { type: Schema.Types.ObjectId, ref: 'Schema_ReliabilityCase' },
+    source_case_no: { type: String, trim: true },
     visible: { type: Boolean, default: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
@@ -98,5 +104,12 @@ ProcedureSchema.index({ account_id: 1, visible: 1, version_group_id: 1, version:
 ProcedureSchema.index({ account_id: 1, visible: 1, is_latest: 1 });
 ProcedureSchema.index({ location_ids: 1 });
 ProcedureSchema.index({ asset_ids: 1 });
+ProcedureSchema.index(
+  { account_id: 1, source_case_id: 1, version: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { visible: true, source_kind: 'reliability_case' }
+  }
+);
 
 export const ProcedureModel = mongoose.model<IProcedure>('Schema_Procedure', ProcedureSchema);

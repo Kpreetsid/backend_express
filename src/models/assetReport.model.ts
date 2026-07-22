@@ -60,13 +60,12 @@ export interface IReportAsset extends Document {
   accountId: ObjectId;
   top_level_asset_id: ObjectId;
   assetId: ObjectId;
-  work_order_id: ObjectId;
+  work_order_id?: ObjectId;
   status: string;
   status_details: IStatusDetails[];
   Observations: string;
   observationId?: ObjectId;
   Recommendations: string;
-  CreateWorkRequest: string;
   FaultDetected: string;
   Severity?: string;
   NewFault: string;
@@ -101,7 +100,6 @@ const reportAssetSchema = new Schema<IReportAsset>({
   Observations: { type: String, trim: true },
   observationId: { type: Schema.Types.ObjectId, ref: 'ObservationModel' },
   Recommendations: { type: String, trim: true },
-  CreateWorkRequest: { type: String, trim: true },
   FaultDetected: { type: String, trim: true },
   Severity: { type: String, trim: true },
   status: { type: String, trim: true, enum: ASSET_REPORT_STATUS, default: ASSET_REPORT_STATUS[0] },

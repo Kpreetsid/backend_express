@@ -105,9 +105,11 @@ class AssetReportController {
     let assetReportId: any;
     try {
       const user = get(req, "user", {}) as IUser;
-      const { body: { workOrder, ...reportBody } } = req;
+      const reportBody = { ...req.body };
+      delete reportBody.workOrder;
+      delete reportBody.CreateWorkRequest;
       const userToken = get(req, "userToken", {}) as string;
-      const data = await assetReportService.createAssetReportWithWorkOrder(reportBody, user, userToken, reportBody.CreateWorkRequest, workOrder);
+      const data = await assetReportService.createAssetReport(reportBody, user);
       if (!data) {
         throw Object.assign(new Error('Asset report not created'), { status: 404 });
       }

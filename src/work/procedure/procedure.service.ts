@@ -57,6 +57,107 @@ class ProcedureService {
     return await this.getProcedureById(String(procedure._id), account_id);
   }
 
+  async getOrCreateGeneratedReliabilityProcedure(
+    body: any,
+    account_id: any,
+    user_id: any,
+    source_case_id: any,
+    source_case_no: string
+  ): Promise<{ procedure: any; created: boolean }> {
+    const sourceCaseId = helperService.validateObjectId(String(source_case_id));
+    const existing = await ProcedureModel.findOne({
+      account_id,
+      source_kind: 'reliability_case',
+      source_case_id: sourceCaseId,
+      is_latest: true,
+      visible: true
+    }).lean();
+
+    if (existing) {
+      return {
+        procedure: await this.getProcedureById(String(existing._id), account_id),
+        created: false
+      };
+    }
+
+    try {
+      const versionGroupId = new mongoose.Types.ObjectId();
+      const procedure = await ProcedureModel.create({
+        account_id,
+        name: body.name,
+        category: body.category || 'Reliability',
+        tags: this.normalizeTags(body.tags),
+        location_ids: this.normalizeObjectIds(body.location_ids),
+        asset_ids: this.normalizeObjectIds(body.asset_ids),
+        description: body.description || '',
+        required_parts: this.normalizeRequiredParts(body.required_parts),
+        steps: Array.isArray(body.steps) ? body.steps : [],
+        version_group_id: versionGroupId,
+        version: 1,
+        is_latest: true,
+        version_notes: body.version_notes || '',
+        published_at: new Date(),
+        source_kind: 'reliability_case',
+        source_case_id: sourceCaseId,
+        source_case_no: String(source_case_no || '').trim(),
+        createdBy: user_id,
+        updatedBy: user_id
+      });
+
+      return {
+        procedure: await this.getProcedureById(String(procedure._id), account_id),
+        created: true
+      };
+    } catch (error: any) {
+      if (error?.code !== 11000) throw error;
+
+      const concurrentProcedure = await ProcedureModel.findOne({
+        account_id,
+        source_kind: 'reliability_case',
+        source_case_id: sourceCaseId,
+        is_latest: true,
+        visible: true
+      }).lean();
+      if (!concurrentProcedure) throw error;
+
+      return {
+        procedure: await this.getProcedureById(String(concurrentProcedure._id), account_id),
+        created: false
+      };
+    }
+  }
+
+  async archiveGeneratedReliabilityProcedure(
+    procedure_id: any,
+    source_case_id: any,
+    account_id: any,
+    user_id: any
+  ): Promise<void> {
+    const procedure = await ProcedureModel.findOne({
+      _id: helperService.validateObjectId(String(procedure_id)),
+      account_id,
+      source_kind: 'reliability_case',
+      source_case_id: helperService.validateObjectId(String(source_case_id)),
+      visible: true
+    }).lean();
+    if (!procedure) return;
+
+    await ProcedureModel.updateMany(
+      {
+        account_id,
+        version_group_id: procedure.version_group_id,
+        visible: true
+      },
+      {
+        $set: {
+          visible: false,
+          is_latest: false,
+          updatedBy: user_id
+        }
+      }
+    );
+  }
+
   async updateProcedure(id: string, body: any, account_id: any, user_id: any): Promise<any | null> {
     const existingProcedure = await ProcedureModel.findOne({
       _id: helperService.validateObjectId(id),
@@ -85,6 +186,9 @@ class ProcedureService {
       version_notes: body.version_notes || '',
       supersedes_id: existingProcedure._id,
       published_at: new Date(),
+      source_kind: existingProcedure.source_kind,
+      source_case_id: existingProcedure.source_case_id,
+      source_case_no: existingProcedure.source_case_no,
       createdBy: user_id,
       updatedBy: user_id
     });

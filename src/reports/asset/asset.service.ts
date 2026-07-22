@@ -1,5 +1,4 @@
 import { ReportAssetModel, IReportAsset } from "../../models/assetReport.model";
-import { orderService } from "../../work/order/order.service";
 
 class AssetReportService {
 
@@ -17,38 +16,19 @@ class AssetReportService {
     return await ReportAssetModel.findOne(match).select(selectedFields).sort({ _id: -1 }).limit(1);
   };
 
-  async createAssetReportWithWorkOrder(body: IReportAsset, user: any, token: any, CreateWorkRequest: number, workOrderBody?: any) {
-    let assetReport: any = null;
-    let workOrder: any = null;
-    try {
-      const initialStatus = body.status || 'Open';
-      const statusDetails = [{ status: initialStatus, createdBy: user._id, createdAt: new Date() }];
-      assetReport = new ReportAssetModel({
-        ...body,
-        accountId: user.account_id,
-        userId: user._id,
-        createdBy: user._id,
-        status: initialStatus,
-        status_details: statusDetails
-      });
-      await assetReport.save();
-      if (Number(CreateWorkRequest) === 1 && workOrderBody && Object.keys(workOrderBody).length > 0) {
-        workOrder = await orderService.createWorkOrder({ asset_report_id: assetReport._id, ...workOrderBody, createdFrom: "Asset Report" }, user);
-        if (workOrder && workOrder._id) {
-          assetReport.work_order_id = workOrder._id;
-          await assetReport.save();
-        }
-      }
-      return assetReport;
-    } catch (error) {
-      if (workOrder?._id) {
-        await orderService.deleteWorkOrderById(workOrder._id, user);
-      }
-      if (assetReport?._id) {
-        await this.deleteAssetReport(assetReport._id);
-      }
-      throw error;
-    }
+  async createAssetReport(body: IReportAsset, user: any) {
+    const initialStatus = body.status || 'Open';
+    const statusDetails = [{ status: initialStatus, createdBy: user._id, createdAt: new Date() }];
+    const assetReport = new ReportAssetModel({
+      ...body,
+      accountId: user.account_id,
+      userId: user._id,
+      createdBy: user._id,
+      status: initialStatus,
+      status_details: statusDetails
+    });
+    await assetReport.save();
+    return assetReport;
   };
 
   async updateAssetReport(id: any, body: IReportAsset, account_id: any, user_id: any, token: any) {

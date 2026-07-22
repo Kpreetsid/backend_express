@@ -23,6 +23,7 @@ import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
 import { orderService } from '../../work/order/order.service';
+import { procedureService } from '../../work/procedure/procedure.service';
 import {
   ApprovalPayload,
   CloseCasePayload,
@@ -38,6 +39,7 @@ import {
   UpdateCasePayload,
   UpdateCaseStatusPayload
 } from './case.types';
+import { buildReliabilityProcedureDraft } from './reliability-procedure.builder';
 
 const OPEN_CASE_STATUSES: ReliabilityCaseStatus[] = [
   'open',
@@ -364,7 +366,7 @@ class ReliabilityCaseService {
       account_id: user.account_id,
       case_no: await this.generateCaseNo(user.account_id),
       title,
-      description: payload.description?.trim() || report.Observations || report.Recommendations,
+      description: payload.description?.trim() || undefined,
       asset_id: topLevelAsset._id,
       top_level_asset_id: topLevelAsset._id,
       location_id: topLevelAsset.locationId || report.locationId || asset.locationId,
@@ -474,18 +476,51 @@ class ReliabilityCaseService {
     }
 
     const draft = await this.buildWorkOrderPayload(caseData, user, overrides);
-    const workOrder = await orderService.createWorkOrder(draft, user as any);
+    const generatedProcedure = await procedureService.getOrCreateGeneratedReliabilityProcedure(
+      buildReliabilityProcedureDraft(caseData),
+      user.account_id,
+      user._id,
+      caseId,
+      caseData.case_no
+    );
+    const procedureId = String(generatedProcedure.procedure?._id || generatedProcedure.procedure?.id || '');
+    if (!procedureId) {
+      throw Object.assign(new Error('Reliability procedure was created but no id was returned.'), { status: 500 });
+    }
+    draft.procedure_ids = Array.from(new Set([
+      ...this.objectIdStrings(draft.procedure_ids),
+      procedureId
+    ]));
+
+    let workOrder: any;
+    try {
+      workOrder = await orderService.createWorkOrder(draft, user as any);
+    } catch (error) {
+      if (generatedProcedure.created) {
+        try {
+          await procedureService.archiveGeneratedReliabilityProcedure(procedureId, caseId, user.account_id, user._id);
+        } catch (cleanupError) {
+          console.error('Failed to archive generated reliability procedure after work-order creation failed:', cleanupError);
+        }
+      }
+      throw error;
+    }
     const workOrderId = String(workOrder?._id || workOrder?.id || '');
     if (!workOrderId) {
+      if (generatedProcedure.created) {
+        await procedureService.archiveGeneratedReliabilityProcedure(procedureId, caseId, user.account_id, user._id);
+      }
       throw Object.assign(new Error('Work order was created but no id was returned.'), { status: 500 });
     }
     await this.linkWorkOrder(caseId, {
       work_order_id: workOrderId,
-      work_order_no: workOrder?.order_no
+      work_order_no: workOrder?.order_no,
+      procedure_id: procedureId
     }, user);
     return {
       case: await this.getCaseById(user, caseId),
-      work_order: workOrder
+      work_order: workOrder,
+      generated_procedure: generatedProcedure.procedure
     };
   }
 
@@ -603,24 +638,31 @@ class ReliabilityCaseService {
     return await this.getCaseById(user, caseId);
   }
 
-  async linkWorkOrder(caseId: string, body: { work_order_id?: string; work_order_no?: string }, user: ReliabilityCaseActor) {
+  async linkWorkOrder(caseId: string, body: { work_order_id?: string; work_order_no?: string; procedure_id?: string }, user: ReliabilityCaseActor) {
     if (!body.work_order_id) {
       throw Object.assign(new Error('work_order_id is required'), { status: 400 });
     }
+    const update: any = {
+      $set: {
+        linked_work_order_id: new Types.ObjectId(body.work_order_id),
+        linked_work_order_no: body.work_order_no,
+        status: 'work_order_created',
+        updatedBy: user._id
+      },
+      $push: {
+        status_history: { status: 'work_order_created', createdBy: user._id, createdAt: new Date(), note: 'Linked to work order.' },
+        audit_log: this.auditEntry('work-order-linked', user, body)
+      }
+    };
+    if (body.procedure_id && Types.ObjectId.isValid(body.procedure_id)) {
+      update.$addToSet = {
+        'recommendation_snapshot.suggested_procedure_ids': new Types.ObjectId(body.procedure_id)
+      };
+    }
+
     const updated = await ReliabilityCaseModel.findOneAndUpdate(
       { _id: new Types.ObjectId(caseId), account_id: user.account_id, visible: true },
-      {
-        $set: {
-          linked_work_order_id: new Types.ObjectId(body.work_order_id),
-          linked_work_order_no: body.work_order_no,
-          status: 'work_order_created',
-          updatedBy: user._id
-        },
-        $push: {
-          status_history: { status: 'work_order_created', createdBy: user._id, createdAt: new Date(), note: 'Linked to work order.' },
-          audit_log: this.auditEntry('work-order-linked', user, body)
-        }
-      },
+      update,
       { returnDocument: 'after' }
     );
 
