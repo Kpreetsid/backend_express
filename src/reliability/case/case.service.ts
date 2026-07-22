@@ -19,6 +19,7 @@ import {
   ReliabilityCaseStatus
 } from '../../models/reliabilityCase.model';
 import { UserModel } from '../../models/user.model';
+import { WorkOrderModel } from '../../models/workOrder.model';
 import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
@@ -255,6 +256,10 @@ class ReliabilityCaseService {
 
     if (!existing) {
       throw Object.assign(new Error('Reliability case not found'), { status: 404 });
+    }
+
+    if (['feedback_pending', 'closed'].includes(statusValue)) {
+      await this.assertLinkedWorkOrderCompleted(existing);
     }
 
     this.assertStatusTransition(existing.status, statusValue);
@@ -540,6 +545,8 @@ class ReliabilityCaseService {
       throw Object.assign(new Error('Reliability case not found'), { status: 404 });
     }
 
+    await this.assertLinkedWorkOrderCompleted(existing);
+
     if (!payload.work_performed?.trim()) {
       throw Object.assign(new Error('work_performed is required'), { status: 400 });
     }
@@ -583,6 +590,8 @@ class ReliabilityCaseService {
     if (!existing) {
       throw Object.assign(new Error('Reliability case not found'), { status: 404 });
     }
+
+    await this.assertLinkedWorkOrderCompleted(existing);
 
     if (!payload.resolution_summary?.trim()) {
       throw Object.assign(new Error('resolution_summary is required'), { status: 400 });
@@ -743,9 +752,54 @@ class ReliabilityCaseService {
         }
       },
       { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: WorkOrderModel.collection.name,
+          let: { workOrderId: '$linked_work_order_id', accountId: '$account_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$_id', '$$workOrderId'] },
+                    { $eq: ['$account_id', '$$accountId'] }
+                  ]
+                },
+                visible: true
+              }
+            },
+            { $project: { _id: 1, id: '$_id', order_no: 1, title: 1, status: 1, actual_end_date: 1, updatedAt: 1 } }
+          ],
+          as: 'linked_work_order'
+        }
+      },
+      { $unwind: { path: '$linked_work_order', preserveNullAndEmptyArrays: true } },
       { $addFields: { id: '$_id', linked_asset_report_count: { $size: { $ifNull: ['$linked_asset_reports', []] } } } },
       { $sort: { updatedAt: -1, createdAt: -1 } }
     ]);
+  }
+
+  private async assertLinkedWorkOrderCompleted(caseData: any): Promise<void> {
+    const workOrderId = caseData?.linked_work_order_id;
+    if (!workOrderId) {
+      throw Object.assign(new Error('A linked work order is required before the reliability case can advance.'), { status: 400 });
+    }
+
+    const workOrder = await WorkOrderModel.findOne({
+      _id: workOrderId,
+      account_id: caseData.account_id,
+      visible: true
+    }).select('order_no status').lean();
+
+    if (!workOrder) {
+      throw Object.assign(new Error('The linked work order could not be found.'), { status: 404 });
+    }
+
+    if (String(workOrder.status || '').trim().toLowerCase() !== 'completed') {
+      const label = workOrder.order_no || String(workOrder._id);
+      const status = workOrder.status || 'Unknown';
+      throw Object.assign(new Error(`Linked work order ${label} must be completed before the reliability case can advance. Current status: ${status}.`), { status: 409 });
+    }
   }
 
   private async generateCaseNo(accountId: ObjectId): Promise<string> {
