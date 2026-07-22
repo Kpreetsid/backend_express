@@ -743,7 +743,7 @@ class ReliabilityCaseService {
         }
       },
       { $unwind: { path: '$location', preserveNullAndEmptyArrays: true } },
-      { $addFields: { id: '$_id', linked_alarm_count: { $size: { $ifNull: ['$linked_alarms', []] } } } },
+      { $addFields: { id: '$_id', linked_asset_report_count: { $size: { $ifNull: ['$linked_asset_reports', []] } } } },
       { $sort: { updatedAt: -1, createdAt: -1 } }
     ]);
   }
