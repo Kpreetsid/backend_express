@@ -64,4 +64,18 @@ test('buildReliabilityProcedureDraft maps case evidence into a required executio
   const technicianRecord = draft.steps.find((step) => step.title === 'Technician Record');
   assert.ok(technicianRecord?.items?.every((item) => item.type !== 'field' || item.required));
   assert.ok(technicianRecord?.items?.some((item) => item.title === 'Post-maintenance readings and evidence'));
+
+  const optionFields = flattenFields(draft.steps).filter((item) => Array.isArray(item.options) && item.options.length > 0);
+  assert.ok(optionFields.length > 0);
+  assert.ok(optionFields.every((item) => item.scoring_enabled));
+  assert.ok(optionFields.every((item) => item.option_scores?.length === item.options?.length));
+  assert.ok(optionFields.every((item) => item.option_scores?.[0] === 1));
+  assert.ok(optionFields.every((item) => item.option_scores?.slice(1).every((score: number) => score === 0)));
 });
+
+function flattenFields(steps: any[] = []): any[] {
+  return steps.flatMap((step) => [
+    ...(step.type === 'field' ? [step] : []),
+    ...flattenFields(step.items || [])
+  ]);
+}

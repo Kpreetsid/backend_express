@@ -14,6 +14,8 @@ export interface GeneratedReliabilityProcedureDraft {
 
 const ACTION_OPTIONS = ['Completed', 'Unable to complete', 'Not applicable'];
 const VERIFICATION_OPTIONS = ['Yes', 'No', 'N/A'];
+const ACTION_OPTION_SCORES = [1, 0, 0];
+const VERIFICATION_OPTION_SCORES = [1, 0, 0];
 
 export function buildReliabilityProcedureDraft(caseData: any): GeneratedReliabilityProcedureDraft {
   const caseNo = plainTextLines(caseData?.case_no)[0] || 'Reliability case';
@@ -56,6 +58,8 @@ export function buildReliabilityProcedureDraft(caseData: any): GeneratedReliabil
           description: 'Verify the report findings against the current physical condition before starting work.',
           field_type: 'yes-no-na',
           options: VERIFICATION_OPTIONS,
+          scoring_enabled: true,
+          option_scores: VERIFICATION_OPTION_SCORES,
           required: true
         },
         ...inspectionSteps.map((step, index) => actionField(
@@ -96,6 +100,8 @@ export function buildReliabilityProcedureDraft(caseData: any): GeneratedReliabil
           description: 'Confirm whether the asset condition was verified after maintenance.',
           field_type: 'yes-no-na',
           options: VERIFICATION_OPTIONS,
+          scoring_enabled: true,
+          option_scores: VERIFICATION_OPTION_SCORES,
           required: true
         },
         requiredTextField(`${idPrefix}-post-evidence`, 'Post-maintenance readings and evidence', 'Record post-maintenance readings, checks, and supporting evidence.'),
@@ -197,6 +203,8 @@ function actionField(id: string, title: string, description: string): IProcedure
     description,
     field_type: 'inspection-check',
     options: ACTION_OPTIONS,
+    scoring_enabled: true,
+    option_scores: ACTION_OPTION_SCORES,
     required: true
   };
 }
