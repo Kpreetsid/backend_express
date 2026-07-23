@@ -200,8 +200,12 @@ export const generateAccessToken = (payload: UserLoginPayload): string => {
     expiresIn: auth.expiresIn,
     algorithm: auth.algorithm as jwt.Algorithm,
     issuer: auth.issuer,
-    audience: auth.audience
-  } as jwt.SignOptions); 
+    audience: auth.audience,
+    // Two sessions can be issued for the same user within one second during
+    // refresh. A unique JWT ID prevents identical tokens from colliding with
+    // the token collection's `_id` index.
+    jwtid: crypto.randomUUID()
+  } as jwt.SignOptions);
 };
 
 export const generateExternalAccessToken = (body: any, ttlSeconds: number = 300): string => {

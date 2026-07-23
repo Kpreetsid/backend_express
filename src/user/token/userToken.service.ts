@@ -4,7 +4,7 @@ import { rolesService } from "../../masters/user/role/roles.service";
 import { companyService } from "../../masters/company/company.service";
 import { accountAccessService } from "../../_role/accountAccess.service";
 import { usersService } from "../../masters/user/user.service";
-import { TokenModel } from "../../models/userToken.model";
+import { getAccessTokenTypeFilter, TokenModel } from "../../models/userToken.model";
 
 class UserTokenService {
   async getAllUserTokens (req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -13,7 +13,10 @@ class UserTokenService {
       if(!token) {
         throw Object.assign(new Error('Invalid link'), { status: 401 });
       }
-      const data = await TokenModel.find({_id: token});
+      const data = await TokenModel.find({
+        _id: token,
+        ...getAccessTokenTypeFilter()
+      });
       if (data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -62,3 +65,4 @@ class UserTokenService {
 }
 
 export const userTokenService = new UserTokenService();
+
