@@ -8,7 +8,7 @@ import { IUserRoleMenu } from "../models/userRoleMenu.model";
 import { IUser, UserLoginPayload } from '../models/user.model';
 import { rolesService } from '../masters/user/role/roles.service';
 import { companyService } from '../masters/company/company.service';
-import { TokenModel } from '../models/userToken.model';
+import { getAccessTokenTypeFilter, TokenModel } from '../models/userToken.model';
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -17,7 +17,10 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
-    const isTokenExist: any = await TokenModel.findOne({ _id: headerToken });
+    const isTokenExist: any = await TokenModel.findOne({
+      _id: headerToken,
+      ...getAccessTokenTypeFilter()
+    });
     if (!isTokenExist) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
@@ -79,8 +82,12 @@ export const generateAccessToken = (payload: UserLoginPayload): string => {
     expiresIn: auth.expiresIn,
     algorithm: auth.algorithm as jwt.Algorithm,
     issuer: auth.issuer,
-    audience: auth.audience
-  } as jwt.SignOptions); 
+    audience: auth.audience,
+    // Two sessions can be issued for the same user within one second during
+    // refresh. A unique JWT ID prevents identical tokens from colliding with
+    // the token collection's `_id` index.
+    jwtid: crypto.randomUUID()
+  } as jwt.SignOptions);
 };
 
 export const generateExternalAccessToken = (body: any, ttlSeconds: number = 300): string => {

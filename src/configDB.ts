@@ -48,6 +48,11 @@ export const auth = {
   audience: process.env.AUTH_AUDIENCE!,
 };
 
+export const refreshToken = {
+  secret: process.env.REFRESH_TOKEN_SECRET || process.env.AUTH_SECRET!,
+  expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d'
+};
+
 export const payloadCrypto = {
   enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, true),
   strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),
