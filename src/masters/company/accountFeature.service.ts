@@ -9,6 +9,7 @@ interface AccountFeatureFlags {
   redisEnabled: boolean;
   payloadEncryptionEnabled: boolean;
   responseEncryptionEnabled: boolean;
+  accountRoleMenu: Record<string, any>;
 }
 
 interface AccountFeatureCacheEntry extends AccountFeatureFlags {
@@ -29,28 +30,36 @@ class AccountFeatureService {
         cookieEnabled: cached.cookieEnabled,
         redisEnabled: cached.redisEnabled,
         payloadEncryptionEnabled: cached.payloadEncryptionEnabled,
-        responseEncryptionEnabled: cached.responseEncryptionEnabled
+        responseEncryptionEnabled: cached.responseEncryptionEnabled,
+        accountRoleMenu: cached.accountRoleMenu
       };
     }
 
     try {
       const account = await AccountModel
         .findOne({ _id: accountId, visible: true, account_status: 'active' })
-        .select('cookie_status redis_status encrypt_payload encrypt_response')
-        .lean<{ cookie_status?: string; redis_status?: string; encrypt_payload?: string; encrypt_response?: string }>();
+        .select('cookie_status redis_status encrypt_payload encrypt_response account_role_menu')
+        .lean<{
+          cookie_status?: string;
+          redis_status?: string;
+          encrypt_payload?: string;
+          encrypt_response?: string;
+          account_role_menu?: Record<string, any>;
+        }>();
 
-      const flags = account
+      const flags: AccountFeatureFlags = account
         ? {
           cookieEnabled: account.cookie_status === ENABLED_STATUS,
           redisEnabled: account.redis_status === ENABLED_STATUS,
           payloadEncryptionEnabled: account.encrypt_payload === ENABLED_STATUS,
-          responseEncryptionEnabled: account.encrypt_response === ENABLED_STATUS
+          responseEncryptionEnabled: account.encrypt_response === ENABLED_STATUS,
+          accountRoleMenu: account.account_role_menu || {}
         }
         : this.disabledFlags();
 
       this.statusCache.set(accountId, {
         ...flags,
-        expiresAt: Date.now() + redisConfig.statusTtlSeconds * 1000
+        expiresAt: Date.now() + (redisConfig.statusTtlSeconds || 60) * 1000
       });
       return flags;
     } catch (error: unknown) {
@@ -80,6 +89,20 @@ class AccountFeatureService {
     return flags.responseEncryptionEnabled;
   }
 
+  async isModuleEnabledForAccount(accountId: string, moduleKey: string): Promise<boolean> {
+    if (!moduleKey) return true;
+    const flags = await this.getFeaturesForAccount(accountId);
+    const roleMenu = flags.accountRoleMenu;
+    if (!roleMenu || Object.keys(roleMenu).length === 0) {
+      return true; // Default to open if no specific account role menu configured
+    }
+    const moduleConfig = roleMenu[moduleKey];
+    if (!moduleConfig) {
+      return true; // Not explicitly restricted in account_role_menu
+    }
+    return moduleConfig.view !== false;
+  }
+
   clear(accountId?: string): void {
     if (accountId) {
       this.statusCache.delete(accountId);
@@ -93,7 +116,8 @@ class AccountFeatureService {
       cookieEnabled: false,
       redisEnabled: false,
       payloadEncryptionEnabled: false,
-      responseEncryptionEnabled: false
+      responseEncryptionEnabled: false,
+      accountRoleMenu: {}
     };
   }
 }
