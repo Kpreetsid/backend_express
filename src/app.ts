@@ -26,7 +26,7 @@ const app: Express = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
-app.use(cors({ ...corsOptions, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce'] }));
+app.use(cors({ ...corsOptions, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce', 'ETag', 'Retry-After', 'Idempotency-Replayed'] }));
 app.use(cookieParser());
 app.use(csrfProtection);
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));

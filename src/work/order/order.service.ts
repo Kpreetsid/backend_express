@@ -20,6 +20,7 @@ import { LocationModel } from "../../models/location.model";
 import { PartsModel } from "../../models/part.model";
 import { PartsTypeModel } from "../../models/parts-types.model";
 import { SOPsModel } from "../../models/sops.model";
+import { assertSyncVersion, createSyncConflict } from "../../utils/sync-concurrency";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -4310,12 +4311,13 @@ class OrderService {
     });
   };
 
-  async updateById(id: any, body: any, user: IUser): Promise<any> {
+  async updateById(id: any, body: any, user: IUser, expectedVersion?: number): Promise<any> {
     return await withTransaction(async (session) => {
       let existingOrder: any = await WorkOrderModel.findById(id).session(session);
       if (!existingOrder) {
         throw Object.assign(new Error('Work Order not found'), { status: 404 });
       }
+      assertSyncVersion(existingOrder, expectedVersion);
 
       const childCount = await this.getChildOrderCount(id, session);
       if (childCount > 0 && this.hasExecutionOwnedFieldChanges(body)) {
@@ -4405,8 +4407,14 @@ class OrderService {
       
       updatedData = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData)));
       updatedData = this.syncStatusDetailAuditFields(this.syncCompletionAuditFields(updatedData, existingOrder.status, user), user);
-      const data = await WorkOrderModel.findByIdAndUpdate(id, updatedData, { returnDocument: 'after', session });
+      delete updatedData.sync_version;
+      const updateFilter: any = { _id: id };
+      if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
+      const data = await WorkOrderModel.findOneAndUpdate(updateFilter, updatedData, { returnDocument: 'after', session });
       if (!data) {
+        if (expectedVersion !== undefined) {
+          throw createSyncConflict(await WorkOrderModel.findById(id).session(session));
+        }
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
       }
       await this.logWorkOrderUpdateActivities(existingOrderSnapshot, data?.toObject ? data.toObject() : data, body, user, session, beforeAssignedUserIds);
@@ -4468,10 +4476,11 @@ class OrderService {
     return updatedOrder;
   };
 
-  async orderStatusChange(id: string, status: string, user: IUser, blockReason?: string | null): Promise<any> {
+  async orderStatusChange(id: string, status: string, user: IUser, blockReason?: string | null, expectedVersion?: number): Promise<any> {
     const orderId = helperService.validateObjectId(id);
     const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
     const existingOrder = orders[0];
+    assertSyncVersion(existingOrder, expectedVersion);
     const hierarchy = existingOrder?.hierarchy || {};
     const previousParts = JSON.parse(JSON.stringify(existingOrder.parts || []));
     const blockedStatuses = ['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit'];
@@ -4537,50 +4546,56 @@ class OrderService {
     const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
     const statusDetails = [...(existingOrder.status_details || []), statusEntry];
     const lifecycleParts = partsService.normalizeWorkOrderParts(existingOrder.parts || [], status);
-    const inventoryResult = await partsService.adjustInventoryByWorkOrder(previousParts, lifecycleParts, user, undefined, {
-      account_id: user.account_id,
-      work_order_id: existingOrder._id,
-      work_order_no: existingOrder.order_no,
-      location_id: existingOrder.wo_location_id,
-      previous_status: existingOrder.status,
-      next_status: status,
-      note: `Work order status moved to ${status}`
-    });
-
-    const data = await WorkOrderModel.findByIdAndUpdate(
-      id,
-      { 
-        status, 
-        updatedBy: user._id, 
-        status_details: statusDetails, 
-        parts: lifecycleParts,
-        actual_start_date: existingOrder.actual_start_date,
-        actual_end_date: existingOrder.actual_end_date,
-        completed_at: existingOrder.completed_at,
-        completed_by: existingOrder.completed_by,
-        actual_time: existingOrder.actual_time,
-        block_reason: existingOrder.block_reason
-      },
-      { returnDocument: 'after' }
-    );
-    if (data) {
-      (data as any).inventoryWarnings = inventoryResult.warnings;
-    }
-    if (data) {
-      await workOrderActivityService.logActivity({
+    const data = await withTransaction(async (session) => {
+      const inventoryResult = await partsService.adjustInventoryByWorkOrder(previousParts, lifecycleParts, user, session, {
         account_id: user.account_id,
-        work_order_id: id,
-        workOrder: data,
-        action_type: 'status-changed',
-        note: `Status changed from ${existingOrder.status} to ${status}.${existingOrder.block_reason ? ` Reason: ${existingOrder.block_reason}` : ''}`,
-        metadata: {
-          from_status: existingOrder.status,
-          to_status: status,
-          block_reason: existingOrder.block_reason || null
-        },
-        actor: user
+        work_order_id: existingOrder._id,
+        work_order_no: existingOrder.order_no,
+        location_id: existingOrder.wo_location_id,
+        previous_status: existingOrder.status,
+        next_status: status,
+        note: `Work order status moved to ${status}`
       });
-    }
+
+      const statusFilter: any = { _id: id };
+      if (expectedVersion !== undefined) statusFilter.sync_version = expectedVersion;
+      const updatedOrder = await WorkOrderModel.findOneAndUpdate(
+        statusFilter,
+        {
+          status,
+          updatedBy: user._id,
+          status_details: statusDetails,
+          parts: lifecycleParts,
+          actual_start_date: existingOrder.actual_start_date,
+          actual_end_date: existingOrder.actual_end_date,
+          completed_at: existingOrder.completed_at,
+          completed_by: existingOrder.completed_by,
+          actual_time: existingOrder.actual_time,
+          block_reason: existingOrder.block_reason
+        },
+        { returnDocument: 'after', session }
+      );
+      if (!updatedOrder && expectedVersion !== undefined) {
+        throw createSyncConflict(await WorkOrderModel.findById(id).session(session));
+      }
+      if (updatedOrder) {
+        (updatedOrder as any).inventoryWarnings = inventoryResult.warnings;
+        await workOrderActivityService.logActivity({
+          account_id: user.account_id,
+          work_order_id: id,
+          workOrder: updatedOrder,
+          action_type: 'status-changed',
+          note: `Status changed from ${existingOrder.status} to ${status}.${existingOrder.block_reason ? ` Reason: ${existingOrder.block_reason}` : ''}`,
+          metadata: {
+            from_status: existingOrder.status,
+            to_status: status,
+            block_reason: existingOrder.block_reason || null
+          },
+          actor: user
+        }, session);
+      }
+      return updatedOrder;
+    });
     if (data) {
       await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),

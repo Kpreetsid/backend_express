@@ -7,6 +7,10 @@ class ProcessorAPIService {
         return await getExternalData(`/asset_health_status/`, 'POST', JSON.parse(JSON.stringify(match)), token, `${user_id}`);
     }
 
+    createEquipmentEndPoints = async (body: any, user_id: any, token: any) => {
+        return await getExternalData(`/equipment/create/`, 'POST', body, token, `${user_id}`);
+    }
+
     updateAssetHealthStatus = async (body: any, account_id: any, user_id: any, token: any) => {
         const payload: any = { "asset_id": body.assetId, health_created_from: 'observation', "asset_status": body.status, "org_id": account_id };
         if (body.alarmId) {
