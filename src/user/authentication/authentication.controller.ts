@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { createAuthenticationByToken, userAuthentication, userAuthenticationByToken, userAuthenticationToken, userLogOutService, userResetPassword, userGetMeService } from './authentication.service';
 import { refreshTokenService } from './refreshToken.service';
-import { refreshTokenService } from './refreshToken.service';
 
 export const authentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     await userAuthentication(req, res, next);
@@ -26,23 +25,6 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
 export const userLogOut = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     await userLogOutService(req, res, next);
 };
-
-export const refreshAccessToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    try {
-        if (req.headers['x-cmms-refresh-request'] !== 'true') {
-            throw Object.assign(new Error('Invalid refresh request'), { status: 403 });
-        }
-        const data = await refreshTokenService.rotate(String(req.body?.refreshToken || ''));
-        return res.status(200).json({
-            status: true,
-            message: 'Token refreshed successfully',
-            data
-        });
-    } catch (error) {
-        next(error);
-    }
-};
-
 
 export const refreshAccessToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {

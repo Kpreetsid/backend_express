@@ -15,7 +15,7 @@ import floorMapRoutes from './floorMap/floorMap.routes';
 import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.routes';
 import partsTypeRoutes from './part-type/parts-type.routes';
 import inspectionRoutes from './inspection/inspection.routes';
-import { hasAccountFeature, hasAnyAccountFeature } from '../middlewares/permission';
+import { hasAccountFeature, hasAccountFeatures, hasAnyAccountFeature } from '../middlewares/permission';
 
 const withAccountFeature = (
     menuKey: string,
@@ -37,6 +37,16 @@ const withAnyAccountFeature = (
     return featureRouter;
 };
 
+const withAccountFeatures = (
+    menuKeys: string[],
+    registerRoutes: (router: express.Router) => void
+): express.Router => {
+    const featureRouter = express.Router();
+    featureRouter.use(hasAccountFeatures(menuKeys));
+    registerRoutes(featureRouter);
+    return featureRouter;
+};
+
 export default (): express.Router => {
     usersRouter(router);
     companyRoutes(router);
@@ -44,7 +54,7 @@ export default (): express.Router => {
     router.use(withAccountFeature('master_asset', equipmentRoutes));
     router.use(withAccountFeature('master_inventory', partsRoutes));
     router.use(withAccountFeature('master_inventory', partsTypeRoutes));
-    router.use(withAccountFeature('master_posts', postsRoutes));
+    router.use(withAccountFeatures(['master_posts', 'posts'], postsRoutes));
     router.use(withAccountFeature('master_preventive', scheduleRoutes));
     router.use(withAccountFeature('master_inspections', inspectionRoutes));
     router.use(withAccountFeature('master_form', sopsRoutes));

@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
 
-export const rolesValidator = [
+export const createRoleValidator = [
   body('user_id')
     .notEmpty().withMessage('User ID is required')
     .isMongoId().withMessage('Invalid User ID format'),
@@ -12,4 +12,10 @@ export const rolesValidator = [
   body('roleMenu')
     .notEmpty().withMessage('Role menu configuration is required')
     .isObject().withMessage('Role menu must be an object')
+];
+
+export const updateRoleValidator = [
+  body('data')
+    .notEmpty().withMessage('Role data is required')
+    .isObject().withMessage('Role data must be an object')
 ];

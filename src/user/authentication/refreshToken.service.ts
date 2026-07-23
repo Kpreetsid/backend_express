@@ -1,140 +1,5 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import { auth, refreshToken as refreshTokenConfig } from '../../configDB';
-import { generateAccessToken } from '../../_config/auth';
-import { getAccessTokenTypeFilter, TokenModel } from '../../models/userToken.model';
-import { IUser, UserLoginPayload, UserModel } from '../../models/user.model';
-import { companyService } from '../../masters/company/company.service';
-import { parseTtlSeconds } from '../../utils/ttl';
-
-interface IssuedAccessSession {
-  token: string;
-  token_id: mongoose.Types.ObjectId;
-}
-
-const hashRefreshToken = (token: string): string => crypto
-  .createHmac('sha256', refreshTokenConfig.secret)
-  .update(token)
-  .digest('hex');
-
-const createRawRefreshToken = (): string => crypto.randomBytes(64).toString('base64url');
-
-class RefreshTokenService {
-  async issue(user: IUser): Promise<string> {
-    const rawToken = createRawRefreshToken();
-    await TokenModel.create({
-      _id: hashRefreshToken(rawToken),
-      tokenType: 'refresh',
-      userId: user._id,
-      accountId: user.account_id,
-      expiresAt: new Date(Date.now() + parseTtlSeconds(
-        refreshTokenConfig.expiresIn,
-        7 * 24 * 60 * 60
-      ) * 1000)
-    });
-    return rawToken;
-  }
-
-  async rotate(rawToken: string): Promise<{ token: string; token_id: mongoose.Types.ObjectId; refreshToken: string }> {
-    if (!rawToken) {
-      throw Object.assign(new Error('Refresh token missing'), { status: 401 });
-    }
-
-    const tokenHash = hashRefreshToken(rawToken);
-    const stored = await TokenModel.findOneAndUpdate(
-      {
-        _id: tokenHash,
-        tokenType: 'refresh',
-        revokedAt: { $exists: false },
-        expiresAt: { $gt: new Date() }
-      },
-      { $set: { revokedAt: new Date() } },
-      { returnDocument: 'after' }
-    );
-    if (!stored) {
-      throw Object.assign(new Error('Refresh token invalid, expired, or already used'), { status: 401 });
-    }
-
-    if (!stored.accountId) {
-      throw Object.assign(new Error('Refresh token account is missing'), { status: 401 });
-    }
-
-    const user = await UserModel.findOne({
-      _id: stored.userId,
-      account_id: stored.accountId,
-      user_status: 'active'
-    });
-    if (!user) {
-      throw Object.assign(new Error('User session is no longer valid'), { status: 401 });
-    }
-
-    const account = await companyService.verifyCompany(String(stored.accountId));
-    if (!account) {
-      throw Object.assign(new Error('Account is no longer valid'), { status: 401 });
-    }
-
-    let access: IssuedAccessSession | null = null;
-    let replacement: string | null = null;
-    try {
-      access = await this.createAccessSession(user);
-      replacement = await this.issue(user);
-      stored.replacedByTokenHash = hashRefreshToken(replacement);
-      await stored.save();
-      return { ...access, refreshToken: replacement };
-    } catch (error) {
-      if (access) {
-        await TokenModel.deleteOne({ _id: access.token, ...getAccessTokenTypeFilter() });
-      }
-      if (replacement) {
-        await this.revoke(replacement);
-      }
-      throw error;
-    }
-  }
-
-  async revoke(rawToken: string | undefined): Promise<void> {
-    if (!rawToken) {
-      return;
-    }
-    await TokenModel.updateOne(
-      {
-        _id: hashRefreshToken(rawToken),
-        tokenType: 'refresh',
-        revokedAt: { $exists: false }
-      },
-      { $set: { revokedAt: new Date() } }
-    );
-  }
-
-  private async createAccessSession(user: IUser): Promise<IssuedAccessSession> {
-    const tokenId = new mongoose.Types.ObjectId();
-    const payload: UserLoginPayload = {
-      id: String(user._id),
-      username: user.username,
-      companyID: String(user.account_id)
-    };
-    const token = generateAccessToken(payload);
-    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
-    await TokenModel.create({
-      _id: token,
-      tokenType: 'access',
-      token_id: tokenId,
-      userId: user._id,
-      principalType: 'user',
-      ttl: ttlSeconds,
-      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
-    });
-    return { token, token_id: tokenId };
-  }
-}
-
-export const refreshTokenService = new RefreshTokenService();
-
-export const refreshTokenTestUtils = {
-  hashRefreshToken
-};
-import crypto from 'crypto';
-import mongoose from 'mongoose';
 import { CookieOptions, Request, Response } from 'express';
 import { auth, refreshToken as refreshTokenConfig } from '../../configDB';
 import { generateAccessToken } from '../../_config/auth';
@@ -190,7 +55,8 @@ const hashRefreshToken = (token: string): string => {
 const createRawRefreshToken = (): string => crypto.randomBytes(64).toString('base64url');
 
 const getRequestRefreshToken = (req: Request): string => {
-  return cookieService.get(req, refreshTokenConfig.cookieName) || String(req.body?.refreshToken || '');
+  return cookieService.get(req, refreshTokenConfig.cookieName)
+    || String(req.body?.refreshToken || req.headers['x-cmms-refresh-token'] || '');
 };
 
 const getRequestIp = (req: Request): string => {
@@ -230,6 +96,7 @@ class RefreshTokenService {
     const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
     const userTokenData = new TokenModel({
       _id: token,
+      tokenType: 'access',
       token_id: tokenId,
       userId: user._id,
       account_id: user.account_id,
@@ -257,11 +124,6 @@ class RefreshTokenService {
   async issueForUser(req: Request, res: Response, user: IUser, accessTokenId?: mongoose.Types.ObjectId): Promise<RefreshIssueResult> {
     const accountId = String(user.account_id || '');
     const cookieEnabled = await accountFeatureService.isCookieEnabledForAccount(accountId);
-    if (!cookieEnabled) {
-      this.clearCookie(res);
-      clearAuthCookies(res);
-      return { issued: false };
-    }
 
     const rawToken = createRawRefreshToken();
     const tokenHash = hashRefreshToken(rawToken);
@@ -271,8 +133,10 @@ class RefreshTokenService {
     const ipAddress = getRequestIp(req);
     await new TokenModel({
       _id: tokenHash,
+      tokenType: 'refresh' as const,
       token_id: accessTokenId,
       userId: user._id,
+      accountId: user.account_id,
       account_id: user.account_id,
       principalType: REFRESH_PRINCIPAL_TYPE,
       ttl: ttlSeconds,
@@ -292,7 +156,11 @@ class RefreshTokenService {
       ipAddress
     });
 
-    cookieService.set(res, refreshTokenConfig.cookieName, rawToken, getCookieOptions());
+    if (cookieEnabled) {
+      cookieService.set(res, refreshTokenConfig.cookieName, rawToken, getCookieOptions());
+    } else {
+      this.clearCookie(res);
+    }
     return { issued: true, rawToken, tokenHash, expiresAt };
   }
 
@@ -335,10 +203,21 @@ class RefreshTokenService {
 
     const tokenHash = hashRefreshToken(rawToken);
     const cachedRefreshToken = await tokenSessionStore.getRefreshSession(tokenHash);
-    const storedRefreshToken = await TokenModel
-      .findOne({ _id: tokenHash, principalType: REFRESH_PRINCIPAL_TYPE })
-      .exec() as StoredRefreshToken | null;
-    if (!storedRefreshToken || storedRefreshToken.revokedAt) {
+    const refreshTokenQuery = {
+      _id: tokenHash,
+      tokenType: 'refresh' as const,
+      principalType: REFRESH_PRINCIPAL_TYPE,
+      revokedAt: { $exists: false },
+      expiresAt: { $gt: new Date() }
+    };
+    const storedRefreshToken = (refreshTokenConfig.rotate
+      ? await TokenModel.findOneAndUpdate(
+        refreshTokenQuery,
+        { $set: { revokedAt: new Date() } },
+        { returnDocument: 'after' }
+      ).exec()
+      : await TokenModel.findOne(refreshTokenQuery).exec()) as StoredRefreshToken | null;
+    if (!storedRefreshToken) {
       await tokenSessionStore.deleteRefreshSession(tokenHash);
       this.clearCookie(res);
       clearAuthCookies(res);
@@ -357,12 +236,6 @@ class RefreshTokenService {
 
     const accountId = String(storedRefreshToken.account_id || '');
     const cookieEnabled = await accountFeatureService.isCookieEnabledForAccount(accountId);
-    if (!cookieEnabled) {
-      await this.revokeStored(storedRefreshToken);
-      this.clearCookie(res);
-      clearAuthCookies(res);
-      throw Object.assign(new Error('Refresh token disabled for this account'), { status: 401, name: 'InvalidTokenError' });
-    }
 
     const user = await UserModel
       .findOne({ _id: storedRefreshToken.userId, account_id: storedRefreshToken.account_id, user_status: 'active' })
@@ -399,34 +272,44 @@ class RefreshTokenService {
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails[0]);
 
     const accessSession = await this.createAccessSession(user);
-    setAccessCookies(res, {
-      token: accessSession.token,
-      tokenId: String(accessSession.token_id),
-      userId: String(user._id),
-      accountId: String(user.account_id),
-      ttlSeconds: accessSession.ttlSeconds
-    });
+    if (cookieEnabled) {
+      setAccessCookies(res, {
+        token: accessSession.token,
+        tokenId: String(accessSession.token_id),
+        userId: String(user._id),
+        accountId: String(user.account_id),
+        ttlSeconds: accessSession.ttlSeconds
+      });
+    } else {
+      clearAuthCookies(res);
+    }
+    let replacementRefreshToken: string | undefined;
     if (refreshTokenConfig.rotate) {
       const newRefresh = await this.issueForUser(req, res, user, accessSession.token_id);
-      if (!newRefresh.issued || !newRefresh.tokenHash) {
+      if (!newRefresh.issued || !newRefresh.tokenHash || !newRefresh.rawToken) {
         await this.revokeStored(storedRefreshToken);
         this.clearCookie(res);
         clearAuthCookies(res);
-        throw Object.assign(new Error('Refresh token disabled for this account'), { status: 401, name: 'InvalidTokenError' });
+        throw Object.assign(new Error('Refresh token could not be rotated'), { status: 401, name: 'InvalidTokenError' });
       }
-      storedRefreshToken.revokedAt = new Date();
+      replacementRefreshToken = newRefresh.rawToken;
       storedRefreshToken.replacedByTokenHash = newRefresh.tokenHash;
       await storedRefreshToken.save();
       await tokenSessionStore.deleteRefreshSession(String(storedRefreshToken._id));
     } else {
-      cookieService.set(res, refreshTokenConfig.cookieName, rawToken, getCookieOptions());
+      if (cookieEnabled) {
+        cookieService.set(res, refreshTokenConfig.cookieName, rawToken, getCookieOptions());
+      } else {
+        replacementRefreshToken = rawToken;
+      }
       await this.cacheStoredRefreshToken(storedRefreshToken);
     }
 
     return {
-      authMethod: 'cookie',
+      authMethod: cookieEnabled ? 'cookie' : 'localStorage',
       token: accessSession.token,
       token_id: accessSession.token_id,
+      ...(!cookieEnabled && replacementRefreshToken ? { refreshToken: replacementRefreshToken } : {}),
       accountDetails: accountDetails[0],
       userDetails: getSafeUser(user),
       platformControl: effectivePermissions.platformControl,

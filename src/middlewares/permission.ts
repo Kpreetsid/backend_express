@@ -53,3 +53,17 @@ export const hasAnyAccountFeature = (menuKeys: string[]) => {
     }));
   };
 };
+
+export const hasAccountFeatures = (menuKeys: string[], action: string = "view") => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const roleMenu: any = get(req, "roleMenu", {});
+    if (menuKeys.every((menuKey) => roleMenu?.[menuKey]?.[action] === true)) {
+      return next();
+    }
+
+    next(Object.assign(new Error("This feature is disabled for the account."), {
+      status: 403,
+      code: "ACCOUNT_FEATURE_DISABLED"
+    }));
+  };
+};

@@ -20,8 +20,6 @@ export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
   replacedByTokenHash?: string;
   userAgent?: string;
   ipAddress?: string;
-  revokedAt?: Date;
-  replacedByTokenHash?: string;
 }
 
 const userTokenSchema = new Schema<IUserToken>({
@@ -58,8 +56,6 @@ const userTokenSchema = new Schema<IUserToken>({
   isExternal: { type: Boolean, default: false },
   isInternal: { type: Boolean, default: false },
   expiresAt: { type: Date, required: true },
-  revokedAt: { type: Date },
-  replacedByTokenHash: { type: String },
   revokedAt: { type: Date },
   replacedByTokenHash: { type: String },
   userAgent: { type: String },

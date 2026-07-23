@@ -13,17 +13,6 @@ import { IAccount } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
-import { refreshTokenService } from "./refreshToken.service";
-import { parseTtlSeconds } from "../../utils/ttl";
-
-const issueRefreshTokenOrRollback = async (user: IUser, accessToken: string): Promise<string> => {
-  try {
-    return await refreshTokenService.issue(user);
-  } catch (error) {
-    await TokenModel.deleteOne({ _id: accessToken, ...getAccessTokenTypeFilter() });
-    throw error;
-  }
-};
 import { TokenBlacklist } from "../../_cache/auth/tokenBlacklist";
 import { refreshTokenService } from "./refreshToken.service";
 import { parseTtlSeconds } from "../../utils/ttl";
@@ -109,9 +98,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       expiresAt: new Date(Date.now() + ttlSeconds * 1000)
     });
     await userTokenData.save();
-    const refreshToken = await issueRefreshTokenOrRollback(user, token);
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
-    await refreshTokenService.issueForUser(req, res, user, token_id);
+    const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id);
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, userAccount[0]);
     
     const isCookieAuth = userAccount[0].cookie_status === 'enabled';
@@ -141,7 +129,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
         data: {
           authMethod: 'localStorage',
           token,
-          token_id, refreshToken,
+          token_id,
+          refreshToken: refreshSession.rawToken,
           accountDetails: userAccount[0],
           userDetails: safeUser,
           platformControl: effectivePermissions.platformControl,
@@ -204,10 +193,20 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
       expiresAt: new Date(Date.now() + ttlSeconds * 1000)
     });
     await userTokenData.save();
-    const refreshToken = await issueRefreshTokenOrRollback(user, token);
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
-    await refreshTokenService.issueForUser(req, res, user, token_id);
-    res.status(200).json({ status: true, message: 'Login successful', data: { token, refreshToken, token_id, org_id: user.account_id, user_id: user._id } });
+    const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id);
+    const isCookieAuth = userAccount[0].cookie_status === 'enabled';
+    res.status(200).json({
+      status: true,
+      message: 'Login successful',
+      data: {
+        token,
+        token_id,
+        ...(!isCookieAuth ? { refreshToken: refreshSession.rawToken } : {}),
+        org_id: user.account_id,
+        user_id: user._id
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -274,9 +273,8 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       expiresAt: new Date(Date.now() + ttlSeconds * 1000)
     });
     await userTokenData.save();
-    const refreshToken = await issueRefreshTokenOrRollback(userDetails, newToken);
     await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal, isInternal });
-    await refreshTokenService.issueForUser(req, res, userDetails, token_id);
+    const refreshSession = await refreshTokenService.issueForUser(req, res, userDetails, token_id);
     const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
       ? redirectPath
       : '/dashboard';
@@ -312,8 +310,10 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
         status: true, 
         message: 'Login successful', 
         data: { 
+          authMethod: 'localStorage',
           token: newToken,
-          refreshToken,
+          token_id,
+          refreshToken: refreshSession.rawToken,
           accountDetails: accountDetails[0], 
           userDetails: newSafeUserValue, 
           platformControl: effectivePermissions.platformControl, 
@@ -365,14 +365,12 @@ export const userLogOutService = async (req: Request, res: Response, next: NextF
     const userToken = String(get(req, 'userToken') || '');
 
     // Remove token from MongoDB
-    const refreshToken = String(req.headers['x-cmms-refresh-token'] || '');
     const [accessToken] = await Promise.all([
       TokenModel.deleteMany({
         _id: userToken,
         userId: { $exists: true },
         ...getAccessTokenTypeFilter()
       }),
-      refreshTokenService.revoke(refreshToken),
       // TokenModel.deleteMany({ _id: { $exists: true }, userId: helperService.validateObjectId(user_id) })
     ]);
     console.log({ accessToken, user_id });

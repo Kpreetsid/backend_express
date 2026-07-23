@@ -80,6 +80,26 @@ const PARENT_PLATFORM_MODULE_RULES: Record<string, string> = {
   devices: "master_devices"
 };
 
+const PLATFORM_MODULE_VIEW_RULES: Record<string, string> = {
+  asset: "asset",
+  location: "location",
+  workOrder: "work_order",
+  floorMap: "floor_map",
+  preventive: "preventive",
+  form: "form",
+  form_category: "form_category",
+  work_request: "work_request",
+  posts: "posts",
+  inventory: "inventory",
+  devices: "master_devices",
+  gateways: "gateways",
+  peripheral_sensors: "peripheral_sensors",
+  admin_panel: "master_admin_panel",
+  users: "users",
+  permission: "permission",
+  asset_mail: "asset_mail"
+};
+
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value || {}));
 
 const isRecord = (value: unknown): value is Record<string, any> => {
@@ -168,6 +188,60 @@ class AccountAccessService {
     return effectivePlatformControl;
   }
 
+  filterConfigurablePlatformControl(platformControl: any, accountRoleMenu: RoleMenu): PlatformControl {
+    const filtered: PlatformControl = {};
+    if (!isRecord(platformControl)) {
+      return filtered;
+    }
+
+    for (const [moduleName, actions] of Object.entries(platformControl)) {
+      if (!isRecord(actions) || !this.isPlatformModuleVisible(accountRoleMenu, moduleName)) {
+        continue;
+      }
+      filtered[moduleName] = this.applyPlatformControlCap({ [moduleName]: actions }, accountRoleMenu)[moduleName];
+    }
+
+    return filtered;
+  }
+
+  mergeConfigurablePlatformControl(existingControl: any, submittedControl: any, accountRoleMenu: RoleMenu): PlatformControl {
+    const merged = clone(isRecord(existingControl) ? existingControl : {});
+    if (!isRecord(submittedControl)) {
+      return merged;
+    }
+
+    for (const [moduleName, existingActions] of Object.entries(merged)) {
+      const submittedActions = submittedControl[moduleName];
+      if (
+        !isRecord(existingActions)
+        || !isRecord(submittedActions)
+        || !this.isPlatformModuleVisible(accountRoleMenu, moduleName)
+      ) {
+        continue;
+      }
+
+      for (const actionName of Object.keys(existingActions)) {
+        if (
+          typeof submittedActions[actionName] === "boolean"
+          && this.isPlatformActionAllowed(accountRoleMenu, moduleName, actionName)
+        ) {
+          existingActions[actionName] = submittedActions[actionName];
+        }
+      }
+    }
+
+    return merged;
+  }
+
+  toConfigurableRole(role: any, accountRoleMenu: RoleMenu): any {
+    const roleObject = typeof role?.toObject === "function" ? role.toObject() : clone(role);
+    return {
+      ...roleObject,
+      data: this.filterConfigurablePlatformControl(roleObject?.data, accountRoleMenu),
+      roleMenu: this.applyRoleMenuCap(roleObject?.roleMenu || {}, accountRoleMenu)
+    };
+  }
+
   isPlatformActionAllowed(accountRoleMenu: RoleMenu, moduleName: string, actionName: string): boolean {
     const mappedRule = PLATFORM_ACTION_RULES[moduleName]?.[actionName];
     if (mappedRule) {
@@ -211,6 +285,11 @@ class AccountAccessService {
     }
 
     return action === "view" ? accountPermission.view === true : true;
+  }
+
+  private isPlatformModuleVisible(accountRoleMenu: RoleMenu, moduleName: string): boolean {
+    const menuKey = PLATFORM_MODULE_VIEW_RULES[moduleName];
+    return !menuKey || this.isAccountPermissionEnabled(accountRoleMenu, menuKey, "view");
   }
 
   validateRoleMenuShape(roleMenu: unknown, profile: string = "standard_account"): string[] {

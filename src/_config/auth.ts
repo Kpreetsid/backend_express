@@ -196,15 +196,16 @@ export const decodedAccessToken = (token: string): JwtPayload => {
 };
 
 export const generateAccessToken = (payload: UserLoginPayload): string => {
-  return jwt.sign(payload, auth.secret, {
+  const { jti, ...claims } = payload;
+
+  return jwt.sign(claims, auth.secret, {
     expiresIn: auth.expiresIn,
     algorithm: auth.algorithm as jwt.Algorithm,
     issuer: auth.issuer,
     audience: auth.audience,
-    // Two sessions can be issued for the same user within one second during
-    // refresh. A unique JWT ID prevents identical tokens from colliding with
-    // the token collection's `_id` index.
-    jwtid: crypto.randomUUID()
+    // Use the caller's database session ID when available. Otherwise generate
+    // one so tokens created in the same second are still unique.
+    jwtid: jti?.trim() || crypto.randomUUID()
   } as jwt.SignOptions);
 };
 

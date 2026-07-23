@@ -109,11 +109,6 @@ export const cookieAuth = {
   domain: envString(process.env.AUTH_COOKIE_DOMAIN, '')
 };
 
-export const refreshToken = {
-  secret: process.env.REFRESH_TOKEN_SECRET || process.env.AUTH_SECRET!,
-  expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d'
-};
-
 export const payloadCrypto = {
   enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, true),
   strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),
