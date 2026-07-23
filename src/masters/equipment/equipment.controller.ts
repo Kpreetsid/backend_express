@@ -179,50 +179,111 @@ class EquipmentController {
       const equipmentData = await equipmentService.createEquipment(Equipment, account_id, user_id);
       equipmentId = equipmentData._id;
       const assetsPromiseList: any = [];
+      const equipmentEndpoint: any = {
+        Motor: {},
+        Flexible: {},
+        Rigid: {},
+        Belt_Pulley: [],
+        Gearbox: [],
+        Fan_Blower: {},
+        Pumps: {},
+        Compressor: {}
+      }
       if (Motor) {
         if (Object.keys(Motor).length !== 0) {
-          assetsPromiseList.push(await equipmentService.createMotor(Motor, equipmentData, account_id, user_id));
+          const motorData = await equipmentService.createMotor(Motor, equipmentData, account_id, user_id);
+          if (motorData) {
+            equipmentEndpoint.Motor = { ...motorData.toObject(), asset_id: motorData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
+            assetsPromiseList.push(motorData);
+          }
         }
       }
       if (Flexible) {
         if (Object.keys(Flexible).length !== 0) {
-          assetsPromiseList.push(await equipmentService.createFlexible(Flexible, equipmentData, account_id, user_id));
+          const flexibleData = await equipmentService.createFlexible(Flexible, equipmentData, account_id, user_id);
+          if (flexibleData) {
+            equipmentEndpoint.Flexible = { ...flexibleData.toObject(), asset_id: flexibleData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
+            assetsPromiseList.push(flexibleData);
+          }
         }
       }
       if (Rigid) {
         if (Object.keys(Rigid).length !== 0) {
-          assetsPromiseList.push(await equipmentService.createRigid(Rigid, equipmentData, account_id, user_id));
+          const rigidData = await equipmentService.createRigid(Rigid, equipmentData, account_id, user_id);
+          if (rigidData) {
+            equipmentEndpoint.Rigid = { ...rigidData.toObject(), asset_id: rigidData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
+            equipmentEndpoint.Rigid.asset_id = rigidData._id;
+            assetsPromiseList.push(rigidData);
+          }
         }
       }
+      const beltPulleyData = [];
       if (Belt_Pulley && Belt_Pulley.length > 0) {
         for (let beltPulley of Belt_Pulley) {
           if (Object.keys(beltPulley).length !== 0) {
-            assetsPromiseList.push(await equipmentService.createBeltPulley(beltPulley, equipmentData, account_id, user_id));
+            const createBeltPulley = await equipmentService.createBeltPulley(beltPulley, equipmentData, account_id, user_id);
+            if (createBeltPulley) {
+              beltPulleyData.push({
+                ...createBeltPulley.toObject(), asset_id: createBeltPulley._id, org_id: account_id,
+                asset_timezone: equipmentData.asset_timezone,
+              });
+              assetsPromiseList.push(createBeltPulley);
+            }
           }
         }
+        equipmentEndpoint.Belt_Pulley = beltPulleyData;
       }
-      if (Gearbox && Gearbox.length > 0) {
-        for (let gearbox of Gearbox) {
-          if (Object.keys(gearbox).length !== 0) {
-            assetsPromiseList.push(await equipmentService.createGearbox(gearbox, equipmentData, account_id, user_id));
+      const gearboxData = [];
+      if (Gearbox?.length > 0) {
+        for (const gearbox of Gearbox) {
+          if (gearbox && Object.keys(gearbox).length > 0) {
+            const createdGearbox = await equipmentService.createGearbox(gearbox, equipmentData, account_id, user_id);
+            if (createdGearbox) {
+              gearboxData.push({
+                ...createdGearbox.toObject(), asset_id: createdGearbox._id, org_id: account_id,
+                asset_timezone: equipmentData.asset_timezone
+              });
+              assetsPromiseList.push(createdGearbox);
+            }
           }
         }
+        equipmentEndpoint.Gearbox = gearboxData;
       }
       if (Fan_Blower) {
         if (Object.keys(Fan_Blower).length !== 0) {
-          assetsPromiseList.push(await equipmentService.createFanBlower(Fan_Blower, equipmentData, account_id, user_id));
+          const fanBlowerData = await equipmentService.createFanBlower(Fan_Blower, equipmentData, account_id, user_id);
+          if (fanBlowerData) {
+            equipmentEndpoint.Fan_Blower = { ...fanBlowerData.toObject(), asset_id: fanBlowerData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
+            equipmentEndpoint.Fan_Blower.asset_id = fanBlowerData._id;
+            assetsPromiseList.push(fanBlowerData);
+          }
+
         }
       }
       if (Pumps) {
         if (Object.keys(Pumps).length !== 0) {
-          assetsPromiseList.push(await equipmentService.createPumps(Pumps, equipmentData, account_id, user_id));
+          const pumpsData = await equipmentService.createPumps(Pumps, equipmentData, account_id, user_id);
+          if (pumpsData) {
+            equipmentEndpoint.Pumps = { ...pumpsData.toObject(), asset_id: pumpsData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
+            equipmentEndpoint.Pumps.asset_id = pumpsData._id;
+            assetsPromiseList.push(pumpsData);
+          }
         }
       }
       if (Compressor) {
         if (Object.keys(Compressor).length !== 0) {
-          assetsPromiseList.push(await equipmentService.createCompressor(Compressor, equipmentData, account_id, user_id));
+          const compressorData = await equipmentService.createCompressor(Compressor, equipmentData, account_id, user_id);
+          if (compressorData) {
+            equipmentEndpoint.Compressor = { ...compressorData.toObject(), asset_id: compressorData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
+            equipmentEndpoint.Compressor.asset_id = compressorData._id;
+
+            assetsPromiseList.push(compressorData);
+          }
         }
       }
+
+      console.log("equipmentEndpoint", equipmentEndpoint);
+
       const assetData = await Promise.all(assetsPromiseList);
       const assetsMapData: any = Equipment.userList.map((user: any) => ({ userId: user, assetId: equipmentData._id, account_id }));
       assetData.forEach((asset: any) => {
@@ -232,6 +293,7 @@ class EquipmentController {
       });
       await mapUserToAssetService.createMapUserAssets(assetsMapData);
       await processorAPIService.setAssetHealthStatus(assetsMapData, account_id, user_id, userToken);
+      await processorAPIService.createEquipmentEndPoints(equipmentEndpoint, user_id, userToken);
       await notificationService.notifyAccountUsers({
         accountId: String(account_id),
         module: 'Asset',
