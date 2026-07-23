@@ -6,7 +6,7 @@ export const errorMiddleware = (err: any, req: Request, res: Response, next: Nex
     return next(err);
   }
 
-  const response: { status: boolean; message: string; error?: string; code?: string } = {
+  const response: { status: boolean; message: string; error?: string; data?: unknown; errors?: unknown; code?: string } = {
     status: false,
     message: err.message || 'Internal Server Error',
     error: err.message || 'Something went wrong'
@@ -17,6 +17,8 @@ export const errorMiddleware = (err: any, req: Request, res: Response, next: Nex
   }
 
   const statusCode = err.status || 500;
+  if (err.data !== undefined) response.data = err.data;
+  if (err.errors !== undefined) response.errors = err.errors;
 
   console.error({ name: err.name, method: req.method, statusCode: err.status, path: req.path, message: err.message, stack: err.stack });
 
@@ -73,7 +75,7 @@ export const errorMiddleware = (err: any, req: Request, res: Response, next: Nex
       return res.status(411).json({ status: false, message: 'Length Required', error: err.message }).end();
 
     case 'PreconditionFailedError':
-      return res.status(412).json({ status: false, message: 'Precondition Failed', error: err.message }).end();
+      return res.status(412).json({ status: false, message: err.message || 'Precondition Failed', error: err.message, data: err.data }).end();
 
     case 'UnsupportedMediaTypeError':
       return res.status(415).json({ status: false, message: 'Unsupported Media Type', error: err.message }).end();

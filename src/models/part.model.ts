@@ -2,8 +2,10 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 export const PART_COLLECTION_NAME = 'parts';
 
+import { syncVersionPlugin } from './plugins/sync-version.plugin';
 
 export interface IPart extends Document {
+  sync_version: number;
   account_id: ObjectId;
   part_name: string;
   part_number: string;
@@ -50,5 +52,7 @@ const partSchema = new Schema<IPart>({
   timestamps: true,
   versionKey: false
 });
+
+partSchema.plugin(syncVersionPlugin);
 
 export const PartsModel = mongoose.model<IPart>('Schema_Part', partSchema);

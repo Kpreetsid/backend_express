@@ -3,9 +3,11 @@ import { requestController } from './request.controller';
 import { validateParamId } from '../../middlewares/validate';
 import { workRequestValidator } from './workRequest.validator';
 import { validate } from '../../middlewares/validator.middleware';
+import { idempotencyMiddleware } from '../../middlewares/idempotency.middleware';
 
 export default (router: express.Router) => {
     const requestRouter = express.Router();
+    requestRouter.use(idempotencyMiddleware);
     requestRouter.get('/', requestController.getAll);
     requestRouter.get('/:id', validateParamId, requestController.getById);
     requestRouter.post('/', workRequestValidator, validate, requestController.create);

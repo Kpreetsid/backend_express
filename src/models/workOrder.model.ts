@@ -2,8 +2,9 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 import { historyPlugin } from './plugins/history.plugin';
 import { HistoryWorkOrderModel } from './history-work-order.model';
-export const WORK_ORDER_COLLECTION_NAME = 'work_orders';
+import { syncVersionPlugin } from './plugins/sync-version.plugin';
 
+export const WORK_ORDER_COLLECTION_NAME = 'work_orders';
 
 export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
 export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High', 'Urgent'];
@@ -164,6 +165,7 @@ const ProcedureExecutionEntrySchema = new Schema<IProcedureExecutionEntry>({
 }, { _id: false, versionKey: false });
 
 export interface IWorkOrder extends Document {
+  sync_version: number;
   account_id: ObjectId;
   order_no: string;
   title: string;
@@ -276,6 +278,8 @@ WorkOrderSchema.index({ wo_location_id: 1, visible: 1 });
 WorkOrderSchema.index({ parentId: 1 });
 WorkOrderSchema.index({ order_no: 1 });
 WorkOrderSchema.index({ createdBy: 1 });
+
+WorkOrderSchema.plugin(syncVersionPlugin);
 
 WorkOrderSchema.plugin(historyPlugin, {
   historyModel: HistoryWorkOrderModel
