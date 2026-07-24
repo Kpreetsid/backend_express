@@ -11,6 +11,11 @@ class ProcessorAPIService {
         return await getExternalData(`/equipment/create/`, 'POST', body, token, `${user_id}`);
     }
 
+    deleteEquipmentEndpointByAssetId = async (asset_id: string[], token: string, user_id: any) => {
+        const match = { asset_id: { $in: asset_id } };
+        return await getExternalData(`/equipment/delete/`, 'DELETE', match, token, `${user_id}`);
+    }
+
     updateAssetHealthStatus = async (body: any, account_id: any, user_id: any, token: any) => {
         const payload: any = { "asset_id": body.assetId, health_created_from: 'observation', "asset_status": body.status, "org_id": account_id };
         if (body.alarmId) {

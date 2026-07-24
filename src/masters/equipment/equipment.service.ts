@@ -12,32 +12,32 @@ import { UserModel } from '../../models/user.model';
 class EquipmentService {
   async getAllEquipment(match: any) {
     const assetsData = await AssetModel.find(match).populate([
-        { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible assigned_to', match: { visible: true } }, 
-        { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level parent_id visible', match: { visible: true } }
+      { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible assigned_to', match: { visible: true } },
+      { path: 'parent_id', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level parent_id visible', match: { visible: true } }
     ]);
-    
+
     if (!assetsData.length) return [];
 
     const assetsIds = assetsData.map((asset: any) => asset._id);
-    const mapData = await MapUserAssetLocationModel.find({ 
-        assetId: { $in: assetsIds }, 
-        userId: { $exists: true } 
+    const mapData = await MapUserAssetLocationModel.find({
+      assetId: { $in: assetsIds },
+      userId: { $exists: true }
     }).populate([{ path: 'userId', model: "Schema_User", select: 'id firstName lastName email username user_role user_profile_img user_status' }]);
     const mappingsByAsset = new Map<string, any[]>();
     mapData.forEach(map => {
-        const aId = String(map.assetId);
-        if (!mappingsByAsset.has(aId)) {
-            mappingsByAsset.set(aId, []);
-        }
-        if (map.userId) {
-            mappingsByAsset.get(aId)?.push(map.userId);
-        }
+      const aId = String(map.assetId);
+      if (!mappingsByAsset.has(aId)) {
+        mappingsByAsset.set(aId, []);
+      }
+      if (map.userId) {
+        mappingsByAsset.get(aId)?.push(map.userId);
+      }
     });
 
     const result: any = assetsData.map((doc: any) => {
       const obj = doc.toObject();
       const id = String(obj._id);
-      
+
       if (obj.locationId) {
         obj.locationId.id = obj.locationId._id;
       }
@@ -497,6 +497,12 @@ class EquipmentService {
     });
   }
 
+  async deleteEquipmentAssetIds(assetIdList: string[]) {
+    return withTransaction(async (session) => {
+      return AssetModel.deleteMany({ _id: { $in: assetIdList } }, { session });
+    });
+  }
+
   async updateEquipment(equipment: any, account_id: any, user_id: any) {
     return await withTransaction(async (session) => {
       equipment = this.removeExtraFields(equipment);
@@ -525,7 +531,7 @@ class EquipmentService {
         updatedBy: user_id
       };
       await mapUserToAssetService.removeAssetMapping(equipment.id, session);
-      return await AssetModel.updateOne({ _id: equipment.id }, { $set: updatedEquipment }, { session });
+      return await AssetModel.findOneAndUpdate({ _id: equipment.id }, { $set: updatedEquipment }, { new: true, session }).lean();
     });
   }
 
@@ -559,7 +565,7 @@ class EquipmentService {
         updatedBy: user_id
       };
       await mapUserToAssetService.removeAssetMapping(motor.id, session);
-      return await AssetModel.updateOne({ _id: motor.id }, { $set: updatedMotor }, { session });
+      return await AssetModel.findOneAndUpdate({ _id: motor.id }, { $set: updatedMotor }, { new: true, session }).lean();
     });
   }
 
@@ -588,7 +594,7 @@ class EquipmentService {
         updatedBy: user_id
       };
       await mapUserToAssetService.removeAssetMapping(flexible.id, session);
-      return await AssetModel.updateOne({ _id: flexible.id }, { $set: updatedFlexible }, { session });
+      return await AssetModel.findOneAndUpdate({ _id: flexible.id }, { $set: updatedFlexible }, { new: true, session }).lean();
     });
   }
 
@@ -618,7 +624,7 @@ class EquipmentService {
         updatedBy: user_id
       };
       await mapUserToAssetService.removeAssetMapping(rigid.id, session);
-      return await AssetModel.updateOne({ _id: rigid.id }, { $set: updatedRigid }, { session });
+      return await AssetModel.findOneAndUpdate({ _id: rigid.id }, { $set: updatedRigid }, { new: true, session }).lean();
     });
   }
 
@@ -650,7 +656,7 @@ class EquipmentService {
         updatedBy: user_id
       };
       await mapUserToAssetService.removeAssetMapping(beltPulley.id, session);
-      return await AssetModel.updateOne({ _id: beltPulley.id }, { $set: updatedBeltPulley }, { session });
+      return await AssetModel.findOneAndUpdate({ _id: beltPulley.id }, { $set: updatedBeltPulley }, { new: true, session }).lean();
     });
   }
 
@@ -701,7 +707,7 @@ class EquipmentService {
         updatedBy: user_id
       };
       await mapUserToAssetService.removeAssetMapping(gearbox.id, session);
-      return await AssetModel.updateOne({ _id: gearbox.id }, { $set: updatedGearbox }, { session });
+      return await AssetModel.findOneAndUpdate({ _id: gearbox.id }, { $set: updatedGearbox }, { new: true, session }).lean();
     });
   }
 
@@ -738,7 +744,7 @@ class EquipmentService {
         updatedBy: user_id
       };
       await mapUserToAssetService.removeAssetMapping(fanBlower.id, session);
-      return await AssetModel.updateOne({ _id: fanBlower.id }, { $set: updatedFanBlower }, { session });
+      return await AssetModel.findOneAndUpdate({ _id: fanBlower.id }, { $set: updatedFanBlower }, { new: true, session }).lean();
     });
   }
 
@@ -774,7 +780,7 @@ class EquipmentService {
         updatedBy: user_id
       };
       await mapUserToAssetService.removeAssetMapping(pumps.id, session);
-      return await AssetModel.updateOne({ _id: pumps.id }, { $set: updatedPumps }, { session });
+      return await AssetModel.findOneAndUpdate({ _id: pumps.id }, { $set: updatedPumps }, { new: true, session }).lean();
     });
   }
 
@@ -810,7 +816,7 @@ class EquipmentService {
         updatedBy: user_id
       };
       await mapUserToAssetService.removeAssetMapping(compressor.id, session);
-      return await AssetModel.updateOne({ _id: compressor.id }, { $set: updatedCompressor }, { session });
+      return await AssetModel.findOneAndUpdate({ _id: compressor.id }, { $set: updatedCompressor }, { new: true, session }).lean();
     });
   }
 
