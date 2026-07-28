@@ -14,10 +14,10 @@ const defaultAllowedOrigins = [
 ];
 
 export const getAllowedOrigins = (): string[] => {
-  const configured = splitOrigins(process.env.ALLOWED_ORIGINS || process.env.SOCKET_CORS_ORIGIN);
+  const configured = splitOrigins(process.env['ALLOWED_ORIGINS'] || process.env['SOCKET_CORS_ORIGIN']);
   if (configured.length) return Array.from(new Set([...configured, ...defaultAllowedOrigins]));
 
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env['NODE_ENV'] === 'production') {
     return defaultAllowedOrigins;
   }
 
@@ -30,7 +30,7 @@ export const isOriginAllowed = (origin?: string): boolean => {
   const allowedOrigins = getAllowedOrigins();
   if (allowedOrigins.includes(origin)) return true;
 
-  if (process.env.NODE_ENV !== 'production') {
+  if (process.env['NODE_ENV'] !== 'production') {
     return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
   }
 

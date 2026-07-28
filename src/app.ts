@@ -24,8 +24,8 @@ app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
 app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce', 'ETag', 'Retry-After', 'Idempotency-Replayed'] }));
-app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));
-app.use(express.urlencoded({ limit: process.env.URLENCODED_BODY_LIMIT || '5mb', extended: true }));
+app.use(express.json({ limit: process.env['JSON_BODY_LIMIT'] || '5mb' }));
+app.use(express.urlencoded({ limit: process.env['URLENCODED_BODY_LIMIT'] || '5mb', extended: true }));
 app.use(payloadCryptoResponseMiddleware());
 app.use(payloadCryptoRequestMiddleware);
 app.use(mongoSanitizeMiddleware());
@@ -70,7 +70,7 @@ apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());
 apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
 
-const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
+const apiBasePath = process.env['API_BASE_PATH'] || '/cmms_express';
 app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], apiRouter);
 
 app.use((req: Request, res: Response, next: NextFunction) => {

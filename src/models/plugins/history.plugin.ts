@@ -110,7 +110,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     // Avoid infinite loop if somehow this plugin is applied to the history model
     if (model.modelName === HModel.modelName) return;
 
-    await HModel.insertMany(historyDocs, { session });
+    await HModel.insertMany(historyDocs, session ? { session } : {});
   };
 
   schema.pre('findOneAndUpdate', async function () {
@@ -184,7 +184,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
   });
 
   // Add static method to the original schema to allow easy access to the history model
-  schema.statics.getHistoryModel = function() {
+  schema.statics['getHistoryModel'] = function() {
     return getHistoryModel(this);
   };
 }

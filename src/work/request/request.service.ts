@@ -3,11 +3,11 @@ import { createSyncConflict } from "../../utils/sync-concurrency";
 
 class RequestService {
   private getReviewSlaHours(priority: string): number {
-    return WORK_REQUEST_REVIEW_SLA_HOURS[priority] ?? WORK_REQUEST_REVIEW_SLA_HOURS.Low;
+    return WORK_REQUEST_REVIEW_SLA_HOURS[priority] ?? WORK_REQUEST_REVIEW_SLA_HOURS['Low']!;
   }
 
   private getOrderSlaHours(priority: string): number {
-    return WORK_REQUEST_ORDER_SLA_HOURS[priority] ?? WORK_REQUEST_ORDER_SLA_HOURS.Low;
+    return WORK_REQUEST_ORDER_SLA_HOURS[priority] ?? WORK_REQUEST_ORDER_SLA_HOURS['Low']!;
   }
 
   private addHours(baseDate: Date, hours: number): Date {

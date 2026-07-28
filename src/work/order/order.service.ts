@@ -283,7 +283,7 @@ class OrderService {
         return false;
       }
       return this.hasMeaningfulChange(existingOrder?.[field], updatedOrder?.[field]);
-    }).map((field: string) => fieldLabels[field]);
+    }).map((field: string) => fieldLabels[field]!);
   }
 
   private summarizePartsForAudit(parts: any[] = []): { lineCount: number; plannedQuantity: number; actualQuantity: number } {

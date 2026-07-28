@@ -133,19 +133,20 @@ class RequestController {
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
+      const currentRequest = existingRequest[0]!;
       const expectedVersion = getExpectedSyncVersion(req);
-      assertSyncVersion(existingRequest[0], expectedVersion);
-      if (body.remarks !== existingRequest[0].remarks) {
-        const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
-        body.remarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${body.remarks} by ${firstName} ${lastName} on ${dateTime}` : `${body.remarks} by ${firstName} ${lastName} on ${dateTime}`;
+      assertSyncVersion(currentRequest, expectedVersion);
+      if (body.remarks !== currentRequest.remarks) {
+        const dateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+        body.remarks = currentRequest.remarks ? `${currentRequest.remarks} ${body.remarks} by ${firstName} ${lastName} on ${dateTime}` : `${body.remarks} by ${firstName} ${lastName} on ${dateTime}`;
       }
-      if (status === existingRequest[0].status) {
+      if (status === currentRequest.status) {
         throw Object.assign(new Error('No changes detected'), { status: 400 });
       }
-      if (existingRequest[0].converted_work_order_id) {
+      if (currentRequest.converted_work_order_id) {
         throw Object.assign(new Error('Converted work requests cannot be edited'), { status: 400 });
       }
-      if (['Approved', 'Rejected'].includes(existingRequest[0].status)) {
+      if (['Approved', 'Rejected'].includes(currentRequest.status)) {
         throw Object.assign(new Error('Finalized work requests cannot be edited'), { status: 400 });
       }
       const data = await requestService.updateRequest(String(id), body, user_id, undefined, expectedVersion);
@@ -157,7 +158,7 @@ class RequestController {
         module: 'Work Request',
         event: 'updated',
         entityId: String(id),
-        entityName: body.title || existingRequest[0].title || existingRequest[0].problemType || 'Work Request',
+        entityName: body.title || currentRequest.title || currentRequest.problemType || 'Work Request',
         actionUrl: '/work-request',
         queryParams: { id: String(id) },
         sourceUserId: String(user_id)
@@ -182,18 +183,19 @@ class RequestController {
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
+      const currentRequest = existingRequest[0]!;
       const expectedVersion = getExpectedSyncVersion(req);
-      assertSyncVersion(existingRequest[0], expectedVersion);
-      if (existingRequest[0].status === 'Approved') {
+      assertSyncVersion(currentRequest, expectedVersion);
+      if (currentRequest.status === 'Approved') {
         throw Object.assign(new Error('Request is already approved'), { status: 400 });
       }
-      if (existingRequest[0].status === 'Rejected') {
+      if (currentRequest.status === 'Rejected') {
         throw Object.assign(new Error('Rejected requests cannot be approved'), { status: 400 });
       }
-      if (existingRequest[0].converted_work_order_id) {
+      if (currentRequest.converted_work_order_id) {
         throw Object.assign(new Error('This request has already been converted into a work order'), { status: 400 });
       }
-      const data = await requestService.markApproved(String(id), user_id, existingRequest[0].priority, undefined, expectedVersion);
+      const data = await requestService.markApproved(String(id), user_id, currentRequest.priority, undefined, expectedVersion);
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
@@ -202,7 +204,7 @@ class RequestController {
         module: 'Work Request',
         event: 'updated',
         entityId: String(id),
-        entityName: existingRequest[0].title || existingRequest[0].problemType || 'Work Request',
+        entityName: currentRequest.title || currentRequest.problemType || 'Work Request',
         actionUrl: '/work-request',
         queryParams: { id: String(id) },
         sourceUserId: String(user_id)
@@ -230,19 +232,20 @@ class RequestController {
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
+      const currentRequest = existingRequest[0]!;
       const expectedVersion = getExpectedSyncVersion(req);
-      assertSyncVersion(existingRequest[0], expectedVersion);
-      if (existingRequest[0].status === 'Rejected') {
+      assertSyncVersion(currentRequest, expectedVersion);
+      if (currentRequest.status === 'Rejected') {
         throw Object.assign(new Error('Request is already rejected'), { status: 400 });
       }
-      if (existingRequest[0].status === 'Approved') {
+      if (currentRequest.status === 'Approved') {
         throw Object.assign(new Error('Approved requests cannot be rejected'), { status: 400 });
       }
-      if (existingRequest[0].converted_work_order_id) {
+      if (currentRequest.converted_work_order_id) {
         throw Object.assign(new Error('Converted work requests cannot be rejected'), { status: 400 });
       }
-      const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
-      const updatedRemarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${remarks} by ${firstName} ${lastName} on ${dateTime}` : `${remarks} by ${firstName} ${lastName} on ${dateTime}`;
+      const dateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const updatedRemarks = currentRequest.remarks ? `${currentRequest.remarks} ${remarks} by ${firstName} ${lastName} on ${dateTime}` : `${remarks} by ${firstName} ${lastName} on ${dateTime}`;
       const data = await requestService.markRejected(String(id), user_id, updatedRemarks, undefined, expectedVersion);
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
@@ -252,7 +255,7 @@ class RequestController {
         module: 'Work Request',
         event: 'updated',
         entityId: String(id),
-        entityName: existingRequest[0].title || existingRequest[0].problemType || 'Work Request',
+        entityName: currentRequest.title || currentRequest.problemType || 'Work Request',
         actionUrl: '/work-request',
         queryParams: { id: String(id) },
         sourceUserId: String(user_id)

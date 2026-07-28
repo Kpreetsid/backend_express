@@ -64,7 +64,7 @@ class OrderController {
   async getOrderById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const orderId = helperService.validateObjectId(String(req.params.id));
+      const orderId = helperService.validateObjectId(String(req.params['id']));
       const data = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
       setSyncVersionEtag(res, data);
       res.status(200).json({ status: true, message: "Work order fetched.", data });
@@ -87,7 +87,7 @@ class OrderController {
   async updateOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const id = String(req.params.id);
+      const id = String(req.params['id']);
       const data = await orderService.updateById(id, req.body, user, getExpectedSyncVersion(req));
       setSyncVersionEtag(res, data);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
@@ -99,7 +99,7 @@ class OrderController {
   async statusUpdateOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const id = String(req.params.id);
+      const id = String(req.params['id']);
       const { status, block_reason } = req.body;
       const data = await orderService.orderStatusChange(id, status, user, block_reason, getExpectedSyncVersion(req));
       setSyncVersionEtag(res, data);
@@ -129,7 +129,7 @@ class OrderController {
   async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const orderId = helperService.validateObjectId(String(req.params.id));
+      const orderId = helperService.validateObjectId(String(req.params['id']));
       await orderService.removeOrder(orderId, user);
       res.status(200).send({ status: true, message: 'Work order deleted successfully.' });
     } catch (error) {
@@ -140,7 +140,7 @@ class OrderController {
   async uploadAttachments(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const id = String(req.params.id);
+      const id = String(req.params['id']);
       const orderId = helperService.validateObjectId(id);
       const files: any = req.files;
 
@@ -156,8 +156,8 @@ class OrderController {
         type: file.mimetype,
         destination: file.destination,
         fileName: file.filename,
-        folderName: req.params.folderName,
-        fileUrl: storageProvider.getURL(file.filename, String(req.params.folderName || '')),
+        folderName: req.params['folderName'],
+        fileUrl: storageProvider.getURL(file.filename, String(req.params['folderName'] || '')),
         filePath: file.path,
         size: file.size
       }));
@@ -592,7 +592,7 @@ class OrderController {
 
   async getHistory(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const orderId = String(req.params.id);
+      const orderId = String(req.params['id']);
       const data = await orderService.getHistory(orderId);
       res.status(200).json({ status: true, message: "Work order history fetched successfully.", data });
     } catch (error) {
@@ -603,7 +603,7 @@ class OrderController {
   async getActivity(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const orderId = String(req.params.id);
+      const orderId = String(req.params['id']);
       const data = await orderService.getActivity(orderId, account_id);
       res.status(200).json({ status: true, message: "Work order activity fetched successfully.", data });
     } catch (error) {

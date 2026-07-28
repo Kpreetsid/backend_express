@@ -229,7 +229,7 @@ class PayloadCryptoService {
 
   buildAad(req: Request, record: PayloadCryptoKeyRecord, timestamp: string, nonce: string, response: boolean = false): string {
     const url = new URL(req.originalUrl || req.url || '/', 'http://cmms.local');
-    const accountId = String(req.headers.accountid || record.accountId || '');
+    const accountId = String(req.headers['accountid'] || record.accountId || '');
     const userId = record.userId || '';
     return [
       response ? 'response' : 'request',

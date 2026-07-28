@@ -6,7 +6,7 @@ import { storageProvider } from "../_config/storage";
 class UploadFilesService {
   private getFormattedDate(): string {
     const iso = new Date().toISOString();
-    const [datePart, timePart] = iso.split("T");
+    const [datePart = "", timePart = ""] = iso.split("T");
     const date = datePart.replace(/-/g, "");
     const time = timePart.replace(/[:.Z]/g, "");
     return `${date}-${time}`;
@@ -46,8 +46,8 @@ class UploadFilesService {
       let base64Data: string;
       const matches = base64Image.match(/^data:(image\/\w+);base64,(.+)$/);
       if (matches) {
-        mimeType = matches[1];
-        base64Data = matches[2];
+        mimeType = matches[1]!;
+        base64Data = matches[2]!;
       } else {
         base64Data = base64Image;
       }
@@ -56,7 +56,7 @@ class UploadFilesService {
       const extension = mimeType.split("/")[1];
 
       const fileName = this.generateFileName(extension, folderName, accountId);
-      
+
       const file = await storageProvider.upload(imageBuffer, fileName, mimeType, folderName);
 
       return {
@@ -85,4 +85,4 @@ class UploadFilesService {
   };
 }
 
-export const uploadFilesService = new UploadFilesService();
+export const uploadFilesService = new UploadFilesService();

@@ -7,7 +7,7 @@ export const requestContextMiddleware = (): RequestHandler => {
     const requestId = Array.isArray(incomingId) ? incomingId[0] : incomingId;
     const correlationId = requestId || crypto.randomUUID();
 
-    res.locals.correlationId = correlationId;
+    res.locals['correlationId'] = correlationId;
     res.setHeader('X-Correlation-ID', correlationId);
     next();
   };

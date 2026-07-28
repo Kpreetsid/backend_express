@@ -109,7 +109,8 @@ class UserController {
       if (!userData.length) {
         throw Object.assign(new Error("User not found"), { status: 404 });
       }
-      const data = await usersService.updateUserDetails(String(id), { ...userData[0].toObject(), ...body, updatedBy: user._id });
+      const existingUser = userData[0]!;
+      const data = await usersService.updateUserDetails(String(id), { ...existingUser.toObject(), ...body, updatedBy: user._id });
       if (!data) {
         throw Object.assign(new Error("Failed to update user"), { status: 500 });
       }
@@ -161,11 +162,12 @@ class UserController {
 
       const userData = await usersService.getAllUsers({ email, user_status: "active" });
       if (!userData.length) throw Object.assign(new Error("User not found"), { status: 404 });
+      const existingUser = userData[0]!;
       const otpExists = await resetPasswordService.verifyOTPExists({ email });
       if (!otpExists) throw Object.assign(new Error("OTP has expired. Please request a new one."), { status: 410 });
-      userData[0].password = newPassword;
-      userData[0].passwordExpiredAt = new Date();
-      await usersService.updateUserPassword(`${userData[0]._id}`, userData[0]);
+      existingUser.password = newPassword;
+      existingUser.passwordExpiredAt = new Date();
+      await usersService.updateUserPassword(`${existingUser._id}`, existingUser);
       await resetPasswordService.deleteVerificationCode({ email });
       res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {

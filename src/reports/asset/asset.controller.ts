@@ -200,16 +200,17 @@ class AssetReportController {
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
       }
-      if (isDataExists[0].status !== ASSET_REPORT_STATUS[3]) {
-        const topLevelAssetId = isDataExists[0].top_level_asset_id;
+      const existingReport = isDataExists[0]!;
+      if (existingReport.status !== ASSET_REPORT_STATUS[3]) {
+        const topLevelAssetId = existingReport.top_level_asset_id;
         const getAllIncompleteReport: any = await assetReportService.getAllAssetReports({ top_level_asset_id: topLevelAssetId, status: { $ne: ASSET_REPORT_STATUS[3] }, visible: true });
         if (getAllIncompleteReport && getAllIncompleteReport.length === 1 && String(getAllIncompleteReport[0]._id) === String(id)) {
           const payload = { asset_id: topLevelAssetId, freeze_score: false };
           await processorAPIService.assetHealthFreezeStatus(payload, user_id, userToken);
         }
       }
-      if (isDataExists[0].alarmId) {
-        const payload = { alarm_id: isDataExists[0].alarmId, report_id: id, action_type: "delete" }
+      if (existingReport.alarmId) {
+        const payload = { alarm_id: existingReport.alarmId, report_id: id, action_type: "delete" }
         await processorAPIService.updateAlarmHistoryData(payload, user_id, userToken);
       }
       await observationService.updateObservation({ report_id: helperService.validateObjectId(String(id)), accountId: account_id, visible: true }, { report_id: null, updatedBy: user_id });

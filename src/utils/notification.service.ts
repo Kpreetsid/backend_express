@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { notificationRepository } from '../notification/notification.service';
 import { Types } from 'mongoose';
+import { INotification } from '../models/notification.model';
 import { UserModel } from '../models/user.model';
 import { globalEmitter, Events } from '../utils/event-emitter';
 
@@ -99,7 +100,7 @@ export class NotificationService {
     // 1. Persist in DB (Status: Sent)
     const notification = await notificationRepository.create({
       targetUser: new Types.ObjectId(userId),
-      account_id: companyId ? new Types.ObjectId(companyId) : undefined,
+      ...(companyId ? { account_id: new Types.ObjectId(companyId) } : {}),
       type,
       message,
       metadata: data
@@ -164,14 +165,14 @@ export class NotificationService {
 
     const message = payload.message || this.buildMessage(payload.module, payload.event, payload.entityName);
     const type = payload.type || this.buildType(payload.module, payload.event);
-    const metadata = {
+    const metadata: INotification['metadata'] = {
       module: payload.module,
       event: payload.event,
       entityId: payload.entityId,
-      entityName: payload.entityName,
+      ...(payload.entityName ? { entityName: payload.entityName } : {}),
       actionUrl: payload.actionUrl,
       queryParams: payload.queryParams || {},
-      sourceUserId: payload.sourceUserId
+      ...(payload.sourceUserId ? { sourceUserId: payload.sourceUserId } : {})
     };
 
     const users = await UserModel.find({

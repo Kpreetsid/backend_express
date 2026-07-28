@@ -82,19 +82,19 @@ class LocationReportService {
       const faults = report.faultData || [];
 
       switch (health) {
-        case '2': assetConditionSummaryData[1].value.value++; break;
-        case '3': assetConditionSummaryData[2].value.value++; break;
-        case '4': assetConditionSummaryData[3].value.value++; break;
-        case '5': assetConditionSummaryData[4].value.value++; break;
-        default: assetConditionSummaryData[0].value.value++;
+        case '2': assetConditionSummaryData[1]!.value.value++; break;
+        case '3': assetConditionSummaryData[2]!.value.value++; break;
+        case '4': assetConditionSummaryData[3]!.value.value++; break;
+        case '5': assetConditionSummaryData[4]!.value.value++; break;
+        default: assetConditionSummaryData[0]!.value.value++;
       }
       faults.forEach((f: any) => {
         if (f.value !== 1) {
           const idx = assetFaultSummaryData.findIndex(item => item.key === f.name);
           if (idx !== -1) {
-            assetFaultSummaryData[idx].value++;
+            assetFaultSummaryData[idx]!.value++;
           } else {
-            assetFaultSummaryData[6].value++;
+            assetFaultSummaryData[6]!.value++;
           }
         }
       });
@@ -128,17 +128,17 @@ class LocationReportService {
       const faultSummary = assetFaultSummaryData.map(item => ({ ...item, value: 0 }));
       loc.asset_data.forEach((asset: any) => {
         switch (asset.healthFlag) {
-          case '2': conditionSummary[1].value.value++; break;
-          case '3': conditionSummary[2].value.value++; break;
-          case '4': conditionSummary[3].value.value++; break;
-          case '5': conditionSummary[4].value.value++; break;
-          default: conditionSummary[0].value.value++;
+          case '2': conditionSummary[1]!.value.value++; break;
+          case '3': conditionSummary[2]!.value.value++; break;
+          case '4': conditionSummary[3]!.value.value++; break;
+          case '5': conditionSummary[4]!.value.value++; break;
+          default: conditionSummary[0]!.value.value++;
         }
         asset.fault_data.forEach((f: any) => {
           if (f.value !== 1) {
             const idx = faultSummary.findIndex(item => item.key === f.name);
-            if (idx !== -1) faultSummary[idx].value++;
-            else faultSummary[6].value++;
+            if (idx !== -1) faultSummary[idx]!.value++;
+            else faultSummary[6]!.value++;
           }
         });
       });

@@ -5,10 +5,10 @@ import crypto from "crypto";
 
 class SchedulerService {
     private readonly instanceId = `${process.pid}-${crypto.randomUUID()}`;
-    private readonly lockTtlMs = Number(process.env.SCHEDULER_LOCK_TTL_MS || 10 * 60 * 1000);
+    private readonly lockTtlMs = Number(process.env['SCHEDULER_LOCK_TTL_MS'] || 10 * 60 * 1000);
 
     private getTodayDateStr(): string {
-        return new Date().toISOString().split("T")[0];
+        return new Date().toISOString().split("T")[0]!;
     }
 
     private getTodayName(): string {
@@ -132,7 +132,7 @@ class SchedulerService {
         s.last_execution_date = new Date();
         if ((s.no_of_repetition && s.no_of_execution >= s.no_of_repetition) || (s.end_date && new Date() >= new Date(s.end_date))) {
             s.enabled = false;
-            s.end_date = new Date().toISOString().split("T")[0];
+            s.end_date = new Date().toISOString().split("T")[0]!;
         }
         await schedule.save();
         console.log(`✅ Schedule updated for schedule: ${schedule.title}`);

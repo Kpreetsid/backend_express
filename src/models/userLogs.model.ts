@@ -131,17 +131,17 @@ userLogSchema.virtual('isSuccess').get(function (this: IUserLog) {
     return this.statusCode >= 200 && this.statusCode < 300;
 });
 
-userLogSchema.methods.isFromMobile = function (this: IUserLog) {
+userLogSchema.methods['isFromMobile'] = function (this: IUserLog) {
     return this.deviceInfo?.isMobile || false;
 };
 
-userLogSchema.statics.findByUserId = function (userId: string) {
+userLogSchema.statics['findByUserId'] = function (userId: string) {
     return this.find({ userId: new mongoose.Types.ObjectId(userId) });
 };
 
 userLogSchema.index(
     { createdAt: 1 },
-    { expireAfterSeconds: Number(process.env.USER_LOG_RETENTION_DAYS || 180) * 24 * 60 * 60 }
+    { expireAfterSeconds: Number(process.env['USER_LOG_RETENTION_DAYS'] || 180) * 24 * 60 * 60 }
 );
 
 export const UserLogModel = mongoose.model<IUserLog>('Schema_UserLog', userLogSchema);

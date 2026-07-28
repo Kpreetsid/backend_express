@@ -13,7 +13,7 @@ import { getAccessTokenTypeFilter, TokenModel } from '../models/userToken.model'
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const headerToken = req.headers.authorization?.split(' ')[1];
-    const headerAccountID = req.headers.accountid;
+    const headerAccountID = req.headers['accountid'];
     if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
@@ -26,7 +26,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     }
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
-    const accountID = req.headers.accountid as string;
+    const accountID = req.headers['accountid'] as string;
 
     if (!id || !username || !companyID || headerAccountID !== accountID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
@@ -56,13 +56,13 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
 export const isLogOutAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const headerToken = req.headers.authorization?.split(' ')[1];
-    const headerAccountID = req.headers.accountid;
+    const headerAccountID = req.headers['accountid'];
     if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
-    const accountID = req.headers.accountid as string;
+    const accountID = req.headers['accountid'] as string;
     if (!id || !username || !companyID || headerAccountID !== accountID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }

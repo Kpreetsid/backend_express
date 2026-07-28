@@ -74,7 +74,7 @@ class PartsController {
     try {
       const user = get(req, "user", {}) as IUser;
       const decision = String(req.body?.decision || '').trim() === 'rejected' ? 'rejected' : 'approved';
-      const data = await partsService.approveCycleCount(String(req.params.id), decision, user.account_id, user, req.body?.approval_notes);
+      const data = await partsService.approveCycleCount(String(req.params['id']), decision, user.account_id, user, req.body?.approval_notes);
       res.status(200).json({ status: true, message: `Cycle count ${decision} successfully`, data });
     } catch (error) {
       next(error);
@@ -120,7 +120,7 @@ class PartsController {
   async getPartHistory(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const data = await partsService.getPartHistory(String(req.params.id), user.account_id);
+      const data = await partsService.getPartHistory(String(req.params['id']), user.account_id);
       res.status(200).json({ status: true, message: "Part history retrieved successfully", data });
     } catch (error) {
       next(error);

@@ -26,8 +26,8 @@ export const initSocket = (httpServer: HttpServer) => {
 
   // Authentication Middleware
   io.use((socket: Socket, next) => {
-    const token = socket.handshake.auth.token || socket.handshake.headers['authorization']?.split(' ')[1];
-    const accountId = socket.handshake.auth.accountId || socket.handshake.headers['accountid'];
+    const token = socket.handshake.auth['token'] || socket.handshake.headers['authorization']?.split(' ')[1];
+    const accountId = socket.handshake.auth['accountId'] || socket.handshake.headers['accountid'];
 
     if (!token || !accountId) {
       return next(new Error('Authentication error: Token and Account ID required'));

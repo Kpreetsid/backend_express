@@ -32,7 +32,13 @@
     "allowUnreachableCode": false,
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "incremental": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "allowSyntheticDefaultImports": true,
+    "strictPropertyInitialization": true,
+    "noPropertyAccessFromIndexSignature": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

@@ -62,7 +62,7 @@ export class MailerService {
   private replace(template: string, data: Record<string, string>): string {
     let html = template;
     for (const key in data) {
-      html = html.replaceAll(`{{${key}}}`, data[key]);
+      html = html.replaceAll(`{{${key}}}`, data[key]!);
     }
     return html;
   }

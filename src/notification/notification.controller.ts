@@ -16,8 +16,8 @@ export class NotificationController {
   public async getNotifications(req: AuthRequest, res: Response) {
     try {
       const userId = req.user.id;
-      const limit = parseInt(req.query.limit as string) || 50;
-      const skip = parseInt(req.query.skip as string) || 0;
+      const limit = parseInt(req.query['limit'] as string) || 50;
+      const skip = parseInt(req.query['skip'] as string) || 0;
 
       const notifications = await notificationRepository.getUserNotifications(userId, limit, skip);
       res.json({ success: true, data: notifications });

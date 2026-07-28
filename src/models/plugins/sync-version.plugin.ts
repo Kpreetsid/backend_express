@@ -13,7 +13,7 @@ export function syncVersionPlugin(schema: Schema): void {
       return;
     }
     if (!this.isNew && this.isModified()) {
-      const current = Number(this.$locals.cmmsSyncVersion ?? this.get('sync_version') ?? 0);
+      const current = Number(this.$locals['cmmsSyncVersion'] ?? this.get('sync_version') ?? 0);
       this.set('sync_version', current + 1);
     }
   });

@@ -96,7 +96,7 @@ class AppLogger {
           connection: headers['connection'] || '',
           contentLength: Number(headers['content-length']) || 0,
           encoding: headers['accept-encoding'] ? headers['accept-encoding'].split(',').map((x: any) => x.trim()) : [],
-          language: headers['accept-language'] ? headers['accept-language'].split(',').map((lang: string) => lang.split(';')[0].trim()) : []
+          language: headers['accept-language'] ? headers['accept-language'].split(',').map((lang: string) => lang.split(';')[0]!.trim()) : []
         };
         const requestMeta = {
           contentType: headers['content-type'] || '',
@@ -134,7 +134,7 @@ class AppLogger {
           ipAddress: req.ip || (headers['x-forwarded-for'] as string) || '',
           userAgent: ua,
           additionalData: {
-            correlationId: res.locals.correlationId,
+            correlationId: res.locals['correlationId'],
             params: this.redactSensitiveData(req.params || {}),
             body: this.redactSensitiveData(req.body || {}),
             query: this.redactSensitiveData(req.query || {}),
@@ -196,7 +196,7 @@ class AppLogger {
 
    private extractBrowserVersion (userAgent: string | undefined): string {
     const match = userAgent?.match(/Chrome\/([\d.]+)/);
-    return match ? match[1] : 'Unknown';
+    return match?.[1] || 'Unknown';
   }
   
    private extractEngine (userAgent: string | undefined): string {

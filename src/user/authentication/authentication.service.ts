@@ -250,7 +250,10 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
 export const userLogOutService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const user_id = get(req, 'user_id');
-    const userToken = get(req, 'userToken');
+    const userToken = String(get(req, 'userToken') || '');
+    if (!userToken) {
+      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
+    }
     const refreshToken = String(req.headers['x-cmms-refresh-token'] || '');
     const [accessToken] = await Promise.all([
       TokenModel.deleteMany({

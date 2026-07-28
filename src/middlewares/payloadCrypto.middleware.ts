@@ -185,13 +185,14 @@ function attachPayloadCryptoSessionIfNeeded(_req: Request, body: any): any {
     return body;
   }
 
+  const tokenId = body.data.token_id ? String(body.data.token_id) : '';
   return {
     ...body,
     data: {
       ...body.data,
       payloadCrypto: payloadCryptoService.createAuthenticatedSession({
         token: String(body.data.token),
-        tokenId: body.data.token_id ? String(body.data.token_id) : undefined,
+        ...(tokenId ? { tokenId } : {}),
         userId,
         accountId
       })
