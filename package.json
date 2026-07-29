@@ -7,8 +7,7 @@
     "dev": "ts-node-dev --respawn --transpile-only --exit-child --inspect=0.0.0.0:9229 src/server.ts --host 0.0.0.0",
     "build": "npx shx rm -rf dist && npx tsc && npx shx mkdir -p dist/public && npx shx cp -r src/public/* dist/public/",
     "start": "npm run build && node dist/server.js",
-    "typecheck": "npx tsc --noEmit",
-    "test:subscription-limits": "npm run build && node --test test/subscription-limit.test.js"
+    "typecheck": "npx tsc --noEmit"
   },
   "keywords": [],
   "author": "Pawan Kumar Gautam",

@@ -1,5 +1,6 @@
 import { IAccount } from "../models/account.model";
 import { Permission, RoleManager, RoleMenu } from "./accountRoleMenu";
+import { normalizeExperienceProfile } from "./experienceProfile";
 
 export type AccountAction = "view" | "add" | "edit" | "delete" | "import" | "export";
 type PlatformControl = Record<string, Record<string, boolean>>;
@@ -14,7 +15,10 @@ const ACCOUNT_ADDITIVE_FEATURE_KEYS = [
   "work_order_templates",
   "procedures",
   "asset_alarms",
-  "ai_chatbot"
+  "ai_chatbot",
+  "oem_report",
+  "pump_asset_health",
+  "pdm_location_filter"
 ];
 
 const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> = {
@@ -130,8 +134,15 @@ class AccountAccessService {
 
   getAccountRoleMenu(account: IAccount | any): RoleMenu {
     const accountObject = typeof account?.toObject === "function" ? account.toObject() : account;
-    const defaults = RoleManager.getRoleMenu(accountObject?.experience_profile || "standard_account");
+    const experienceProfile = normalizeExperienceProfile(accountObject?.experience_profile);
+    const defaults = RoleManager.getRoleMenu(experienceProfile);
     const storedMenu = isRecord(accountObject?.account_role_menu) ? accountObject.account_role_menu : {};
+    const storedProfile = accountObject?.account_role_menu_profile
+      ? normalizeExperienceProfile(accountObject.account_role_menu_profile)
+      : RoleManager.detectRoleMenuProfile(storedMenu);
+    if (storedProfile && storedProfile !== experienceProfile) {
+      return defaults;
+    }
     const merged = clone(defaults);
 
     for (const [key, value] of Object.entries(storedMenu)) {

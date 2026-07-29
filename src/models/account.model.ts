@@ -1,8 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ACCOUNT_ROLE_MENU_SCHEMA_VERSION, RoleManager } from '../_role/accountRoleMenu';
+import { EXPERIENCE_PROFILES, ExperienceProfile } from '../_role/experienceProfile';
 export const COMPANY_COLLECTION_NAME = `account_master`;
 export const STATUS_ENUM = ['active', 'inactive'];
-export const EXPERIENCE_PROFILES = ['standard_account', 'oem'] as const;
+export { EXPERIENCE_PROFILES } from '../_role/experienceProfile';
 export const COOKIES_ENUM = ['enabled', 'disabled'];
 export const SUBSCRIPTION_TYPES = ['free', 'trial', 'monthly', 'yearly', 'one_time', 'lifetime'] as const;
 export const SUBSCRIPTION_STATUSES = ['active', 'inactive', 'expired', 'cancelled', 'suspended'] as const;
@@ -10,7 +11,7 @@ export const SUBSCRIPTION_STATUSES = ['active', 'inactive', 'expired', 'cancelle
 export interface IAccount extends Document {
   account_name: string;
   type: string;
-  experience_profile: typeof EXPERIENCE_PROFILES[number];
+  experience_profile: ExperienceProfile;
   description: string;
   fileName?: string;
   default_language?: string;
@@ -19,6 +20,7 @@ export interface IAccount extends Document {
   encrypt_payload?: string;
   encrypt_response?: string;
   account_role_menu?: object;
+  account_role_menu_profile?: ExperienceProfile;
   account_permission_version?: number;
   account_role_menu_schema_version?: number;
   account_role_menu_updated_by?: Schema.Types.ObjectId;
@@ -48,6 +50,7 @@ const accountSchema = new Schema<IAccount>(
     encrypt_payload: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     encrypt_response: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     account_role_menu: { type: Object, required: true, default: () => RoleManager.getRoleMenu(EXPERIENCE_PROFILES[0]) },
+    account_role_menu_profile: { type: String, trim: true, enum: EXPERIENCE_PROFILES },
     account_permission_version: { type: Number, default: 1 },
     account_role_menu_schema_version: { type: Number, default: ACCOUNT_ROLE_MENU_SCHEMA_VERSION },
     account_role_menu_updated_by: { type: mongoose.Schema.Types.ObjectId },
