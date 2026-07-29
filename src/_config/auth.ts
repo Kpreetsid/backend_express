@@ -158,6 +158,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
         isInternal: context.isInternal
       }
     });
+    res.setHeader('X-Account-Permission-Version', String(context.accountPermissionVersion));
     next();
   } catch (error) {
     next(error)

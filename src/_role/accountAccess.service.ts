@@ -1,9 +1,9 @@
 import { IAccount } from "../models/account.model";
 import { Permission, RoleManager, RoleMenu } from "./accountRoleMenu";
 
-type AccountAction = "view" | "add" | "edit" | "delete" | "import" | "export";
+export type AccountAction = "view" | "add" | "edit" | "delete" | "import" | "export";
 type PlatformControl = Record<string, Record<string, boolean>>;
-type PlatformActionRule = { menuKey: string; action: AccountAction };
+type PlatformActionRule = { menuKey: string | string[]; action: AccountAction };
 
 const ACCOUNT_ACTIONS: AccountAction[] = ["view", "add", "edit", "delete", "import", "export"];
 const ACCOUNT_ADDITIVE_FEATURE_KEYS = [
@@ -54,10 +54,10 @@ const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> 
     update_parts_work_order: { menuKey: "parts_work_order", action: "edit" }
   },
   floorMap: {
-    create_kpi: { menuKey: "floor_map", action: "add" },
-    view_floor_map: { menuKey: "floor_map", action: "view" },
-    delete_kpi: { menuKey: "floor_map", action: "delete" },
-    upload_floor_map: { menuKey: "floor_map", action: "edit" }
+    create_kpi: { menuKey: ["floor_map", "location_floor_map"], action: "add" },
+    view_floor_map: { menuKey: ["floor_map", "location_floor_map"], action: "view" },
+    delete_kpi: { menuKey: ["floor_map", "location_floor_map"], action: "delete" },
+    upload_floor_map: { menuKey: ["floor_map", "location_floor_map"], action: "edit" }
   }
 };
 
@@ -80,11 +80,11 @@ const PARENT_PLATFORM_MODULE_RULES: Record<string, string> = {
   devices: "master_devices"
 };
 
-const PLATFORM_MODULE_VIEW_RULES: Record<string, string> = {
+const PLATFORM_MODULE_VIEW_RULES: Record<string, string | string[]> = {
   asset: "asset",
   location: "location",
   workOrder: "work_order",
-  floorMap: "floor_map",
+  floorMap: ["floor_map", "location_floor_map"],
   preventive: "preventive",
   form: "form",
   form_category: "form_category",
@@ -107,6 +107,27 @@ const isRecord = (value: unknown): value is Record<string, any> => {
 };
 
 class AccountAccessService {
+  isKnownFeature(menuKey: string): boolean {
+    return !!RoleManager.getRoleMenu("standard_account")[menuKey];
+  }
+
+  isKnownAction(action: string): action is AccountAction {
+    return ACCOUNT_ACTIONS.includes(action as AccountAction);
+  }
+
+  isEffectivePermissionEnabled(roleMenu: RoleMenu, menuKey: string, action: AccountAction = "view"): boolean {
+    const permission = roleMenu?.[menuKey];
+    if (!permission || permission.view !== true) {
+      return false;
+    }
+
+    if (permission.parent && roleMenu?.[permission.parent]?.view !== true) {
+      return false;
+    }
+
+    return action === "view" ? true : permission[action] === true;
+  }
+
   getAccountRoleMenu(account: IAccount | any): RoleMenu {
     const accountObject = typeof account?.toObject === "function" ? account.toObject() : account;
     const defaults = RoleManager.getRoleMenu(accountObject?.experience_profile || "standard_account");
@@ -245,7 +266,8 @@ class AccountAccessService {
   isPlatformActionAllowed(accountRoleMenu: RoleMenu, moduleName: string, actionName: string): boolean {
     const mappedRule = PLATFORM_ACTION_RULES[moduleName]?.[actionName];
     if (mappedRule) {
-      return this.isAccountPermissionEnabled(accountRoleMenu, mappedRule.menuKey, mappedRule.action);
+      const keys = Array.isArray(mappedRule.menuKey) ? mappedRule.menuKey : [mappedRule.menuKey];
+      return keys.some(menuKey => this.isAccountPermissionEnabled(accountRoleMenu, menuKey, mappedRule.action));
     }
 
     const action = this.toAccountAction(actionName);
@@ -288,8 +310,12 @@ class AccountAccessService {
   }
 
   private isPlatformModuleVisible(accountRoleMenu: RoleMenu, moduleName: string): boolean {
-    const menuKey = PLATFORM_MODULE_VIEW_RULES[moduleName];
-    return !menuKey || this.isAccountPermissionEnabled(accountRoleMenu, menuKey, "view");
+    const menuKeys = PLATFORM_MODULE_VIEW_RULES[moduleName];
+    if (!menuKeys) {
+      return true;
+    }
+    const keys = Array.isArray(menuKeys) ? menuKeys : [menuKeys];
+    return keys.some(menuKey => this.isAccountPermissionEnabled(accountRoleMenu, menuKey, "view"));
   }
 
   validateRoleMenuShape(roleMenu: unknown, profile: string = "standard_account"): string[] {

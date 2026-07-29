@@ -6,6 +6,7 @@ import multer from 'multer';
 import path from 'path';
 import { uploadFilesService } from './upload.multer';
 import { payloadCryptoMultipartMiddleware } from '../middlewares/payloadCrypto.middleware';
+import { enforceUploadPermission } from '../middlewares/uploadPermission.middleware';
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -37,8 +38,8 @@ export const upload = multer({ storage, limits: { files: 12, fileSize: 5 * 1024 
 export default (): express.Router => {
     router.use(rateLimiter.uploadLimiter);
     router.post('/', upload.array('files', 12), payloadCryptoMultipartMiddleware, uploadController.uploadController);
-    router.post('/baseImage', uploadController.uploadBaseImage);
-    router.post('/baseImage/:folderName', uploadController.uploadBaseImage);
-    router.post('/:folderName', upload.array('files', 12), payloadCryptoMultipartMiddleware, uploadController.uploadController);
+    router.post('/baseImage', enforceUploadPermission, uploadController.uploadBaseImage);
+    router.post('/baseImage/:folderName', enforceUploadPermission, uploadController.uploadBaseImage);
+    router.post('/:folderName', enforceUploadPermission, upload.array('files', 12), payloadCryptoMultipartMiddleware, uploadController.uploadController);
     return router;
 }

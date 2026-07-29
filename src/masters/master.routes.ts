@@ -15,7 +15,7 @@ import floorMapRoutes from './floorMap/floorMap.routes';
 import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.routes';
 import partsTypeRoutes from './part-type/parts-type.routes';
 import inspectionRoutes from './inspection/inspection.routes';
-import { hasAccountFeature, hasAccountFeatures, hasAnyAccountFeature } from '../middlewares/permission';
+import { hasAccountFeature, hasAnyAccountFeature } from '../middlewares/permission';
 
 const withAccountFeature = (
     menuKey: string,
@@ -37,31 +37,21 @@ const withAnyAccountFeature = (
     return featureRouter;
 };
 
-const withAccountFeatures = (
-    menuKeys: string[],
-    registerRoutes: (router: express.Router) => void
-): express.Router => {
-    const featureRouter = express.Router();
-    featureRouter.use(hasAccountFeatures(menuKeys));
-    registerRoutes(featureRouter);
-    return featureRouter;
-};
-
 export default (): express.Router => {
     usersRouter(router);
     companyRoutes(router);
-    router.use(withAccountFeature('master_asset', assetsRouter));
-    router.use(withAccountFeature('master_asset', equipmentRoutes));
-    router.use(withAccountFeature('master_inventory', partsRoutes));
-    router.use(withAccountFeature('master_inventory', partsTypeRoutes));
-    router.use(withAccountFeatures(['master_posts', 'posts'], postsRoutes));
-    router.use(withAccountFeature('master_preventive', scheduleRoutes));
-    router.use(withAccountFeature('master_inspections', inspectionRoutes));
-    router.use(withAccountFeature('master_form', sopsRoutes));
-    router.use(withAccountFeature('master_location', locationRoutes));
-    router.use(withAccountFeature('master_form', formCategoryRoutes));
-    router.use(withAccountFeature('master_asset', observationRoutes));
-    router.use(withAnyAccountFeature(['master_dashboard', 'master_location'], floorMapRoutes));
-    router.use(withAccountFeature('master_asset', troubleshootGuideRoutes));
+    router.use(withAccountFeature('asset', assetsRouter));
+    router.use(withAccountFeature('asset', equipmentRoutes));
+    router.use(withAccountFeature('inventory', partsRoutes));
+    router.use(withAccountFeature('inventory', partsTypeRoutes));
+    router.use(withAccountFeature('posts', postsRoutes));
+    router.use(withAccountFeature('preventive', scheduleRoutes));
+    router.use(withAccountFeature('inspections', inspectionRoutes));
+    router.use(withAccountFeature('form', sopsRoutes));
+    router.use(withAccountFeature('location', locationRoutes));
+    router.use(withAccountFeature('form_category', formCategoryRoutes));
+    router.use(withAccountFeature('observation', observationRoutes));
+    router.use(withAnyAccountFeature(['floor_map', 'location_floor_map'], floorMapRoutes));
+    router.use(withAnyAccountFeature(['asset', 'location'], troubleshootGuideRoutes));
     return router;
 }

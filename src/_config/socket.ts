@@ -7,6 +7,18 @@ import { authenticateTokenContext } from './auth';
 import { LEGACY_ACCESS_COOKIE_NAME, LEGACY_ACCOUNT_COOKIE_NAME } from '../user/authentication/authCookie.service';
 import { cookieService } from '../utils/cookie';
 
+let socketServer: Server | null = null;
+
+const accountRoom = (accountId: string): string => `account:${accountId}`;
+
+export const emitAccountPermissionsChanged = (accountId: string, accountPermissionVersion: number): boolean => {
+  if (!socketServer) {
+    return false;
+  }
+  socketServer.to(accountRoom(accountId)).emit('account_permissions_changed', { accountPermissionVersion });
+  return true;
+};
+
 /**
  * Initialize Socket.io server
  * @param httpServer The HTTP server instance
@@ -25,6 +37,7 @@ export const initSocket = (httpServer: HttpServer) => {
       credentials: true
     }
   });
+  socketServer = io;
 
   // Authentication Middleware
   io.use(async (socket: Socket, next) => {
@@ -62,6 +75,7 @@ export const initSocket = (httpServer: HttpServer) => {
     // Notification delivery is user-scoped. Account-wide events are expanded to user rooms
     // by NotificationService when a server-side API action creates notifications.
     socket.join(userId.toString());
+    socket.join(accountRoom(String(accountId)));
 
     // Handle "Notification Reached" acknowledgment from client
     socket.on('notification_reached', async (payload: { notificationId: string }) => {

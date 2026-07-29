@@ -6,8 +6,23 @@ import { companyService } from "./company.service";
 import { helperService } from "../../utils/helper";
 import { applyRoleFilter } from "../../utils/roleFilter";
 import { accountFeatureService } from "./accountFeature.service";
+import { subscriptionLimitService } from "./subscriptionLimit.service";
 
 class CompanyController {
+
+  getSubscriptionLimits = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { account_id } = get(req, "user", {}) as IUser;
+      const data = await subscriptionLimitService.getUsage(account_id);
+      res.status(200).json({
+        status: true,
+        message: "Subscription limits retrieved successfully",
+        data
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 
   getCompanies = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -157,4 +172,9 @@ class CompanyController {
   }
 }
 
-export const companyController = controllerCache.withCache(new CompanyController(), { namespace: 'companies', ttlSeconds: 300, tags: ['companies', 'settings', 'users'] });
+export const companyController = controllerCache.withCache(new CompanyController(), {
+  namespace: 'companies',
+  ttlSeconds: 300,
+  tags: ['companies', 'settings', 'users'],
+  skipMethods: ['getSubscriptionLimits']
+});

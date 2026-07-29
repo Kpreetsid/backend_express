@@ -2,6 +2,37 @@ import { Request, Response, NextFunction } from "express";
 import { get } from "lodash";
 import { IUserRoleMenu } from "../models/userRoleMenu.model";
 import { IUser, USER_ROLES } from "../models/user.model";
+import { AccountAction, accountAccessService } from "../_role/accountAccess.service";
+
+const denyAccountFeature = (
+  req: Request,
+  res: Response,
+  featureKey: string,
+  action: AccountAction
+): Response => {
+  return res.status(403).json({
+    status: false,
+    code: "ACCOUNT_FEATURE_DISABLED",
+    message: "This feature is disabled for the account.",
+    featureKey,
+    action,
+    accountPermissionVersion: Number((req as any).accountPermissionVersion || 0)
+  });
+};
+
+const hasEffectivePermission = (req: Request, menuKey: string, action: AccountAction): boolean => {
+  const roleMenu: any = get(req, "roleMenu", {});
+  return accountAccessService.isEffectivePermissionEnabled(roleMenu, menuKey, action);
+};
+
+const validateFeatureRule = (menuKey: string, action: AccountAction): void => {
+  if (!accountAccessService.isKnownFeature(menuKey)) {
+    throw new Error(`Unknown account feature key configured: ${menuKey}`);
+  }
+  if (!accountAccessService.isKnownAction(action)) {
+    throw new Error(`Unknown account feature action configured: ${action}`);
+  }
+};
 
 export const hasRolePermission = (moduleName: string, action: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -24,46 +55,33 @@ export const hasRolePermission = (moduleName: string, action: string) => {
   };
 };
 
-export const hasAccountFeature = (menuKey: string, action: string = "view") => {
+export const hasAccountFeature = (menuKey: string, action: AccountAction = "view") => {
+  validateFeatureRule(menuKey, action);
   return (req: Request, res: Response, next: NextFunction) => {
-    const roleMenu: any = get(req, "roleMenu", {});
-    const permission = roleMenu?.[menuKey];
-
-    if (permission?.[action] === true) {
+    if (hasEffectivePermission(req, menuKey, action)) {
       return next();
     }
-
-    next(Object.assign(new Error("This feature is disabled for the account."), {
-      status: 403,
-      code: "ACCOUNT_FEATURE_DISABLED"
-    }));
+    return denyAccountFeature(req, res, menuKey, action);
   };
 };
 
-export const hasAnyAccountFeature = (menuKeys: string[]) => {
+export const hasAnyAccountFeature = (menuKeys: string[], action: AccountAction = "view") => {
+  menuKeys.forEach((menuKey) => validateFeatureRule(menuKey, action));
   return (req: Request, res: Response, next: NextFunction) => {
-    const roleMenu: any = get(req, "roleMenu", {});
-    if (menuKeys.some((menuKey) => roleMenu?.[menuKey]?.view === true)) {
+    if (menuKeys.some((menuKey) => hasEffectivePermission(req, menuKey, action))) {
       return next();
     }
-
-    next(Object.assign(new Error("This feature is disabled for the account."), {
-      status: 403,
-      code: "ACCOUNT_FEATURE_DISABLED"
-    }));
+    return denyAccountFeature(req, res, menuKeys.join("|"), action);
   };
 };
 
-export const hasAccountFeatures = (menuKeys: string[], action: string = "view") => {
+export const hasAccountFeatures = (menuKeys: string[], action: AccountAction = "view") => {
+  menuKeys.forEach((menuKey) => validateFeatureRule(menuKey, action));
   return (req: Request, res: Response, next: NextFunction) => {
-    const roleMenu: any = get(req, "roleMenu", {});
-    if (menuKeys.every((menuKey) => roleMenu?.[menuKey]?.[action] === true)) {
+    if (menuKeys.every((menuKey) => hasEffectivePermission(req, menuKey, action))) {
       return next();
     }
-
-    next(Object.assign(new Error("This feature is disabled for the account."), {
-      status: 403,
-      code: "ACCOUNT_FEATURE_DISABLED"
-    }));
+    const deniedFeature = menuKeys.find((menuKey) => !hasEffectivePermission(req, menuKey, action)) || menuKeys[0];
+    return denyAccountFeature(req, res, deniedFeature, action);
   };
 };

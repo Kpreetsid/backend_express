@@ -14,6 +14,7 @@ import { withTransaction } from "../../utils/transaction.helper";
 import { Cacheable } from '../../_cache/decorators/cacheable.decorator';
 import { CacheKeys, CacheTTL } from '../../_cache/cacheKeys';
 import { generateDeterministicObjectKey } from '../../utils/cacheHelper';
+import { subscriptionLimitService } from '../company/subscriptionLimit.service';
 
 class AssetService {
   @Cacheable((args) => {
@@ -208,6 +209,7 @@ class AssetService {
   }
 
   async createAssetOld(body: any, account_id: any, user_id: any): Promise<any> {
+    await subscriptionLimitService.assertCanCreate(account_id, 'asset');
     const data: any = new AssetModel({ ...body, account_id, createdBy: user_id });
     data.top_level_asset_id = data.top_level_asset_id ? data.top_level_asset_id : data._id;
     return await data.save();
@@ -339,6 +341,7 @@ class AssetService {
   async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any, newLocationId?: any): Promise<any> {
     return await withTransaction(async (innerSession) => {
       const activeSession = session || innerSession;
+      await subscriptionLimitService.assertCanCreate(account_id, 'asset', 1, activeSession);
       const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
       const cleanAsset = JSON.parse(JSON.stringify(rest));
       delete cleanAsset._id;

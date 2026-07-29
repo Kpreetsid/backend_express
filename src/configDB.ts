@@ -151,6 +151,10 @@ export const externalAPI = {
   URL: process.env.PROCESSOR_API_URL,
 }
 
+export const permissionSync = {
+  serviceKey: envString(process.env.PERMISSION_SYNC_SERVICE_KEY, '')
+};
+
 export const storageConfig = {
   driver: process.env.STORAGE_DRIVER || 'local',
   baseUrl: process.env.STORAGE_BASE_URL || 'http://localhost:3000'

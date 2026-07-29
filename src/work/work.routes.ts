@@ -18,13 +18,13 @@ const withAccountFeature = (
 };
 
 export default (): express.Router => {
-    router.use(withAccountFeature('master_work_order', orderRoutes));
-    router.use(withAccountFeature('master_library', orderTemplateRoutes));
-    router.use(withAccountFeature('master_work_request', requestRoutes));
+    router.use(withAccountFeature('work_order', orderRoutes));
+    router.use(withAccountFeature('work_order_templates', orderTemplateRoutes));
+    router.use(withAccountFeature('work_request', requestRoutes));
     const instructionRouter = express.Router();
-    instructionRouter.use(hasAnyAccountFeature(['master_asset', 'master_location', 'master_work_order']));
+    instructionRouter.use(hasAnyAccountFeature(['asset', 'location', 'work_order']));
     instructionsRoutes(instructionRouter);
     router.use(instructionRouter);
-    router.use(withAccountFeature('master_library', procedureRoutes));
+    router.use(withAccountFeature('procedures', procedureRoutes));
     return router;
 }

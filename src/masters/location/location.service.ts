@@ -14,6 +14,7 @@ import { mapUserToLocationService } from '../../transaction/mapUserLocation/user
 import { mapUserToAssetService, updateLocationAssetMapping } from '../../transaction/mapUserAsset/userAsset.service';
 
 import { withTransaction } from "../../utils/transaction.helper";
+import { subscriptionLimitService } from "../company/subscriptionLimit.service";
 
 class LocationService {
   async getLocationsList(match: any) {
@@ -199,6 +200,7 @@ class LocationService {
   }
 
   async insertLocation(body: any) {
+    await subscriptionLimitService.assertCanCreate(body.account_id, 'location');
     const newLocation: any = new LocationModel(body);
     newLocation.top_level_location_id = newLocation.top_level ? newLocation._id as mongoose.Types.ObjectId : body.top_level_location_id;
     body.parent_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
@@ -298,6 +300,7 @@ class LocationService {
   async cloneLocationNode(source: any, user_id: any, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any): Promise<any> {
     return await withTransaction(async (innerSession) => {
       const activeSession = session || innerSession;
+      await subscriptionLimitService.assertCanCreate(account_id, 'location', 1, activeSession);
       const userMappings = await mapUserToLocationService.getDataByLocationId(source._id.toString());
       const userList = userMappings.map((u: any) => u.userId);
       const { _id, id, createdAt, updatedAt, ...rest } = source;

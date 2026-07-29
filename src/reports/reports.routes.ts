@@ -8,12 +8,12 @@ const router = express.Router();
 export default (): express.Router => {
     router.use(rateLimiter.reportLimiter);
     const assetReportRouter = express.Router();
-    assetReportRouter.use(hasAccountFeature('master_asset'));
+    assetReportRouter.use(hasAccountFeature('report_asset'));
     assetRoutes(assetReportRouter);
     router.use(assetReportRouter);
 
     const locationReportRouter = express.Router();
-    locationReportRouter.use(hasAccountFeature('master_location'));
+    locationReportRouter.use(hasAccountFeature('location_report'));
     locationRoutes(locationReportRouter);
     router.use(locationReportRouter);
     return router;
