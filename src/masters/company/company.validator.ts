@@ -26,10 +26,6 @@ export const companyValidator = [
     .isIn(COOKIES_ENUM)
     .withMessage('Invalid cookie status'),
 
-  body('redis_status')
-    .optional()
-    .isIn(COOKIES_ENUM)
-    .withMessage('Invalid redis status'),
 
   body('encrypt_payload')
     .optional()

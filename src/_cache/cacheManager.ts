@@ -8,7 +8,6 @@
 
 import { RedisUtils } from '../utils/redis.service';
 import { isRedisReady } from '../_config/redis';
-import { accountFeatureService } from '../masters/company/accountFeature.service';
 
 export type CacheMissLoader<T> = () => Promise<T>;
 
@@ -117,12 +116,6 @@ class CacheManagerService {
     ttl: number,
     loader: CacheMissLoader<T>
   ): Promise<GetOrSetResult<T>> {
-    const isEnabled = await accountFeatureService.isRedisEnabledForAccount(accountId);
-    if (!isEnabled) {
-      const value = await loader();
-      return { value, hit: false };
-    }
-
     return this.getOrSet(key, ttl, loader);
   }
 

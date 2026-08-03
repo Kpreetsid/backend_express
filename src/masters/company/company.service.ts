@@ -20,7 +20,6 @@ class CompanyService {
       experience_profile: body.experience_profile || 'standard_account',
       description: body.description,
       cookie_status: body.cookie_status,
-      redis_status: body.redis_status,
       encrypt_payload: body.encrypt_payload,
       encrypt_response: body.encrypt_response,
       account_role_menu: body.account_role_menu || RoleManager.getRoleMenu(body.experience_profile || 'standard_account'),

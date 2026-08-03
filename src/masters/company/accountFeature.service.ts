@@ -6,7 +6,6 @@ const ENABLED_STATUS = 'enabled';
 
 interface AccountFeatureFlags {
   cookieEnabled: boolean;
-  redisEnabled: boolean;
   payloadEncryptionEnabled: boolean;
   responseEncryptionEnabled: boolean;
   accountRoleMenu: Record<string, any>;
@@ -28,7 +27,6 @@ class AccountFeatureService {
     if (cached && cached.expiresAt > Date.now()) {
       return {
         cookieEnabled: cached.cookieEnabled,
-        redisEnabled: cached.redisEnabled,
         payloadEncryptionEnabled: cached.payloadEncryptionEnabled,
         responseEncryptionEnabled: cached.responseEncryptionEnabled,
         accountRoleMenu: cached.accountRoleMenu
@@ -38,10 +36,9 @@ class AccountFeatureService {
     try {
       const account = await AccountModel
         .findOne({ _id: accountId, visible: true, account_status: 'active' })
-        .select('cookie_status redis_status encrypt_payload encrypt_response account_role_menu')
+        .select('cookie_status encrypt_payload encrypt_response account_role_menu')
         .lean<{
           cookie_status?: string;
-          redis_status?: string;
           encrypt_payload?: string;
           encrypt_response?: string;
           account_role_menu?: Record<string, any>;
@@ -50,7 +47,6 @@ class AccountFeatureService {
       const flags: AccountFeatureFlags = account
         ? {
           cookieEnabled: account.cookie_status === ENABLED_STATUS,
-          redisEnabled: account.redis_status === ENABLED_STATUS,
           payloadEncryptionEnabled: account.encrypt_payload === ENABLED_STATUS,
           responseEncryptionEnabled: account.encrypt_response === ENABLED_STATUS,
           accountRoleMenu: account.account_role_menu || {}
@@ -72,11 +68,6 @@ class AccountFeatureService {
   async isCookieEnabledForAccount(accountId: string): Promise<boolean> {
     const flags = await this.getFeaturesForAccount(accountId);
     return flags.cookieEnabled;
-  }
-
-  async isRedisEnabledForAccount(accountId: string): Promise<boolean> {
-    const flags = await this.getFeaturesForAccount(accountId);
-    return flags.redisEnabled;
   }
 
   async isPayloadEncryptionEnabledForAccount(accountId: string): Promise<boolean> {
@@ -114,7 +105,6 @@ class AccountFeatureService {
   private disabledFlags(): AccountFeatureFlags {
     return {
       cookieEnabled: false,
-      redisEnabled: false,
       payloadEncryptionEnabled: false,
       responseEncryptionEnabled: false,
       accountRoleMenu: {}
