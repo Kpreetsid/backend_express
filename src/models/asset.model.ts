@@ -30,7 +30,7 @@ export interface IAsset extends Document {
   alarmType: string[];
   brand: string;
   mountType: string;
-  specificFrequency: string[];
+  // specificFrequency: string[];
   imageNodeData: object;
   minOutputRotation: string;
   maxOutputRotation: string;
@@ -130,7 +130,7 @@ const assetSchema = new Schema<IAsset>(
     maxInputRotation: { type: String, trim: true },
     rotation_type: { type: String, trim: true },
     mountType: { type: String, trim: true },
-    specificFrequency: { type: [String] },
+    // specificFrequency: { type: [String] },
     minOutputRotation: { type: String, trim: true },
     maxOutputRotation: { type: String, trim: true },
     drivingPulleyDia: { type: String, trim: true },

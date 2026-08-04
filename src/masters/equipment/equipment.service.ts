@@ -744,7 +744,7 @@ class EquipmentService {
         // mountType: fanBlower.mountType,
         // brandMake: fanBlower.brandMake,
         // mounting: fanBlower.mounting,
-        bearingType: fanBlower.bearingType,
+        // bearingType: fanBlower.bearingType,
         // bladeCount: fanBlower.bladeCount,
         // minInputRotation: fanBlower.minInputRotation,
         // maxInputRotation: fanBlower.maxInputRotation,
