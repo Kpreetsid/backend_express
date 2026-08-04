@@ -23,7 +23,12 @@ const MotorSchema = new mongoose.Schema({
     minRotation: { type: Number },
     maxRotation: { type: Number },
     rotationUnit: { type: String },
-    powerRating: { type: Number }
+    powerRating: { type: Number },
+    motorRatedEfficiencyPercent: { type: Number },
+    vfdDriven: { type: Boolean },
+    ratedCurrentA: { type: Number },
+    ratedVoltageV: { type: Number },
+    nominalPowerFactor: { type: Number },
 }, { _id: false });
 
 const FlexibleSchema = new mongoose.Schema({
@@ -53,14 +58,14 @@ const GearboxSchema = new mongoose.Schema({
     minOutputRotation: { type: Number },
     maxOutputRotation: { type: Number },
     noStage: { type: String },
-    stage_1st_driving_teeth: { type: Number },
-    stage_1st_driven_teeth: { type: Number },
-    stage_2nd_driving_teeth: { type: Number },
-    stage_2nd_driven_teeth: { type: Number },
-    stage_3rd_driving_teeth: { type: Number },
-    stage_3rd_driven_teeth: { type: Number },
-    stage_4th_driving_teeth: { type: Number },
-    stage_4th_driven_teeth: { type: Number }
+    shaft_1_driving_teeth: { type: Number },
+    shaft_2_driving_teeth: { type: Number },
+    shaft_2_driven_teeth: { type: Number },
+    shaft_3_driving_teeth: { type: Number },
+    shaft_3_driven_teeth: { type: Number },
+    shaft_4_driving_teeth: { type: Number },
+    shaft_4_driven_teeth: { type: Number },
+    shaft_5_driven_teeth: { type: Number }
 }, { _id: false });
 
 const FansBlowersSchema = new mongoose.Schema({
@@ -85,7 +90,14 @@ const PumpSchema = new mongoose.Schema({
     impellerBladeCount: { type: Number },
     minRotation: { type: Number },
     maxRotation: { type: Number },
-    specificFreq: [String]
+    specificFreq: [String],
+    ratedFlowM3h: { type: Number },
+    ratedHeadM: { type: Number },
+    bepFlowM3h: { type: Number },
+    bepHeadM: { type: Number },
+    bepEfficiencyPercent: { type: Number },
+    minimumContinuousStableFlowM3h: { type: Number },
+    motorToPumpSpeedRatio: { type: Number }
 }, { _id: false });
 
 const CompressorSchema = new mongoose.Schema({

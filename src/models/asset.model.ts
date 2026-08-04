@@ -30,7 +30,7 @@ export interface IAsset extends Document {
   alarmType: string[];
   brand: string;
   mountType: string;
-  specificFrequency: string[];
+  // specificFrequency: string[];
   imageNodeData: object;
   minOutputRotation: string;
   maxOutputRotation: string;
@@ -64,27 +64,31 @@ export interface IAsset extends Document {
   image_path: string;
   noStages: number;
   qr_code: string;
-  stage_1st_driving_teeth?: number,
-  stage_1st_driven_teeth?: number,
-  stage_2nd_driving_teeth?: number,
-  stage_2nd_driven_teeth?: number,
-  stage_3rd_driving_teeth?: number,
-  stage_3rd_driven_teeth?: number,
-  stage_4th_driving_teeth?: number,
-  stage_4th_driven_teeth?: number,
-  stage_5th_driving_teeth?: number,
-  stage_5th_driven_teeth?: number,
-  stage_6th_driving_teeth?: number,
-  stage_6th_driven_teeth?: number,
-  stage_7th_driving_teeth?: number,
-  stage_7th_driven_teeth?: number,
-  stage_8th_driving_teeth?: number,
-  stage_8th_driven_teeth?: number,
+  shaft_1_driving_teeth?: number,
+  shaft_2_driving_teeth?: number,
+  shaft_2_driven_teeth?: number,
+  shaft_3_driving_teeth?: number,
+  shaft_3_driven_teeth?: number,
+  shaft_4_driving_teeth?: number,
+  shaft_4_driven_teeth?: number,
+  shaft_5_driven_teeth?: number,
   isBuzzerActive: boolean,
   snoozeAlarm?: boolean,
   snoozeValue?: number,
   createdBy: ObjectId;
   updatedBy: ObjectId;
+  motorRatedEfficiencyPercent?: number;
+  vfdDriven?: boolean;
+  ratedCurrentA?: number;
+  ratedVoltageV?: number;
+  nominalPowerFactor?: number;
+  ratedFlowM3h?: number;
+  ratedHeadM?: number;
+  bepFlowM3h?: number;
+  bepHeadM?: number;
+  bepEfficiencyPercent?: number;
+  minimumContinuousStableFlowM3h?: number;
+  motorToPumpSpeedRatio?: number
 }
 
 const assetSchema = new Schema<IAsset>(
@@ -126,7 +130,7 @@ const assetSchema = new Schema<IAsset>(
     maxInputRotation: { type: String, trim: true },
     rotation_type: { type: String, trim: true },
     mountType: { type: String, trim: true },
-    specificFrequency: { type: [String] },
+    // specificFrequency: { type: [String] },
     minOutputRotation: { type: String, trim: true },
     maxOutputRotation: { type: String, trim: true },
     drivingPulleyDia: { type: String, trim: true },
@@ -163,28 +167,32 @@ const assetSchema = new Schema<IAsset>(
     brandMake: { type: String, trim: true },
     powerRating: { type: String, trim: true },
     noStages: { type: Number },
-    stage_1st_driving_teeth: { type: Number },
-    stage_1st_driven_teeth: { type: Number },
-    stage_2nd_driving_teeth: { type: Number },
-    stage_2nd_driven_teeth: { type: Number },
-    stage_3rd_driving_teeth: { type: Number },
-    stage_3rd_driven_teeth: { type: Number },
-    stage_4th_driving_teeth: { type: Number },
-    stage_4th_driven_teeth: { type: Number },
-    stage_5th_driving_teeth: { type: Number },
-    stage_5th_driven_teeth: { type: Number },
-    stage_6th_driving_teeth: { type: Number },
-    stage_6th_driven_teeth: { type: Number },
-    stage_7th_driving_teeth: { type: Number },
-    stage_7th_driven_teeth: { type: Number },
-    stage_8th_driving_teeth: { type: Number },
-    stage_8th_driven_teeth: { type: Number },
+    shaft_1_driving_teeth: { type: Number },
+    shaft_2_driving_teeth: { type: Number },
+    shaft_2_driven_teeth: { type: Number },
+    shaft_3_driving_teeth: { type: Number },
+    shaft_3_driven_teeth: { type: Number },
+    shaft_4_driving_teeth: { type: Number },
+    shaft_4_driven_teeth: { type: Number },
+    shaft_5_driven_teeth: { type: Number },
     isBuzzerActive: { type: Boolean, default: false },
     snoozeAlarm: { type: Boolean, default: false },
     snoozeValue: { type: Number, default: 0 },
     visible: { type: Boolean, default: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "UserModel" },
     updatedBy: { type: Schema.Types.ObjectId, ref: "UserModel" },
+    motorRatedEfficiencyPercent: { type: Number },
+    vfdDriven: { type: Boolean },
+    ratedCurrentA: { type: Number },
+    ratedVoltageV: { type: Number },
+    nominalPowerFactor: { type: Number },
+    ratedFlowM3h: { type: Number },
+    ratedHeadM: { type: Number },
+    bepFlowM3h: { type: Number },
+    bepHeadM: { type: Number },
+    bepEfficiencyPercent: { type: Number },
+    minimumContinuousStableFlowM3h: { type: Number },
+    motorToPumpSpeedRatio: { type: Number }
   },
   {
     collection: ASSET_COLLECTION_NAME,
