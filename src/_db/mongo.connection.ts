@@ -29,21 +29,15 @@ export class MongoConnection {
         : "";
       const query = new URLSearchParams({ retryWrites: "false" });
       query.set("retryWrites", String(database.retryWrites));
-      query.set("readPreference", database.readPreference);
       query.set("directConnection", String(database.directConnection));
 
       if (hasCredentials && database.authSource) {
         query.set("authSource", database.authSource);
       }
-      if (database.replicaSet) {
-        query.set("replicaSet", database.replicaSet);
-      }
-
       const mongoUri = `mongodb://${credentials}${buildHostList()}/${database.databaseName}?${query.toString()}`;
-      const isSecondaryRead = database.readPreference === "secondary" || database.readPreference === "secondaryPreferred";
       await mongoose.connect(mongoUri, {
-        autoIndex: isSecondaryRead ? false : database.autoIndex,
-        autoCreate: isSecondaryRead ? false : true, 
+        autoIndex: database.autoIndex,
+        autoCreate: true,
         connectTimeoutMS: database.connectTimeoutMS,
         maxPoolSize: database.maxPoolSize,
         minPoolSize: database.minPoolSize,

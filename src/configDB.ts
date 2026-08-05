@@ -45,13 +45,6 @@ const envNumber = (value: string | undefined, defaultValue: number): number => {
   return Number.isFinite(parsed) ? parsed : defaultValue;
 };
 
-const envReadPreference = (value: string | undefined, defaultValue: string): string => {
-  const normalized = envString(value, defaultValue);
-  return ['primary', 'primaryPreferred', 'secondary', 'secondaryPreferred', 'nearest'].includes(normalized)
-    ? normalized
-    : defaultValue;
-};
-
 export const database = {
   hosts: envString(process.env.DB_HOSTS, ''),
   host: envString(process.env.DB_HOST, 'localhost'),
@@ -62,9 +55,7 @@ export const database = {
   authSource: process.env.DB_AUTH_SOURCE || 'admin',
   maxPoolSize: envNumber(process.env.DB_MAX_POOL_SIZE, 100),
   minPoolSize: envNumber(process.env.DB_MIN_POOL_SIZE, 10),
-  replicaSet: envString(process.env.DB_REPLICA_SET, ''),
   directConnection: envBoolean(process.env.DB_DIRECT_CONNECTION, false),
-  readPreference: envReadPreference(process.env.DB_READ_PREFERENCE, 'secondaryPreferred'),
   retryWrites: envBoolean(process.env.DB_RETRY_WRITES, false),
   autoIndex: envBoolean(process.env.DB_AUTO_INDEX, environment.type !== 'production'),
   connectTimeoutMS: envNumber(process.env.DB_CONNECT_TIMEOUT_MS, 10000),
