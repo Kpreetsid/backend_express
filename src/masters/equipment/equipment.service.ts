@@ -75,7 +75,7 @@ class EquipmentService {
   };
 
   async getEquipmentTreeData(match: any): Promise<any> {
-    const asset_type_list: string[] = ["Rigid", "Flexible"];
+    const asset_type_list: string[] = ["Rigid", "Flexible", "Belt_Pulley"];
     match.asset_type = { $nin: asset_type_list };
     const allAssets = await AssetModel.find(match).lean();
     if (!allAssets.length) {
