@@ -25,8 +25,8 @@ jobs:
 
       - name: Validate and build API
         run: |
-          npm run check:enterprise
-          npm run build
+          npm run typecheck
+          npm run start
 
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
