@@ -40,9 +40,10 @@ export class MongoConnection {
       }
 
       const mongoUri = `mongodb://${credentials}${buildHostList()}/${database.databaseName}?${query.toString()}`;
-
+      const isSecondaryRead = database.readPreference === "secondary" || database.readPreference === "secondaryPreferred";
       await mongoose.connect(mongoUri, {
-        autoIndex: database.autoIndex,
+        autoIndex: isSecondaryRead ? false : database.autoIndex,
+        autoCreate: isSecondaryRead ? false : true, 
         connectTimeoutMS: database.connectTimeoutMS,
         maxPoolSize: database.maxPoolSize,
         minPoolSize: database.minPoolSize,
