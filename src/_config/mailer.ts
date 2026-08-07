@@ -158,12 +158,11 @@ export class MailerService {
         }
       );
       await this.send({to: user.email, subject: 'Verify your email address for Presage CMMS', html});
-      await passwordResetAuthorizationService.issueVerificationCode({
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        code: otp
-      });
+      await VerificationCodeModel.findOneAndUpdate(
+        { email: user.email },
+        { firstName: user.firstName, code: otp, createdAt: new Date() },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
       return true;
     } catch {
       return false;
