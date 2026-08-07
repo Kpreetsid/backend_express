@@ -9,12 +9,12 @@ class ProcedureController {
     try {
       const user = get(req, 'user', {}) as IUser;
       const match: any = { account_id: user.account_id };
-      const search = String(req.query['search'] || '').trim();
-      const category = String(req.query['category'] || '').trim();
-      const tag = String(req.query['tag'] || '').trim();
-      const locationId = req.query['location_id'];
-      const assetId = req.query['asset_id'];
-      const includeHistory = String(req.query['include_history'] || '').trim() === 'true';
+      const search = String(req.query.search || '').trim();
+      const category = String(req.query.category || '').trim();
+      const tag = String(req.query.tag || '').trim();
+      const locationId = req.query.location_id;
+      const assetId = req.query.asset_id;
+      const includeHistory = String(req.query.include_history || '').trim() === 'true';
       if (search && search !== 'undefined' && search !== 'null') {
         match.$or = [
           { name: { $regex: search, $options: 'i' } },
@@ -45,7 +45,7 @@ class ProcedureController {
   async getById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, 'user', {}) as IUser;
-      const procedureId = helperService.validateObjectId(String(req.params['id']));
+      const procedureId = helperService.validateObjectId(String(req.params.id));
       const data = await procedureService.getProcedureById(String(procedureId), user.account_id);
       if (!data) {
         throw Object.assign(new Error('Procedure not found'), { status: 404 });
@@ -69,7 +69,7 @@ class ProcedureController {
   async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, 'user', {}) as IUser;
-      const data = await procedureService.updateProcedure(String(req.params['id']), req.body, user.account_id, user._id);
+      const data = await procedureService.updateProcedure(String(req.params.id), req.body, user.account_id, user._id);
       if (!data) {
         throw Object.assign(new Error('Procedure not found'), { status: 404 });
       }
@@ -82,7 +82,7 @@ class ProcedureController {
   async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, 'user', {}) as IUser;
-      const data = await procedureService.removeProcedure(String(req.params['id']), user.account_id, user._id);
+      const data = await procedureService.removeProcedure(String(req.params.id), user.account_id, user._id);
       if (!data) {
         throw Object.assign(new Error('Procedure not found'), { status: 404 });
       }

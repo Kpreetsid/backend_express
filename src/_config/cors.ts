@@ -1,5 +1,11 @@
 import { CorsOptions } from 'cors';
-import { corsConfig } from '../configDB';
+
+const splitOrigins = (value?: string): string[] => {
+  return (value || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+};
 
 const defaultAllowedOrigins = [
   'http://localhost:4200',
@@ -8,8 +14,13 @@ const defaultAllowedOrigins = [
 ];
 
 export const getAllowedOrigins = (): string[] => {
-  const configured = corsConfig.allowedOrigins;
+  const configured = splitOrigins(process.env.ALLOWED_ORIGINS || process.env.SOCKET_CORS_ORIGIN);
   if (configured.length) return Array.from(new Set([...configured, ...defaultAllowedOrigins]));
+
+  if (process.env.NODE_ENV === 'production') {
+    return defaultAllowedOrigins;
+  }
+
   return defaultAllowedOrigins;
 };
 
@@ -19,7 +30,7 @@ export const isOriginAllowed = (origin?: string): boolean => {
   const allowedOrigins = getAllowedOrigins();
   if (allowedOrigins.includes(origin)) return true;
 
-  if (corsConfig.allowDevelopmentLocalhost) {
+  if (process.env.NODE_ENV !== 'production') {
     return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
   }
 

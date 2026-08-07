@@ -1,4 +1,3 @@
-import { applicationLogger } from '../../observability/logger';
 import { Request, Response, NextFunction } from 'express';
 import { scheduleService } from './schedule.service';
 import { IUser } from '../../models/user.model';
@@ -59,7 +58,7 @@ class ScheduleController {
       }
       res.status(200).json({ status: true, message: "Schedule fetched successfully", data });
     } catch (error) {
-      applicationLogger.error(error);
+      console.error(error);
       next(error);
     }
   };
@@ -83,7 +82,7 @@ class ScheduleController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('Schedule not found'), { status: 404 });
       }
-      const data = await scheduleService.updateSchedules(id, body, account_id, user_id);
+      const data = await scheduleService.updateSchedules(id, body, user_id);
       res.status(200).json({ status: true, message: "Schedule updated successfully", data });
     } catch (error) {
       next(error);
@@ -98,7 +97,7 @@ class ScheduleController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('Schedule not found'), { status: 404 });
       }
-      const data = await scheduleService.removeSchedules(id, account_id, user_id);
+      const data = await scheduleService.removeSchedules(id, user_id);
       if (!data) {
         throw Object.assign(new Error('Schedule not deleted'), { status: 404 });
       }

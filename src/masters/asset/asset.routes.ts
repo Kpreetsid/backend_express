@@ -8,7 +8,7 @@ import { validate } from '../../middlewares/validator.middleware';
 export default (router: express.Router) => {
     const assetRouter = express.Router();
     assetRouter.get('/buzzer', assetController.getBuzzerAssetList);
-    assetRouter.patch('/buzzer/:location_id', validateParam("location_id"), hasRolePermission('asset', 'config_alarm'), assetController.setBuzzerAssetList);
+    assetRouter.patch('/buzzer/:location_id', validateParam("location_id"), assetController.setBuzzerAssetList);
     assetRouter.get('/', assetController.getAssets);
     assetRouter.get('/sensor-list', assetController.getAssetSensorList);
     assetRouter.get('/tree', assetController.getAssetTree);

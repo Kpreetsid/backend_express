@@ -1,9 +1,8 @@
 node_modules
 dist
-coverage
 uploadFiles
 .vscode
 .agent
+package-lock.json
 *.log
 *.env
-package-lock.json

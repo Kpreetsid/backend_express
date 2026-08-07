@@ -4,7 +4,6 @@ import { PartsTypeModel } from "../../models/parts-types.model";
 import { helperService } from "../../utils/helper";
 import { AssetModel } from "../../models/asset.model";
 import { LocationModel } from "../../models/location.model";
-import mongoose from "mongoose";
 
 class ScheduleService {
     private normalizeSchedulePayload(body: any): any {
@@ -85,7 +84,7 @@ class ScheduleService {
 
                 if (item.work_order?.parts?.length) {
                     item.work_order.parts = await Promise.all(item.work_order.parts.map(async (part: any) => {
-                        if (part.part_type && mongoose.Types.ObjectId.isValid(part.part_type)) {
+                        if (part.part_type && helperService.validateObjectId(part.part_type)) {
                             const partType = await PartsTypeModel.findOne({ _id: part.part_type, visible: true }).select("_id name description").lean();
                             if (partType) {
                                 part.partTypeData = { ...partType, id: partType._id.toString() };
@@ -108,27 +107,15 @@ class ScheduleService {
         return data[0];
     };
 
-    async updateSchedules(id: any, body: any, account_id: any, user_id: any): Promise<IScheduleMaster | any> {
+    async updateSchedules(id: any, body: any, user_id: any): Promise<IScheduleMaster | any> {
         const normalizedBody = this.normalizeSchedulePayload(body);
-        const scheduleId = helperService.validateObjectId(String(id));
-        const updated = await SchedulerModel.findOneAndUpdate(
-            { _id: scheduleId, account_id, visible: true },
-            { ...normalizedBody, updatedBy: user_id },
-            { returnDocument: 'after' }
-        );
-        if (!updated) {
-            throw Object.assign(new Error('Schedule not found'), { status: 404 });
-        }
-        const data = await this.getSchedules({ _id: scheduleId, account_id, visible: true });
+        await SchedulerModel.findByIdAndUpdate(id, { ...normalizedBody, updatedBy: user_id }, { returnDocument: 'after' });
+        const data = await this.getSchedules({ _id: helperService.validateObjectId(String(id)) });
         return data[0];
     };
 
-    async removeSchedules(id: any, account_id: any, user_id: any): Promise<IScheduleMaster | null> {
-        return await SchedulerModel.findOneAndUpdate(
-            { _id: helperService.validateObjectId(String(id)), account_id, visible: true },
-            { updatedBy: user_id, visible: false },
-            { returnDocument: 'after' }
-        );
+    async removeSchedules(id: any, user_id: any): Promise<IScheduleMaster | null> {
+        return await SchedulerModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
     };
 }
 

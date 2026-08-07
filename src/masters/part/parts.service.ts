@@ -10,7 +10,6 @@ import { PartsTypeModel } from "../../models/parts-types.model";
 import { PartHistoryAction, PartHistoryModel } from "../../models/partHistory.model";
 import { LocationModel } from "../../models/location.model";
 import { UserModel } from "../../models/user.model";
-import { assertSyncVersion, createSyncConflict } from "../../utils/sync-concurrency";
 
 interface InventoryAdjustmentResult {
   warnings: {
@@ -74,11 +73,8 @@ class PartsService {
   }
 
   private getIssuedQuantity(part: any, status?: string): number {
-    const hasExplicitActual = part?.actualQuantity !== undefined
-      && part?.actualQuantity !== null
-      && String(part.actualQuantity).trim() !== '';
     const explicitActual = Number(part?.actualQuantity);
-    if (hasExplicitActual && Number.isFinite(explicitActual) && explicitActual >= 0) {
+    if (Number.isFinite(explicitActual) && explicitActual > 0) {
       return explicitActual;
     }
     return this.isCompletedStatus(status) ? this.getEstimatedQuantity(part) : 0;
@@ -118,27 +114,23 @@ class PartsService {
       return;
     }
 
-    const normalizedQuantity = Number(quantity);
-    const normalizedStockBefore = Number(stock_before);
-    const normalizedStockAfter = Number(stock_after);
-    const historyEntry = new PartHistoryModel({
+    await PartHistoryModel.create([{
       account_id,
       part_id: part._id,
       part_name: part.part_name || '',
       part_number: part.part_number || '',
-      ...(part.location_id ? { location_id: part.location_id } : {}),
-      location_name: part.location?.location_name || metadata?.['location_name'] || '',
+      location_id: part.location_id || null,
+      location_name: part.location?.location_name || metadata?.location_name || '',
       action_type,
-      ...(Number.isFinite(normalizedQuantity) ? { quantity: normalizedQuantity } : {}),
-      ...(Number.isFinite(normalizedStockBefore) ? { stock_before: normalizedStockBefore } : {}),
-      ...(Number.isFinite(normalizedStockAfter) ? { stock_after: normalizedStockAfter } : {}),
+      quantity: Number.isFinite(Number(quantity)) ? Number(quantity) : undefined,
+      stock_before: Number.isFinite(Number(stock_before)) ? Number(stock_before) : undefined,
+      stock_after: Number.isFinite(Number(stock_after)) ? Number(stock_after) : undefined,
       note: String(note || '').trim(),
       metadata: metadata || {},
-      ...(user?._id ? { actor_id: user._id } : {}),
+      actor_id: user?._id || null,
       actor_name: this.formatMovementActor(user),
       visible: true
-    });
-    await historyEntry.save(session ? { session } : {});
+    }], session ? { session } : undefined);
   }
 
   private getChangedPartFields(previousPart: any, nextPayload: any): string[] {
@@ -161,7 +153,7 @@ class PartsService {
       const beforeValue = previousPart?.[field];
       const afterValue = nextPayload?.[field];
       return String(beforeValue ?? '') !== String(afterValue ?? '');
-    }).map((field) => fieldMap[field]!);
+    }).map((field) => fieldMap[field]);
   }
 
   private normalizePartPayload(body: any): any {
@@ -601,7 +593,7 @@ class PartsService {
     return result;
   }
 
-  async updatePartById(id: string, body: IPart, user: any, account_id: any, expectedVersion?: number) {
+  async updatePartById(id: string, body: IPart, user: any, account_id: any) {
     return await withTransaction(async (session) => {
       const normalizedBody: any = this.normalizePartPayload(body);
       const existingPart = await PartsModel.findOne({
@@ -613,18 +605,11 @@ class PartsService {
       if (!existingPart) {
         return null;
       }
-      assertSyncVersion(existingPart, expectedVersion);
 
       const changedFields = this.getChangedPartFields(existingPart.toObject(), normalizedBody);
       normalizedBody.updatedBy = user?._id || user;
 
-      const updateFilter: any = { _id: id, account_id, visible: true };
-      if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
-      delete normalizedBody.sync_version;
-      const updatedPart = await PartsModel.findOneAndUpdate(updateFilter, normalizedBody, { returnDocument: 'after', session });
-      if (!updatedPart && expectedVersion !== undefined) {
-        throw createSyncConflict(await PartsModel.findById(id).session(session));
-      }
+      const updatedPart = await PartsModel.findByIdAndUpdate(id, normalizedBody, { returnDocument: 'after', session });
 
       if (updatedPart && changedFields.length > 0) {
         await this.createPartHistoryEntry({
@@ -716,12 +701,12 @@ class PartsService {
         await part.save({ session });
         await destinationPart.save({ session });
 
-        const transferMovements = [
-          new InventoryMovementModel({
+        await InventoryMovementModel.create([
+          {
             account_id,
             part_id: part._id,
             part_name: part.part_name,
-            ...(part.location_id ? { location_id: part.location_id } : {}),
+            location_id: part.location_id,
             movement_type: 'transfer-out',
             quantity: movementQuantity,
             stock_before: stockBefore,
@@ -730,12 +715,12 @@ class PartsService {
             createdBy: user?._id || user,
             createdByName: this.formatMovementActor(user),
             visible: true
-          }),
-          new InventoryMovementModel({
+          },
+          {
             account_id,
             part_id: destinationPart._id,
             part_name: destinationPart.part_name,
-            ...(destinationPart.location_id ? { location_id: destinationPart.location_id } : {}),
+            location_id: destinationPart.location_id,
             movement_type: 'transfer-in',
             quantity: movementQuantity,
             stock_before: destinationStockBefore,
@@ -744,11 +729,8 @@ class PartsService {
             createdBy: user?._id || user,
             createdByName: this.formatMovementActor(user),
             visible: true
-          })
-        ];
-        for (const movement of transferMovements) {
-          await movement.save({ session });
-        }
+          }
+        ], { session });
 
         await this.createPartHistoryEntry({
           account_id,
@@ -812,11 +794,11 @@ class PartsService {
       await part.save({ session });
 
       if (movementQuantity > 0) {
-        const movement = new InventoryMovementModel({
+        await InventoryMovementModel.create([{
           account_id,
           part_id: part._id,
           part_name: part.part_name,
-          ...(part.location_id ? { location_id: part.location_id } : {}),
+          location_id: part.location_id,
           movement_type: 'adjust',
           quantity: movementQuantity,
           stock_before: stockBefore,
@@ -825,8 +807,7 @@ class PartsService {
           createdBy: user?._id || user,
           createdByName: this.formatMovementActor(user),
           visible: true
-        });
-        await movement.save({ session });
+        }], { session });
 
         const actionType: PartHistoryAction = mode === 'remove'
           ? 'stock-removed'
@@ -879,16 +860,23 @@ class PartsService {
       if (oldQty === newQty) continue;
       const part = await PartsModel.findById(partId);
       if (!part) continue;
+      if (oldQty > 0 && newQty === 0) {
+        part.quantity += oldQty;
+      }
+      if (oldQty === 0 && newQty > 0) {
+        if (part.quantity < newQty) {
+          throw Object.assign(new Error(`Not enough quantity for ${part.part_name}`), { status: 400 });
+        }
+        part.quantity -= newQty;
+      }
       if (oldQty > newQty) {
         const diff = oldQty - newQty;
         part.quantity += diff;
-      } else {
+      }
+      if (newQty > oldQty) {
         const diff = newQty - oldQty;
         if (part.quantity < diff) {
-          const message = oldQty === 0
-            ? `Not enough quantity for ${part.part_name}`
-            : `Insufficient inventory for ${part.part_name}`;
-          throw Object.assign(new Error(message), { status: 400 });
+          throw Object.assign(new Error(`Insufficient inventory for ${part.part_name}`), { status: 400 });
         }
         part.quantity -= diff;
       }
@@ -1071,12 +1059,13 @@ class PartsService {
     if (!part) {
       throw Object.assign(new Error('Part not found'), { status: 404 });
     }
+
     const systemQuantity = Number(part.quantity || 0);
     const countedQuantity = Number(body.counted_quantity || 0);
     const discrepancyQuantity = countedQuantity - systemQuantity;
     const discrepancyPercent = systemQuantity > 0 ? Number((((discrepancyQuantity) / systemQuantity) * 100).toFixed(2)) : (countedQuantity > 0 ? 100 : 0);
 
-    const count = await new CycleCountModel({
+    const count = await CycleCountModel.create({
       account_id,
       part_id: part._id,
       part_name: part.part_name,
@@ -1091,7 +1080,7 @@ class PartsService {
       reason: String(body.reason || '').trim(),
       createdBy: user._id,
       createdByName: this.formatMovementActor(user)
-    }).save();
+    });
 
     await this.createPartHistoryEntry({
       account_id,
@@ -1148,11 +1137,11 @@ class PartsService {
         const stockBefore = Number(part.quantity || 0);
         const stockAfter = Number(count.counted_quantity || 0);
         if (stockBefore !== stockAfter) {
-          const movement = new InventoryMovementModel({
+          await InventoryMovementModel.create([{
             account_id,
             part_id: part._id,
             part_name: part.part_name,
-            ...(part.location_id ? { location_id: part.location_id } : {}),
+            location_id: part.location_id,
             movement_type: 'count-adjustment',
             quantity: Math.abs(stockAfter - stockBefore),
             stock_before: stockBefore,
@@ -1161,8 +1150,7 @@ class PartsService {
             createdBy: user._id,
             createdByName: this.formatMovementActor(user),
             visible: true
-          });
-          await movement.save({ session });
+          }], { session });
         }
 
         part.quantity = stockAfter;
@@ -1310,8 +1298,7 @@ class PartsService {
       .filter((suggestion: any) => suggestion.recommended_order_qty > 0 || suggestion.open_demand > suggestion.quantity)
       .sort((first: any, second: any) => {
         const urgencyRank: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-        return (urgencyRank[first.urgency] ?? Number.MAX_SAFE_INTEGER) - (urgencyRank[second.urgency] ?? Number.MAX_SAFE_INTEGER)
-          || second.recommended_order_qty - first.recommended_order_qty;
+        return urgencyRank[first.urgency] - urgencyRank[second.urgency] || second.recommended_order_qty - first.recommended_order_qty;
       });
   }
 }

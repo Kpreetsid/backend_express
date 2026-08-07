@@ -19,13 +19,6 @@ permissions:
     mode: 644
     type:
       - file
-  - object: /home/ubuntu/express_cmms/scripts
-    pattern: "*.sh"
-    owner: ubuntu
-    group: ubuntu
-    mode: 755
-    type:
-      - file
 
 hooks:
   ApplicationStop:
@@ -34,6 +27,9 @@ hooks:
       runas: ubuntu
 
   BeforeInstall:
+    - location: scripts/install_dependencies.sh
+      timeout: 300
+      runas: root
     - location: scripts/cleanup.sh
       timeout: 60
       runas: ubuntu
@@ -41,9 +37,6 @@ hooks:
   AfterInstall:
     - location: scripts/install_npm_packages.sh
       timeout: 600
-      runas: ubuntu
-    - location: scripts/run_database_migrations.sh
-      timeout: 300
       runas: ubuntu
 
   ApplicationStart:

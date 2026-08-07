@@ -39,40 +39,20 @@ class PostService {
     return await newPost.save();
   };
 
-  async updatePostById(id: any, body: any, user_id: any, account_id: any): Promise<any> {
-    const {
-      _id: _ignoredId,
-      id: _ignoredPublicId,
-      account_id: _ignoredAccountId,
-      createdBy: _ignoredCreatedBy,
-      createdAt: _ignoredCreatedAt,
-      updatedAt: _ignoredUpdatedAt,
-      user: _ignoredUser,
-      locations: _ignoredLocations,
-      ...mutableBody
-    } = body;
-    return await PostModel.findOneAndUpdate(
-      { _id: id, account_id, visible: true },
-      { ...mutableBody, updatedBy: user_id },
-      { returnDocument: 'after' }
-    );
+  async updatePostById(id: any, body: any, user_id: any): Promise<any> {
+    return await PostModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
-  async removePostById(id: any, user_id: any, account_id: any): Promise<any> {
-    return await PostModel.findOneAndUpdate(
-      { _id: id, account_id, visible: true },
-      { visible: false, updatedBy: user_id },
-      { returnDocument: 'after' }
-    );
+  async removePostById(id: any, user_id: any): Promise<any> {
+    return await PostModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
-  async likePost(id: any, user_id: any, account_id: any): Promise<any> {
-    const post = await PostModel.findOne({ _id: id, account_id, visible: true });
+  async likePost(id: any, user_id: any): Promise<any> {
+    const post = await PostModel.findById(id);
     if (!post) throw Object.assign(new Error('Post not found'), { status: 404 });
 
-    const actorId = user_id.toString();
-    const isLiked = post.likes.includes(actorId);
-    const isDisliked = post.dislikes.includes(actorId);
+    const isLiked = post.likes.includes(user_id.toString());
+    const isDisliked = post.dislikes.includes(user_id.toString());
 
     let updateQuery: any = {};
 
@@ -85,20 +65,15 @@ class PostService {
       }
     }
 
-    return await PostModel.findOneAndUpdate(
-      { _id: id, account_id, visible: true },
-      updateQuery,
-      { returnDocument: 'after' }
-    );
+    return await PostModel.findByIdAndUpdate(id, updateQuery, { returnDocument: 'after' });
   };
 
-  async dislikePost(id: any, user_id: any, account_id: any): Promise<any> {
-    const post = await PostModel.findOne({ _id: id, account_id, visible: true });
+  async dislikePost(id: any, user_id: any): Promise<any> {
+    const post = await PostModel.findById(id);
     if (!post) throw Object.assign(new Error('Post not found'), { status: 404 });
 
-    const actorId = user_id.toString();
-    const isLiked = post.likes.includes(actorId);
-    const isDisliked = post.dislikes.includes(actorId);
+    const isLiked = post.likes.includes(user_id.toString());
+    const isDisliked = post.dislikes.includes(user_id.toString());
 
     let updateQuery: any = {};
 
@@ -111,11 +86,7 @@ class PostService {
       }
     }
 
-    return await PostModel.findOneAndUpdate(
-      { _id: id, account_id, visible: true },
-      updateQuery,
-      { returnDocument: 'after' }
-    );
+    return await PostModel.findByIdAndUpdate(id, updateQuery, { returnDocument: 'after' });
   };
 }
 

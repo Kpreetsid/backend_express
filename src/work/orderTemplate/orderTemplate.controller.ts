@@ -8,8 +8,8 @@ class OrderTemplateController {
     try {
       const user = get(req, 'user', {}) as IUser;
       const match: any = { account_id: user.account_id };
-      const search = String(req.query['search'] || '').trim();
-      const maintenanceType = String(req.query['maintenance_type'] || '').trim();
+      const search = String(req.query.search || '').trim();
+      const maintenanceType = String(req.query.maintenance_type || '').trim();
 
       if (search && search !== 'undefined' && search !== 'null') {
         match.$or = [
@@ -33,7 +33,7 @@ class OrderTemplateController {
   async getById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, 'user', {}) as IUser;
-      const data = await orderTemplateService.getTemplateById(String(req.params['id']), user.account_id);
+      const data = await orderTemplateService.getTemplateById(String(req.params.id), user.account_id);
       if (!data) {
         throw Object.assign(new Error('Work order template not found'), { status: 404 });
       }
@@ -56,7 +56,7 @@ class OrderTemplateController {
   async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, 'user', {}) as IUser;
-      const data = await orderTemplateService.updateTemplate(String(req.params['id']), req.body, user.account_id, user._id);
+      const data = await orderTemplateService.updateTemplate(String(req.params.id), req.body, user.account_id, user._id);
       if (!data) {
         throw Object.assign(new Error('Work order template not found'), { status: 404 });
       }
@@ -69,7 +69,7 @@ class OrderTemplateController {
   async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, 'user', {}) as IUser;
-      const data = await orderTemplateService.removeTemplate(String(req.params['id']), user.account_id, user._id);
+      const data = await orderTemplateService.removeTemplate(String(req.params.id), user.account_id, user._id);
       if (!data) {
         throw Object.assign(new Error('Work order template not found'), { status: 404 });
       }

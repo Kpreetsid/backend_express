@@ -1,4 +1,3 @@
-import { applicationLogger } from '../../observability/logger';
 import mongoose from "mongoose";
 import { IWorkOrder, WorkOrderModel } from "../../models/workOrder.model";
 import { IUser, UserModel } from "../../models/user.model";
@@ -21,10 +20,6 @@ import { LocationModel } from "../../models/location.model";
 import { PartsModel } from "../../models/part.model";
 import { PartsTypeModel } from "../../models/parts-types.model";
 import { SOPsModel } from "../../models/sops.model";
-import { assertSyncVersion, createSyncConflict } from "../../utils/sync-concurrency";
-import { randomUUID } from "node:crypto";
-import { queueConfig } from "../../configDB";
-import { createOutboxEvent } from "../../queue/outbox-writer";
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -86,65 +81,6 @@ class OrderService {
 
   constructor() {
     this.mailerService = new MailerService();
-  }
-
-  private async dispatchWorkOrderAssignmentEmails(
-    workOrder: any,
-    assignedUsers: IUser[],
-    createdBy: IUser,
-    session: mongoose.ClientSession,
-    correlationId?: string
-  ): Promise<void> {
-    if (!assignedUsers.length) return;
-
-    if (queueConfig.domainEventOutboxEnabled) {
-      const eventCorrelationId = correlationId || randomUUID();
-      await Promise.all(assignedUsers.map((assignedUser) =>
-        createOutboxEvent({
-          type: 'email.work-order.assigned',
-          version: 1,
-          tenantId: String(createdBy.account_id),
-          actorId: String(createdBy._id),
-          correlationId: eventCorrelationId,
-          entity: {
-            type: 'work-order',
-            id: String(workOrder._id)
-          },
-          payload: {
-            workOrderId: String(workOrder._id),
-            recipientUserId: String(assignedUser._id),
-            createdByUserId: String(createdBy._id)
-          }
-        }, { session })
-      ));
-      return;
-    }
-
-    let enrichedOrder = workOrder;
-    try {
-      const orders = await this.getAllOrders({
-        _id: workOrder._id,
-        account_id: createdBy.account_id,
-        visible: true
-      }, session);
-      enrichedOrder = orders[0] || workOrder;
-    } catch (readError: any) {
-      applicationLogger.warn(
-        'Failed to prepare enriched work order mail payload:',
-        readError?.message || readError
-      );
-    }
-
-    await Promise.all(assignedUsers.map(async (assignedUser) => {
-      try {
-        await this.mailerService.sendWorkOrderMail(enrichedOrder, assignedUser, createdBy);
-      } catch (mailError: any) {
-        applicationLogger.warn(
-          'Failed to send work order assignment mail:',
-          mailError?.message || mailError
-        );
-      }
-    }));
   }
 
   private escapeRegex(value: string = ''): string {
@@ -346,7 +282,7 @@ class OrderService {
         return false;
       }
       return this.hasMeaningfulChange(existingOrder?.[field], updatedOrder?.[field]);
-    }).map((field: string) => fieldLabels[field]!);
+    }).map((field: string) => fieldLabels[field]);
   }
 
   private summarizePartsForAudit(parts: any[] = []): { lineCount: number; plannedQuantity: number; actualQuantity: number } {
@@ -3961,7 +3897,7 @@ class OrderService {
       { $match: scheduleMatch },
       {
         $lookup: {
-          from: AssetModel.collection.name,
+          from: 'asset_master',
           let: { assetId: '$work_order.wo_asset_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$assetId'] }, visible: true } },
@@ -3973,7 +3909,7 @@ class OrderService {
       { $unwind: { path: '$asset', preserveNullAndEmptyArrays: true } },
       {
         $lookup: {
-          from: LocationModel.collection.name,
+          from: 'location_master',
           let: { locationId: '$work_order.wo_location_id' },
           pipeline: [
             { $match: { $expr: { $eq: ['$_id', '$$locationId'] }, visible: true } },
@@ -4099,10 +4035,7 @@ class OrderService {
       if (workOrderMatch.wo_location_id) workRequestMatch.location_id = workOrderMatch.wo_location_id;
       if (workOrderMatch.createdAt) workRequestMatch.createdAt = workOrderMatch.createdAt;
 
-      const workRequestCount = await requestService.countRequests(
-        workOrderMatch.account_id,
-        workRequestMatch
-      );
+      const workRequestCount = await requestService.countRequests(workRequestMatch);
 
       const plannedUnplannedRatio = totalCount ? (plannedCount / totalCount) * 100 : 0;
       const completionRate = totalCount ? (completedOnTimeCount / totalCount) * 100 : 0;
@@ -4114,7 +4047,7 @@ class OrderService {
         planned_unplanned_ratio: Number(plannedUnplannedRatio.toFixed(2))
       };
     } catch (err) {
-      applicationLogger.error({ err: err }, "summaryData error:");
+      console.error("summaryData error:", err);
       throw err;
     }
   };
@@ -4126,12 +4059,7 @@ class OrderService {
     return `WO-${year}${sequence}`;
   };
 
-  async createWorkOrder(
-    body: any,
-    user: IUser,
-    correlationId?: string,
-    existingSession?: mongoose.ClientSession
-  ): Promise<any> {
+  async createWorkOrder(body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
       let normalizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body })));
       this.validateIncomingParts(normalizedBody.parts || []);
@@ -4172,11 +4100,7 @@ class OrderService {
       const procedureSync = await this.syncProcedureEntries(normalizedBody, user.account_id, user, []);
       let linkedRequest: any = null;
       if (normalizedBody.work_request_id) {
-        linkedRequest = await requestService.getRequestById(
-          String(normalizedBody.work_request_id),
-          user.account_id,
-          session
-        );
+        linkedRequest = await requestService.getRequestById(String(normalizedBody.work_request_id));
         if (!linkedRequest || String(linkedRequest.account_id) !== String(user.account_id)) {
           throw Object.assign(new Error('Linked work request was not found'), { status: 404 });
         }
@@ -4305,7 +4229,7 @@ class OrderService {
       }
 
       if (linkedRequest) {
-        await requestService.markConverted(String(linkedRequest._id), user.account_id, {
+        await requestService.markConverted(String(linkedRequest._id), {
           workOrderId: data._id,
           orderNo: data.order_no,
           priority: linkedRequest.priority,
@@ -4349,15 +4273,18 @@ class OrderService {
         }, session);
       }
       
-      await this.dispatchWorkOrderAssignmentEmails(
-        data,
-        userDetails,
-        user,
-        session,
-        correlationId
-      );
+      if (userDetails.length > 0) {
+        userDetails.forEach(async (assignedUsers: IUser) => {
+          try {
+            const orders = await this.getAllOrders({ _id: data._id, account_id: user.account_id, visible: true }, session);
+            await this.mailerService.sendWorkOrderMail(orders[0], assignedUsers, user);
+          } catch (mailError: any) {
+            console.warn('Failed to prepare work order mail payload after create:', mailError?.message || mailError);
+          }
+        });
+      }
       
-      await notificationService.queueAccountNotification({
+      await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),
         module: 'Work Order',
         event: 'created',
@@ -4365,34 +4292,24 @@ class OrderService {
         entityName: data.title || data.order_no || 'Work Order',
         actionUrl: `/work-order/details/${data._id}`,
         sourceUserId: String(user._id)
-      }, {
-        session,
-        ...(correlationId ? { correlationId } : {})
       });
       
       try {
         const resultData = await this.getAllOrders({ _id: data._id, account_id: user.account_id, visible: true }, session);
         return resultData[0];
       } catch (readError: any) {
-        applicationLogger.warn('Failed to fetch enriched work order after create, returning saved document instead:', readError?.message || readError);
+        console.warn('Failed to fetch enriched work order after create, returning saved document instead:', readError?.message || readError);
         return data?.toObject ? data.toObject() : data;
       }
-    }, existingSession);
+    });
   };
 
-  async updateById(
-    id: any,
-    body: any,
-    user: IUser,
-    expectedVersion?: number,
-    correlationId?: string
-  ): Promise<any> {
+  async updateById(id: any, body: any, user: IUser): Promise<any> {
     return await withTransaction(async (session) => {
       let existingOrder: any = await WorkOrderModel.findById(id).session(session);
       if (!existingOrder) {
         throw Object.assign(new Error('Work Order not found'), { status: 404 });
       }
-      assertSyncVersion(existingOrder, expectedVersion);
 
       const childCount = await this.getChildOrderCount(id, session);
       if (childCount > 0 && this.hasExecutionOwnedFieldChanges(body)) {
@@ -4482,14 +4399,8 @@ class OrderService {
       
       updatedData = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData)));
       updatedData = this.syncStatusDetailAuditFields(this.syncCompletionAuditFields(updatedData, existingOrder.status, user), user);
-      delete updatedData.sync_version;
-      const updateFilter: any = { _id: id };
-      if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
-      const data = await WorkOrderModel.findOneAndUpdate(updateFilter, updatedData, { returnDocument: 'after', session });
+      const data = await WorkOrderModel.findByIdAndUpdate(id, updatedData, { returnDocument: 'after', session });
       if (!data) {
-        if (expectedVersion !== undefined) {
-          throw createSyncConflict(await WorkOrderModel.findById(id).session(session));
-        }
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
       }
       await this.logWorkOrderUpdateActivities(existingOrderSnapshot, data?.toObject ? data.toObject() : data, body, user, session, beforeAssignedUserIds);
@@ -4499,10 +4410,10 @@ class OrderService {
         const resultData = await this.getAllOrders({ _id: id, account_id: user.account_id, visible: true }, session);
         responseData = resultData[0];
       } catch (readError: any) {
-        applicationLogger.warn('Failed to fetch enriched work order after update, returning saved document instead:', readError?.message || readError);
+        console.warn('Failed to fetch enriched work order after update, returning saved document instead:', readError?.message || readError);
         responseData = data?.toObject ? data.toObject() : data;
       }
-      await notificationService.queueAccountNotification({
+      await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),
         module: 'Work Order',
         event: 'updated',
@@ -4510,9 +4421,6 @@ class OrderService {
         entityName: responseData?.title || responseData?.order_no || 'Work Order',
         actionUrl: `/work-order/details/${id}`,
         sourceUserId: String(user._id)
-      }, {
-        session,
-        ...(correlationId ? { correlationId } : {})
       });
       return responseData;
     });
@@ -4554,18 +4462,10 @@ class OrderService {
     return updatedOrder;
   };
 
-  async orderStatusChange(
-    id: string,
-    status: string,
-    user: IUser,
-    blockReason?: string | null,
-    expectedVersion?: number,
-    correlationId?: string
-  ): Promise<any> {
+  async orderStatusChange(id: string, status: string, user: IUser, blockReason?: string | null): Promise<any> {
     const orderId = helperService.validateObjectId(id);
     const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
     const existingOrder = orders[0];
-    assertSyncVersion(existingOrder, expectedVersion);
     const hierarchy = existingOrder?.hierarchy || {};
     const previousParts = JSON.parse(JSON.stringify(existingOrder.parts || []));
     const blockedStatuses = ['Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit'];
@@ -4631,68 +4531,61 @@ class OrderService {
     const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
     const statusDetails = [...(existingOrder.status_details || []), statusEntry];
     const lifecycleParts = partsService.normalizeWorkOrderParts(existingOrder.parts || [], status);
-    const data = await withTransaction(async (session) => {
-      const inventoryResult = await partsService.adjustInventoryByWorkOrder(previousParts, lifecycleParts, user, session, {
-        account_id: user.account_id,
-        work_order_id: existingOrder._id,
-        work_order_no: existingOrder.order_no,
-        location_id: existingOrder.wo_location_id,
-        previous_status: existingOrder.status,
-        next_status: status,
-        note: `Work order status moved to ${status}`
-      });
-
-      const statusFilter: any = { _id: id };
-      if (expectedVersion !== undefined) statusFilter.sync_version = expectedVersion;
-      const updatedOrder = await WorkOrderModel.findOneAndUpdate(
-        statusFilter,
-        {
-          status,
-          updatedBy: user._id,
-          status_details: statusDetails,
-          parts: lifecycleParts,
-          actual_start_date: existingOrder.actual_start_date,
-          actual_end_date: existingOrder.actual_end_date,
-          completed_at: existingOrder.completed_at,
-          completed_by: existingOrder.completed_by,
-          actual_time: existingOrder.actual_time,
-          block_reason: existingOrder.block_reason
-        },
-        { returnDocument: 'after', session }
-      );
-      if (!updatedOrder && expectedVersion !== undefined) {
-        throw createSyncConflict(await WorkOrderModel.findById(id).session(session));
-      }
-      if (updatedOrder) {
-        (updatedOrder as any).inventoryWarnings = inventoryResult.warnings;
-        await workOrderActivityService.logActivity({
-          account_id: user.account_id,
-          work_order_id: id,
-          workOrder: updatedOrder,
-          action_type: 'status-changed',
-          note: `Status changed from ${existingOrder.status} to ${status}.${existingOrder.block_reason ? ` Reason: ${existingOrder.block_reason}` : ''}`,
-          metadata: {
-            from_status: existingOrder.status,
-            to_status: status,
-            block_reason: existingOrder.block_reason || null
-          },
-          actor: user
-        }, session);
-        await notificationService.queueAccountNotification({
-          accountId: String(user.account_id),
-          module: 'Work Order',
-          event: 'updated',
-          entityId: String(id),
-          entityName: updatedOrder.title || updatedOrder.order_no || 'Work Order',
-          actionUrl: `/work-order/details/${id}`,
-          sourceUserId: String(user._id)
-        }, {
-          session,
-          ...(correlationId ? { correlationId } : {})
-        });
-      }
-      return updatedOrder;
+    const inventoryResult = await partsService.adjustInventoryByWorkOrder(previousParts, lifecycleParts, user, undefined, {
+      account_id: user.account_id,
+      work_order_id: existingOrder._id,
+      work_order_no: existingOrder.order_no,
+      location_id: existingOrder.wo_location_id,
+      previous_status: existingOrder.status,
+      next_status: status,
+      note: `Work order status moved to ${status}`
     });
+
+    const data = await WorkOrderModel.findByIdAndUpdate(
+      id,
+      { 
+        status, 
+        updatedBy: user._id, 
+        status_details: statusDetails, 
+        parts: lifecycleParts,
+        actual_start_date: existingOrder.actual_start_date,
+        actual_end_date: existingOrder.actual_end_date,
+        completed_at: existingOrder.completed_at,
+        completed_by: existingOrder.completed_by,
+        actual_time: existingOrder.actual_time,
+        block_reason: existingOrder.block_reason
+      },
+      { returnDocument: 'after' }
+    );
+    if (data) {
+      (data as any).inventoryWarnings = inventoryResult.warnings;
+    }
+    if (data) {
+      await workOrderActivityService.logActivity({
+        account_id: user.account_id,
+        work_order_id: id,
+        workOrder: data,
+        action_type: 'status-changed',
+        note: `Status changed from ${existingOrder.status} to ${status}.${existingOrder.block_reason ? ` Reason: ${existingOrder.block_reason}` : ''}`,
+        metadata: {
+          from_status: existingOrder.status,
+          to_status: status,
+          block_reason: existingOrder.block_reason || null
+        },
+        actor: user
+      });
+    }
+    if (data) {
+      await notificationService.notifyAccountUsers({
+        accountId: String(user.account_id),
+        module: 'Work Order',
+        event: 'updated',
+        entityId: String(id),
+        entityName: data.title || data.order_no || 'Work Order',
+        actionUrl: `/work-order/details/${id}`,
+        sourceUserId: String(user._id)
+      });
+    }
     return data;
   }
 

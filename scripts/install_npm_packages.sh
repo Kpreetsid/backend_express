@@ -1,12 +1,17 @@
 #!/bin/bash
 set -e
 
-echo "Verifying immutable production dependencies..."
+echo "Installing NPM packages..."
 
 cd /home/ubuntu/express_cmms
 
-test -f dist/server.js
-test -d node_modules
-npm list --omit=dev --depth=0
+# Set npm cache directory to avoid permission issues
+export npm_config_cache=/home/ubuntu/.npm
 
-echo "Production artifact verified; no TypeScript compilation or dependency install performed"
+# Install all dependencies (including TypeScript and dev dependencies)
+npm install
+
+echo "NPM packages installed successfully"
+
+# List installed packages
+npm list --depth=0 || true

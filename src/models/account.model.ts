@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-export const COLLECTION_NAME = 'account_master';
+
 export const STATUS = ['active', 'inactive'];
 export const EXPERIENCE_PROFILES = ['standard_account', 'oem'] as const;
 
@@ -24,7 +24,7 @@ const accountSchema = new Schema<IAccount>(
     visible: { type: Boolean, required: true, default: true }
   },
   {
-    collection: COLLECTION_NAME,
+    collection: 'account_master',
     timestamps: true,
     versionKey: false
   }

@@ -16,13 +16,5 @@ export const instructionValidator = [
 
   body('WI_steps.*.description')
     .if(body('WI_steps').exists())
-    .notEmpty().withMessage('Step description is required'),
-
-  body('assetId')
-    .optional({ nullable: true })
-    .isMongoId().withMessage('Invalid Asset ID format'),
-
-  body('locationId')
-    .optional({ nullable: true })
-    .isMongoId().withMessage('Invalid Location ID format')
+    .notEmpty().withMessage('Step description is required')
 ];

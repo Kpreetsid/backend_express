@@ -4,7 +4,6 @@ import { LocationModel } from '../../models/location.model';
 import { PartsModel } from '../../models/part.model';
 import { ProcedureModel } from '../../models/procedure.model';
 import { helperService } from '../../utils/helper';
-import { requireTenantReferenceIds } from '../../utils/tenant-references';
 
 class ProcedureService {
   async getAllProcedures(match: any, options: { includeHistory?: boolean } = {}): Promise<any[]> {
@@ -36,22 +35,15 @@ class ProcedureService {
 
   async createProcedure(body: any, account_id: any, user_id: any): Promise<any> {
     const versionGroupId = new mongoose.Types.ObjectId();
-    const locationIds = this.normalizeObjectIds(body.location_ids);
-    const assetIds = this.normalizeObjectIds(body.asset_ids);
-    const requiredParts = this.normalizeRequiredParts(body.required_parts);
-    await this.requireTenantReferences(
-      { location_ids: locationIds, asset_ids: assetIds, required_parts: requiredParts },
-      account_id
-    );
     const procedure = await ProcedureModel.create({
       account_id,
       name: body.name,
       category: body.category || '',
       tags: this.normalizeTags(body.tags),
-      location_ids: locationIds,
-      asset_ids: assetIds,
+      location_ids: this.normalizeObjectIds(body.location_ids),
+      asset_ids: this.normalizeObjectIds(body.asset_ids),
       description: body.description || '',
-      required_parts: requiredParts,
+      required_parts: this.normalizeRequiredParts(body.required_parts),
       steps: Array.isArray(body.steps) ? body.steps : [],
       version_group_id: versionGroupId,
       version: 1,
@@ -77,28 +69,15 @@ class ProcedureService {
     }
 
     const nextVersion = Number(existingProcedure.version || 1) + 1;
-    const locationIds = body.location_ids !== undefined
-      ? this.normalizeObjectIds(body.location_ids)
-      : this.normalizeObjectIds(existingProcedure.location_ids);
-    const assetIds = body.asset_ids !== undefined
-      ? this.normalizeObjectIds(body.asset_ids)
-      : this.normalizeObjectIds(existingProcedure.asset_ids);
-    const requiredParts = body.required_parts !== undefined
-      ? this.normalizeRequiredParts(body.required_parts)
-      : this.normalizeRequiredParts(existingProcedure.required_parts);
-    await this.requireTenantReferences(
-      { location_ids: locationIds, asset_ids: assetIds, required_parts: requiredParts },
-      account_id
-    );
     const createdProcedure = await ProcedureModel.create({
       account_id,
       name: body.name !== undefined ? body.name : existingProcedure.name,
       category: body.category !== undefined ? (body.category || '') : (existingProcedure.category || ''),
       tags: body.tags !== undefined ? this.normalizeTags(body.tags) : this.normalizeTags(existingProcedure.tags),
-      location_ids: locationIds,
-      asset_ids: assetIds,
+      location_ids: body.location_ids !== undefined ? this.normalizeObjectIds(body.location_ids) : this.normalizeObjectIds(existingProcedure.location_ids),
+      asset_ids: body.asset_ids !== undefined ? this.normalizeObjectIds(body.asset_ids) : this.normalizeObjectIds(existingProcedure.asset_ids),
       description: body.description !== undefined ? (body.description || '') : (existingProcedure.description || ''),
-      required_parts: requiredParts,
+      required_parts: body.required_parts !== undefined ? this.normalizeRequiredParts(body.required_parts) : this.normalizeRequiredParts(existingProcedure.required_parts),
       steps: body.steps !== undefined ? (Array.isArray(body.steps) ? body.steps : []) : (existingProcedure.steps || []),
       version_group_id: existingProcedure.version_group_id || existingProcedure._id,
       version: nextVersion,
@@ -377,29 +356,6 @@ class ProcedureService {
         };
       })
       .filter((part: any) => part && part.part_name && Number(part.quantity) > 0);
-  }
-
-  private async requireTenantReferences(payload: any, account_id: any): Promise<void> {
-    await Promise.all([
-      requireTenantReferenceIds({
-        ids: payload.location_ids || [],
-        accountId: account_id,
-        label: 'Location',
-        model: LocationModel
-      }),
-      requireTenantReferenceIds({
-        ids: payload.asset_ids || [],
-        accountId: account_id,
-        label: 'Asset',
-        model: AssetModel
-      }),
-      requireTenantReferenceIds({
-        ids: (payload.required_parts || []).map((part: any) => part?.part_id),
-        accountId: account_id,
-        label: 'Part',
-        model: PartsModel
-      })
-    ]);
   }
 }
 

@@ -39,20 +39,12 @@ class CompanyService {
     return await AccountModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
   };
 
-  async removeById(id: any, userId: any, accountId: any): Promise<boolean> {
-    if (String(id) !== String(accountId)) {
-      throw Object.assign(new Error('Invalid account ID'), { status: 400 });
-    }
-    const match = { _id: id, visible: true, account_status: { $ne: 'inactive' } };
-    const data: IAccount | null = await AccountModel.findOne(match);
+  async removeById(id: any, userId: any): Promise<boolean> {
+    const data: IAccount | null = await AccountModel.findById(id);
     if (!data || !data.visible || data.account_status === 'inactive') {
       throw Object.assign(new Error('No records found'), { status: 404 });
     }
-    await AccountModel.findOneAndUpdate(
-      match,
-      { visible: false, account_status: 'inactive', updated_by: userId },
-      { returnDocument: 'after' }
-    );
+    await AccountModel.findByIdAndUpdate(id, { visible: false, account_status: 'inactive', updated_by: userId }, { returnDocument: 'after' });
     return true;
   };
 }

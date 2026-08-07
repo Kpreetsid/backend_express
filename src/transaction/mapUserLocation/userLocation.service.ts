@@ -33,7 +33,7 @@ class MapUserToLocationService {
     return await MapUserAssetLocationModel.insertMany(queryArray, { session });
   }
 
-  userLocations = async (match: any, filter: any, accountId?: any): Promise<any> => {
+  userLocations = async (match: any, filter: any): Promise<any> => {
     const pipeline: any[] = [{ $match: match }];
     if (filter.populate === "locationId") {
       pipeline.push(
@@ -42,13 +42,7 @@ class MapUserToLocationService {
             from: LocationModel.collection.name,
             let: { locId: "$locationId" },
             pipeline: [
-              {
-                $match: {
-                  $expr: { $eq: ["$_id", "$$locId"] },
-                  visible: true,
-                  ...(accountId ? { account_id: accountId } : {})
-                }
-              },
+              { $match: { $expr: { $eq: ["$_id", "$$locId"] }, visible: true } },
               { $project: { _id: 1, id: "$_id", location_name: 1, location_type: 1, top_level: 1, parent_id: 1, visible: 1 } },
             ],
             as: "location"
@@ -63,12 +57,7 @@ class MapUserToLocationService {
             from: UserModel.collection.name,
             let: { userId: "$userId" },
             pipeline: [
-              {
-                $match: {
-                  $expr: { $eq: ["$_id", "$$userId"] },
-                  ...(accountId ? { account_id: accountId } : {})
-                }
-              },
+              { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
               { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
             ],
             as: "user"

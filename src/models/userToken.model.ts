@@ -3,69 +3,29 @@ import { ObjectId } from 'mongodb';
 
 export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
   _id: string | mongoose.Types.ObjectId;
-  tokenType: 'access' | 'refresh';
-  token_id?: mongoose.Types.ObjectId;
-  ttl?: number;
+  token_id: mongoose.Types.ObjectId;
+  ttl: number;
   created: Date;
   userId: ObjectId;
-  accountId?: ObjectId;
-  principalType?: string;
-  isExternal?: boolean;
-  isInternal?: boolean;
+  principalType: string;
+  isExternal: boolean;
+  isInternal: boolean;
   expiresAt: Date;
-  revokedAt?: Date;
-  replacedByTokenHash?: string;
 }
 
 const userTokenSchema = new Schema<IUserToken>({
   _id: { type: String , trim: true, required: true },
-  tokenType: {
-    type: String,
-    enum: ['access', 'refresh'],
-    required: true,
-    default: 'access'
-  },
   token_id: { type: Schema.Types.ObjectId },
-  ttl: {
-    type: Number,
-    required: function(this: IUserToken): boolean {
-      return this.tokenType === 'access';
-    }
-  },
+  ttl: { type: Number, required: true },
   created: { type: Date, required: true, default: Date.now },
   userId: { type: Schema.Types.ObjectId, required: true, ref: 'UserModel' },
-  accountId: {
-    type: Schema.Types.ObjectId,
-    ref: 'AccountModel',
-    required: function(this: IUserToken): boolean {
-      return this.tokenType === 'refresh';
-    }
-  },
-  principalType: {
-    type: String,
-    required: function(this: IUserToken): boolean {
-      return this.tokenType === 'access';
-    }
-  },
+  principalType: { type: String, required: true },
   isExternal: { type: Boolean, default: false },
   isInternal: { type: Boolean, default: false },
-  expiresAt: { type: Date, required: true },
-  revokedAt: { type: Date },
-  replacedByTokenHash: { type: String }
+  expiresAt: { type: Date, required: true }
 }, {
   collection: 'CustomAccessToken',
   versionKey: false
 });
 
-userTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-userTokenSchema.index({ tokenType: 1, userId: 1, accountId: 1, revokedAt: 1 });
-
 export const TokenModel = mongoose.model<IUserToken>('Schema_UserToken', userTokenSchema);
-
-export const getAccessTokenTypeFilter = (): Record<string, unknown> => ({
-  $or: [
-    { tokenType: 'access' },
-    // Existing access-token documents predate the discriminator.
-    { tokenType: { $exists: false } }
-  ]
-});

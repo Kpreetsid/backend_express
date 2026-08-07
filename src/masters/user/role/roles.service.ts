@@ -1,4 +1,3 @@
-import { applicationLogger } from '../../../observability/logger';
 import { RoleMenuModel, IUserRoleMenu } from "../../../models/userRoleMenu.model";
 import { IUser } from "../../../models/user.model";
 import { PlatformControlManager } from "../../../_role/userRoles";
@@ -24,14 +23,8 @@ class RolesService {
     }
   }
 
-  async insertRole(data: object, roleMenu: object, account_id: any, target_user_id: any, actor_user_id: any): Promise<any> {
-    const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({
-      account_id,
-      user_id: target_user_id,
-      data,
-      roleMenu,
-      createdBy: actor_user_id
-    });
+  async insertRole(body: any, account_id: any, user_id: any): Promise<any> {
+    const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({ ...body, account_id, user_id, createdBy: user_id });
     return await newUserRoleMenu.save();
   }
 
@@ -48,25 +41,17 @@ class RolesService {
       });
       return await newUserRoleMenu.save({ session });
     } catch (error) {
-      applicationLogger.error(error);
+      console.error(error);
       return null;
     }
   }
 
-  async updateById(id: any, account_id: any, data: object, user_id: any): Promise<any> {
-    return await RoleMenuModel.findOneAndUpdate(
-      { _id: id, account_id },
-      { $set: { data, updatedBy: user_id } },
-      { returnDocument: 'after' }
-    );
+  async updateById(id: any, body: any, user_id: any): Promise<any> {
+    return await RoleMenuModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { returnDocument: 'after' });
   }
 
-  async removeById(id: any, account_id: any, user_id: any): Promise<any> {
-    return await RoleMenuModel.findOneAndUpdate(
-      { _id: id, account_id },
-      { $set: { updatedBy: user_id, visible: false } },
-      { returnDocument: 'after' }
-    );
+  async removeById(id: any, user_id: any): Promise<any> {
+    return await RoleMenuModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
   }
 }
 

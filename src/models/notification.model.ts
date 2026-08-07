@@ -5,7 +5,6 @@ export interface INotification {
   type: string;
   targetUser: Types.ObjectId;
   account_id?: Types.ObjectId;
-  deliveryEventId?: string;
   metadata: {
     module?: string;
     event?: 'created' | 'updated';
@@ -33,7 +32,6 @@ const NotificationSchema = new Schema({
   type: { type: String, required: true },
   targetUser: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   account_id: { type: Schema.Types.ObjectId, ref: 'Company' },
-  deliveryEventId: { type: String, trim: true },
   metadata: { type: Schema.Types.Mixed, default: {} },
   status: {
     type: String,
@@ -53,12 +51,5 @@ const NotificationSchema = new Schema({
 
 NotificationSchema.index({ targetUser: 1, createdAt: -1 });
 NotificationSchema.index({ account_id: 1, createdAt: -1 });
-NotificationSchema.index(
-  { deliveryEventId: 1, targetUser: 1 },
-  {
-    unique: true,
-    partialFilterExpression: { deliveryEventId: { $type: 'string' } }
-  }
-);
 
 export const Notification = model<INotificationDocument>('Notification', NotificationSchema);

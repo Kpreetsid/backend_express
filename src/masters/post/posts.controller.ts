@@ -9,7 +9,7 @@ class PostController {
 
   async getPosts(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const baseFilter: any = { visible: true };
+      const baseFilter: any = {};
       const { query: { postType, relatedTo } } = req;
       if (postType) {
         baseFilter.postType = postType.toString().split(',');
@@ -38,11 +38,7 @@ class PostController {
       const user = get(req, "user", {}) as IUser;
       const { account_id } = user;
       const { id } = req.params;
-      const baseFilter: any = {
-        _id: helperService.validateObjectId(String(id)),
-        account_id,
-        visible: true
-      };
+      const baseFilter: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const { postType, relatedTo } = req.query;
       if (postType) {
         baseFilter.postType = postType.toString().split(',');
@@ -88,29 +84,16 @@ class PostController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      const match: any = {
-        _id: helperService.validateObjectId(String(id)),
-        account_id,
-        visible: true
-      };
+      const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllPosts(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
-      const result = await postService.updatePostById(
-        helperService.validateObjectId(String(id)),
-        body,
-        user_id,
-        account_id
-      );
+      const result = await postService.updatePostById(helperService.validateObjectId(String(id)), body, user_id);
       if (!result) {
         throw Object.assign(new Error('Post not updated'), { status: 404 });
       }
-      const updatedData = await postService.getAllPosts({
-        _id: helperService.validateObjectId(String(id)),
-        account_id,
-        visible: true
-      });
+      const updatedData = await postService.getAllPosts({ _id: helperService.validateObjectId(String(id)), account_id: account_id });
       if (!updatedData || updatedData.length === 0) {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
@@ -124,29 +107,17 @@ class PostController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      const match: any = {
-        _id: helperService.validateObjectId(String(id)),
-        account_id,
-        visible: true
-      };
+      const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllPosts(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
-      const result = await postService.updatePostById(
-        helperService.validateObjectId(String(id)),
-        body,
-        user_id,
-        account_id
-      );
+      const updatedBody = { ...data[0], ...body };
+      const result = await postService.updatePostById(helperService.validateObjectId(String(id)), updatedBody, user_id);
       if (!result) {
         throw Object.assign(new Error('Post not updated'), { status: 404 });
       }
-      const updatedData = await postService.getAllPosts({
-        _id: helperService.validateObjectId(String(id)),
-        account_id,
-        visible: true
-      });
+      const updatedData = await postService.getAllPosts({ _id: helperService.validateObjectId(String(id)), account_id: account_id });
       if (!updatedData || updatedData.length === 0) {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
@@ -160,20 +131,12 @@ class PostController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      const match: any = {
-        _id: helperService.validateObjectId(String(id)),
-        account_id,
-        visible: true
-      };
+      const match: any = { _id: helperService.validateObjectId(String(id)), account_id: account_id };
       const data = await postService.getAllPosts(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Post not found'), { status: 404 });
       }
-      const result = await postService.removePostById(
-        helperService.validateObjectId(String(id)),
-        user_id,
-        account_id
-      );
+      const result = await postService.removePostById(helperService.validateObjectId(String(id)), user_id);
       if (!result) {
         throw Object.assign(new Error('Post not deleted'), { status: 404 });
       }
@@ -185,13 +148,9 @@ class PostController {
 
   async likePost(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { _id: user_id, account_id } = get(req, "user", {}) as IUser;
+      const { _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      const result = await postService.likePost(
-        helperService.validateObjectId(String(id)),
-        user_id,
-        account_id
-      );
+      const result = await postService.likePost(helperService.validateObjectId(String(id)), user_id);
       res.status(200).json({ status: true, message: "Post like updated successfully", data: result });
     } catch (error) {
       next(error);
@@ -200,13 +159,9 @@ class PostController {
 
   async dislikePost(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { _id: user_id, account_id } = get(req, "user", {}) as IUser;
+      const { _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
-      const result = await postService.dislikePost(
-        helperService.validateObjectId(String(id)),
-        user_id,
-        account_id
-      );
+      const result = await postService.dislikePost(helperService.validateObjectId(String(id)), user_id);
       res.status(200).json({ status: true, message: "Post dislike updated successfully", data: result });
     } catch (error) {
       next(error);

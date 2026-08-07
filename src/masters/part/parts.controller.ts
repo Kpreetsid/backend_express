@@ -4,7 +4,6 @@ import { partsService } from './parts.service';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
-import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
 
 class PartsController {
 
@@ -74,7 +73,7 @@ class PartsController {
     try {
       const user = get(req, "user", {}) as IUser;
       const decision = String(req.body?.decision || '').trim() === 'rejected' ? 'rejected' : 'approved';
-      const data = await partsService.approveCycleCount(String(req.params['id']), decision, user.account_id, user, req.body?.approval_notes);
+      const data = await partsService.approveCycleCount(String(req.params.id), decision, user.account_id, user, req.body?.approval_notes);
       res.status(200).json({ status: true, message: `Cycle count ${decision} successfully`, data });
     } catch (error) {
       next(error);
@@ -110,7 +109,6 @@ class PartsController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      setSyncVersionEtag(res, data[0]);
       res.status(200).json({ status: true, message: "Part retrieved successfully", data: data[0] });
     } catch (error) {
       next(error);
@@ -120,7 +118,7 @@ class PartsController {
   async getPartHistory(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const data = await partsService.getPartHistory(String(req.params['id']), user.account_id);
+      const data = await partsService.getPartHistory(String(req.params.id), user.account_id);
       res.status(200).json({ status: true, message: "Part history retrieved successfully", data });
     } catch (error) {
       next(error);
@@ -136,8 +134,7 @@ class PartsController {
       // Fetch populated data
       const data = await partsService.getAllParts({ _id: createdData._id });
       const result = data && data.length > 0 ? data[0] : createdData;
-
-      setSyncVersionEtag(res, result);
+      
       res.status(201).json({ status: true, message: "Part created successfully", data: result });
     } catch (error) {
       next(error);
@@ -193,10 +190,7 @@ class PartsController {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
 
-      const expectedVersion = getExpectedSyncVersion(req);
-      assertSyncVersion(isDataExists[0], expectedVersion);
-
-      const updated = await partsService.updatePartById(String(id), body, get(req, "user", {}) as IUser, account_id, expectedVersion);
+      const updated = await partsService.updatePartById(String(id), body, get(req, "user", {}) as IUser, account_id);
       if (!updated) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
@@ -204,7 +198,6 @@ class PartsController {
       // Fetch populated data
       const data = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)) });
 
-      setSyncVersionEtag(res, data[0]);
       res.status(200).json({ status: true, message: "Part updated successfully", data: data[0] });
     } catch (error) {
       next(error);

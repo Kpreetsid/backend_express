@@ -1,15 +1,16 @@
 #!/bin/bash
 set -e
 
-echo "Starting CMMS API and worker with PM2..."
+echo "Starting Express application with PM2..."
 
 cd /home/ubuntu/express_cmms
 
-# Start the pre-built JavaScript artifacts with telemetry preloaded.
-# Production never compiles TypeScript.
-source scripts/load_runtime_secret_context.sh
-node scripts/run-with-runtime-secret.cjs \
-  pm2 start ecosystem.config.cjs --env production
+# Set Node environment
+export NODE_ENV=production
+
+# Start application with PM2
+# pm2 start npm --name "cmms_express" -- start
+pm2 start "npm start" --name "cmms_express"
 
 # Save PM2 process list
 pm2 save

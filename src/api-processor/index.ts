@@ -7,8 +7,8 @@ class ProcessorAPIService {
         return await getExternalData(`/asset_health_status/`, 'POST', JSON.parse(JSON.stringify(match)), token, `${user_id}`);
     }
 
-    createEquipmentEndPoints = async (body: any, user_id: any, token: any, idempotencyKey?: string) => {
-        return await getExternalData(`/equipment/create/`, 'POST', body, token, `${user_id}`, idempotencyKey);
+    createEquipmentEndPoints = async (body: any, user_id: any, token: any) => {
+        return await getExternalData(`/equipment/create/`, 'POST', body, token, `${user_id}`);
     }
 
     getEquipmentDetails = async (payload: any, token: string, user_id: any) => {
@@ -28,24 +28,24 @@ class ProcessorAPIService {
         await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);
     }
 
-    updateAssetHealthStatusOld = async (payload: any, token: any, user_id: any, idempotencyKey?: string) => {
-        await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id, idempotencyKey);
+    updateAssetHealthStatusOld = async (payload: any, token: any, user_id: any) => {
+        await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);
     }
 
-    createEndPoint = async (assetsList: any, user_id: any, token: any, idempotencyKey?: string): Promise<any> => {
-        return await getExternalData(`/endPointApi/`, 'POST', assetsList, token, `${user_id}`, idempotencyKey);
+    createEndPoint = async (assetsList: any, user_id: any, token: any): Promise<any> => {
+        return await getExternalData(`/endPointApi/`, 'POST', assetsList, token, `${user_id}`);
     }
 
     getEndPoints = async (asset_id: string[], token: string, user_id: any) => {
         return await getExternalData(`/getAllEndPoints/`, 'POST', { asset_id }, token, `${user_id}`);
     }
 
-    updateAlarmHistoryData = async (body: any, user_id: any, token: any, idempotencyKey?: string) => {
-        return await getExternalData(`/get_alarm_history_data/`, 'PATCH', body, token, user_id, idempotencyKey);
+    updateAlarmHistoryData = async (body: any, user_id: any, token: any) => {
+        return await getExternalData(`/get_alarm_history_data/`, 'PATCH', body, token, user_id);
     }
 
-    assetHealthFreezeStatus = async (body: any, user_id: any, token: any, idempotencyKey?: string) => {
-        return await getExternalData(`/asset_health_freeze_status/`, 'POST', body, token, user_id, idempotencyKey);
+    assetHealthFreezeStatus = async (body: any, user_id: any, token: any) => {
+        return await getExternalData(`/asset_health_freeze_status/`, 'POST', body, token, user_id);
     }
 
     getAccVelData = async (payload: any, token: string, user_id: any) => {

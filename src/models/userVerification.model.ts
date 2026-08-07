@@ -7,9 +7,7 @@ export interface IVerificationCode {
   firstName: string;
   lastName?: string;
   code: string;
-  createdAt: Date;
-  verificationPurpose?: 'password_reset';
-  verifiedAt?: Date;
+  createdAt: Date
 }
 
 const verificationCodeSchema = new Schema<IVerificationCode>({
@@ -17,12 +15,7 @@ const verificationCodeSchema = new Schema<IVerificationCode>({
   firstName: { type: String, trim: true, required: true },
   lastName: { type: String, trim: true },
   code: { type: String, trim: true, required: true },
-  createdAt: { type: Date, default: Date.now, expires: VERIFICATION_CODE_EXPIRY_SECONDS },
-  verificationPurpose: {
-    type: String,
-    enum: ['password_reset']
-  },
-  verifiedAt: { type: Date }
+  createdAt: { type: Date, default: Date.now, expires: VERIFICATION_CODE_EXPIRY_SECONDS }
 }, {
   collection: 'user_verification_code',
   timestamps: true,

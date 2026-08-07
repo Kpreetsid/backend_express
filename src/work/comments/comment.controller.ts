@@ -76,17 +76,11 @@ class CommentController {
         throw Object.assign(new Error('Comment ID is required'), { status: 400 });
       }
       const existingComment = await commentService.getAllComments({ _id: helperService.validateObjectId(commentId), account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true });
-      if (!existingComment.length) {
+      if (!existingComment) {
         throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
       body.order_id = helperService.validateObjectId(String(orderId));
-      const data = await commentService.updateComment(
-        String(commentId),
-        body.comments,
-        user,
-        account_id,
-        body.order_id
-      );
+      const data = await commentService.updateComment(String(commentId), body.comments, user);
       if (!data) {
         throw Object.assign(new Error('Comment not updated'), { status: 404 });
       }
@@ -108,15 +102,10 @@ class CommentController {
         throw Object.assign(new Error('Comment ID is required'), { status: 400 });
       }
       const existingComment = await commentService.getComments({ _id: helperService.validateObjectId(commentId), account_id: account_id, order_id: helperService.validateObjectId(orderId), visible: true });
-      if (!existingComment.length) {
+      if (!existingComment) {
         throw Object.assign(new Error('Comment not found'), { status: 404 });
       }
-      const data = await commentService.removeComment(
-        String(commentId),
-        user,
-        account_id,
-        helperService.validateObjectId(String(orderId))
-      );
+      const data = await commentService.removeComment(String(commentId), user);
       if (!data) {
         throw Object.assign(new Error('Comment not deleted'), { status: 404 });
       }

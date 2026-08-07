@@ -104,7 +104,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
   CreateWorkRequest: { type: String, trim: true },
   FaultDetected: { type: String, trim: true },
   Severity: { type: String, trim: true },
-  status: { type: String, trim: true, enum: ASSET_REPORT_STATUS, default: ASSET_REPORT_STATUS[0]! },
+  status: { type: String, trim: true, enum: ASSET_REPORT_STATUS, default: ASSET_REPORT_STATUS[0] },
   status_details: { type: [StatusDetailsSchema], default: [] },
   NewFault: { type: String, trim: true },
   ISO: { type: Schema.Types.Mixed },

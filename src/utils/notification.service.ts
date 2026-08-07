@@ -1,13 +1,8 @@
-import { applicationLogger } from '../observability/logger';
-import { randomUUID } from 'node:crypto';
 import { Server } from 'socket.io';
 import { notificationRepository } from '../notification/notification.service';
-import { ClientSession, Types } from 'mongoose';
-import { INotification } from '../models/notification.model';
+import { Types } from 'mongoose';
 import { UserModel } from '../models/user.model';
 import { globalEmitter, Events } from '../utils/event-emitter';
-import { queueConfig } from '../configDB';
-import { createOutboxEvent } from '../queue/outbox-writer';
 
 export type NotificationEvent = 'created' | 'updated';
 
@@ -22,11 +17,6 @@ export interface AccountNotificationPayload {
   sourceUserId?: string;
   type?: string;
   message?: string;
-}
-
-export interface DurableNotificationOptions {
-  session?: ClientSession;
-  correlationId?: string;
 }
 
 /**
@@ -102,13 +92,14 @@ export class NotificationService {
    */
   public async notifyUser(userId: string, type: string, message: string, data: any = {}, companyId?: string): Promise<void> {
     if (!this.io) {
-      applicationLogger.warn('NotificationService: Socket.io not initialized; notification will remain persisted as Sent.');
+      console.warn('NotificationService: Socket.io not initialized.');
+      return;
     }
 
     // 1. Persist in DB (Status: Sent)
     const notification = await notificationRepository.create({
       targetUser: new Types.ObjectId(userId),
-      ...(companyId ? { account_id: new Types.ObjectId(companyId) } : {}),
+      account_id: companyId ? new Types.ObjectId(companyId) : undefined,
       type,
       message,
       metadata: data
@@ -118,9 +109,7 @@ export class NotificationService {
     this.emitNotification(userId.toString(), notification, type, message, data);
 
     // 3. Update status to Delivered
-    if (this.io) {
-      await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
-    }
+    await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
   }
 
   /**
@@ -132,7 +121,8 @@ export class NotificationService {
    */
   public async notifyCompany(companyId: string, type: string, message: string, data: any = {}): Promise<void> {
     if (!this.io) {
-      applicationLogger.warn('NotificationService: Socket.io not initialized; company notifications will remain persisted as Sent.');
+      console.warn('NotificationService: Socket.io not initialized.');
+      return;
     }
 
     try {
@@ -158,34 +148,30 @@ export class NotificationService {
       // 3. Emit the matching notification id to each user's socket room.
       await Promise.all(createdNotifications.map(async (notification: any) => {
         this.emitNotification(notification.targetUser.toString(), notification, type, message, data);
-        if (this.io) {
-          await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
-        }
+        await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
       }));
 
     } catch (error) {
-      applicationLogger.error({ err: error }, 'Error in notifyCompany:');
+      console.error('Error in notifyCompany:', error);
     }
   }
 
-  public async notifyAccountUsers(
-    payload: AccountNotificationPayload,
-    deliveryEventId?: string
-  ): Promise<void> {
+  public async notifyAccountUsers(payload: AccountNotificationPayload): Promise<void> {
     if (!this.io) {
-      applicationLogger.warn('NotificationService: Socket.io not initialized; account notifications will remain persisted as Sent.');
+      console.warn('NotificationService: Socket.io not initialized.');
+      return;
     }
 
     const message = payload.message || this.buildMessage(payload.module, payload.event, payload.entityName);
     const type = payload.type || this.buildType(payload.module, payload.event);
-    const metadata: INotification['metadata'] = {
+    const metadata = {
       module: payload.module,
       event: payload.event,
       entityId: payload.entityId,
-      ...(payload.entityName ? { entityName: payload.entityName } : {}),
+      entityName: payload.entityName,
       actionUrl: payload.actionUrl,
       queryParams: payload.queryParams || {},
-      ...(payload.sourceUserId ? { sourceUserId: payload.sourceUserId } : {})
+      sourceUserId: payload.sourceUserId
     };
 
     const users = await UserModel.find({
@@ -195,46 +181,18 @@ export class NotificationService {
 
     if (!users.length) return;
 
-    const notificationData = users.map(user => ({
+    const notifications = await notificationRepository.createMany(users.map(user => ({
       targetUser: user._id,
       account_id: this.toObjectId(payload.accountId),
       type,
       message,
       metadata
-    }));
-    const notifications = deliveryEventId
-      ? await notificationRepository.createManyIdempotent(notificationData, deliveryEventId)
-      : await notificationRepository.createMany(notificationData);
+    })));
 
     await Promise.all(notifications.map(async (notification: any) => {
       this.emitNotification(notification.targetUser.toString(), notification, type, message, metadata);
-      if (this.io) {
-        await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
-      }
+      await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
     }));
-  }
-
-  public async queueAccountNotification(
-    payload: AccountNotificationPayload,
-    options: DurableNotificationOptions = {}
-  ): Promise<void> {
-    if (!queueConfig.domainEventOutboxEnabled) {
-      await this.notifyAccountUsers(payload);
-      return;
-    }
-
-    await createOutboxEvent({
-      type: 'notification.account.requested',
-      version: 1,
-      tenantId: payload.accountId,
-      ...(payload.sourceUserId ? { actorId: payload.sourceUserId } : {}),
-      correlationId: options.correlationId || randomUUID(),
-      entity: {
-        type: payload.module.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        id: payload.entityId
-      },
-      payload: { ...payload }
-    }, options.session ? { session: options.session } : {});
   }
 
   /**

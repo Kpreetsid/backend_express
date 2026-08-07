@@ -6,9 +6,8 @@ import multer from 'multer';
 import path from 'path';
 import { uploadFilesService } from './upload.multer';
 import { payloadCryptoMultipartMiddleware } from '../middlewares/payloadCrypto.middleware';
-import { storageConfig } from '../configDB';
 
-const localStorage = multer.diskStorage({
+const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     const { folderName } = req.params as { folderName?: string };
     const destination = uploadFilesService.getDestinationPath(folderName);
@@ -23,7 +22,6 @@ const localStorage = multer.diskStorage({
     cb(null, fileName);
   }
 });
-const storage = storageConfig.driver === 's3' ? multer.memoryStorage() : localStorage;
 
 export const upload = multer({ storage, limits: { files: 12, fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {

@@ -6,22 +6,22 @@ echo "Installing system dependencies..."
 # Update package list
 apt-get update -y
 
-# Install Node.js 24 LTS if not already installed
-if ! command -v node &> /dev/null || ! node -v | grep -q "v24"; then
-    echo "Installing Node.js 24..."
+# Install Node.js 20 if not already installed
+if ! command -v node &> /dev/null || ! node -v | grep -q "v20"; then
+    echo "Installing Node.js 20..."
     
     # Remove old nodejs if exists
     apt-get remove -y nodejs npm || true
     
-    # Install Node.js 24.x
-    curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+    # Install Node.js 20.x
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
     apt-get install -y nodejs
     
     echo "Node.js version installed:"
     node -v
     npm -v
 else
-    echo "Node.js 24 is already installed"
+    echo "Node.js 20 is already installed"
     node -v
 fi
 

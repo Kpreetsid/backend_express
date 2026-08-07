@@ -3,7 +3,7 @@ import { IUser, UserModel, UserLoginPayload } from "../../models/user.model";
 import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../utils/bcrypt';
 import { decryptToken, generateAccessToken, generateExternalAccessToken } from '../../_config/auth';
-import { getAccessTokenTypeFilter, TokenModel } from "../../models/userToken.model";
+import { TokenModel } from "../../models/userToken.model";
 import { rolesService } from "../../masters/user/role/roles.service";
 import { MailerService } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
@@ -13,38 +13,6 @@ import { IAccount } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
-import { refreshTokenService } from "./refreshToken.service";
-import { parseTtlSeconds } from "../../utils/ttl";
-import { applicationLogger } from "../../observability/logger";
-import { clearWebRefreshCookies, getRefreshTokenForLogout, setWebRefreshCookies } from "./webRefreshCookie";
-import { authenticationAnomalyCounter } from "../../observability/metrics";
-
-const recordLoginAnomaly = (error: unknown): void => {
-  const status = Number((error as { status?: number })?.status);
-  if (status < 400 || status >= 500) return;
-  const message = error instanceof Error ? error.message : '';
-  const reason = message === 'Invalid credentials'
-    ? 'login_invalid_credentials'
-    : message.includes('User data not found')
-      ? 'login_unknown_user'
-      : message.includes('locked')
-        ? 'login_account_locked'
-        : message.includes('Unverified')
-          ? 'login_unverified_user'
-          : message.includes('location')
-            ? 'login_location_missing'
-            : 'login_rejected';
-  authenticationAnomalyCounter.inc({ reason });
-};
-
-const issueRefreshTokenOrRollback = async (user: IUser, accessToken: string): Promise<string> => {
-  try {
-    return await refreshTokenService.issue(user);
-  } catch (error) {
-    await TokenModel.deleteOne({ _id: accessToken, ...getAccessTokenTypeFilter() });
-    throw error;
-  }
-};
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -89,22 +57,17 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
     const token_id = new mongoose.Types.ObjectId();
-    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
     const userTokenData = new TokenModel({
       _id: token,
-      tokenType: 'access',
       token_id: token_id,
       userId: user._id,
       principalType: 'user',
-      ttl: ttlSeconds,
-      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+      ttl: parseInt(auth.expiresIn as string),
+      expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
     });
     await userTokenData.save();
-    const refreshToken = await issueRefreshTokenOrRollback(user, token);
-    setWebRefreshCookies(res, refreshToken);
-    res.status(200).json({ status: true, message: 'Login successful', data: { token, token_id, refreshToken, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu } });
+    res.status(200).json({ status: true, message: 'Login successful', data: { token, token_id, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu } });
   } catch (error) {
-    recordLoginAnomaly(error);
     next(error);
   }
 };
@@ -143,21 +106,16 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     if (!userRoleData) {
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
-    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
     const userTokenData = new TokenModel({
       _id: token,
-      tokenType: 'access',
       userId: user._id,
       principalType: 'user',
-      ttl: ttlSeconds,
-      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+      ttl: parseInt(auth.expiresIn as string),
+      expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
     });
     await userTokenData.save();
-    const refreshToken = await issueRefreshTokenOrRollback(user, token);
-    setWebRefreshCookies(res, refreshToken);
-    res.status(200).json({ status: true, message: 'Login successful', data: { token, refreshToken, org_id: user.account_id, user_id: user._id } });
+    res.status(200).json({ status: true, message: 'Login successful', data: { token, org_id: user.account_id, user_id: user._id } });
   } catch (error) {
-    recordLoginAnomaly(error);
     next(error);
   }
 };
@@ -175,7 +133,6 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
     const external_token = generateExternalAccessToken({ email, org_id: external_user.account_id, isExternal: false, isInternal: true });
     res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
   } catch (error) {
-    recordLoginAnomaly(error);
     next(error);
   }
 }
@@ -207,20 +164,16 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     }
     const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id) };
     const newToken = generateAccessToken(userTokenPayload);
-    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
     const userTokenData = new TokenModel({
       _id: newToken,
-      tokenType: 'access',
       userId: userDetails._id,
       principalType: 'user',
       isExternal,
       isInternal,
-      ttl: ttlSeconds,
-      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+      ttl: parseInt(auth.expiresIn as string),
+      expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
     });
     await userTokenData.save();
-    const refreshToken = await issueRefreshTokenOrRollback(userDetails, newToken);
-    setWebRefreshCookies(res, refreshToken);
     const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
       ? redirectPath
       : '/dashboard';
@@ -230,8 +183,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
         status: true, 
         message: 'Login successful', 
         data: { 
-          token: newToken,
-          refreshToken,
+          token: newToken, 
           accountDetails: accountDetails[0], 
           userDetails: newSafeUserValue, 
           platformControl: userRoleMenu.data, 
@@ -242,7 +194,6 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
         } 
       });
   } catch (error) {
-    recordLoginAnomaly(error);
     next(error);
   }
 };
@@ -254,10 +205,7 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
     if (!token) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
-    const userToken = await TokenModel.findOne({
-      _id: token,
-      ...getAccessTokenTypeFilter()
-    });
+    const userToken = await TokenModel.findOne({ _id: token });
     if (!userToken) {
       throw Object.assign(new Error('No data found'), { status: 404 });
     }
@@ -278,25 +226,12 @@ export const userResetPassword = async (req: Request, res: Response, next: NextF
 export const userLogOutService = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const user_id = get(req, 'user_id');
-    const userToken = String(get(req, 'userToken') || '');
-    if (!userToken) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
-    }
-    const refreshToken = getRefreshTokenForLogout(req);
+    const userToken = get(req, 'userToken');
     const [accessToken] = await Promise.all([
-      TokenModel.deleteMany({
-        _id: userToken,
-        userId: { $exists: true },
-        ...getAccessTokenTypeFilter()
-      }),
-      refreshTokenService.revoke(refreshToken),
+      TokenModel.deleteMany({ _id: userToken, userId: { $exists: true } }),
       // TokenModel.deleteMany({ _id: { $exists: true }, userId: helperService.validateObjectId(user_id) })
     ]);
-    clearWebRefreshCookies(res);
-    applicationLogger.info(
-      { revokedAccessTokenCount: accessToken.deletedCount, userId: user_id },
-      'User logout completed'
-    );
+    console.log({ accessToken, user_id });
     return res.status(200).json({ status: true, message: 'Logout successful' });
   } catch (error) {
     next(error);

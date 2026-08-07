@@ -6,49 +6,10 @@ import { mapUserToAssetService } from '../../transaction/mapUserAsset/userAsset.
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { locationService } from '../location/location.service';
 import { helperService } from '../../utils/helper';
+import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
 import { withTransaction } from "../../utils/transaction.helper";
-import { requireActiveTenantUsers } from '../../utils/tenant-users';
-import { queueAssetHealthInitialization } from '../../queue/processor-events';
-import {
-  synchronizeAssetHealthInitialization
-} from '../../queue/handlers/asset-health-initialization.handler';
-import { randomUUID } from 'node:crypto';
-
-const sanitizeAssetBody = (body: Record<string, unknown>): any => {
-  const sanitized: any = { ...body };
-  for (const field of ['_id', 'id', 'account_id', 'createdBy', 'updatedBy', 'visible']) {
-    delete sanitized[field];
-  }
-  return sanitized;
-};
-
-const resolveScopedAssetIds = async (
-  userId: unknown,
-  userRole: string,
-  requestedIds?: unknown
-): Promise<any[] | undefined> => {
-  const validatedRequestedIds =
-    Array.isArray(requestedIds) && requestedIds.length > 0
-      ? helperService.validateObjectIds(requestedIds)
-      : typeof requestedIds === "string" && requestedIds.trim()
-        ? helperService.validateObjectIds(requestedIds)
-        : undefined;
-
-  if (userRole === "admin") {
-    return validatedRequestedIds;
-  }
-
-  const mappedAssets = await mapUserToAssetService.getAssetsMappedData(userId);
-  const mappedIds = (mappedAssets || []).map((doc: any) => doc.assetId);
-  if (!validatedRequestedIds) {
-    return mappedIds;
-  }
-
-  const requestedIdSet = new Set(validatedRequestedIds.map((id) => String(id)));
-  return mappedIds.filter((id: any) => requestedIdSet.has(String(id)));
-};
 
 class AssetController {
 
@@ -177,30 +138,10 @@ class AssetController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
-      if (!Array.isArray(body)) {
-        throw Object.assign(new Error("Buzzer asset list must be an array"), { status: 400 });
-      }
       if (data.length !== body.length) {
         throw Object.assign(new Error("Invalid asset list count"), { status: 400 });
       }
-      const scopedAssetIds = data.map((asset: any) => String(asset._id || asset.id));
-      const scopedAssetIdSet = new Set(scopedAssetIds);
-      const requestedAssetIds = body.map((asset: any) => {
-        if (!asset?.id || typeof asset.isBuzzerActive !== "boolean") {
-          throw Object.assign(new Error("Invalid buzzer asset item"), { status: 400 });
-        }
-        return String(helperService.validateObjectId(String(asset.id)));
-      });
-      if (
-        new Set(requestedAssetIds).size !== requestedAssetIds.length ||
-        requestedAssetIds.some((id: string) => !scopedAssetIdSet.has(id))
-      ) {
-        throw Object.assign(new Error("Invalid buzzer asset scope"), { status: 400 });
-      }
-      await assetService.updateBuzzerAssetList(body, {
-        accountId: user.account_id,
-        assetIds: scopedAssetIds,
-      });
+      await assetService.updateBuzzerAssetList(body);
       res.status(200).json({ status: true, message: "Buzzer asset list updated successfully" });
     } catch (error) {
       next(error);
@@ -259,15 +200,25 @@ class AssetController {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const { locationList = [], assets = [], top_level } = req.body;
       const match: any = { account_id, visible: true };
-      const scopedAssetIds = await resolveScopedAssetIds(user_id, userRole, assets);
-      if (scopedAssetIds) {
-        match._id = { $in: scopedAssetIds };
+      if (userRole !== "admin") {
+        const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
+        if (!mapData || mapData.length === 0) {
+          throw Object.assign(new Error("Asset not found"), { status: 404 });
+        }
+        match._id = { $in: mapData.map((doc) => doc.assetId) };
       }
       if (top_level) {
         match.top_level = top_level;
       }
       if (locationList && locationList.length > 0) {
-        match.locationId = { $in: helperService.validateObjectIds(locationList) };
+        match.locationId = { $in: locationList };
+        if (userRole !== "admin") {
+          const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
+          match._id = { $in: mapData.map((doc) => doc.assetId) };
+        }
+      }
+      if (assets && assets.length > 0) {
+        match._id = { $in: assets };
       }
       const data = await assetService.getAllAssets(match);
       if (!data || data.length === 0) {
@@ -280,74 +231,54 @@ class AssetController {
   };
 
   createOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    var data: any;
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const body = sanitizeAssetBody(req.body);
-      if (!Array.isArray(body.userIdList) || body.userIdList.length === 0) {
+      const userToken = get(req, "userToken", {}) as string;
+      const { body } = req;
+      if (body.userIdList?.length === 0) {
         throw Object.assign(new Error("Please select at least one user"), { status: 400 });
       }
-      const correlationId = String(res.locals['correlationId'] || randomUUID());
-      const result = await withTransaction(async (session) => {
-        const tenantUserIds = await requireActiveTenantUsers(
-          body.userIdList,
-          account_id,
-          session
-        );
-        const tenantBody = { ...body, userIdList: tenantUserIds };
-        await assetService.requireTenantReferences(tenantBody, account_id, session);
-        const created = await assetService.createAssetOld(
-          tenantBody,
-          account_id,
-          user_id,
-          session
-        );
-        const alarmTypes = Array.isArray(tenantBody.alarmType)
-          ? tenantBody.alarmType
-          : [];
-        const assetsMapData = tenantUserIds.map((user: any) => ({
+      data = await assetService.createAssetOld(body, account_id, user_id);
+      if (!data) {
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
+      }
+      const assetsMapData = body.userIdList.map((user: any) => {
+        return {
           account_id,
           userId: user,
-          assetId: created._id,
-          sendMail: alarmTypes.includes("sendMail"),
-          alert: alarmTypes.includes("alert"),
-          danger: alarmTypes.includes("danger"),
-          critical: alarmTypes.includes("critical"),
-        }));
-        await mapUserToAssetService.createMapUserAssets(assetsMapData, session);
-        const processorQueued = await queueAssetHealthInitialization({
-          assetIds: [String(created._id)],
-          tenantId: String(account_id),
-          actorId: String(user_id),
-          correlationId
-        }, session);
-        await notificationService.queueAccountNotification({
-          accountId: String(account_id),
-          module: 'Asset',
-          event: 'created',
-          entityId: String(created._id),
-          entityName: created.asset_name || tenantBody.asset_name || 'Asset',
-          actionUrl: `/assets/asset-health/${created._id}/health`,
-          sourceUserId: String(user_id)
-        }, { session, correlationId });
-        return { created, processorQueued };
+          assetId: data._id,
+          sendMail: body.alarmType.includes("sendMail"),
+          alert: body.alarmType.includes("alert"),
+          danger: body.alarmType.includes("danger"),
+          critical: body.alarmType.includes("critical"),
+        };
       });
-      if (!result.processorQueued) {
-        await synchronizeAssetHealthInitialization(
-          [String(result.created._id)],
-          String(account_id),
-          String(user_id)
-        );
-      }
-      const insertedData: any = await assetService.getAllAssets({
-        _id: result.created._id,
+      await mapUserToAssetService.createMapUserAssets(assetsMapData);
+      await processorAPIService.setAssetHealthStatus(
+        assetsMapData,
         account_id,
-        visible: true
-      });
+        user_id,
+        userToken,
+      );
+      const insertedData: any = await assetService.getAllAssets({ _id: data._id });
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Asset',
+        event: 'created',
+        entityId: String(data._id),
+        entityName: insertedData[0]?.asset_name || body.asset_name || 'Asset',
+        actionUrl: `/assets/asset-health/${data._id}/health`,
+        sourceUserId: String(user_id)
+      });
       res.status(201).json({ status: true, message: "Asset created successfully", data: insertedData });
     } catch (error) {
+      if (data) {
+        await assetService.deleteAssetsById(data._id);
+      }
       next(error);
     }
   };
@@ -355,69 +286,37 @@ class AssetController {
   updateOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const { params: { id } } = req;
-      const body = sanitizeAssetBody(req.body);
-      if (!Array.isArray(body.userIdList) || body.userIdList.length === 0) {
+      const { params: { id }, body } = req;
+      if (body.userIdList?.length === 0) {
         throw Object.assign(new Error("Please select at least one user"), { status: 400 });
       }
-      const assetId = helperService.validateObjectId(String(id));
-      const existingData: any = await assetService.getAllAssets({
-        _id: assetId,
-        account_id,
-        visible: true
-      });
+      const existingData: any = await assetService.getAllAssets({ _id: helperService.validateObjectId(String(id)), account_id, visible: true });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
-      const correlationId = String(res.locals['correlationId'] || randomUUID());
-      await withTransaction(async (session) => {
-        const tenantUserIds = await requireActiveTenantUsers(
-          body.userIdList,
-          account_id,
-          session
-        );
-        const tenantBody = { ...body, userIdList: tenantUserIds };
-        await assetService.requireTenantReferences(tenantBody, account_id, session);
-        const existingLocationId = String(
-          existingData[0].locationId?._id || existingData[0].locationId || ''
-        );
-        if (tenantBody.locationId && String(tenantBody.locationId) !== existingLocationId) {
-          await assetService.updateAllChildAssetsLocation(
-            assetId,
-            tenantBody.locationId,
-            account_id,
-            user_id,
-            session
-          );
-        }
-        const updated = await assetService.updateAssetOld(
-          assetId,
-          tenantBody,
-          account_id,
-          user_id,
-          session
-        );
-        if (!updated) {
-          throw Object.assign(new Error("Asset not found"), { status: 404 });
-        }
-        await notificationService.queueAccountNotification({
-          accountId: String(account_id),
-          module: 'Asset',
-          event: 'updated',
-          entityId: String(id),
-          entityName: updated.asset_name || tenantBody.asset_name || 'Asset',
-          actionUrl: `/assets/asset-health/${id}/health`,
-          sourceUserId: String(user_id)
-        }, { session, correlationId });
-      });
+      if (body.locationId !== existingData[0].locationId) {
+        await assetService.updateAllChildAssetsLocation(
+          helperService.validateObjectId(String(id)), body.locationId, user_id);
+      }
+      const data = await assetService.updateAssetOld(helperService.validateObjectId(String(id)), body, user_id);
+      if (!data) {
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
+      }
       const insertedData: any = await assetService.getAllAssets({
-        _id: assetId,
-        account_id,
-        visible: true
+        _id: helperService.validateObjectId(String(id)),
       });
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
+      await notificationService.notifyAccountUsers({
+        accountId: String(account_id),
+        module: 'Asset',
+        event: 'updated',
+        entityId: String(id),
+        entityName: insertedData[0]?.asset_name || body.asset_name || 'Asset',
+        actionUrl: `/assets/asset-health/${id}/health`,
+        sourceUserId: String(user_id)
+      });
       res.status(200).json({ status: true, message: "Asset updated successfully", data: insertedData });
     } catch (error) {
       next(error);
@@ -492,10 +391,16 @@ class AssetController {
         user_role: userRole,
       } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
-      const { assetList } = req.query;
-      const scopedAssetIds = await resolveScopedAssetIds(user_id, userRole, assetList);
-      if (scopedAssetIds) {
-        match._id = { $in: scopedAssetIds };
+      let { assetList } = req.query;
+      if (assetList && assetList.toString().split(",").length > 0) {
+        match._id = helperService.validateObjectIds(String(assetList));
+      }
+      if (userRole !== "admin") {
+        const mapData =
+          await mapUserToAssetService.getAssetsMappedData(user_id);
+        if (mapData && mapData.length > 0) {
+          match._id = { $in: mapData.map((doc: any) => doc.assetId) };
+        }
       }
       const data = await assetService.getAssetDataSensorList(match);
       if (!data || data.length === 0) {
@@ -517,10 +422,16 @@ class AssetController {
         user_role: userRole,
       } = get(req, "user", {}) as IUser;
       const match: any = { account_id, visible: true };
-      const { assetList } = req.body;
-      const scopedAssetIds = await resolveScopedAssetIds(user_id, userRole, assetList);
-      if (scopedAssetIds) {
-        match._id = { $in: scopedAssetIds };
+      let { assetList } = req.body;
+      if (assetList && assetList.length > 0) {
+        match._id = { $in: helperService.validateObjectIds(String(assetList)) };
+      }
+      if (userRole !== "admin") {
+        const mapData =
+          await mapUserToAssetService.getAssetsMappedData(user_id);
+        if (mapData && mapData.length > 0) {
+          match._id = { $in: mapData.map((doc: any) => doc.assetId) };
+        }
       }
       const data = await assetService.getAssetDataSensorList(match);
       if (!data || data.length === 0) {
@@ -537,18 +448,11 @@ class AssetController {
   makeAssetCopy = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const userToken = get(req, "userToken", "") as string;
       const { params: { id } } = req;
-      const correlationId = String(res.locals['correlationId'] || randomUUID());
 
       const result = await withTransaction(async (session: any) => {
-        const newParentId = await assetService.makeAssetCopyRecursive(
-          String(id),
-          user_id,
-          account_id,
-          undefined,
-          session,
-          correlationId
-        );
+        const newParentId = await assetService.makeAssetCopyRecursive(String(id), user_id, userToken, account_id, undefined, session);
         if (!newParentId) {
           throw Object.assign(new Error("Asset not found"), { status: 404 });
         }

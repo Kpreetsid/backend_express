@@ -1,4 +1,3 @@
-import { applicationLogger } from '../../observability/logger';
 import mongoose, { Schema } from 'mongoose';
 
 export interface IHistoryOptions {
@@ -14,9 +13,6 @@ export interface IHistoryOptions {
  */
 export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
   let HistoryModel: mongoose.Model<any>;
-
-  const readPrimaryLean = (query: any, session?: mongoose.ClientSession | null) =>
-    query.session(session || null).read('primary').lean().exec();
 
   const getHistoryActor = (doc: any, updatedBy: any) => updatedBy || doc.updatedBy || doc.createdBy;
 
@@ -92,10 +88,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     if (model.modelName === 'Schema_WorkOrder') {
       try {
         const MappingsModel = mongoose.model('Schema_WorkOrderAssignee');
-        mappings = await readPrimaryLean(
-          MappingsModel.find({ woId: { $in: docs.map(d => d._id) } }),
-          session
-        );
+        mappings = await MappingsModel.find({ woId: { $in: docs.map(d => d._id) } }).session(session || null).lean().exec();
       } catch (err) {
         // Silently fail if model not registered or query fails to avoid breaking main update
       }
@@ -117,7 +110,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     // Avoid infinite loop if somehow this plugin is applied to the history model
     if (model.modelName === HModel.modelName) return;
 
-    await HModel.insertMany(historyDocs, session ? { session } : {});
+    await HModel.insertMany(historyDocs, { session });
   };
 
   schema.pre('findOneAndUpdate', async function () {
@@ -126,12 +119,12 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     const options = this.getOptions();
     
     try {
-      const doc = await readPrimaryLean(this.model.findOne(query), options.session);
+      const doc = await this.model.findOne(query).session(options.session || null).lean().exec();
       if (doc) {
         await logHistory(this.model, [doc], update, 'UPDATE', options.session);
       }
     } catch (error) {
-      applicationLogger.error({ err: error }, `History Plugin Error (findOneAndUpdate):`);
+      console.error(`History Plugin Error (findOneAndUpdate):`, error);
     }
   });
 
@@ -141,12 +134,12 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     const options = this.getOptions();
     
     try {
-      const doc = await readPrimaryLean(this.model.findOne(query), options.session);
+      const doc = await this.model.findOne(query).session(options.session || null).lean().exec();
       if (doc) {
         await logHistory(this.model, [doc], update, 'UPDATE', options.session);
       }
     } catch (error) {
-      applicationLogger.error({ err: error }, `History Plugin Error (updateOne):`);
+      console.error(`History Plugin Error (updateOne):`, error);
     }
   });
 
@@ -158,12 +151,12 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     try {
       // For large datasets, this might consume memory, but .lean() helps. 
       // A more robust solution for huge datasets would involve streams.
-      const docs = await readPrimaryLean(this.model.find(query), options.session);
+      const docs = await this.model.find(query).session(options.session || null).lean().exec();
       if (docs && docs.length > 0) {
         await logHistory(this.model, docs, update, 'UPDATE', options.session);
       }
     } catch (error) {
-      applicationLogger.error({ err: error }, `History Plugin Error (updateMany):`);
+      console.error(`History Plugin Error (updateMany):`, error);
     }
   });
 
@@ -175,7 +168,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
         // We only have the session if it's explicitly passed, we'll try to retrieve it if possible
         const session = this.$session();
         
-        const doc = await readPrimaryLean(model.findById(this._id), session);
+        const doc = await model.findById(this._id).session(session || null).lean().exec();
         if (doc) {
           const update = this.modifiedPaths().reduce((acc, path) => {
             acc[path] = this.get(path);
@@ -185,13 +178,13 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
           await logHistory(model, [doc], { $set: update }, 'UPDATE_SAVE', session);
         }
       } catch (error) {
-        applicationLogger.error({ err: error }, `History Plugin Error (save):`);
+        console.error(`History Plugin Error (save):`, error);
       }
     }
   });
 
   // Add static method to the original schema to allow easy access to the history model
-  schema.statics['getHistoryModel'] = function() {
+  schema.statics.getHistoryModel = function() {
     return getHistoryModel(this);
   };
 }

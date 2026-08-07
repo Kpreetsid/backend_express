@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { decodedAccessToken } from "../../_config/auth";
 import { rolesService } from "../../masters/user/role/roles.service";
 import { usersService } from "../../masters/user/user.service";
-import { getAccessTokenTypeFilter, TokenModel } from "../../models/userToken.model";
+import { TokenModel } from "../../models/userToken.model";
 
 class UserTokenService {
   async getAllUserTokens (req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -11,10 +11,7 @@ class UserTokenService {
       if(!token) {
         throw Object.assign(new Error('Invalid link'), { status: 401 });
       }
-      const data = await TokenModel.find({
-        _id: token,
-        ...getAccessTokenTypeFilter()
-      });
+      const data = await TokenModel.find({_id: token});
       if (data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }

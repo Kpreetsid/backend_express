@@ -23,8 +23,6 @@ export interface IWorkInstructions extends Document {
   title: string;
   tag: string;
   description: string;
-  assetId?: ObjectId;
-  locationId?: ObjectId;
   WI_steps: IWorkInstructionsSteps[];
   visible: boolean;
   createdBy: ObjectId;
@@ -36,8 +34,6 @@ const WorkInstructionsSchema = new Schema<IWorkInstructions>({
   title: { type: String, trim: true },
   tag: { type: String, trim: true },
   description: { type: String, trim: true },
-  assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel' },
-  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel' },
   WI_steps: { type: [WorkInstructionsStepsSchema] },
   visible: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },

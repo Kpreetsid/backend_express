@@ -129,14 +129,10 @@ class CompanyController {
   removeCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { account_id: accountId, _id: userId } = get(req, "user", {}) as IUser;
-      if (String(accountId) !== id) {
-        throw Object.assign(new Error("Invalid account ID"), { status: 400 });
-      }
+      const { _id: userId } = get(req, "user", {}) as IUser;
       const deleted = await companyService.removeById(
         helperService.validateObjectId(String(id)),
         userId,
-        accountId,
       );
       if (!deleted) {
         return next(Object.assign(new Error("Company not found"), { status: 404 }));

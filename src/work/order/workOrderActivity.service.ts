@@ -52,7 +52,7 @@ class WorkOrderActivityService {
 
     const actorId = payload.actor?._id || payload.actor?.id || (typeof payload.actor === 'string' ? payload.actor : null);
 
-    const activity = new WorkOrderActivityModel({
+    await WorkOrderActivityModel.create([{
       account_id: payload.account_id,
       work_order_id: workOrder._id,
       order_no: workOrder.order_no || '',
@@ -60,11 +60,10 @@ class WorkOrderActivityService {
       action_type: payload.action_type,
       note: String(payload.note || '').trim(),
       metadata: payload.metadata || {},
-      ...(actorId ? { actor_id: helperService.validateObjectId(String(actorId)) } : {}),
+      actor_id: actorId ? helperService.validateObjectId(String(actorId)) : undefined,
       actor_name: this.formatActorName(payload.actor),
       visible: true
-    });
-    await activity.save(session ? { session } : {});
+    }], session ? { session } : undefined);
   }
 
   async getActivityHistory(workOrderId: string, account_id: any): Promise<any[]> {

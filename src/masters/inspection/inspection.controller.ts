@@ -5,7 +5,6 @@ import { inspectionService } from './inspection.service';
 import { mapInspectionService } from '../../transaction/mapUserInspection/userInspection.service';
 import { helperService } from '../../utils/helper';
 import { notificationService } from '../../utils/notification.service';
-import { withTransaction } from '../../utils/transaction.helper';
 
 class InspectionController {
 
@@ -51,27 +50,23 @@ class InspectionController {
  async create (req: Request, res: Response, next: NextFunction) {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const correlationId = String(res.locals['correlationId'] || '');
-    const data: any = await withTransaction(async (session) => {
-      const created = await inspectionService.createInspection(req.body, account_id, user_id, session);
-      if (!created) {
-        throw Object.assign(new Error('Inspection not created'), { status: 404 });
-      }
-      await notificationService.queueAccountNotification({
-        accountId: String(account_id),
-        module: 'Inspection',
-        event: 'created',
-        entityId: String(created._id),
-        entityName: created.title || req.body.title || 'Inspection',
-        actionUrl: `/inspections/1/${created._id}`,
-        sourceUserId: String(user_id)
-      }, { session, correlationId });
-      return created;
-    });
+    const data: any = await inspectionService.createInspection(req.body, account_id, user_id);
+    if (!data) {
+      throw Object.assign(new Error('Inspection not created'), { status: 404 });
+    }
     const result = await inspectionService.getAllInspection({ _id: data._id, account_id, visible: true });
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
+    await notificationService.notifyAccountUsers({
+      accountId: String(account_id),
+      module: 'Inspection',
+      event: 'created',
+      entityId: String(data._id),
+      entityName: result[0].title,
+      actionUrl: `/inspections/1/${data._id}`,
+      sourceUserId: String(user_id)
+    });
     res.status(201).json({ status: true, message: "Inspection created successfully", data: result });
   } catch (error) {
     next(error);
@@ -82,27 +77,23 @@ class InspectionController {
   try {
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const inspectionId = helperService.validateObjectId(id);
-    const correlationId = String(res.locals['correlationId'] || '');
-    await withTransaction(async (session) => {
-      const updated = await inspectionService.updateInspection(inspectionId, req.body, account_id, user_id, session);
-      if (!updated) {
-        throw Object.assign(new Error('Inspection not updated'), { status: 404 });
-      }
-      await notificationService.queueAccountNotification({
-        accountId: String(account_id),
-        module: 'Inspection',
-        event: 'updated',
-        entityId: String(id),
-        entityName: updated.title || req.body.title || 'Inspection',
-        actionUrl: `/inspections/1/${id}`,
-        sourceUserId: String(user_id)
-      }, { session, correlationId });
-    });
+    const data = await inspectionService.updateInspection(helperService.validateObjectId(id), req.body, account_id, user_id);
+    if (!data) {
+      throw Object.assign(new Error('Inspection not updated'), { status: 404 });
+    }
     const result = await inspectionService.getAllInspection({ _id: helperService.validateObjectId(id), account_id, visible: true });
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
+    await notificationService.notifyAccountUsers({
+      accountId: String(account_id),
+      module: 'Inspection',
+      event: 'updated',
+      entityId: String(id),
+      entityName: result[0].title,
+      actionUrl: `/inspections/1/${id}`,
+      sourceUserId: String(user_id)
+    });
     res.status(200).json({ status: true, message: "Inspection updated successfully", data: result });
   } catch (error) {
     next(error);

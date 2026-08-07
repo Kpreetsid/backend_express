@@ -1,11 +1,9 @@
-import { applicationLogger } from '../../observability/logger';
 import { Request, Response, NextFunction } from 'express';
 import { sopsService } from './sops.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { helperService } from '../../utils/helper';
-import { requireTenantReferences } from '../../utils/tenant-references';
 
 class SOPsController {
 
@@ -54,8 +52,7 @@ class SOPsController {
   async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      applicationLogger.info({ account_id, user_id, userRole });
-      await requireTenantReferences(req.body, account_id);
+      console.log({ account_id, user_id, userRole });
       const data = await sopsService.createSOPs(req.body, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('SOP not created'), { status: 404 });
@@ -74,8 +71,7 @@ class SOPsController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('SOP not found'), { status: 404 });
       }
-      await requireTenantReferences(body, account_id);
-      const data = await sopsService.updateSOPs(id, body, account_id, user_id);
+      const data = await sopsService.updateSOPs(id, body, user_id);
       if (!data) {
         throw Object.assign(new Error('SOP not updated'), { status: 404 });
       }
@@ -93,7 +89,7 @@ class SOPsController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('SOP not found'), { status: 404 });
       }
-      const data = await sopsService.removeSOPs(id, account_id, user_id);
+      const data = await sopsService.removeSOPs(id, user_id);
       if (!data) {
         throw Object.assign(new Error('SOP not deleted'), { status: 404 });
       }

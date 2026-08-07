@@ -1,4 +1,3 @@
-import { applicationLogger } from '../observability/logger';
 import mongoose, { ClientSession } from 'mongoose';
 
 let transactionsUnsupported = false;
@@ -17,10 +16,10 @@ const isUnsupportedTransactionError = (error: any): boolean => {
 const warnUnsupportedTransactionsOnce = (error?: any): void => {
   if (transactionsUnsupportedWarningShown) return;
   transactionsUnsupportedWarningShown = true;
-  applicationLogger.warn("MongoDB transactions are not supported by the current deployment. Running transaction blocks without a session.");
+  console.warn("MongoDB transactions are not supported by the current deployment. Running transaction blocks without a session.");
   if (error) {
     const errorMessage = error?.message || error?.errmsg || String(error);
-    applicationLogger.warn(`Original transaction error: ${errorMessage}`);
+    console.warn(`Original transaction error: ${errorMessage}`);
   }
 };
 
@@ -41,7 +40,7 @@ export const withTransaction = async <T>(fn: (session: ClientSession) => Promise
   let sessionEnded = false;
 
   try {
-    session.startTransaction({ readPreference: 'primary' });
+    session.startTransaction();
     const result = await fn(session);
     await session.commitTransaction();
     sessionEnded = true;

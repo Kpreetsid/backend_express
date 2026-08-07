@@ -13,7 +13,7 @@ class UserLogsController {
       if (userRole !== "admin") {
         match.userId = user_id;
       }
-      if (userRole === "admin" && userId) {
+      if (userId) {
         match.userId = helperService.validateObjectId(String(userId));
       }
       if (statusCode) {

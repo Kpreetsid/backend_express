@@ -18,35 +18,14 @@ import { requestContextMiddleware } from './middlewares/requestContext';
 import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
 import { cryptoRouter } from './routes/crypto.routes';
 import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
-import { corsOptions } from './_config/cors';
-import { server as serverConfig, storageConfig } from './configDB';
-import { structuredHttpLogger } from './observability/logger';
-import { httpMetricsMiddleware } from './observability/metrics';
 
 const app: Express = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
-app.use(structuredHttpLogger);
-app.use(httpMetricsMiddleware());
-app.use(cors({
-  ...corsOptions,
-  exposedHeaders: [
-    'X-CMMS-Payload-Encrypted',
-    'X-CMMS-Crypto-Key-Id',
-    'X-CMMS-Crypto-Timestamp',
-    'X-CMMS-Crypto-Nonce',
-    'X-Request-ID',
-    'X-Correlation-ID',
-    'X-CSRF-Token',
-    'traceparent',
-    'ETag',
-    'Retry-After',
-    'Idempotency-Replayed'
-  ]
-}));
-app.use(express.json({ limit: serverConfig.jsonBodyLimit }));
-app.use(express.urlencoded({ limit: serverConfig.urlencodedBodyLimit, extended: true }));
+app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce'] }));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));
+app.use(express.urlencoded({ limit: process.env.URLENCODED_BODY_LIMIT || '5mb', extended: true }));
 app.use(payloadCryptoResponseMiddleware());
 app.use(payloadCryptoRequestMiddleware);
 app.use(mongoSanitizeMiddleware());
@@ -59,9 +38,20 @@ app.use(compression({
     return !req.headers['x-no-compression'];
   }
 }));
-if (storageConfig.driver === 'local' || storageConfig.dualReadLocalFallbackEnabled) {
-  app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
-}
+app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/assets')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/asset_report')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/endpointImages')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/floor_map')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/locations')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/logo')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/mailers')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/observations')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/posts')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/user_profile_img')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/WO_docs')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_request')));
+app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_order')));
 
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });
@@ -80,7 +70,7 @@ apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());
 apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
 
-const apiBasePath = serverConfig.apiBasePath;
+const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
 app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], apiRouter);
 
 app.use((req: Request, res: Response, next: NextFunction) => {

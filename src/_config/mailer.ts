@@ -1,17 +1,15 @@
-import { applicationLogger } from '../observability/logger';
 import nodemailer, { Transporter } from 'nodemailer';
 import { mailCredential } from '../configDB';
 import { generateExternalAccessToken } from './auth';
 import fs from 'fs';
 import path from 'path';
 import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
-import { VERIFICATION_CODE_EXPIRY_SECONDS, VerificationCodeModel } from '../models/userVerification.model';
+import { VerificationCodeModel, VERIFICATION_CODE_EXPIRY_SECONDS } from '../models/userVerification.model';
 
 interface MailPayload {
   to: string;
   subject: string;
   html: string;
-  messageId?: string;
 }
 
 export class MailerService {
@@ -23,7 +21,7 @@ export class MailerService {
       host: mailCredential.host,
       port: mailCredential.port,
       secure: mailCredential.secure,
-      tls: { rejectUnauthorized: mailCredential.tlsRejectUnauthorized },
+      tls: { rejectUnauthorized: false },
       auth: {
         user: mailCredential.user,
         pass: mailCredential.pass
@@ -31,28 +29,23 @@ export class MailerService {
     });
   }
 
-  private async send({ to, subject, html, messageId }: MailPayload): Promise<void> {
-    if (messageId && await MailLogModel.exists({ messageId, status: 'success' })) {
-      applicationLogger.info({ messageId, to }, 'Email delivery already recorded; skipping retry');
-      return;
-    }
-    const mailLog: IMailLog = new MailLogModel({ to, subject, html, messageId });
+  private async send({ to, subject, html }: MailPayload): Promise<void> {
+    const mailLog: IMailLog = new MailLogModel({ to, subject, html });
     try {
       await this.transporter.verify();
-      applicationLogger.info('Mail verified');
+      console.log('Mail verified');
       const info = await this.transporter.sendMail({
         from: `Presage Insights <${mailCredential.from}>`,
         to,
         subject,
-        html,
-        ...(messageId ? { messageId } : {})
+        html
       });
-      mailLog.messageId = messageId || info.messageId;
+      mailLog.messageId = info.messageId;
       mailLog.mailInfo = info;
       mailLog.status = 'success';
-      applicationLogger.info(`Message Id: ${info.messageId}, Accepted: ${info.accepted}, Rejected: ${info.rejected}, Response: ${info.response}`);
+      console.log(`Message Id: ${info.messageId}, Accepted: ${info.accepted}, Rejected: ${info.rejected}, Response: ${info.response}`);
     } catch (error: any) {
-      applicationLogger.error({ err: error }, 'Error sending email:');
+      console.error('Error sending email:', error);
       mailLog.status = 'failed';
       mailLog.error = error;
       throw error;
@@ -69,7 +62,7 @@ export class MailerService {
   private replace(template: string, data: Record<string, string>): string {
     let html = template;
     for (const key in data) {
-      html = html.replaceAll(`{{${key}}}`, data[key]!);
+      html = html.replaceAll(`{{${key}}}`, data[key]);
     }
     return html;
   }
@@ -206,12 +199,7 @@ export class MailerService {
     await this.send({to: user.email, subject: 'Your Presage CMMS Password Has Been Updated', html});
   }
 
-  async sendWorkOrderMail(
-    workOrder: any,
-    assignedUser: any,
-    createdBy: any,
-    messageId?: string
-  ): Promise<void> {
+  async sendWorkOrderMail(workOrder: any, assignedUser: any, createdBy: any): Promise<void> {
     const fileName = this.loadTemplate(`workOrder.template.html`);
     const descriptionPreview = this.truncate(this.stripHtml(workOrder.description), 220) || 'No description provided.';
     const procedureCount = Array.isArray(workOrder.procedures)
@@ -264,18 +252,10 @@ export class MailerService {
         YEAR: new Date().getFullYear().toString()
       }
     );
-    await this.send({
-      to: assignedUser.email,
-      subject,
-      html,
-      ...(messageId ? { messageId } : {})
-    });
+    await this.send({to: assignedUser.email, subject, html});
   }
 
-  async sendUserCreatedMail(
-    data: { userName: string; userEmail: string; },
-    messageId?: string
-  ): Promise<void> {
+  async sendUserCreatedMail(data: { userName: string; userEmail: string;}): Promise<void> {
     const fileName = this.loadTemplate(`userRegister.template.html`);
     const html = this.replace(fileName,
       {
@@ -287,12 +267,7 @@ export class MailerService {
         year: new Date().getFullYear().toString()
       }
     );
-    await this.send({
-      to: data.userEmail,
-      subject: 'Welcome to Presage Insights - Your Account Is Ready',
-      html,
-      ...(messageId ? { messageId } : {})
-    });
+    await this.send({to: data.userEmail, subject: 'Welcome to Presage Insights - Your Account Is Ready', html});
   }
 }
 

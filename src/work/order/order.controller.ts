@@ -4,8 +4,6 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { storageProvider } from '../../_config/storage';
-import { uploadFilesService } from '../../upload/upload.multer';
-import { getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
 
 class OrderController {
 
@@ -65,9 +63,8 @@ class OrderController {
   async getOrderById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const orderId = helperService.validateObjectId(String(req.params['id']));
+      const orderId = helperService.validateObjectId(String(req.params.id));
       const data = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
-      setSyncVersionEtag(res, data);
       res.status(200).json({ status: true, message: "Work order fetched.", data });
     } catch (error) {
       next(error);
@@ -77,12 +74,7 @@ class OrderController {
   async createOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const data = await orderService.createWorkOrder(
-        req.body,
-        user,
-        String(res.locals['correlationId'] || '')
-      );
-      setSyncVersionEtag(res, data);
+      const data = await orderService.createWorkOrder(req.body, user);
       res.status(201).send({ status: true, message: 'Work order created.', data });
     } catch (error) {
       next(error);
@@ -92,15 +84,8 @@ class OrderController {
   async updateOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const id = String(req.params['id']);
-      const data = await orderService.updateById(
-        id,
-        req.body,
-        user,
-        getExpectedSyncVersion(req),
-        String(res.locals['correlationId'] || '')
-      );
-      setSyncVersionEtag(res, data);
+      const id = String(req.params.id);
+      const data = await orderService.updateById(id, req.body, user);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
       next(error);
@@ -110,18 +95,10 @@ class OrderController {
   async statusUpdateOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const id = String(req.params['id']);
+      const id = String(req.params.id);
       const { status, block_reason } = req.body;
-      const data = await orderService.orderStatusChange(
-        id,
-        status,
-        user,
-        block_reason,
-        getExpectedSyncVersion(req),
-        String(res.locals['correlationId'] || '')
-      );
-      setSyncVersionEtag(res, data);
-      res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
+      await orderService.orderStatusChange(id, status, user, block_reason);
+      res.status(200).send({ status: true, message: 'Work order updated successfully.' });
     } catch (error) {
       next(error);
     }
@@ -136,14 +113,7 @@ class OrderController {
         throw Object.assign(new Error('No data provided for update'), { status: 400 });
       }
 
-      const data = await orderService.updateById(
-        helperService.validateObjectId(String(id)),
-        body,
-        user,
-        getExpectedSyncVersion(req),
-        String(res.locals['correlationId'] || '')
-      );
-      setSyncVersionEtag(res, data);
+      const data = await orderService.updateById(helperService.validateObjectId(String(id)), body, user);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
       next(error);
@@ -153,7 +123,7 @@ class OrderController {
   async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const orderId = helperService.validateObjectId(String(req.params['id']));
+      const orderId = helperService.validateObjectId(String(req.params.id));
       await orderService.removeOrder(orderId, user);
       res.status(200).send({ status: true, message: 'Work order deleted successfully.' });
     } catch (error) {
@@ -164,7 +134,7 @@ class OrderController {
   async uploadAttachments(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const id = String(req.params['id']);
+      const id = String(req.params.id);
       const orderId = helperService.validateObjectId(id);
       const files: any = req.files;
 
@@ -175,25 +145,16 @@ class OrderController {
       const orders = await orderService.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
       const existingOrder = orders[0];
 
-      const folderName = String(req.params['folderName'] || '');
-      const persistedFiles = await uploadFilesService.persistMultipartFiles(
-        files,
-        folderName,
-        String(user.account_id),
-        String(user._id)
-      );
-      const fileDataList = await Promise.all(persistedFiles.map(async (file: any) => ({
+      const fileDataList = files.map((file: any) => ({
         originalName: file.originalname,
         type: file.mimetype,
         destination: file.destination,
         fileName: file.filename,
-        folderName,
-        fileUrl: storageProvider.getSignedURL
-          ? await storageProvider.getSignedURL(file.filename, folderName)
-          : storageProvider.getURL(file.filename, folderName),
+        folderName: req.params.folderName,
+        fileUrl: storageProvider.getURL(file.filename, String(req.params.folderName || '')),
         filePath: file.path,
         size: file.size
-      })));
+      }));
 
       const newFiles = [...(existingOrder.files || []), ...fileDataList];
       await orderService.updateDataById(id, { files: newFiles }, user);
@@ -625,7 +586,7 @@ class OrderController {
 
   async getHistory(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const orderId = String(req.params['id']);
+      const orderId = String(req.params.id);
       const data = await orderService.getHistory(orderId);
       res.status(200).json({ status: true, message: "Work order history fetched successfully.", data });
     } catch (error) {
@@ -636,7 +597,7 @@ class OrderController {
   async getActivity(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id } = get(req, "user", {}) as IUser;
-      const orderId = String(req.params['id']);
+      const orderId = String(req.params.id);
       const data = await orderService.getActivity(orderId, account_id);
       res.status(200).json({ status: true, message: "Work order activity fetched successfully.", data });
     } catch (error) {

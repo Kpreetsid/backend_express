@@ -1,4 +1,3 @@
-import { applicationLogger } from '../../observability/logger';
 import { LocationModel, ILocationMaster } from "../../models/location.model";
 import { IMapUserLocation, MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { AssetModel } from "../../models/asset.model";
@@ -173,7 +172,7 @@ class LocationService {
       }
       return { assetList: data, locationList: locationData };
     } catch (error) {
-      applicationLogger.error({ err: error }, 'Error in childAssetsAgainstLocation:');
+      console.error('Error in childAssetsAgainstLocation:', error);
       return null;
     }
   };
@@ -194,26 +193,23 @@ class LocationService {
       }
       return [...new Set([...parentIds, ...childIds])];
     } catch (error) {
-      applicationLogger.error({ err: error }, 'Error in getAllChildLocationsRecursive:');
+      console.error('Error in getAllChildLocationsRecursive:', error);
       return [];
     }
   }
 
-  async insertLocation(body: any, session?: mongoose.ClientSession) {
+  async insertLocation(body: any) {
     const newLocation: any = new LocationModel(body);
     newLocation.top_level_location_id = newLocation.top_level ? newLocation._id as mongoose.Types.ObjectId : body.top_level_location_id;
     body.parent_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
-    return await newLocation.save(session ? { session } : {});
+    return await newLocation.save();
   };
 
-  async updateById(id: string, body: any, accountId: any, session?: mongoose.ClientSession) {
-    await updateLocationAssetMapping(id, body.userIdList, [], [], session);
-    await LocationModel.updateOne(
-      { _id: id, account_id: accountId },
-      body,
-      session ? { session } : {}
-    );
-    return await LocationModel.findOne({ _id: id, account_id: accountId }).session(session || null);
+  async updateById(id: string, body: any) {
+    // await mapUserToLocationService.updateUserMapping(id, body.userIdList);
+    await updateLocationAssetMapping(id, body.userIdList);
+    await LocationModel.updateOne({ _id: id }, body);
+    return await LocationModel.findById(id);
   };
 
   async removeLocationById(id: any, user_id: any) {
