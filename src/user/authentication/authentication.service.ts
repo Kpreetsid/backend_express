@@ -19,6 +19,7 @@ import { parseTtlSeconds } from "../../utils/ttl";
 import { accountAccessService } from "../../_role/accountAccess.service";
 import { tokenSessionStore } from "../../_cache/session/tokenSessionStore";
 import { clearAuthCookies, setAccessCookies } from "./authCookie.service";
+import { analysisFeatureService } from "../../masters/analysisFeature/analysisFeature.service";
 
 const persistAccessSession = async (
   token: string,
@@ -101,7 +102,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
     const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id);
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, userAccount[0]);
-    
+    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
+
     const isCookieAuth = userAccount[0].cookie_status === 'enabled';
     if (isCookieAuth) {
       setAccessCookies(res, {
@@ -135,6 +137,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
           userDetails: safeUser,
           platformControl: effectivePermissions.platformControl,
           roleMenu: effectivePermissions.roleMenu,
+          analysisFeature: analysisFeature,
           accountPermissionVersion: Number(userAccount[0].account_permission_version || 1)
         }
       });
@@ -306,23 +309,23 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
 
     clearAuthCookies(res);
     res.status(200).json(
-      { 
-        status: true, 
-        message: 'Login successful', 
-        data: { 
+      {
+        status: true,
+        message: 'Login successful',
+        data: {
           authMethod: 'localStorage',
           token: newToken,
           token_id,
           refreshToken: refreshSession.rawToken,
-          accountDetails: accountDetails[0], 
-          userDetails: newSafeUserValue, 
-          platformControl: effectivePermissions.platformControl, 
-          roleMenu: effectivePermissions.roleMenu, 
+          accountDetails: accountDetails[0],
+          userDetails: newSafeUserValue,
+          platformControl: effectivePermissions.platformControl,
+          roleMenu: effectivePermissions.roleMenu,
           accountPermissionVersion: Number(accountDetails[0].account_permission_version || 1),
           isExternal: !!isExternal,
           isInternal: !!isInternal,
           redirectPath: safeRedirectPath
-        } 
+        }
       });
   } catch (error) {
     next(error);

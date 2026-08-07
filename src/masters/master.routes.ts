@@ -16,6 +16,7 @@ import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.rou
 import partsTypeRoutes from './part-type/parts-type.routes';
 import inspectionRoutes from './inspection/inspection.routes';
 import { hasAccountFeature, hasAnyAccountFeature } from '../middlewares/permission';
+import analysisFeatureRoutes from './analysisFeature/analysisFeature.routes';
 
 const withAccountFeature = (
     menuKey: string,
@@ -53,5 +54,6 @@ export default (): express.Router => {
     router.use(withAccountFeature('observation', observationRoutes));
     router.use(withAnyAccountFeature(['floor_map', 'location_floor_map'], floorMapRoutes));
     router.use(withAnyAccountFeature(['asset', 'location'], troubleshootGuideRoutes));
+    analysisFeatureRoutes(router);
     return router;
 }
