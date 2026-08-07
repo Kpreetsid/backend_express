@@ -603,14 +603,23 @@ class EquipmentController {
           });
         }
       }
-      await mapUserToAssetService.createMapUserAssets(assetsMapData);
-      if (newlyCreatedAssetList.length > 0) {
-        await processorAPIService.setAssetHealthStatus(newlyCreatedAssetList, account_id, user_id, userToken);
-      }
-      console.log("---Put payload----", equipmentEndpoint);
-      await processorAPIService.createEquipmentEndPoints(equipmentEndpoint, user_id, userToken);
-      const data = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
-      await notificationService.notifyAccountUsers({
+      await mapUserToAssetService.createMapUserAssets(assetsMapData, session);
+      const createdAssetIds = newlyCreatedAssetId.map((assetId) => String(assetId));
+      const healthQueued = createdAssetIds.length > 0
+        ? await queueAssetHealthInitialization({
+            assetIds: createdAssetIds,
+            tenantId: String(account_id),
+            actorId: String(user_id),
+            correlationId
+          }, session)
+        : true;
+      const endpointsQueued = await queueEquipmentEndpointSync({
+        equipmentId: String(id),
+        tenantId: String(account_id),
+        actorId: String(user_id),
+        correlationId
+      }, session);
+      await notificationService.queueAccountNotification({
         accountId: String(account_id),
         module: 'Asset',
         event: 'updated',

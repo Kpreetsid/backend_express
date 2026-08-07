@@ -4,7 +4,7 @@ import { z } from 'zod';
 dotenv.config({ quiet: true });
 
 const optionalString = z.preprocess(
-  (value) => typeof value === 'string' && value.trim() === '' ? undefined : value,
+  (value: unknown) => typeof value === 'string' && value.trim() === '' ? undefined : value,
   z.string().optional()
 );
 
@@ -90,7 +90,7 @@ const envSchema = z.object({
   METRICS_TOKEN: optionalString,
   SCHEDULER_LOCK_TTL_MS: optionalString,
   USER_LOG_RETENTION_DAYS: optionalString
-}).superRefine((env, context) => {
+}).superRefine((env: any, context: z.RefinementCtx) => {
   if (
     envBooleanForValidation(env.S3_DUAL_READ_LOCAL_FALLBACK_ENABLED)
     && env.STORAGE_DRIVER !== 's3'
@@ -308,7 +308,7 @@ function envBooleanForValidation(value: string | undefined): boolean {
 const result = envSchema.safeParse(process.env);
 if (!result.success) {
   const details = result.error.issues
-    .map((issue) => `${issue.path.join('.') || 'environment'}: ${issue.message}`)
+    .map((issue: z.ZodIssue) => `${issue.path.join('.') || 'environment'}: ${issue.message}`)
     .join('; ');
   throw new Error(`Invalid CMMS configuration: ${details}`);
 }
@@ -464,9 +464,9 @@ export const telemetryConfig = {
   endpoint: env.OTEL_EXPORTER_OTLP_ENDPOINT,
   headers: (env.OTEL_EXPORTER_OTLP_HEADERS || '')
     .split(',')
-    .map((pair) => pair.trim())
+    .map((pair: string) => pair.trim())
     .filter(Boolean)
-    .reduce<Record<string, string>>((headers, pair) => {
+    .reduce<Record<string, string>>((headers: Record<string, string>, pair: string) => {
       const separator = pair.indexOf('=');
       if (separator > 0) headers[pair.slice(0, separator)] = pair.slice(separator + 1);
       return headers;

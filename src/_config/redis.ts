@@ -15,7 +15,7 @@ export const initializeRedis = async (): Promise<RedisClient | undefined> => {
     url: redisConfig.url,
     socket: { connectTimeout: redisConfig.connectTimeoutMs }
   });
-  client.on('error', (error) => applicationLogger.error({ err: error }, 'Redis client error'));
+  client.on('error', (error: unknown) => applicationLogger.error({ err: error }, 'Redis client error'));
   await client.connect();
   return client;
 };

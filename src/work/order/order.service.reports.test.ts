@@ -311,7 +311,7 @@ describe('work-order enterprise report contracts', () => {
       conversion_rate: 40,
       trend: { date: ['2026-08-01'], created: [3] }
     });
-    expect(aggregate.mock.calls[0][0][0].$match).toMatchObject({
+    expect((aggregate.mock.calls[0] as any)[0][0].$match).toMatchObject({
       account_id: 'account-1',
       asset_id: { $in: ['asset-1'] },
       location_id: { $in: ['location-1'] }
@@ -491,7 +491,7 @@ describe('work-order enterprise report contracts', () => {
         { key: 'Monthly', value: 1 }
       ]
     });
-    expect(scheduleAggregate.mock.calls[0][0][0].$match).toMatchObject({
+    expect((scheduleAggregate.mock.calls[0] as any)[0][0].$match).toMatchObject({
       'work_order.wo_asset_id': { $in: ['asset-1'] },
       'work_order.wo_location_id': { $in: ['location-1'] }
     });

@@ -39,7 +39,7 @@ export const initSocket = async (httpServer: HttpServer): Promise<Server> => {
   const redis = getRedisClient();
   if (redis) {
     const subscriber = redis.duplicate();
-    subscriber.on('error', (error) =>
+    subscriber.on('error', (error: unknown) =>
       applicationLogger.error({ err: error }, 'Socket.IO Redis subscriber error')
     );
     await subscriber.connect();

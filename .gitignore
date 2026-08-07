@@ -6,4 +6,4 @@ uploadFiles
 .agent
 *.log
 *.env
-!.env.example
+package-lock.json

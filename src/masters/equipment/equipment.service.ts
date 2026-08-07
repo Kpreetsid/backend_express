@@ -1,3 +1,4 @@
+import { getExternalData } from '../../utils/externalAPI';
 import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../transaction/mapUserAsset/userAsset.service";
@@ -103,7 +104,7 @@ class EquipmentService {
     return data;
   };
 
-  getEquipmentTreeDataById = async (match: any, token: string, user_id: any) => {
+  getEquipmentTreeDataById = async (match: any, token: string = '', user_id: any = '') => {
     const assets = await AssetModel.aggregate([
       { $match: match },
       {
@@ -132,20 +133,23 @@ class EquipmentService {
 
     let mergedAssets = assets;
     const childAssetIds = assets.filter(a => !a.top_level && a.parent_id).map(a => String(a._id));
-    if (childAssetIds.length) {
-      const childEquipmentDetail: any = await processorAPIService.getEquipmentDetails({ asset_ids: childAssetIds }, token, user_id);
-      console.log("--childEquipmentDetail--", childEquipmentDetail);
-      const childEquipmentById = new Map(
-        (childEquipmentDetail.data || []).map((a: any) => [String(a.asset_id || a.id), a])
-      );
+    if (childAssetIds.length && token && user_id) {
+      try {
+        const childEquipmentDetail: any = await getExternalData('processor/equipment-details', 'POST', { asset_ids: childAssetIds }, token, String(user_id));
+        const childEquipmentById = new Map(
+          (childEquipmentDetail?.data || []).map((a: any) => [String(a.asset_id || a.id), a])
+        );
 
-      mergedAssets = assets.map((asset: any) => {
-        const matchedAsset = childEquipmentById.get(String(asset._id));
+        mergedAssets = assets.map((asset: any) => {
+          const matchedAsset = childEquipmentById.get(String(asset._id));
 
-        return matchedAsset
-          ? { ...asset, ...matchedAsset }
-          : asset;
-      });
+          return matchedAsset
+            ? { ...asset, ...matchedAsset }
+            : asset;
+        });
+      } catch {
+        // proceed with unmerged assets if external request fails
+      }
     }
     return this.buildEquipmentTree(mergedAssets, assetUsers);
   };

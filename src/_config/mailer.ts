@@ -5,8 +5,7 @@ import { generateExternalAccessToken } from './auth';
 import fs from 'fs';
 import path from 'path';
 import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
-import { VERIFICATION_CODE_EXPIRY_SECONDS } from '../models/userVerification.model';
-import { passwordResetAuthorizationService } from '../user/resetPassword/passwordResetAuthorization.service';
+import { VERIFICATION_CODE_EXPIRY_SECONDS, VerificationCodeModel } from '../models/userVerification.model';
 
 interface MailPayload {
   to: string;
