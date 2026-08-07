@@ -1,8 +1,11 @@
+import { applicationLogger } from '../../observability/logger';
 import puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
 import { storageConfig } from '../../configDB';
 import { processorAPIService } from '../../api-processor';
+import { storageProvider } from '../../_config/storage';
+import { uploadMetadataService } from '../../upload/upload-metadata.service';
 
 export class PdfService {
   private twfChartProto = {
@@ -266,29 +269,34 @@ export class PdfService {
     try {
       return fs.existsSync(scriptPath) ? fs.readFileSync(scriptPath, 'utf8') : '';
     } catch (error: any) {
-      console.error('[PdfService] Failed to load ECharts renderer:', error.message);
+      applicationLogger.error('[PdfService] Failed to load ECharts renderer:', error.message);
       return '';
     }
   }
 
-  public async generateAssetReportPdf(data: any, token?: string, userId?: string): Promise<Buffer> {
-    console.log(`[PdfService] Generating PDF for asset: ${data.assetName || 'Unknown'}`);
+  public async generateAssetReportPdf(
+    data: any,
+    token?: string,
+    userId?: string,
+    accountId?: string
+  ): Promise<Buffer> {
+    applicationLogger.info(`[PdfService] Generating PDF for asset: ${data.assetName || 'Unknown'}`);
 
     // Chart data resolution: prefer legacy small chartData if present; otherwise
     // rebuild chart configs from saved report metadata to keep client payloads small.
 
     if (Array.isArray(data.frontendChartImages) && data.frontendChartImages.length > 0) {
       data.chartData = {};
-      console.log(`[PdfService] Using ${data.frontendChartImages.length} frontend chart snapshot(s).`);
+      applicationLogger.info(`[PdfService] Using ${data.frontendChartImages.length} frontend chart snapshot(s).`);
     } else if (data.chartData && Object.keys(data.chartData).length > 0) {
       // Sort keys alphabetically to match Angular keyvalue pipe default sort
       const sorted: any = {};
       Object.keys(data.chartData).sort().forEach((k: string) => { sorted[k] = data.chartData[k]; });
       data.chartData = sorted;
-      console.log(`[PdfService] Using frontend-supplied chartData with ${Object.keys(data.chartData).length} device(s).`);
+      applicationLogger.info(`[PdfService] Using frontend-supplied chartData with ${Object.keys(data.chartData).length} device(s).`);
     } else if (token && userId) {
       const composites = this.normalizeChartDetail(data.chartDetail);
-      console.warn('[PdfService] No frontend chartData supplied; rendering charts from saved report metadata.');
+      applicationLogger.warn('[PdfService] No frontend chartData supplied; rendering charts from saved report metadata.');
       try {
         if (composites.length > 0) {
           const res = await processorAPIService.getAccVelData({ composites }, token, userId);
@@ -305,10 +313,10 @@ export class PdfService {
             );
           }
         } else {
-          console.log(`No Chart attached with this report`);
+          applicationLogger.info(`No Chart attached with this report`);
         }
       } catch (err) {
-        console.error('[PdfService] Failed to fetch chart data:', err);
+        applicationLogger.error({ err: err }, '[PdfService] Failed to fetch chart data:');
       }
     }
 
@@ -319,7 +327,7 @@ export class PdfService {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
       });
     } catch (launchError: any) {
-      console.error(`[PdfService] Browser launch failed: ${launchError.message}`);
+      applicationLogger.error(`[PdfService] Browser launch failed: ${launchError.message}`);
       throw new Error(`Failed to launch PDF browser: ${launchError.message}`);
     }
 
@@ -327,13 +335,13 @@ export class PdfService {
       const page = await browser.newPage();
 
       // Enable console and error logging for debugging
-      page.on('console', (msg: any) => console.log('PAGE LOG:', msg.text()));
-      page.on('pageerror', (err: any) => console.log('PAGE ERROR:', err.message));
+      page.on('console', (msg: any) => applicationLogger.info('PAGE LOG:', msg.text()));
+      page.on('pageerror', (err: any) => applicationLogger.info('PAGE ERROR:', err.message));
 
       // Set a real User-Agent to avoid 403 errors from some CDNs
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36');
 
-      const html = this.buildHtml(data);
+      const html = await this.buildHtml(data, accountId);
 
       await page.setContent(html, {
         waitUntil: ['domcontentloaded', 'load'],
@@ -346,13 +354,13 @@ export class PdfService {
         });
         const chartStatus = await page.evaluate(() => (globalThis as any).PDF_CHART_STATUS || null);
         if (chartStatus) {
-          console.log(`[PdfService] Chart render status: ${chartStatus.rendered}/${chartStatus.expected} chart(s), ${chartStatus.groups} group(s).`);
+          applicationLogger.info(`[PdfService] Chart render status: ${chartStatus.rendered}/${chartStatus.expected} chart(s), ${chartStatus.groups} group(s).`);
           if (chartStatus.rendered < chartStatus.expected) {
-            console.warn('[PdfService] Some report charts did not render before PDF capture.');
+            applicationLogger.warn('[PdfService] Some report charts did not render before PDF capture.');
           }
         }
       } catch (e) {
-        console.warn('[PdfService] PDF_READY timeout exceeded, generating PDF with available content');
+        applicationLogger.warn('[PdfService] PDF_READY timeout exceeded, generating PDF with available content');
       }
 
       const labels = data.labels || {};
@@ -370,7 +378,7 @@ export class PdfService {
           logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
         }
       } catch (e) {
-        console.error('[PdfService] Failed to load logo for header:', e);
+        applicationLogger.error({ err: e }, '[PdfService] Failed to load logo for header:');
       }
 
       const pdfBuffer = await page.pdf({
@@ -406,7 +414,7 @@ export class PdfService {
 
       return Buffer.from(pdfBuffer);
     } catch (error: any) {
-      console.error(`[PdfService] PDF generation failed: ${error.stack}`);
+      applicationLogger.error(`[PdfService] PDF generation failed: ${error.stack}`);
       throw error;
     } finally {
       if (browser) await browser.close();
@@ -436,10 +444,14 @@ export class PdfService {
       .join('');
   }
 
-  private buildHtml(data: any): string {
+  private async buildHtml(data: any, accountId?: string): Promise<string> {
     const templatePath = path.join(__dirname, '..', '..', 'public', 'asset-report.html');
     let template = fs.readFileSync(templatePath, 'utf8');
     const hasFrontendChartImages = Array.isArray(data.frontendChartImages) && data.frontendChartImages.length > 0;
+    const [assetImageHtml, attachmentsHtml] = await Promise.all([
+      this.buildAssetImage(data, accountId),
+      this.buildAttachments(data.attachments, accountId)
+    ]);
 
     const replacements: any = {
       generatedDate: this.formatDate(new Date(), data.timezone, false, data.locale),
@@ -452,12 +464,12 @@ export class PdfService {
       createdFrom: data.createdFrom || 'NA',
       observations: data.observations || '-',
       recommendations: data.recommendations || '-',
-      assetImageHtml: this.buildAssetImage(data),
+      assetImageHtml,
       isoSection: this.buildIsoSection(data),
       healthHistorySection: this.buildHealthHistorySection(data),
       readingsTable: this.buildReadingsTable(data),
       faultsTable: this.buildFaultsTable(data.faultData),
-      attachmentsHtml: this.buildAttachments(data.attachments),
+      attachmentsHtml,
       frontendChartsHtml: this.buildFrontendChartImages(data.frontendChartImages),
       hasFrontendChartImages: hasFrontendChartImages ? 'true' : 'false',
       backendChartsRootStyle: hasFrontendChartImages ? 'display:none;' : '',
@@ -503,20 +515,98 @@ export class PdfService {
         return `data:image/${extension === 'jpg' ? 'jpeg' : extension};base64,${fileBuffer.toString('base64')}`;
       }
     } catch (e: any) {
-      console.error(`[PdfService] toBase64 failed for ${filePath}:`, e.message);
+      applicationLogger.error(`[PdfService] toBase64 failed for ${filePath}:`, e.message);
     }
     return '';
   }
 
-  private buildAssetImage(data: any): string {
+  private parseStoredReference(
+    reference: string,
+    defaultFolder?: string
+  ): { fileName: string; folderName?: string } | null {
+    const trimmed = String(reference || '').trim();
+    if (!trimmed || trimmed.startsWith('data:')) return null;
+
+    let relativePath = trimmed;
+    const baseUrl = storageConfig.baseUrl.replace(/\/$/, '');
+    if (relativePath.startsWith(`${baseUrl}/`)) {
+      relativePath = relativePath.slice(baseUrl.length + 1);
+    } else {
+      try {
+        relativePath = new URL(relativePath).pathname;
+      } catch {
+        // Plain stored keys and filenames are supported for existing records.
+      }
+    }
+
+    try {
+      relativePath = decodeURIComponent(relativePath);
+    } catch {
+      return null;
+    }
+    relativePath = relativePath.split(/[?#]/, 1)[0]!.replace(/^[/\\]+/, '');
+    const segments = relativePath
+      .split(/[\\/]+/)
+      .filter((segment) => segment && segment !== '.' && segment !== '..');
+    const fileName = segments.pop();
+    if (!fileName) return null;
+    const folderName = segments.length > 0 ? segments.join('/') : defaultFolder;
+    return folderName ? { fileName, folderName } : { fileName };
+  }
+
+  private mimeTypeFor(fileName: string): string {
+    switch (path.extname(fileName).toLowerCase()) {
+      case '.jpg':
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.png':
+        return 'image/png';
+      case '.pdf':
+        return 'application/pdf';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  private async storedFileToBase64(
+    reference: string,
+    defaultFolder?: string,
+    accountId?: string
+  ): Promise<string> {
+    if (/^data:image\/(?:png|jpe?g);base64,/i.test(reference)) return reference;
+    const storedReference = this.parseStoredReference(reference, defaultFolder);
+    if (!storedReference) return '';
+
+    try {
+      if (accountId) {
+        await uploadMetadataService.assertTenantOwnership(
+          accountId,
+          storedReference.fileName,
+          storedReference.folderName
+        );
+      }
+      const buffer = await storageProvider.readBuffer(
+        storedReference.fileName,
+        storedReference.folderName
+      );
+      return `data:${this.mimeTypeFor(storedReference.fileName)};base64,${buffer.toString('base64')}`;
+    } catch (error) {
+      applicationLogger.warn(
+        { err: error, storageKey: storedReference },
+        '[PdfService] Stored report image could not be loaded'
+      );
+      return '';
+    }
+  }
+
+  private async buildAssetImage(data: any, accountId?: string): Promise<string> {
     if (data.assetImage) {
-      const imgPath = path.join(process.cwd(), 'uploadFiles', 'assets', data.assetImage);
-      const b64 = this.toBase64(imgPath);
+      const b64 = await this.storedFileToBase64(data.assetImage, 'assets', accountId);
       if (b64) {
         return `<img src="${b64}" alt="Asset Image" style="width:100%; height:180px; border-radius:12px; object-fit:cover;" />`;
       }
     }
-    return `<div class="asset-initials">${data.assetName}</div>`;
+    return `<div class="asset-initials">${this.escapeHtml(data.assetName)}</div>`;
   }
 
   private buildIsoSection(data: any): string {
@@ -720,28 +810,24 @@ export class PdfService {
     }
   }
 
-  private buildAttachments(attachments: any[]): string {
+  private async buildAttachments(attachments: any[], accountId?: string): Promise<string> {
     if (!attachments || attachments.length === 0) return '<div class="no-data-msg">No files attached to this report.</div>';
+
+    const attachmentCards = await Promise.all(attachments.map(async (item) => {
+      const b64 = typeof item === 'string'
+        ? await this.storedFileToBase64(item, undefined, accountId)
+        : '';
+      if (!b64) return '';
+      return `
+        <div class="attachment-card">
+          <img src="${b64}" />
+        </div>
+      `;
+    }));
 
     return `
       <div class="attachments-grid">
-        ${attachments.map(item => {
-          let b64 = '';
-          if (typeof item === 'string') {
-            // Handle both absolute URLs and potential relative paths
-            const relativePath = item.replace(storageConfig.baseUrl, '').replace(/^\/+/, '');
-            const filePath = path.join(process.cwd(), 'uploadFiles', relativePath);
-            b64 = this.toBase64(filePath);
-          }
-          
-          if (!b64) return '';
-
-          return `
-            <div class="attachment-card">
-              <img src="${b64}" />
-            </div>
-          `;
-        }).join('')}
+        ${attachmentCards.join('')}
       </div>
     `;
   }

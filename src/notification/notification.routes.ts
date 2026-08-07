@@ -22,7 +22,7 @@ router.patch('/mark-all-opened', (req: Request, res: Response, next: NextFunctio
 });
 
 router.post('/test-notification', (req: Request, res: Response, next: NextFunction) => {
-  notificationController.testNotification(req, res).catch(next);
+  notificationController.testNotification(req as any, res).catch(next);
 });
 
 export default router;

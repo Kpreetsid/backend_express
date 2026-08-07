@@ -1,11 +1,13 @@
+import { applicationLogger } from '../observability/logger';
 import { usersService } from "../masters/user/user.service";
 import { IScheduleMaster, SchedulerModel } from "../models/scheduleMaster.model";
 import { orderService } from "../work/order/order.service";
 import crypto from "crypto";
+import { schedulerConfig } from "../configDB";
 
 class SchedulerService {
     private readonly instanceId = `${process.pid}-${crypto.randomUUID()}`;
-    private readonly lockTtlMs = Number(process.env['SCHEDULER_LOCK_TTL_MS'] || 10 * 60 * 1000);
+    private readonly lockTtlMs = schedulerConfig.lockTtlMs;
 
     private getTodayDateStr(): string {
         return new Date().toISOString().split("T")[0]!;
@@ -122,12 +124,13 @@ class SchedulerService {
                 break;
         }
         const systemUser: any = await usersService.getAllUsers({ _id: schedule.createdBy });
-        console.log(`▶️ Creating Work Order for schedule: ${schedule.title}`);
+        applicationLogger.info(`▶️ Creating Work Order for schedule: ${schedule.title}`);
         const workOrder = await orderService.createWorkOrder(body, systemUser[0]);
         if (!workOrder) {
-            console.error(`❌ Failed to create work order for schedule: ${schedule.title}`);
+            applicationLogger.error(`❌ Failed to create work order for schedule: ${schedule.title}`);
+            throw new Error(`Work order creation failed for schedule: ${schedule.title}`);
         }
-        console.log(`✅ Work Order created for schedule: ${schedule.title}`);
+        applicationLogger.info(`✅ Work Order created for schedule: ${schedule.title}`);
         s.no_of_execution = (s.no_of_execution ?? 0) + 1;
         s.last_execution_date = new Date();
         if ((s.no_of_repetition && s.no_of_execution >= s.no_of_repetition) || (s.end_date && new Date() >= new Date(s.end_date))) {
@@ -135,7 +138,7 @@ class SchedulerService {
             s.end_date = new Date().toISOString().split("T")[0]!;
         }
         await schedule.save();
-        console.log(`✅ Schedule updated for schedule: ${schedule.title}`);
+        applicationLogger.info(`✅ Schedule updated for schedule: ${schedule.title}`);
     }
 
     public async runUnifiedScheduler(): Promise<void> {
@@ -144,7 +147,7 @@ class SchedulerService {
             const todayName = this.getTodayName();
             const todayDate = today.getDate();
             const schedules = await SchedulerModel.find({ visible: true, "schedule.enabled": true });
-            console.log(`🗓️ Scheduler started | ${schedules.length} active schedules`);
+            applicationLogger.info(`🗓️ Scheduler started | ${schedules.length} active schedules`);
             for (const schedule of schedules) {
                 try {
                     const s = schedule.schedule;
@@ -170,12 +173,12 @@ class SchedulerService {
                         await this.releaseScheduleLock(schedule._id);
                     }
                 } catch (indivError) {
-                    console.error(`❌ Schedule execution failed for "${schedule.title}":`, indivError);
+                    applicationLogger.error({ err: indivError }, `❌ Schedule execution failed for "${schedule.title}":`);
                 }
             }
-            console.log("✅ Scheduler completed successfully");
+            applicationLogger.info("✅ Scheduler completed successfully");
         } catch (error) {
-            console.error("❌ Scheduler failed:", error);
+            applicationLogger.error({ err: error }, "❌ Scheduler failed:");
         }
     }
 }

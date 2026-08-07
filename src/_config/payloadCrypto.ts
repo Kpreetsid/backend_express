@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import { Request } from 'express';
-import { auth, payloadCrypto } from '../configDB';
+import { auth, payloadCrypto, redisConfig } from '../configDB';
+import { getRedisClient } from './redis';
+import { redisKeys } from './redis-keys';
 
 export interface PayloadCryptoEnvelope {
   _encrypted: true;
@@ -36,6 +38,7 @@ export interface PayloadCryptoKeyRecord {
 }
 
 const encoder = new TextEncoder();
+const sealedKeyAad = Buffer.from('cmms-payload-key-v1', 'utf8');
 
 class PayloadCryptoService {
   private readonly bootstrapKeys = new Map<string, PayloadCryptoKeyRecord>();
@@ -88,7 +91,7 @@ class PayloadCryptoService {
       usedNonces: new Map()
     };
 
-    this.bootstrapKeys.set(record.keyId, record);
+    this.registerKeyRecord(record, this.bootstrapKeys);
     this.cleanupExpired();
 
     return {
@@ -119,11 +122,10 @@ class PayloadCryptoService {
       expiresAt: now + ttlSeconds * 1000,
       userId: input.userId,
       accountId: input.accountId,
-      token: input.token,
       usedNonces: new Map()
     };
 
-    this.sessionKeys.set(record.keyId, record);
+    this.registerKeyRecord(record, this.sessionKeys);
     this.cleanupExpired();
 
     return {
@@ -140,7 +142,9 @@ class PayloadCryptoService {
 
   getKeyRecord(keyId: string): PayloadCryptoKeyRecord {
     this.cleanupExpired();
-    const record = this.sessionKeys.get(keyId) || this.bootstrapKeys.get(keyId);
+    const record = this.sessionKeys.get(keyId)
+      || this.bootstrapKeys.get(keyId)
+      || this.openKeyRecord(keyId);
     if (!record) {
       throw Object.assign(new Error('Payload crypto key is invalid or expired'), { status: 401, name: 'InvalidTokenError' });
     }
@@ -149,10 +153,18 @@ class PayloadCryptoService {
       this.bootstrapKeys.delete(keyId);
       throw Object.assign(new Error('Payload crypto key expired'), { status: 401, name: 'TokenExpiredError' });
     }
+    if (!this.sessionKeys.has(keyId) && !this.bootstrapKeys.has(keyId)) {
+      const target = record.kind === 'session' ? this.sessionKeys : this.bootstrapKeys;
+      target.set(keyId, record);
+    }
     return record;
   }
 
-  validateReplay(record: PayloadCryptoKeyRecord, timestampHeader: unknown, nonceHeader: unknown): { timestamp: string; nonce: string } {
+  async validateReplay(
+    record: PayloadCryptoKeyRecord,
+    timestampHeader: unknown,
+    nonceHeader: unknown
+  ): Promise<{ timestamp: string; nonce: string }> {
     const timestamp = String(timestampHeader || '');
     const nonce = String(nonceHeader || '');
     const timestampMs = Number(timestamp);
@@ -165,11 +177,42 @@ class PayloadCryptoService {
       throw Object.assign(new Error('Payload crypto request expired'), { status: 401, name: 'TokenExpiredError' });
     }
 
+    const ttlMs = payloadCrypto.replayTtlSeconds * 1000;
+    if (redisConfig.enabled) {
+      const redis = getRedisClient();
+      if (!redis?.isReady) {
+        throw Object.assign(
+          new Error('Distributed payload replay protection is unavailable'),
+          { status: 503, name: 'ServiceUnavailableError' }
+        );
+      }
+      try {
+        const accepted = await redis.set(
+          redisKeys.payloadCryptoReplay(record.accountId, record.keyId, nonce),
+          '1',
+          { NX: true, PX: ttlMs }
+        );
+        if (accepted !== 'OK') {
+          throw Object.assign(
+            new Error('Payload crypto request replay detected'),
+            { status: 409, name: 'ConflictError' }
+          );
+        }
+      } catch (error: any) {
+        if (error?.status === 409) throw error;
+        throw Object.assign(
+          new Error('Distributed payload replay protection is unavailable'),
+          { status: 503, name: 'ServiceUnavailableError', cause: error }
+        );
+      }
+      return { timestamp, nonce };
+    }
+
     this.cleanupNonces(record);
     if (record.usedNonces.has(nonce)) {
       throw Object.assign(new Error('Payload crypto request replay detected'), { status: 409, name: 'ConflictError' });
     }
-    record.usedNonces.set(nonce, now + payloadCrypto.replayTtlSeconds * 1000);
+    record.usedNonces.set(nonce, now + ttlMs);
     return { timestamp, nonce };
   }
 
@@ -250,6 +293,99 @@ class PayloadCryptoService {
       encoder.encode('cmms-payload-bootstrap-v1'),
       32
     ));
+  }
+
+  private registerKeyRecord(
+    record: PayloadCryptoKeyRecord,
+    target: Map<string, PayloadCryptoKeyRecord>
+  ): void {
+    if (payloadCrypto.masterSecret) {
+      record.keyId = this.sealKeyRecord(record);
+    }
+    target.set(record.keyId, record);
+  }
+
+  private sealKeyRecord(record: PayloadCryptoKeyRecord): string {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv(
+      'aes-256-gcm',
+      this.getSealingKey(),
+      iv
+    );
+    cipher.setAAD(sealedKeyAad);
+    const plaintext = Buffer.from(JSON.stringify({
+      kind: record.kind,
+      key: record.key.toString('base64'),
+      expiresAt: record.expiresAt,
+      sessionId: record.sessionId,
+      userId: record.userId,
+      accountId: record.accountId
+    }), 'utf8');
+    const ciphertext = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+    return [
+      'v1',
+      iv.toString('base64url'),
+      cipher.getAuthTag().toString('base64url'),
+      ciphertext.toString('base64url')
+    ].join('.');
+  }
+
+  private openKeyRecord(keyId: string): PayloadCryptoKeyRecord | undefined {
+    if (!payloadCrypto.masterSecret || !keyId.startsWith('v1.')) {
+      return undefined;
+    }
+    try {
+      const [version, ivValue, tagValue, ciphertextValue, extra] = keyId.split('.');
+      if (
+        version !== 'v1'
+        || !ivValue
+        || !tagValue
+        || !ciphertextValue
+        || extra !== undefined
+      ) {
+        return undefined;
+      }
+      const decipher = crypto.createDecipheriv(
+        'aes-256-gcm',
+        this.getSealingKey(),
+        Buffer.from(ivValue, 'base64url')
+      );
+      decipher.setAAD(sealedKeyAad);
+      decipher.setAuthTag(Buffer.from(tagValue, 'base64url'));
+      const plaintext = Buffer.concat([
+        decipher.update(Buffer.from(ciphertextValue, 'base64url')),
+        decipher.final()
+      ]);
+      const value = JSON.parse(plaintext.toString('utf8'));
+      const key = Buffer.from(String(value.key || ''), 'base64');
+      if (
+        !['bootstrap', 'session'].includes(value.kind)
+        || key.length !== 32
+        || !Number.isFinite(value.expiresAt)
+        || !value.sessionId
+      ) {
+        return undefined;
+      }
+      return {
+        keyId,
+        sessionId: String(value.sessionId),
+        kind: value.kind,
+        key,
+        expiresAt: Number(value.expiresAt),
+        ...(value.userId ? { userId: String(value.userId) } : {}),
+        ...(value.accountId ? { accountId: String(value.accountId) } : {}),
+        usedNonces: new Map()
+      };
+    } catch {
+      return undefined;
+    }
+  }
+
+  private getSealingKey(): Buffer {
+    return crypto
+      .createHash('sha256')
+      .update(String(payloadCrypto.masterSecret))
+      .digest();
   }
 
   private assertEnvelope(envelope: PayloadCryptoEnvelope, record: PayloadCryptoKeyRecord): void {

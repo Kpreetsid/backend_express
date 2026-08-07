@@ -4,6 +4,7 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { storageProvider } from '../../_config/storage';
+import { uploadFilesService } from '../../upload/upload.multer';
 import { getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
 
 class OrderController {
@@ -76,7 +77,11 @@ class OrderController {
   async createOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const data = await orderService.createWorkOrder(req.body, user);
+      const data = await orderService.createWorkOrder(
+        req.body,
+        user,
+        String(res.locals['correlationId'] || '')
+      );
       setSyncVersionEtag(res, data);
       res.status(201).send({ status: true, message: 'Work order created.', data });
     } catch (error) {
@@ -88,7 +93,13 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const id = String(req.params['id']);
-      const data = await orderService.updateById(id, req.body, user, getExpectedSyncVersion(req));
+      const data = await orderService.updateById(
+        id,
+        req.body,
+        user,
+        getExpectedSyncVersion(req),
+        String(res.locals['correlationId'] || '')
+      );
       setSyncVersionEtag(res, data);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
@@ -101,7 +112,14 @@ class OrderController {
       const user = get(req, "user", {}) as IUser;
       const id = String(req.params['id']);
       const { status, block_reason } = req.body;
-      const data = await orderService.orderStatusChange(id, status, user, block_reason, getExpectedSyncVersion(req));
+      const data = await orderService.orderStatusChange(
+        id,
+        status,
+        user,
+        block_reason,
+        getExpectedSyncVersion(req),
+        String(res.locals['correlationId'] || '')
+      );
       setSyncVersionEtag(res, data);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
@@ -118,7 +136,13 @@ class OrderController {
         throw Object.assign(new Error('No data provided for update'), { status: 400 });
       }
 
-      const data = await orderService.updateById(helperService.validateObjectId(String(id)), body, user, getExpectedSyncVersion(req));
+      const data = await orderService.updateById(
+        helperService.validateObjectId(String(id)),
+        body,
+        user,
+        getExpectedSyncVersion(req),
+        String(res.locals['correlationId'] || '')
+      );
       setSyncVersionEtag(res, data);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
@@ -151,16 +175,25 @@ class OrderController {
       const orders = await orderService.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
       const existingOrder = orders[0];
 
-      const fileDataList = files.map((file: any) => ({
+      const folderName = String(req.params['folderName'] || '');
+      const persistedFiles = await uploadFilesService.persistMultipartFiles(
+        files,
+        folderName,
+        String(user.account_id),
+        String(user._id)
+      );
+      const fileDataList = await Promise.all(persistedFiles.map(async (file: any) => ({
         originalName: file.originalname,
         type: file.mimetype,
         destination: file.destination,
         fileName: file.filename,
-        folderName: req.params['folderName'],
-        fileUrl: storageProvider.getURL(file.filename, String(req.params['folderName'] || '')),
+        folderName,
+        fileUrl: storageProvider.getSignedURL
+          ? await storageProvider.getSignedURL(file.filename, folderName)
+          : storageProvider.getURL(file.filename, folderName),
         filePath: file.path,
         size: file.size
-      }));
+      })));
 
       const newFiles = [...(existingOrder.files || []), ...fileDataList];
       await orderService.updateDataById(id, { files: newFiles }, user);

@@ -74,8 +74,11 @@ class PartsService {
   }
 
   private getIssuedQuantity(part: any, status?: string): number {
+    const hasExplicitActual = part?.actualQuantity !== undefined
+      && part?.actualQuantity !== null
+      && String(part.actualQuantity).trim() !== '';
     const explicitActual = Number(part?.actualQuantity);
-    if (Number.isFinite(explicitActual) && explicitActual > 0) {
+    if (hasExplicitActual && Number.isFinite(explicitActual) && explicitActual >= 0) {
       return explicitActual;
     }
     return this.isCompletedStatus(status) ? this.getEstimatedQuantity(part) : 0;
@@ -876,23 +879,16 @@ class PartsService {
       if (oldQty === newQty) continue;
       const part = await PartsModel.findById(partId);
       if (!part) continue;
-      if (oldQty > 0 && newQty === 0) {
-        part.quantity += oldQty;
-      }
-      if (oldQty === 0 && newQty > 0) {
-        if (part.quantity < newQty) {
-          throw Object.assign(new Error(`Not enough quantity for ${part.part_name}`), { status: 400 });
-        }
-        part.quantity -= newQty;
-      }
       if (oldQty > newQty) {
         const diff = oldQty - newQty;
         part.quantity += diff;
-      }
-      if (newQty > oldQty) {
+      } else {
         const diff = newQty - oldQty;
         if (part.quantity < diff) {
-          throw Object.assign(new Error(`Insufficient inventory for ${part.part_name}`), { status: 400 });
+          const message = oldQty === 0
+            ? `Not enough quantity for ${part.part_name}`
+            : `Insufficient inventory for ${part.part_name}`;
+          throw Object.assign(new Error(message), { status: 400 });
         }
         part.quantity -= diff;
       }

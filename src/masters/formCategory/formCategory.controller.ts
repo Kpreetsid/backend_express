@@ -85,13 +85,13 @@ class FormCategoryController {
 
   remove = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
       const category = await formCategoryService.getCategoryById(helperService.validateObjectId(String(id)), account_id);
       if (!category) {
         throw Object.assign(new Error('Category not found'), { status: 404 });
       }
-      await formCategoryService.removeById(String(id));
+      await formCategoryService.removeById(String(id), account_id, user_id);
       res.status(200).json({ status: true, message: "Category deleted successfully" });
     } catch (error) {
       next(error);

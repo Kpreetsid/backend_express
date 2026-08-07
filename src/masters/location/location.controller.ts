@@ -9,6 +9,7 @@ import { applyRoleFilter } from '../../utils/roleFilter';
 import { withTransaction } from "../../utils/transaction.helper";
 import { LocationModel } from "../../models/location.model";
 import { notificationService } from '../../utils/notification.service';
+import { requireActiveTenantUsers } from '../../utils/tenant-users';
 
 class LocationController {
 
@@ -178,17 +179,29 @@ class LocationController {
       }
       body.account_id = account_id;
       body.createdBy = user_id;
-      const data: any = await locationService.insertLocation(body);
-      await mapUserToLocationService.mapUserLocationData(data._id, body.userIdList, account_id);
-      
-      await notificationService.notifyAccountUsers({
-        accountId: String(account_id),
-        module: 'Location',
-        event: 'created',
-        entityId: String(data._id),
-        entityName: data.location_name,
-        actionUrl: `/locations/info/${data._id}`,
-        sourceUserId: String(user_id)
+      const correlationId = String(res.locals['correlationId'] || '');
+      const data: any = await withTransaction(async (session) => {
+        const tenantUserIds = await requireActiveTenantUsers(body.userIdList, account_id, session);
+        const created = await locationService.insertLocation(
+          { ...body, userIdList: tenantUserIds },
+          session
+        );
+        await mapUserToLocationService.mapUserLocationData(
+          created._id,
+          tenantUserIds,
+          account_id,
+          session
+        );
+        await notificationService.queueAccountNotification({
+          accountId: String(account_id),
+          module: 'Location',
+          event: 'created',
+          entityId: String(created._id),
+          entityName: created.location_name,
+          actionUrl: `/locations/info/${created._id}`,
+          sourceUserId: String(user_id)
+        }, { session, correlationId });
+        return created;
       });
 
       res.status(201).json({ status: true, message: "Location created successfully", data: [data] });
@@ -209,23 +222,31 @@ class LocationController {
         throw Object.assign(new Error('Location not found'), { status: 404 });
       }
       body.updatedBy = user_id;
-      const data: any = await locationService.updateById(String(id), body);
-      if (!data || !data.visible) {
-        throw Object.assign(new Error('Failed to update location'), { status: 500 });
-      }
+      const correlationId = String(res.locals['correlationId'] || '');
+      const data: any = await withTransaction(async (session) => {
+        const tenantUserIds = await requireActiveTenantUsers(body.userIdList, account_id, session);
+        const updated = await locationService.updateById(
+          String(id),
+          { ...body, userIdList: tenantUserIds },
+          account_id,
+          session
+        );
+        if (!updated || !updated.visible) {
+          throw Object.assign(new Error('Failed to update location'), { status: 500 });
+        }
+        await notificationService.queueAccountNotification({
+          accountId: String(account_id),
+          module: 'Location',
+          event: 'updated',
+          entityId: String(id),
+          entityName: updated.location_name || 'Location',
+          actionUrl: `/locations/info/${id}`,
+          sourceUserId: String(user_id)
+        }, { session, correlationId });
+        return updated;
+      });
       data.id = data._id;
       const updatedLocation = await locationService.getAllLocations({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
-
-      const locationName = updatedLocation?.[0]?.location_name || 'Location';
-      await notificationService.notifyAccountUsers({
-        accountId: String(account_id),
-        module: 'Location',
-        event: 'updated',
-        entityId: String(id),
-        entityName: locationName,
-        actionUrl: `/locations/info/${id}`,
-        sourceUserId: String(user_id)
-      });
 
       res.status(200).json({ status: true, message: "Location updated successfully", data: updatedLocation });
     } catch (error) {
@@ -280,6 +301,7 @@ class LocationController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { id } = req.params;
+      const correlationId = String(res.locals['correlationId'] || '');
 
       const result = await withTransaction(async (session: any) => {
         let sourceLocation: any = await LocationModel.findOne({ _id: helperService.validateObjectId(String(id)), account_id, visible: true }).session(session);
@@ -308,9 +330,15 @@ class LocationController {
         }
 
         // Clone assets for each location in the new hierarchy
-        const userToken = get(req, "userToken", "") as string;
         for (const [oldLocId, newLocId] of Object.entries(idMap)) {
-          await assetService.cloneAssetsByLocation(oldLocId, newLocId, account_id, user_id, userToken, session);
+          await assetService.cloneAssetsByLocation(
+            oldLocId,
+            newLocId,
+            account_id,
+            user_id,
+            session,
+            correlationId
+          );
         }
 
         // Fetch the newly created top-level location with all its details

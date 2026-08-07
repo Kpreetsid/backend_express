@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { ObjectId } from 'mongodb';
+import { auditConfig } from '../configDB';
 
 export interface IUserLog extends Document {
     account_id: ObjectId;
@@ -141,7 +142,7 @@ userLogSchema.statics['findByUserId'] = function (userId: string) {
 
 userLogSchema.index(
     { createdAt: 1 },
-    { expireAfterSeconds: Number(process.env['USER_LOG_RETENTION_DAYS'] || 180) * 24 * 60 * 60 }
+    { expireAfterSeconds: auditConfig.userLogRetentionDays * 24 * 60 * 60 }
 );
 
 export const UserLogModel = mongoose.model<IUserLog>('Schema_UserLog', userLogSchema);

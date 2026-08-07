@@ -20,6 +20,37 @@ export class NotificationRepository {
     return await Notification.insertMany(notifications);
   }
 
+  async createManyIdempotent(dataArray: Partial<INotification>[], deliveryEventId: string) {
+    if (!dataArray.length) return [];
+    const timestamp = new Date();
+    const targetUsers = dataArray.map((data) => {
+      if (!data.targetUser) throw new Error('targetUser is required for notification fan-out');
+      return data.targetUser;
+    });
+    const operations = dataArray.map((data, index) => ({
+      updateOne: {
+        filter: {
+          deliveryEventId,
+          targetUser: targetUsers[index]!
+        },
+        update: {
+          $setOnInsert: {
+            ...data,
+            deliveryEventId,
+            status: 'Sent',
+            statusHistory: [{ status: 'Sent', timestamp }]
+          }
+        },
+        upsert: true
+      }
+    }));
+    await Notification.bulkWrite(operations as any);
+    return await Notification.find({
+      deliveryEventId,
+      targetUser: { $in: targetUsers }
+    });
+  }
+
   async updateStatus(id: string, status: 'Delivered' | 'Reached' | 'Opened', userId?: string) {
     const match: any = { _id: id };
     if (userId) {

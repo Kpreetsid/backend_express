@@ -1,6 +1,16 @@
 import { SOPsModel, ISopsMaster } from '../../models/sops.model';
 
 class SOPsService {
+    private sanitizeBody(body: any): Record<string, unknown> {
+        const source = body || {};
+        return {
+            name: source.name,
+            description: source.description,
+            json_temp: source.json_temp,
+            locationId: source.locationId,
+            categoryId: source.categoryId
+        };
+    }
 
     async getSOPs (match: any): Promise<ISopsMaster[]> {
         match.visible = true;
@@ -15,17 +25,27 @@ class SOPsService {
     };
 
     async createSOPs (body: any, account_id: any, user_id: any): Promise<ISopsMaster> {
-        const newSchedule = new SOPsModel({ ...body, account_id, createdBy: user_id });
+        const newSchedule = new SOPsModel({
+            ...this.sanitizeBody(body),
+            account_id,
+            createdBy: user_id
+        });
         return await newSchedule.save();
     };
 
-    async updateSOPs (id: any, body: any, user_id: any): Promise<ISopsMaster | null> {
-        body.updatedBy = user_id;
-        return await SOPsModel.findByIdAndUpdate(id, body);
+    async updateSOPs (id: any, body: any, account_id: any, user_id: any): Promise<ISopsMaster | null> {
+        return await SOPsModel.findOneAndUpdate(
+            { _id: id, account_id, visible: true },
+            { ...this.sanitizeBody(body), updatedBy: user_id }
+        );
     };
 
-    async removeSOPs (id: any, user_id: any): Promise<any> {
-        return await SOPsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
+    async removeSOPs (id: any, account_id: any, user_id: any): Promise<any> {
+        return await SOPsModel.findOneAndUpdate(
+            { _id: id, account_id, visible: true },
+            { visible: false, updatedBy: user_id },
+            { returnDocument: 'after' }
+        );
     };
 }
 

@@ -1,8 +1,10 @@
+import { applicationLogger } from '../observability/logger';
 import { createHash } from 'crypto';
 import { NextFunction, Request, Response } from 'express';
 import { get } from 'lodash';
 import { IdempotencyRecordModel } from '../models/idempotency-record.model';
 import { IUser } from '../models/user.model';
+import { readFile } from 'fs/promises';
 
 const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const PROCESSING_LEASE_MS = 5 * 60 * 1000;
@@ -27,8 +29,17 @@ export async function idempotencyMiddleware(req: Request, res: Response, next: N
     return;
   }
 
+  let fileFingerprint: string;
+  try {
+    fileFingerprint = await stableFileFingerprint(req.files);
+  } catch (error) {
+    next(error);
+    return;
+  }
   const requestHash = createHash('sha256')
-    .update(`${method}\n${req.originalUrl}\n${stableStringify(req.body || {})}`)
+    .update(
+      `${method}\n${req.originalUrl}\n${stableStringify(req.body || {})}\n${fileFingerprint}`
+    )
     .digest('hex');
   const identity = { account_id: accountId, user_id: userId, key };
 
@@ -117,10 +128,10 @@ export async function idempotencyMiddleware(req: Request, res: Response, next: N
           response_headers: responseHeaders,
           expiresAt: new Date(Date.now() + RETENTION_MS)
         }
-      }).catch(error => console.error('Failed to finalize idempotency record:', error));
+      }).catch(error => applicationLogger.error('Failed to finalize idempotency record:', error));
       return;
     }
-    void IdempotencyRecordModel.deleteOne(identity).catch(error => console.error('Failed to clear idempotency record:', error));
+    void IdempotencyRecordModel.deleteOne(identity).catch(error => applicationLogger.error('Failed to clear idempotency record:', error));
   });
 
   next();
@@ -132,4 +143,33 @@ function stableStringify(value: unknown): string {
   return `{${Object.keys(value as Record<string, unknown>).sort().map(key =>
     `${JSON.stringify(key)}:${stableStringify((value as Record<string, unknown>)[key])}`
   ).join(',')}}`;
+}
+
+async function stableFileFingerprint(files: Request['files']): Promise<string> {
+  const flattened = Array.isArray(files)
+    ? files
+    : Object.entries(files || {}).flatMap(([fieldName, fieldFiles]) =>
+      fieldFiles.map((file) => ({ ...file, fieldname: fieldName }))
+    );
+  const fingerprints = await Promise.all(flattened.map(async (file) => {
+    const bytes = Buffer.isBuffer(file.buffer)
+      ? file.buffer
+      : file.path
+        ? await readFile(file.path)
+        : null;
+    if (!bytes) {
+      throw Object.assign(
+        new Error('Unable to fingerprint an uploaded file for idempotency.'),
+        { status: 400 }
+      );
+    }
+    return stableStringify({
+      fieldName: file.fieldname,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      sha256: createHash('sha256').update(bytes).digest('hex')
+    });
+  }));
+  return fingerprints.join('\n');
 }

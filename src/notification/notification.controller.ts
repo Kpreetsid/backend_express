@@ -1,10 +1,14 @@
 import { Request, Response } from 'express';
 import { notificationRepository } from './notification.service';
+import { notificationService } from '../utils/notification.service';
+import { requireActiveTenantUsers } from '../utils/tenant-users';
 
 // Extend Request type to include user property from auth middleware
 interface AuthRequest extends Request {
   user: {
     id: string;
+    _id?: string;
+    account_id: string;
     [key: string]: any;
   };
 }
@@ -64,17 +68,30 @@ export class NotificationController {
   /**
    * Test endpoint to trigger a notification
    */
-  public async testNotification(req: Request, res: Response) {
+  public async testNotification(req: AuthRequest, res: Response) {
     try {
       const { userId, type, message, companyId } = req.body;
-      const { notificationService } = require('../utils/notification.service');
-      
+      const authenticatedUserId = req.user.id || req.user._id;
+      const accountId = req.user.account_id;
+      if (!authenticatedUserId || !accountId) {
+        throw Object.assign(new Error('Authenticated account is required'), {
+          status: 401
+        });
+      }
+      if (companyId && String(companyId) !== String(accountId)) {
+        throw Object.assign(
+          new Error('Notification company does not match authenticated account'),
+          { status: 403 }
+        );
+      }
+      const targetUserId = userId || authenticatedUserId;
+      await requireActiveTenantUsers([targetUserId], accountId);
       await notificationService.notifyUser(
-        userId || (req as any).user?.id,
+        targetUserId,
         type || 'TEST_NOTIFICATION',
         message || 'This is a test notification',
         { entityId: 'test-123' },
-        companyId
+        accountId
       );
 
       res.json({ success: true, message: 'Test notification triggered' });

@@ -2,12 +2,12 @@ import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../transaction/mapUserAsset/userAsset.service";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
-import { processorAPIService } from '../../api-processor';
 import { helperService } from '../../utils/helper';
 import { withTransaction } from "../../utils/transaction.helper";
 import mongoose from 'mongoose';
 import { LocationModel } from '../../models/location.model';
 import { UserModel } from '../../models/user.model';
+import { assetService } from '../asset/asset.service';
 
 class EquipmentService {
   async getAllEquipment(match: any) {
@@ -161,8 +161,18 @@ class EquipmentService {
     return rootNodes.map(attachChildren);
   };
 
-  async updateEquipmentImageById(id: string, image_path: string, user_id: string) {
-    return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { returnDocument: 'after' });
+  async updateEquipmentImageById(
+    id: string,
+    image_path: string,
+    account_id: any,
+    user_id: string,
+    session?: mongoose.ClientSession
+  ) {
+    return await AssetModel.findOneAndUpdate(
+      { _id: id, account_id, visible: true },
+      { image_path: image_path, updatedBy: user_id },
+      { returnDocument: 'after', ...(session ? { session } : {}) }
+    );
   }
 
   async removeEquipmentById(match: any, userID: any) {
@@ -194,7 +204,45 @@ class EquipmentService {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null));
   }
 
-  async createEquipment(equipment: any, account_id: any, user_id: any) {
+  async requireTenantLocation(
+    locationId: any,
+    account_id: any,
+    session?: mongoose.ClientSession
+  ): Promise<void> {
+    const query = LocationModel.countDocuments({
+      _id: locationId,
+      account_id,
+      visible: true
+    });
+    if (session) query.session(session);
+    if (await query !== 1) {
+      throw Object.assign(new Error('Equipment location not found'), { status: 404 });
+    }
+  }
+
+  async requireTenantAssetForUpdate(
+    assetId: any,
+    account_id: any,
+    session?: mongoose.ClientSession
+  ): Promise<void> {
+    const query = AssetModel.exists({
+      _id: assetId,
+      account_id,
+      visible: true
+    });
+    if (session) query.session(session);
+    const exists = await query;
+    if (!exists) {
+      throw Object.assign(new Error('Equipment asset not found'), { status: 404 });
+    }
+  }
+
+  async createEquipment(
+    equipment: any,
+    account_id: any,
+    user_id: any,
+    session?: mongoose.ClientSession
+  ) {
     equipment = this.removeExtraFields(equipment);
     const newEquipment: any = new AssetModel({
       asset_name: equipment.asset_name,
@@ -221,10 +269,10 @@ class EquipmentService {
       createdBy: user_id
     });
     newEquipment.top_level_asset_id = newEquipment._id;
-    return await newEquipment.save();
+    return await newEquipment.save(session ? { session } : {});
   }
 
-  async createMotor(motor: any, equipment: any, account_id: any, user_id: any) {
+  async createMotor(motor: any, equipment: any, account_id: any, user_id: any, session?: mongoose.ClientSession) {
     motor = this.removeExtraFields(motor);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -252,10 +300,10 @@ class EquipmentService {
       manufacturer: motor.manufacturer,
       year: motor.year,
       createdBy: user_id
-    }).save();
+    }).save(session ? { session } : {});
   }
 
-  async createFlexible(flexible: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createFlexible(flexible: any, equipment: any, account_id: any, user_id: any, session?: mongoose.ClientSession): Promise<any> {
     flexible = this.removeExtraFields(flexible);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -278,10 +326,10 @@ class EquipmentService {
       assigned_to: flexible.assigned_to,
       image_path: flexible.image_path,
       createdBy: user_id
-    }).save();
+    }).save(session ? { session } : {});
   }
 
-  async createRigid(rigid: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createRigid(rigid: any, equipment: any, account_id: any, user_id: any, session?: mongoose.ClientSession): Promise<any> {
     rigid = this.removeExtraFields(rigid);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -305,10 +353,10 @@ class EquipmentService {
       assigned_to: rigid.assigned_to,
       image_path: rigid.image_path,
       createdBy: user_id
-    }).save();
+    }).save(session ? { session } : {});
   }
 
-  async createBeltPulley(beltPulley: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createBeltPulley(beltPulley: any, equipment: any, account_id: any, user_id: any, session?: mongoose.ClientSession): Promise<any> {
     beltPulley = this.removeExtraFields(beltPulley);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -334,10 +382,10 @@ class EquipmentService {
       drivingPulleyDia: beltPulley.drivingPulleyDia,
       drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
       createdBy: user_id
-    }).save();
+    }).save(session ? { session } : {});
   }
 
-  async createGearbox(gearbox: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createGearbox(gearbox: any, equipment: any, account_id: any, user_id: any, session?: mongoose.ClientSession): Promise<any> {
     gearbox = this.removeExtraFields(gearbox);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -382,10 +430,10 @@ class EquipmentService {
       assigned_to: gearbox.assigned_to,
       image_path: gearbox.image_path,
       createdBy: user_id
-    }).save();
+    }).save(session ? { session } : {});
   }
 
-  async createFanBlower(fanBlower: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createFanBlower(fanBlower: any, equipment: any, account_id: any, user_id: any, session?: mongoose.ClientSession): Promise<any> {
     fanBlower = this.removeExtraFields(fanBlower);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -416,10 +464,10 @@ class EquipmentService {
       assigned_to: fanBlower.assigned_to,
       image_path: fanBlower.image_path,
       createdBy: user_id
-    }).save();
+    }).save(session ? { session } : {});
   }
 
-  async createPumps(pumps: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createPumps(pumps: any, equipment: any, account_id: any, user_id: any, session?: mongoose.ClientSession): Promise<any> {
     pumps = this.removeExtraFields(pumps);
     return new AssetModel({
       parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
@@ -448,10 +496,10 @@ class EquipmentService {
       assigned_to: pumps.assigned_to,
       image_path: pumps.image_path,
       createdBy: user_id
-    }).save();
+    }).save(session ? { session } : {});
   }
 
-  async createCompressor(compressor: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+  async createCompressor(compressor: any, equipment: any, account_id: any, user_id: any, session?: mongoose.ClientSession): Promise<any> {
     compressor = this.removeExtraFields(compressor);
     return new AssetModel({
       parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
@@ -480,7 +528,7 @@ class EquipmentService {
       assigned_to: compressor.assigned_to,
       image_path: compressor.image_path,
       createdBy: user_id
-    }).save();
+    }).save(session ? { session } : {});
   }
 
   async deleteAssetsById(assetId: any) {
@@ -503,7 +551,7 @@ class EquipmentService {
     });
   }
 
-  async updateEquipment(equipment: any, account_id: any, user_id: any) {
+  async updateEquipment(equipment: any, account_id: any, user_id: any, existingSession?: mongoose.ClientSession) {
     return await withTransaction(async (session) => {
       equipment = this.removeExtraFields(equipment);
       const updatedEquipment: any = {
@@ -530,12 +578,17 @@ class EquipmentService {
         imageNodeData: equipment.imageNodeData,
         updatedBy: user_id
       };
+      await this.requireTenantAssetForUpdate(equipment.id, account_id, session);
       await mapUserToAssetService.removeAssetMapping(equipment.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: equipment.id }, { $set: updatedEquipment }, { new: true, session }).lean();
-    });
+      return await AssetModel.findOneAndUpdate(
+        { _id: equipment.id, account_id, visible: true },
+        { $set: updatedEquipment },
+        { new: true, session }
+      ).lean();
+    }, existingSession);
   }
 
-  async updateMotor(motor: any, equipment: any, account_id: any, user_id: any) {
+  async updateMotor(motor: any, equipment: any, account_id: any, user_id: any, existingSession?: mongoose.ClientSession) {
     return await withTransaction(async (session) => {
       motor = this.removeExtraFields(motor);
       const updatedMotor = {
@@ -564,12 +617,17 @@ class EquipmentService {
         year: motor.year,
         updatedBy: user_id
       };
+      await this.requireTenantAssetForUpdate(motor.id, account_id, session);
       await mapUserToAssetService.removeAssetMapping(motor.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: motor.id }, { $set: updatedMotor }, { new: true, session }).lean();
-    });
+      return await AssetModel.findOneAndUpdate(
+        { _id: motor.id, account_id, visible: true },
+        { $set: updatedMotor },
+        { new: true, session }
+      ).lean();
+    }, existingSession);
   }
 
-  async updateFlexible(flexible: any, equipment: any, account_id: any, user_id: any) {
+  async updateFlexible(flexible: any, equipment: any, account_id: any, user_id: any, existingSession?: mongoose.ClientSession) {
     return await withTransaction(async (session) => {
       flexible = this.removeExtraFields(flexible);
       const updatedFlexible = {
@@ -593,12 +651,17 @@ class EquipmentService {
         image_path: flexible.image_path,
         updatedBy: user_id
       };
+      await this.requireTenantAssetForUpdate(flexible.id, account_id, session);
       await mapUserToAssetService.removeAssetMapping(flexible.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: flexible.id }, { $set: updatedFlexible }, { new: true, session }).lean();
-    });
+      return await AssetModel.findOneAndUpdate(
+        { _id: flexible.id, account_id, visible: true },
+        { $set: updatedFlexible },
+        { new: true, session }
+      ).lean();
+    }, existingSession);
   }
 
-  async updateRigid(rigid: any, equipment: any, account_id: any, user_id: any) {
+  async updateRigid(rigid: any, equipment: any, account_id: any, user_id: any, existingSession?: mongoose.ClientSession) {
     return await withTransaction(async (session) => {
       rigid = this.removeExtraFields(rigid);
       const updatedRigid = {
@@ -623,12 +686,17 @@ class EquipmentService {
         image_path: rigid.image_path,
         updatedBy: user_id
       };
+      await this.requireTenantAssetForUpdate(rigid.id, account_id, session);
       await mapUserToAssetService.removeAssetMapping(rigid.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: rigid.id }, { $set: updatedRigid }, { new: true, session }).lean();
-    });
+      return await AssetModel.findOneAndUpdate(
+        { _id: rigid.id, account_id, visible: true },
+        { $set: updatedRigid },
+        { new: true, session }
+      ).lean();
+    }, existingSession);
   }
 
-  async updateBeltPulley(beltPulley: any, equipment: any, account_id: any, user_id: any) {
+  async updateBeltPulley(beltPulley: any, equipment: any, account_id: any, user_id: any, existingSession?: mongoose.ClientSession) {
     return await withTransaction(async (session) => {
       beltPulley = this.removeExtraFields(beltPulley);
       const updatedBeltPulley = {
@@ -655,12 +723,17 @@ class EquipmentService {
         drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
         updatedBy: user_id
       };
+      await this.requireTenantAssetForUpdate(beltPulley.id, account_id, session);
       await mapUserToAssetService.removeAssetMapping(beltPulley.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: beltPulley.id }, { $set: updatedBeltPulley }, { new: true, session }).lean();
-    });
+      return await AssetModel.findOneAndUpdate(
+        { _id: beltPulley.id, account_id, visible: true },
+        { $set: updatedBeltPulley },
+        { new: true, session }
+      ).lean();
+    }, existingSession);
   }
 
-  async updateGearbox(gearbox: any, equipment: any, account_id: any, user_id: any) {
+  async updateGearbox(gearbox: any, equipment: any, account_id: any, user_id: any, existingSession?: mongoose.ClientSession) {
     return await withTransaction(async (session) => {
       gearbox = this.removeExtraFields(gearbox);
       const updatedGearbox = {
@@ -706,12 +779,17 @@ class EquipmentService {
         image_path: gearbox.image_path,
         updatedBy: user_id
       };
+      await this.requireTenantAssetForUpdate(gearbox.id, account_id, session);
       await mapUserToAssetService.removeAssetMapping(gearbox.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: gearbox.id }, { $set: updatedGearbox }, { new: true, session }).lean();
-    });
+      return await AssetModel.findOneAndUpdate(
+        { _id: gearbox.id, account_id, visible: true },
+        { $set: updatedGearbox },
+        { new: true, session }
+      ).lean();
+    }, existingSession);
   }
 
-  async updateFanBlower(fanBlower: any, equipment: any, account_id: any, user_id: any) {
+  async updateFanBlower(fanBlower: any, equipment: any, account_id: any, user_id: any, existingSession?: mongoose.ClientSession) {
     return await withTransaction(async (session) => {
       fanBlower = this.removeExtraFields(fanBlower);
       const updatedFanBlower = {
@@ -743,12 +821,17 @@ class EquipmentService {
         image_path: fanBlower.image_path,
         updatedBy: user_id
       };
+      await this.requireTenantAssetForUpdate(fanBlower.id, account_id, session);
       await mapUserToAssetService.removeAssetMapping(fanBlower.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: fanBlower.id }, { $set: updatedFanBlower }, { new: true, session }).lean();
-    });
+      return await AssetModel.findOneAndUpdate(
+        { _id: fanBlower.id, account_id, visible: true },
+        { $set: updatedFanBlower },
+        { new: true, session }
+      ).lean();
+    }, existingSession);
   }
 
-  async updatePumps(pumps: any, equipment: any, account_id: any, user_id: any) {
+  async updatePumps(pumps: any, equipment: any, account_id: any, user_id: any, existingSession?: mongoose.ClientSession) {
     return await withTransaction(async (session) => {
       pumps = this.removeExtraFields(pumps);
       const updatedPumps = {
@@ -779,12 +862,17 @@ class EquipmentService {
         image_path: pumps.image_path,
         updatedBy: user_id
       };
+      await this.requireTenantAssetForUpdate(pumps.id, account_id, session);
       await mapUserToAssetService.removeAssetMapping(pumps.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: pumps.id }, { $set: updatedPumps }, { new: true, session }).lean();
-    });
+      return await AssetModel.findOneAndUpdate(
+        { _id: pumps.id, account_id, visible: true },
+        { $set: updatedPumps },
+        { new: true, session }
+      ).lean();
+    }, existingSession);
   }
 
-  async updateCompressor(compressor: any, equipment: any, account_id: any, user_id: any) {
+  async updateCompressor(compressor: any, equipment: any, account_id: any, user_id: any, existingSession?: mongoose.ClientSession) {
     return await withTransaction(async (session) => {
       compressor = this.removeExtraFields(compressor);
       const updatedCompressor = {
@@ -815,9 +903,14 @@ class EquipmentService {
         image_path: compressor.image_path,
         updatedBy: user_id
       };
+      await this.requireTenantAssetForUpdate(compressor.id, account_id, session);
       await mapUserToAssetService.removeAssetMapping(compressor.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: compressor.id }, { $set: updatedCompressor }, { new: true, session }).lean();
-    });
+      return await AssetModel.findOneAndUpdate(
+        { _id: compressor.id, account_id, visible: true },
+        { $set: updatedCompressor },
+        { new: true, session }
+      ).lean();
+    }, existingSession);
   }
 
   async getAllChildEquipmentRecursive(parentId: string, account_id: any): Promise<any[]> {
@@ -832,156 +925,23 @@ class EquipmentService {
     return all;
   };
 
-  async makeAssetCopyRecursive(id: string, user_id: any, token: string, account_id: any, targetLocationId?: any, session?: any): Promise<any> {
-    const dataExists: any = await AssetModel.find({
-      _id: helperService.validateObjectId(String(id)),
-      account_id,
-      visible: true,
-    }).session(session);
-    if (!dataExists || dataExists.length === 0) return null;
-
-    const sourceAsset = dataExists[0].toObject();
-    const allChildren: any[] = await this.getAllChildEquipmentRecursive(String(id), account_id);
-    const idMap: Record<string, any> = {};
-
-    const originalTopLevelId = sourceAsset.top_level ? sourceAsset._id : sourceAsset.top_level_asset_id;
-    const parentForCopy = sourceAsset.parent_id ? sourceAsset.parent_id : undefined;
-
-    const newParentId = await this.makeAssetCopyByIdWithChildren(
-      sourceAsset,
+  async makeAssetCopyRecursive(
+    id: string,
+    user_id: any,
+    account_id: any,
+    targetLocationId?: any,
+    session?: any,
+    correlationId?: string
+  ): Promise<any> {
+    return assetService.makeAssetCopyRecursive(
+      id,
       user_id,
-      token,
       account_id,
-      parentForCopy,
-      idMap,
-      null,
+      targetLocationId,
       session,
-      targetLocationId
+      correlationId
     );
-
-    const newTopLevelId = sourceAsset.top_level ? newParentId : originalTopLevelId;
-    idMap[`${sourceAsset._id}`] = newParentId;
-
-    for (const child of allChildren) {
-      const childObj = child.toObject ? child.toObject() : child;
-      const newParent = idMap[childObj.parent_id?.toString()] || newParentId;
-      const newChildId = await this.makeAssetCopyByIdWithChildren(
-        childObj,
-        user_id,
-        token,
-        account_id,
-        newParent,
-        idMap,
-        newTopLevelId,
-        session,
-        targetLocationId
-      );
-      idMap[childObj._id.toString()] = newChildId;
-    }
-
-    await processorAPIService.setAssetHealthStatus(
-      [{ assetId: newParentId }, ...allChildren.map((c) => ({ assetId: idMap[c._id.toString()] }))],
-      account_id,
-      user_id,
-      token
-    );
-
-    return newParentId;
   }
-
-  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any, newLocationId?: any): Promise<any> {
-    return await withTransaction(async (innerSession) => {
-      const activeSession = session || innerSession;
-      const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
-      const cleanAsset = JSON.parse(JSON.stringify(rest));
-      delete cleanAsset._id;
-      delete cleanAsset.id;
-      delete cleanAsset.createdAt;
-      delete cleanAsset.updatedAt;
-      if (!cleanAsset.asset_name) cleanAsset.asset_name = "Unnamed Asset";
-      if (!cleanAsset.account_id) cleanAsset.account_id = account_id;
-      const baseName = (sourceAsset.asset_name || "Asset").replace(/\s-\s(Copy|\(\d+\))$/, "");
-      const existingCount = await AssetModel.countDocuments({
-        parent_id: newParentId || { $exists: false },
-        account_id,
-        asset_name: { $regex: `^${baseName} - Copy`, $options: "i" },
-        visible: true
-      }).session(activeSession);
-      const newName = existingCount > 0 ? `${baseName} - Copy (${existingCount + 1})` : `${baseName} - Copy`;
-      let topLevelRef: any = null;
-      if (sourceAsset.top_level) {
-        topLevelRef = undefined;
-      } else if (newTopLevelId) {
-        topLevelRef = newTopLevelId;
-      } else {
-        topLevelRef = sourceAsset.top_level_asset_id;
-      }
-      const newAssetData: any = {
-        ...cleanAsset,
-        asset_name: newName,
-        asset_type: sourceAsset.asset_type || "Other",
-        asset_build_type: sourceAsset.asset_build_type,
-        createdBy: user_id,
-        updatedBy: undefined,
-        account_id,
-        visible: true,
-        parent_id: newParentId ? new mongoose.Types.ObjectId(newParentId) : undefined,
-        top_level_asset_id: topLevelRef,
-        locationId: newLocationId || sourceAsset.locationId
-      };
-      const newAsset = new AssetModel(newAssetData);
-      const savedAsset: any = await newAsset.save({ session: activeSession });
-      if (sourceAsset.top_level) {
-        savedAsset.top_level_asset_id = savedAsset._id;
-        await savedAsset.save({ session: activeSession });
-      }
-      let userList: any[] = [];
-      try {
-        const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
-        userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
-      } catch { }
-      try {
-        const endPointList: any = await processorAPIService.getEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
-        if (endPointList?.data?.length > 0) {
-          for (const item of endPointList.data) {
-            const newEndPointPayload = {
-              org_id: item.org_id,
-              point_name: item.point_name,
-              asset_id: savedAsset._id.toString(),
-              mount_location: item.mount_location,
-              rpm: item.rpm || "",
-              bsf: item.bsf || "",
-              ftf: item.ftf || "",
-              bpfo: item.bpfo || "",
-              bpfi: item.bpfi || "",
-              bearing_number: item.bearing_number || "",
-              parent_asset_id: newParentId || null
-            };
-            await processorAPIService.createEndPoint(newEndPointPayload, user_id, token);
-          }
-        }
-      } catch (err) {
-        console.error("Endpoint copy failed:", err);
-      }
-      if (userList.length > 0) {
-        const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u, account_id }));
-        await mapUserToAssetService.createMapUserAssets(mappedData, activeSession);
-
-        if (newLocationId) {
-          const locId = helperService.validateObjectId(String(newLocationId));
-          const userIds = userList.map(u => helperService.validateObjectId(String(u)));
-          for (const uId of userIds) {
-            await MapUserAssetLocationModel.updateOne(
-              { locationId: locId, userId: uId },
-              { $set: { locationId: locId, userId: uId, account_id } },
-              { upsert: true, session: activeSession }
-            );
-          }
-        }
-      }
-      return savedAsset._id;
-    }, session);
-  };
 }
 
 export const equipmentService = new EquipmentService();

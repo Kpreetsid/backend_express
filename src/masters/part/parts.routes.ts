@@ -9,6 +9,7 @@ import path from 'path';
 import { uploadFilesService } from '../../upload/upload.multer';
 import { payloadCryptoMultipartMiddleware } from '../../middlewares/payloadCrypto.middleware';
 import { idempotencyMiddleware } from '../../middlewares/idempotency.middleware';
+import { hasRolePermission } from '../../middlewares';
 
 const importStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -36,21 +37,27 @@ const importUpload = multer({
 
 export default (router: express.Router) => {
     const partRouter = express.Router();
-    partRouter.use(idempotencyMiddleware);
     partRouter.get('/', partsController.getParts);
     partRouter.get('/cycle-counts', partsController.getCycleCounts);
     partRouter.get('/replenishment-suggestions', partsController.getReplenishmentSuggestions);
-    partRouter.post('/import', importUpload.single('file'), payloadCryptoMultipartMiddleware, partsController.importParts);
+    partRouter.post(
+        '/import',
+        hasRolePermission('inventory', 'import'),
+        importUpload.single('file'),
+        payloadCryptoMultipartMiddleware,
+        idempotencyMiddleware,
+        partsController.importParts
+    );
     partRouter.get('/:id/history', validateParamId, partsController.getPartHistory);
     partRouter.get('/:id', validateParamId, partsController.getPart);
-    partRouter.post('/cycle-counts', partsController.createCycleCount);
-    partRouter.put('/cycle-counts/:id/approve', validateParamId, partsController.approveCycleCount);
-    partRouter.post('/', partValidator, validate, partsController.createPart);
-    partRouter.put('/:id', validateParamId, partValidator, validate, partsController.updatePart);
-    partRouter.patch('/:id', validateParamId, partsController.updateStock);
+    partRouter.post('/cycle-counts', idempotencyMiddleware, hasRolePermission('inventory', 'add'), partsController.createCycleCount);
+    partRouter.put('/cycle-counts/:id/approve', idempotencyMiddleware, hasRolePermission('inventory', 'edit'), validateParamId, partsController.approveCycleCount);
+    partRouter.post('/', idempotencyMiddleware, hasRolePermission('inventory', 'add'), partValidator, validate, partsController.createPart);
+    partRouter.put('/:id', idempotencyMiddleware, hasRolePermission('inventory', 'edit'), validateParamId, partValidator, validate, partsController.updatePart);
+    partRouter.patch('/:id', idempotencyMiddleware, hasRolePermission('inventory', 'edit'), validateParamId, partsController.updateStock);
     // Dedicated stock-transfer endpoint — POST body: { destination_part_id, quantity, note }
-    partRouter.post('/:id/transfer', validateParamId, transferValidator, validate, partsController.transferStock);
-    partRouter.delete('/:id', validateParamId, partsController.removePart);
+    partRouter.post('/:id/transfer', idempotencyMiddleware, hasRolePermission('inventory', 'edit'), validateParamId, transferValidator, validate, partsController.transferStock);
+    partRouter.delete('/:id', validateParamId, hasRolePermission('inventory', 'delete'), partsController.removePart);
     router.use('/parts', partRouter);
 }
 

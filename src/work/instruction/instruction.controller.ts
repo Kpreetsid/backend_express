@@ -3,12 +3,29 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { instructionService } from './instruction.service';
 import { helperService } from '../../utils/helper';
+import { applyRoleFilter } from '../../utils/roleFilter';
+import { requireTenantReferences } from '../../utils/tenant-references';
 
 class InstructionController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
+      const user = get(req, "user", {}) as IUser;
+      const { assetId, locationId } = req.query;
+      const baseFilter: any = {};
+      if (assetId) {
+        baseFilter.assetId = helperService.validateObjectId(String(assetId));
+      }
+      if (locationId) {
+        baseFilter.locationId = helperService.validateObjectId(String(locationId));
+      }
+      const mapping = assetId ? 'asset' : locationId ? 'location' : '';
+      const idField = assetId ? 'assetId' : locationId ? 'locationId' : '_id';
+      const match = await applyRoleFilter({
+        user,
+        baseFilter,
+        mapping,
+        idField
+      });
       const data: any[] = await instructionService.getInstructions(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Instruction not found'), { status: 404 });
@@ -21,10 +38,13 @@ class InstructionController {
 
   async getDataById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
       const instructionId = helperService.validateObjectId(id);
-      const match: any = { _id: instructionId, account_id: account_id, visible: true };
+      const match = await applyRoleFilter({
+        user,
+        baseFilter: { _id: instructionId }
+      });
       const data = await instructionService.getInstructions(match);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Instruction not found'), { status: 404 });
@@ -39,6 +59,7 @@ class InstructionController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const body = req.body;
+      await requireTenantReferences(body, account_id);
       const data = await instructionService.createInstructions(body, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('Instruction not created'), { status: 404 });
@@ -59,7 +80,8 @@ class InstructionController {
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('Instruction not found'), { status: 404 });
       }
-      const data = await instructionService.updateInstructions(String(id), body, user_id);
+      await requireTenantReferences(body, account_id);
+      const data = await instructionService.updateInstructions(String(id), body, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('Instruction not updated'), { status: 404 });
       }
@@ -79,7 +101,7 @@ class InstructionController {
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('Instruction not found'), { status: 404 });
       }
-      await instructionService.deleteInstructionsById(String(id), user_id);
+      await instructionService.deleteInstructionsById(String(id), account_id, user_id);
       res.status(200).json({ status: true, message: "Instruction deleted successfully." });
     } catch (error) {
       next(error);

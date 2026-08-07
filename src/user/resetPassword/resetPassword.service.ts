@@ -1,5 +1,6 @@
 import { MailerService } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
+import { passwordResetAuthorizationService } from "./passwordResetAuthorization.service";
 
 class ResetPasswordService {
     private mailerService: MailerService;
@@ -17,7 +18,14 @@ class ResetPasswordService {
     }
     
     async verifyUserOTP (match: any) {
-        return await VerificationCodeModel.findOne(match);
+        return await passwordResetAuthorizationService.markPasswordResetVerified(
+            String(match.email),
+            String(match.code)
+        );
+    }
+
+    async consumePasswordResetAuthorization (email: string) {
+        return await passwordResetAuthorizationService.consumePasswordResetAuthorization(email);
     }
     
     async deleteVerificationCode (match: { email: string }) {

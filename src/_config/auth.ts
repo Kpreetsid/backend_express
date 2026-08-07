@@ -9,6 +9,23 @@ import { IUser, UserLoginPayload } from '../models/user.model';
 import { rolesService } from '../masters/user/role/roles.service';
 import { companyService } from '../masters/company/company.service';
 import { getAccessTokenTypeFilter, TokenModel } from '../models/userToken.model';
+import { authenticationAnomalyCounter } from '../observability/metrics';
+
+const recordAuthenticationAnomaly = (error: unknown): void => {
+  const status = Number((error as { status?: number })?.status);
+  if (![401, 403, 404].includes(status)) return;
+  const message = error instanceof Error ? error.message : '';
+  const reason = message.includes('required') || message.includes('Unauthorized')
+    ? 'missing_credentials'
+    : message.includes('company') || message.includes('Account')
+      ? 'tenant_mismatch'
+      : message.includes('role')
+        ? 'role_missing'
+        : message.includes('User')
+          ? 'user_missing'
+          : 'invalid_token';
+  authenticationAnomalyCounter.inc({ reason });
+};
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -26,9 +43,14 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     }
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
-    const accountID = req.headers['accountid'] as string;
+    const accountID = String(headerAccountID);
 
-    if (!id || !username || !companyID || headerAccountID !== accountID) {
+    if (
+      !id ||
+      !username ||
+      !companyID ||
+      String(headerAccountID) !== String(companyID)
+    ) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     const companyData = await companyService.verifyCompany(accountID);
@@ -49,6 +71,7 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     merge(req, { user: userData.toObject(), companyID, role: userRole.toObject().data, userToken: headerToken });
     next();
   } catch (error) {
+    recordAuthenticationAnomaly(error);
     next(error)
   }
 };
@@ -62,13 +85,18 @@ export const isLogOutAuthenticated = async (req: Request, res: Response, next: N
     }
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
-    const accountID = req.headers['accountid'] as string;
-    if (!id || !username || !companyID || headerAccountID !== accountID) {
+    if (
+      !id ||
+      !username ||
+      !companyID ||
+      String(headerAccountID) !== String(companyID)
+    ) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     merge(req, { user_id: id, userToken: headerToken });
     next();
   } catch (error) {
+    recordAuthenticationAnomaly(error);
     next(error)
   }
 };

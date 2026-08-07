@@ -1,9 +1,11 @@
 #!/bin/bash
 set -e
 
-echo "Cleaning up old deployment..."
+echo "Preparing immutable deployment directory..."
 
-cd /home/ubuntu/express_cmms
+deployment_dir="/home/ubuntu/express_cmms"
+install -d -m 0755 -o ubuntu -g ubuntu "$deployment_dir"
+cd "$deployment_dir"
 
 # Remove node_modules and package-lock to ensure fresh install
 rm -rf node_modules
@@ -14,4 +16,4 @@ if command -v pm2 &> /dev/null; then
     pm2 flush || true
 fi
 
-echo "Cleanup completed"
+echo "Deployment directory prepared"

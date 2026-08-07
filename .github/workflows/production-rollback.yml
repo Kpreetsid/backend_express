@@ -1,0 +1,105 @@
+name: CMMS API production rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollback_artifact_sha:
+        description: Exact immutable API artifact SHA to restore
+        required: true
+        type: string
+      rollback_authorization_id:
+        description: Approved change or incident identifier
+        required: true
+        type: string
+
+concurrency:
+  group: api-production
+  cancel-in-progress: false
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout rollback and smoke tooling
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate rollback target and authorization
+        env:
+          ROLLBACK_ARTIFACT_SHA: ${{ inputs.rollback_artifact_sha }}
+          ROLLBACK_AUTHORIZATION_ID: ${{ inputs.rollback_authorization_id }}
+        run: node scripts/validate-rollback-authorization.cjs > api-rollback-authorization.json
+
+      - name: Configure short-lived production credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.PRODUCTION_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Verify immutable rollback artifact checksum
+        run: |
+          mkdir immutable-artifact
+          aws s3 cp \
+            "s3://${{ vars.CODEDEPLOY_ARTIFACT_BUCKET }}/cmms_express/${{ inputs.rollback_artifact_sha }}/cmms-api.tgz" \
+            "immutable-artifact/cmms-api-${{ inputs.rollback_artifact_sha }}.tgz"
+          aws s3 cp \
+            "s3://${{ vars.CODEDEPLOY_ARTIFACT_BUCKET }}/cmms_express/${{ inputs.rollback_artifact_sha }}/cmms-api.tgz.sha256" \
+            "immutable-artifact/cmms-api-${{ inputs.rollback_artifact_sha }}.tgz.sha256"
+          cd immutable-artifact
+          sha256sum --check "cmms-api-${{ inputs.rollback_artifact_sha }}.tgz.sha256" \
+            > ../api-rollback-checksum-evidence.txt
+
+      - name: Create rollback deployment
+        id: deployment
+        run: |
+          deployment_id="$(aws deploy create-deployment \
+            --application-name "${{ vars.CODEDEPLOY_APPLICATION_NAME }}" \
+            --deployment-group-name "${{ vars.CODEDEPLOY_DEPLOYMENT_GROUP }}" \
+            --deployment-config-name CodeDeployDefault.HalfAtATime \
+            --file-exists-behavior OVERWRITE \
+            --description "CMMS API rollback to ${{ inputs.rollback_artifact_sha }}" \
+            --s3-location "bucket=${{ vars.CODEDEPLOY_ARTIFACT_BUCKET }},key=cmms_express/${{ inputs.rollback_artifact_sha }}/cmms-api.tgz,bundleType=tgz" \
+            --query deploymentId \
+            --output text)"
+          test -n "$deployment_id"
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for rollback deployment
+        timeout-minutes: 30
+        run: aws deploy wait deployment-successful --deployment-id "${{ steps.deployment.outputs.deployment_id }}"
+
+      - name: Smoke rolled-back API
+        env:
+          CMMS_SMOKE_BASE_URL: ${{ vars.PRODUCTION_API_BASE_URL }}
+        run: npm run smoke:deployment > api-rollback-smoke-evidence.json
+
+      - name: Capture rollback deployment state
+        if: always()
+        run: |
+          aws deploy get-deployment \
+            --deployment-id "${{ steps.deployment.outputs.deployment_id }}" \
+            > api-rollback-codedeploy-evidence.json
+
+      - name: Retain rollback authorization and outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmms-api-production-rollback-${{ inputs.rollback_artifact_sha }}
+          path: |
+            api-rollback-authorization.json
+            api-rollback-checksum-evidence.txt
+            api-rollback-codedeploy-evidence.json
+            api-rollback-smoke-evidence.json
+          if-no-files-found: warn
+          retention-days: 90

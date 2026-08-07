@@ -1,3 +1,4 @@
+import { applicationLogger } from '../../observability/logger';
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { equipmentService } from './equipment.service';
@@ -6,11 +7,22 @@ import { mapUserToLocationService } from '../../transaction/mapUserLocation/user
 import { mapUserToAssetService } from '../../transaction/mapUserAsset/userAsset.service';
 import { uploadFilesService } from '../../upload/upload.multer';
 import { locationService } from '../location/location.service';
-import { processorAPIService } from '../../api-processor';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
 import { withTransaction } from "../../utils/transaction.helper";
+import { requireActiveTenantUsers } from '../../utils/tenant-users';
+import {
+  queueAssetHealthInitialization,
+  queueEquipmentEndpointSync
+} from '../../queue/processor-events';
+import {
+  synchronizeAssetHealthInitialization
+} from '../../queue/handlers/asset-health-initialization.handler';
+import {
+  synchronizeEquipmentEndpoints
+} from '../../queue/handlers/equipment-endpoint-sync.handler';
+import { randomUUID } from 'node:crypto';
 
 class EquipmentController {
 
@@ -164,21 +176,38 @@ class EquipmentController {
   }
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    var equipmentId: any = '';
-    const asset_ids = [];
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-    const userToken = get(req, "userToken", {}) as string;
+    let equipmentData: any;
     try {
       const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } = req.body;
       if (!Equipment.userList || Equipment.userList.length === 0) {
         throw Object.assign(new Error('User selection is required for equipment mapping'), { status: 400 });
       }
       if (Equipment.image_path) {
-        const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");
+        const image = await uploadFilesService.uploadBase64Image(
+          Equipment.image_path,
+          "assets",
+          String(account_id),
+          String(user_id)
+        );
         Equipment.image_path = image.fileName;
       }
-      const equipmentData = await equipmentService.createEquipment(Equipment, account_id, user_id);
-      equipmentId = equipmentData._id;
+      const correlationId = String(res.locals['correlationId'] || randomUUID());
+      const result = await withTransaction(async (session) => {
+      const tenantUserIds = await requireActiveTenantUsers(
+        Equipment.userList,
+        account_id,
+        session
+      );
+      Equipment.userList = tenantUserIds;
+      await equipmentService.requireTenantLocation(Equipment.locationId, account_id, session);
+      equipmentData = await equipmentService.createEquipment(
+        Equipment,
+        account_id,
+        user_id,
+        session
+      );
+      const asset_ids: any[] = [];
       const assetsPromiseList: any = [];
       const equipmentEndpoint: any = {
         Motor: {},
@@ -192,7 +221,7 @@ class EquipmentController {
       }
       if (Motor) {
         if (Object.keys(Motor).length !== 0) {
-          const motorData = await equipmentService.createMotor(Motor, equipmentData, account_id, user_id);
+          const motorData = await equipmentService.createMotor(Motor, equipmentData, account_id, user_id, session);
           if (motorData) {
             asset_ids.push(motorData._id)
             equipmentEndpoint.Motor = { ...motorData.toObject(), asset_id: motorData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
@@ -202,7 +231,7 @@ class EquipmentController {
       }
       if (Flexible) {
         if (Object.keys(Flexible).length !== 0) {
-          const flexibleData = await equipmentService.createFlexible(Flexible, equipmentData, account_id, user_id);
+          const flexibleData = await equipmentService.createFlexible(Flexible, equipmentData, account_id, user_id, session);
           if (flexibleData) {
             asset_ids.push(flexibleData._id)
             equipmentEndpoint.Flexible = { ...flexibleData.toObject(), asset_id: flexibleData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
@@ -212,7 +241,7 @@ class EquipmentController {
       }
       if (Rigid) {
         if (Object.keys(Rigid).length !== 0) {
-          const rigidData = await equipmentService.createRigid(Rigid, equipmentData, account_id, user_id);
+          const rigidData = await equipmentService.createRigid(Rigid, equipmentData, account_id, user_id, session);
           if (rigidData) {
             asset_ids.push(rigidData._id)
             equipmentEndpoint.Rigid = { ...rigidData.toObject(), asset_id: rigidData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
@@ -225,7 +254,7 @@ class EquipmentController {
       if (Belt_Pulley && Belt_Pulley.length > 0) {
         for (let beltPulley of Belt_Pulley) {
           if (Object.keys(beltPulley).length !== 0) {
-            const createBeltPulley = await equipmentService.createBeltPulley(beltPulley, equipmentData, account_id, user_id);
+            const createBeltPulley = await equipmentService.createBeltPulley(beltPulley, equipmentData, account_id, user_id, session);
             if (createBeltPulley) {
               asset_ids.push(createBeltPulley._id)
               beltPulleyData.push({
@@ -242,7 +271,7 @@ class EquipmentController {
       if (Gearbox?.length > 0) {
         for (const gearbox of Gearbox) {
           if (gearbox && Object.keys(gearbox).length > 0) {
-            const createdGearbox = await equipmentService.createGearbox(gearbox, equipmentData, account_id, user_id);
+            const createdGearbox = await equipmentService.createGearbox(gearbox, equipmentData, account_id, user_id, session);
             if (createdGearbox) {
               asset_ids.push(createdGearbox._id)
               gearboxData.push({
@@ -257,7 +286,7 @@ class EquipmentController {
       }
       if (Fan_Blower) {
         if (Object.keys(Fan_Blower).length !== 0) {
-          const fanBlowerData = await equipmentService.createFanBlower(Fan_Blower, equipmentData, account_id, user_id);
+          const fanBlowerData = await equipmentService.createFanBlower(Fan_Blower, equipmentData, account_id, user_id, session);
           if (fanBlowerData) {
             asset_ids.push(fanBlowerData._id)
             equipmentEndpoint.Fan_Blower = { ...fanBlowerData.toObject(), asset_id: fanBlowerData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
@@ -269,7 +298,7 @@ class EquipmentController {
       }
       if (Pumps) {
         if (Object.keys(Pumps).length !== 0) {
-          const pumpsData = await equipmentService.createPumps(Pumps, equipmentData, account_id, user_id);
+          const pumpsData = await equipmentService.createPumps(Pumps, equipmentData, account_id, user_id, session);
           if (pumpsData) {
             asset_ids.push(pumpsData._id)
             equipmentEndpoint.Pumps = { ...pumpsData.toObject(), asset_id: pumpsData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
@@ -280,7 +309,7 @@ class EquipmentController {
       }
       if (Compressor) {
         if (Object.keys(Compressor).length !== 0) {
-          const compressorData = await equipmentService.createCompressor(Compressor, equipmentData, account_id, user_id);
+          const compressorData = await equipmentService.createCompressor(Compressor, equipmentData, account_id, user_id, session);
           if (compressorData) {
             asset_ids.push(compressorData._id)
             equipmentEndpoint.Compressor = { ...compressorData.toObject(), asset_id: compressorData._id, org_id: account_id, asset_timezone: equipmentData.asset_timezone };
@@ -291,7 +320,10 @@ class EquipmentController {
         }
       }
 
-      console.log("equipmentEndpoint", equipmentEndpoint);
+      applicationLogger.debug({
+        equipmentId: String(equipmentData._id),
+        endpointTypes: Object.keys(equipmentEndpoint)
+      }, 'Equipment endpoint synchronization queued');
 
       const assetData = await Promise.all(assetsPromiseList);
       const assetsMapData: any = Equipment.userList.map((user: any) => ({ userId: user, assetId: equipmentData._id, account_id }));
@@ -300,10 +332,24 @@ class EquipmentController {
           assetsMapData.push({ userId: user, assetId: asset._id, account_id })
         ));
       });
-      await mapUserToAssetService.createMapUserAssets(assetsMapData);
-      await processorAPIService.setAssetHealthStatus(assetsMapData, account_id, user_id, userToken);
-      await processorAPIService.createEquipmentEndPoints(equipmentEndpoint, user_id, userToken);
-      await notificationService.notifyAccountUsers({
+      await mapUserToAssetService.createMapUserAssets(assetsMapData, session);
+      const createdAssetIds = [
+        String(equipmentData._id),
+        ...asset_ids.map((assetId) => String(assetId))
+      ];
+      const healthQueued = await queueAssetHealthInitialization({
+        assetIds: createdAssetIds,
+        tenantId: String(account_id),
+        actorId: String(user_id),
+        correlationId
+      }, session);
+      const endpointsQueued = await queueEquipmentEndpointSync({
+        equipmentId: String(equipmentData._id),
+        tenantId: String(account_id),
+        actorId: String(user_id),
+        correlationId
+      }, session);
+      await notificationService.queueAccountNotification({
         accountId: String(account_id),
         module: 'Asset',
         event: 'created',
@@ -311,22 +357,38 @@ class EquipmentController {
         entityName: Equipment.asset_name || Equipment.name || 'Asset',
         actionUrl: `/assets/asset-health/${equipmentData._id}/health`,
         sourceUserId: String(user_id)
+      }, { session, correlationId });
+      return {
+        equipmentId: String(equipmentData._id),
+        createdAssetIds,
+        healthQueued,
+        endpointsQueued
+      };
       });
+      if (!result.healthQueued) {
+        await synchronizeAssetHealthInitialization(
+          result.createdAssetIds,
+          String(account_id),
+          String(user_id)
+        );
+      }
+      if (!result.endpointsQueued) {
+        await synchronizeEquipmentEndpoints(
+          result.equipmentId,
+          String(account_id),
+          String(user_id),
+          `${correlationId}:${result.equipmentId}`
+        );
+      }
       res.status(200).json({ status: true, message: "Equipment created successfully", data: equipmentData._id });
     } catch (error) {
-      if (equipmentId) {
-        await equipmentService.deleteAssetsById(equipmentId);
-        await processorAPIService.deleteEquipmentEndpointByAssetId(asset_ids, userToken, user_id);
-      }
       next(error);
     }
   }
 
   update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    const newlyCreatedAssetId = [];
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const userToken = get(req, "userToken", {}) as string;
       const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } } = req;
       if (!Equipment || !Equipment.id) {
         throw Object.assign(new Error("Invalid request: Equipment ID is required"), { status: 400 });
@@ -338,18 +400,33 @@ class EquipmentController {
         throw Object.assign(new Error("Please select at least one user"), { status: 400 });
       }
       const existEquipmentData = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
+      if (!existEquipmentData || existEquipmentData.length === 0) {
+        throw Object.assign(new Error("Equipment not found"), { status: 404 });
+      }
+      Equipment.userList = await requireActiveTenantUsers(Equipment.userList, account_id);
+      await equipmentService.requireTenantLocation(Equipment.locationId, account_id);
       if (Equipment.image_path && Equipment.image_path.startsWith("data:image")) {
-        const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");
-        Equipment.image_path = image.fileName;
-      }
-      if (Equipment.image_path) {
-        if (existEquipmentData.image_path && existEquipmentData.image_path['fileName']) {
-          await uploadFilesService.deleteBase64Image(existEquipmentData.image_path['fileName'], "asset");
+        const existingImage = existEquipmentData[0]?.image_path;
+        if (existingImage?.fileName) {
+          await uploadFilesService.deleteBase64Image(
+            existingImage.fileName,
+            "asset",
+            String(account_id),
+            String(user_id)
+          );
         }
-        const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");
+        const image = await uploadFilesService.uploadBase64Image(
+          Equipment.image_path,
+          "assets",
+          String(account_id),
+          String(user_id)
+        );
         Equipment.image_path = image.fileName;
       }
-      await equipmentService.updateEquipment(Equipment, account_id, user_id);
+      const correlationId = String(res.locals['correlationId'] || randomUUID());
+      const result = await withTransaction(async (session) => {
+      const newlyCreatedAssetId: any[] = [];
+      await equipmentService.updateEquipment(Equipment, account_id, user_id, session);
       const assetUpdatePromises: any[] = [];
       const equipmentEndpoint: any = {
         Motor: {},
@@ -363,14 +440,14 @@ class EquipmentController {
       }
       if (Motor && Object.keys(Motor).length !== 0) {
         if (Motor.id) {
-          const motorData = await equipmentService.updateMotor(Motor, Equipment, account_id, user_id);
+          const motorData = await equipmentService.updateMotor(Motor, Equipment, account_id, user_id, session);
           if (motorData) {
             equipmentEndpoint.Motor = { ...motorData, asset_id: Motor.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Motor.asset_id = Motor.id;
             assetUpdatePromises.push(motorData);
           }
         } else {
-          const motorData = await equipmentService.createMotor(Motor, Equipment, account_id, user_id);
+          const motorData = await equipmentService.createMotor(Motor, Equipment, account_id, user_id, session);
           if (motorData) {
             equipmentEndpoint.Motor = { ...motorData.toObject(), asset_id: motorData.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Motor.asset_id = motorData.id;
@@ -381,14 +458,14 @@ class EquipmentController {
       }
       if (Flexible && Object.keys(Flexible).length !== 0) {
         if (Flexible.id) {
-          const flexibleData = await equipmentService.updateFlexible(Flexible, Equipment, account_id, user_id);
+          const flexibleData = await equipmentService.updateFlexible(Flexible, Equipment, account_id, user_id, session);
           if (flexibleData) {
             equipmentEndpoint.Flexible = { ...flexibleData, asset_id: Flexible.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Flexible.asset_id = Flexible.id;
             assetUpdatePromises.push(flexibleData);
           }
         } else {
-          const flexibleData = await equipmentService.createFlexible(Flexible, Equipment, account_id, user_id);
+          const flexibleData = await equipmentService.createFlexible(Flexible, Equipment, account_id, user_id, session);
           if (flexibleData) {
             equipmentEndpoint.Flexible = { ...flexibleData.toObject(), asset_id: flexibleData.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Flexible.asset_id = flexibleData.id;
@@ -399,18 +476,18 @@ class EquipmentController {
       }
       if (Rigid && Object.keys(Rigid).length !== 0) {
         if (Rigid.id) {
-          const rigidData = await equipmentService.updateRigid(Rigid, Equipment, account_id, user_id);
+          const rigidData = await equipmentService.updateRigid(Rigid, Equipment, account_id, user_id, session);
           if (rigidData) {
             equipmentEndpoint.Rigid = { ...rigidData, asset_id: Rigid.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Rigid.asset_id = Rigid.id;
             assetUpdatePromises.push(rigidData);
           }
         } else {
-          const rigidData = await equipmentService.createRigid(Rigid, Equipment, account_id, user_id);
+          const rigidData = await equipmentService.createRigid(Rigid, Equipment, account_id, user_id, session);
           if (rigidData) {
             equipmentEndpoint.Rigid = { ...rigidData.toObject(), asset_id: rigidData.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Rigid.asset_id = rigidData.id;
-            newlyCreatedAssetId.push(Rigid._id);
+            newlyCreatedAssetId.push(rigidData._id);
             assetUpdatePromises.push(rigidData);
           }
         }
@@ -419,13 +496,13 @@ class EquipmentController {
         const beltPulleyDataList = [];
         for (let beltPulley of Belt_Pulley) {
           if (beltPulley.id) {
-            const beltPulleyData = await equipmentService.updateBeltPulley(beltPulley, Equipment, account_id, user_id);
+            const beltPulleyData = await equipmentService.updateBeltPulley(beltPulley, Equipment, account_id, user_id, session);
             if (beltPulleyData) {
               beltPulleyDataList.push({ ...beltPulleyData, asset_id: beltPulley.id, org_id: account_id, asset_timezone: Equipment.asset_timezone });
               assetUpdatePromises.push(beltPulleyData);
             }
           } else {
-            const beltPulleyData = await equipmentService.createBeltPulley(beltPulley, Equipment, account_id, user_id);
+            const beltPulleyData = await equipmentService.createBeltPulley(beltPulley, Equipment, account_id, user_id, session);
             if (beltPulleyData) {
               beltPulleyDataList.push({ ...beltPulleyData.toObject(), asset_id: beltPulleyData.id, org_id: account_id, asset_timezone: Equipment.asset_timezone });
               newlyCreatedAssetId.push(beltPulleyData._id);
@@ -439,13 +516,13 @@ class EquipmentController {
         const gearboxDataList = [];
         for (let gearbox of Gearbox) {
           if (gearbox.id) {
-            const gearboxData = await equipmentService.updateGearbox(gearbox, Equipment, account_id, user_id);
+            const gearboxData = await equipmentService.updateGearbox(gearbox, Equipment, account_id, user_id, session);
             if (gearboxData) {
               gearboxDataList.push({ ...gearboxData, asset_id: gearbox.id, org_id: account_id, asset_timezone: Equipment.asset_timezone });
               assetUpdatePromises.push(gearboxData);
             }
           } else {
-            const gearboxData = await equipmentService.createGearbox(gearbox, Equipment, account_id, user_id);
+            const gearboxData = await equipmentService.createGearbox(gearbox, Equipment, account_id, user_id, session);
             if (gearboxData) {
               gearboxDataList.push({ ...gearboxData.toObject(), asset_id: gearboxData.id, org_id: account_id, asset_timezone: Equipment.asset_timezone });
               newlyCreatedAssetId.push(gearboxData._id);
@@ -457,14 +534,14 @@ class EquipmentController {
       }
       if (Fan_Blower && Object.keys(Fan_Blower).length !== 0) {
         if (Fan_Blower.id) {
-          const fanBlowerData = await equipmentService.updateFanBlower(Fan_Blower, Equipment, account_id, user_id)
+          const fanBlowerData = await equipmentService.updateFanBlower(Fan_Blower, Equipment, account_id, user_id, session)
           if (fanBlowerData) {
             equipmentEndpoint.Fan_Blower = { ...fanBlowerData, asset_id: Fan_Blower.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Fan_Blower.asset_id = Fan_Blower.id;
             assetUpdatePromises.push(fanBlowerData);
           }
         } else {
-          const fanBlowerData = await equipmentService.createFanBlower(Fan_Blower, Equipment, account_id, user_id);
+          const fanBlowerData = await equipmentService.createFanBlower(Fan_Blower, Equipment, account_id, user_id, session);
           if (fanBlowerData) {
             equipmentEndpoint.Fan_Blower = { ...fanBlowerData.toObject(), asset_id: fanBlowerData.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Fan_Blower.asset_id = fanBlowerData.id;
@@ -475,14 +552,14 @@ class EquipmentController {
       }
       if (Pumps && Object.keys(Pumps).length !== 0) {
         if (Pumps.id) {
-          const pumpsData = await equipmentService.updatePumps(Pumps, Equipment, account_id, user_id);
+          const pumpsData = await equipmentService.updatePumps(Pumps, Equipment, account_id, user_id, session);
           if (pumpsData) {
             equipmentEndpoint.Pumps = { ...pumpsData, asset_id: Pumps.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Pumps.asset_id = Pumps.id;
             assetUpdatePromises.push(pumpsData);
           }
         } else {
-          const pumpsData = await equipmentService.createPumps(Pumps, Equipment, account_id, user_id);
+          const pumpsData = await equipmentService.createPumps(Pumps, Equipment, account_id, user_id, session);
           if (pumpsData) {
             equipmentEndpoint.Pumps = { ...pumpsData.toObject(), asset_id: pumpsData.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Pumps.asset_id = pumpsData.id;
@@ -493,14 +570,14 @@ class EquipmentController {
       }
       if (Compressor && Object.keys(Compressor).length !== 0) {
         if (Compressor.id) {
-          const compressorData = await equipmentService.updateCompressor(Compressor, Equipment, account_id, user_id);
+          const compressorData = await equipmentService.updateCompressor(Compressor, Equipment, account_id, user_id, session);
           if (compressorData) {
             equipmentEndpoint.Compressor = { ...compressorData, asset_id: Compressor.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Compressor.asset_id = Compressor.id;
             assetUpdatePromises.push(compressorData);
           }
         } else {
-          const compressorData = await equipmentService.createCompressor(Compressor, Equipment, account_id, user_id);
+          const compressorData = await equipmentService.createCompressor(Compressor, Equipment, account_id, user_id, session);
           if (compressorData) {
             equipmentEndpoint.Compressor = { ...compressorData.toObject(), asset_id: compressorData.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Compressor.asset_id = compressorData.id;
@@ -510,7 +587,10 @@ class EquipmentController {
         }
       }
       const updatedAssets = await Promise.all(assetUpdatePromises);
-      const newlyCreatedAssetList = updatedAssets.filter(asset => asset?.isNew && asset?._id);
+      applicationLogger.debug({
+        equipmentId: String(id),
+        endpointTypes: Object.keys(equipmentEndpoint)
+      }, 'Equipment endpoint synchronization queued');
       const assetsMapData: any[] = Equipment.userList.map((userId: any) => (
         { userId, assetId: Equipment.id, account_id }
       ));
@@ -522,26 +602,52 @@ class EquipmentController {
           });
         }
       }
-      await mapUserToAssetService.createMapUserAssets(assetsMapData);
-      if (newlyCreatedAssetList.length > 0) {
-        await processorAPIService.setAssetHealthStatus(newlyCreatedAssetList, account_id, user_id, userToken);
+      await mapUserToAssetService.createMapUserAssets(assetsMapData, session);
+      let healthQueued = true;
+      const createdAssetIds = newlyCreatedAssetId.filter(Boolean).map(String);
+      if (createdAssetIds.length > 0) {
+        healthQueued = await queueAssetHealthInitialization({
+          assetIds: createdAssetIds,
+          tenantId: String(account_id),
+          actorId: String(user_id),
+          correlationId
+        }, session);
       }
-      await processorAPIService.createEquipmentEndPoints(equipmentEndpoint, user_id, userToken);
-      const data = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
-      await notificationService.notifyAccountUsers({
+      const endpointsQueued = await queueEquipmentEndpointSync({
+        equipmentId: String(id),
+        tenantId: String(account_id),
+        actorId: String(user_id),
+        correlationId
+      }, session);
+      await notificationService.queueAccountNotification({
         accountId: String(account_id),
         module: 'Asset',
         event: 'updated',
         entityId: String(id),
-        entityName: data?.[0]?.asset_name || Equipment.asset_name || Equipment.name || 'Asset',
+        entityName: Equipment.asset_name || Equipment.name || 'Asset',
         actionUrl: `/assets/asset-health/${id}/health`,
         sourceUserId: String(user_id)
+      }, { session, correlationId });
+      return { createdAssetIds, healthQueued, endpointsQueued };
       });
+      if (!result.healthQueued && result.createdAssetIds.length > 0) {
+        await synchronizeAssetHealthInitialization(
+          result.createdAssetIds,
+          String(account_id),
+          String(user_id)
+        );
+      }
+      if (!result.endpointsQueued) {
+        await synchronizeEquipmentEndpoints(
+          String(id),
+          String(account_id),
+          String(user_id),
+          `${correlationId}:${id}`
+        );
+      }
+      const data = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
       res.status(200).json({ status: true, message: "Equipment updated successfully", data });
     } catch (error) {
-      if (newlyCreatedAssetId.length > 0) {
-        await equipmentService.deleteEquipmentAssetIds(newlyCreatedAssetId);
-      }
       next(error);
     }
   };
@@ -558,15 +664,27 @@ class EquipmentController {
       if (!dataExists || dataExists.length === 0) {
         throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      await equipmentService.updateEquipmentImageById(String(id), image_path, `${user_id}`);
-      await notificationService.notifyAccountUsers({
-        accountId: String(account_id),
-        module: 'Asset',
-        event: 'updated',
-        entityId: String(id),
-        entityName: dataExists?.[0]?.asset_name || 'Asset',
-        actionUrl: `/assets/asset-health/${id}/health`,
-        sourceUserId: String(user_id)
+      const correlationId = String(res.locals['correlationId'] || randomUUID());
+      await withTransaction(async (session) => {
+        const updated = await equipmentService.updateEquipmentImageById(
+          String(id),
+          image_path,
+          account_id,
+          String(user_id),
+          session
+        );
+        if (!updated) {
+          throw Object.assign(new Error('Equipment not found'), { status: 404 });
+        }
+        await notificationService.queueAccountNotification({
+          accountId: String(account_id),
+          module: 'Asset',
+          event: 'updated',
+          entityId: String(id),
+          entityName: dataExists?.[0]?.asset_name || 'Asset',
+          actionUrl: `/assets/asset-health/${id}/health`,
+          sourceUserId: String(user_id)
+        }, { session, correlationId });
       });
       res.status(200).json({ status: true, message: "Equipment image updated successfully" });
     } catch (error) {
@@ -594,11 +712,18 @@ class EquipmentController {
   makeAssetCopy = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const userToken = get(req, "userToken", "") as string;
       const { params: { id } } = req;
+      const correlationId = String(res.locals['correlationId'] || randomUUID());
 
       const result = await withTransaction(async (session: any) => {
-        const newParentId = await equipmentService.makeAssetCopyRecursive(String(id), user_id, userToken, account_id, undefined, session);
+        const newParentId = await equipmentService.makeAssetCopyRecursive(
+          String(id),
+          user_id,
+          account_id,
+          undefined,
+          session,
+          correlationId
+        );
         if (!newParentId) {
           throw Object.assign(new Error("Equipment not found"), { status: 404 });
         }

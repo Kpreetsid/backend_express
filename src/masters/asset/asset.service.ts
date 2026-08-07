@@ -1,7 +1,7 @@
+import { applicationLogger } from '../../observability/logger';
 import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../transaction/mapUserAsset/userAsset.service";
-import { processorAPIService } from '../../api-processor';
 import { helperService } from '../../utils/helper';
 import { WorkOrderModel } from '../../models/workOrder.model';
 import { ObservationModel } from '../../models/observation.model';
@@ -11,6 +11,16 @@ import { WorkRequestModel } from '../../models/workRequest.model';
 import { LocationModel } from '../../models/location.model';
 
 import { withTransaction } from "../../utils/transaction.helper";
+import { ClientSession } from "mongoose";
+import {
+  queueAssetEndpointClone,
+  queueAssetHealthInitialization
+} from "../../queue/processor-events";
+import { synchronizeAssetEndpointClone } from "../../queue/handlers/asset-endpoint-clone.handler";
+import {
+  synchronizeAssetHealthInitialization
+} from "../../queue/handlers/asset-health-initialization.handler";
+import { randomUUID } from "node:crypto";
 
 class AssetService {
   async getAllAssets(match: any) {
@@ -60,14 +70,31 @@ class AssetService {
     return await AssetModel.find(match).select('id asset_name isBuzzerActive');
   }
 
-  async updateBuzzerAssetList(body: any) {
+  async updateBuzzerAssetList(
+    body: any,
+    scope: { accountId: unknown; assetIds: string[] }
+  ) {
     if (!body.length) return;
-    const bulkOps = body.map((item: any) => ({
+    const allowedAssetIds = new Set(scope.assetIds.map((id) => String(id)));
+    const bulkOps = body.map((item: any) => {
+      if (typeof item?.isBuzzerActive !== "boolean") {
+        throw Object.assign(new Error("isBuzzerActive must be a boolean"), { status: 400 });
+      }
+      const assetId = String(helperService.validateObjectId(String(item.id)));
+      if (!allowedAssetIds.has(assetId)) {
+        throw Object.assign(new Error("Asset is outside the authorized scope"), { status: 403 });
+      }
+      return {
         updateOne: {
-            filter: { _id: helperService.validateObjectId(String(item.id)) },
-            update: { isBuzzerActive: item.isBuzzerActive }
+          filter: {
+            _id: helperService.validateObjectId(assetId),
+            account_id: scope.accountId,
+            visible: true
+          },
+          update: { $set: { isBuzzerActive: item.isBuzzerActive } }
         }
-    }));
+      };
+    });
     await AssetModel.bulkWrite(bulkOps);
   }
 
@@ -197,27 +224,111 @@ class AssetService {
     return result;
   }
 
-  async createAssetOld(body: any, account_id: any, user_id: any): Promise<any> {
+  async requireTenantReferences(
+    body: any,
+    account_id: any,
+    session?: ClientSession
+  ): Promise<void> {
+    const locationQuery = body.locationId
+      ? LocationModel.countDocuments({
+        _id: body.locationId,
+        account_id,
+        visible: true
+      })
+      : null;
+    const referencedAssetIds = [...new Set(
+      [body.parent_id, body.top_level_asset_id]
+        .filter(Boolean)
+        .map((id) => String(id))
+    )];
+    const assetQuery = AssetModel.countDocuments({
+      _id: { $in: referencedAssetIds },
+      account_id,
+      visible: true
+    });
+    if (session) {
+      locationQuery?.session(session);
+      assetQuery.session(session);
+    }
+    const [locationCount, assetCount] = await Promise.all([
+      locationQuery || Promise.resolve(0),
+      referencedAssetIds.length ? assetQuery : Promise.resolve(0)
+    ]);
+    if (
+      (body.locationId && locationCount !== 1)
+      || (referencedAssetIds.length && assetCount !== referencedAssetIds.length)
+    ) {
+      throw Object.assign(new Error('Asset location or parent not found'), { status: 404 });
+    }
+  }
+
+  async createAssetOld(
+    body: any,
+    account_id: any,
+    user_id: any,
+    session?: ClientSession
+  ): Promise<any> {
     const data: any = new AssetModel({ ...body, account_id, createdBy: user_id });
     data.top_level_asset_id = data.top_level_asset_id ? data.top_level_asset_id : data._id;
-    return await data.save();
+    return await data.save(session ? { session } : {});
   }
 
-  async updateAssetOld(id: any, body: any, user_id: any): Promise<any> {
+  async updateAssetOld(
+    id: any,
+    body: any,
+    account_id: any,
+    user_id: any,
+    existingSession?: ClientSession
+  ): Promise<any> {
     return await withTransaction(async (session) => {
-      await mapUserToAssetService.updateUserMapping(String(id), body.userIdList);
-      await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType);
-      return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { returnDocument: 'after', session });
-    });
+      await mapUserToAssetService.updateUserMapping(
+        String(id),
+        body.userIdList,
+        [],
+        [],
+        session
+      );
+      await mapUserToAssetService.updateFlagOnAssetUpdate(
+        String(id),
+        body.userIdList,
+        body.alarmType,
+        session
+      );
+      return await AssetModel.findOneAndUpdate(
+        { _id: id, account_id, visible: true },
+        { ...body, account_id, updatedBy: user_id },
+        { returnDocument: 'after', session }
+      );
+    }, existingSession);
   }
 
-  async updateAllChildAssetsLocation(id: any, locationId: any, user_id: any): Promise<any> {
-    const childAssets = await AssetModel.find({ parent_id: id });
+  async updateAllChildAssetsLocation(
+    id: any,
+    locationId: any,
+    account_id: any,
+    user_id: any,
+    session?: ClientSession
+  ): Promise<any> {
+    const childAssets = await AssetModel.find({
+      parent_id: id,
+      account_id,
+      visible: true
+    }).session(session || null);
     if (childAssets && childAssets.length > 0) {
       for (const asset of childAssets) {
-        await this.updateAllChildAssetsLocation(`${asset._id}`, locationId, user_id);
+        await this.updateAllChildAssetsLocation(
+          `${asset._id}`,
+          locationId,
+          account_id,
+          user_id,
+          session
+        );
       }
-      return await AssetModel.updateMany({ parent_id: id }, { locationId: locationId, updatedBy: user_id });
+      return await AssetModel.updateMany(
+        { parent_id: id, account_id, visible: true },
+        { locationId: locationId, updatedBy: user_id },
+        session ? { session } : {}
+      );
     }
   }
 
@@ -245,7 +356,15 @@ class AssetService {
     return all;
   };
 
-  async makeAssetCopyRecursive(id: string, user_id: any, token: string, account_id: any, targetLocationId?: any, session?: any): Promise<any> {
+  async makeAssetCopyRecursive(
+    id: string,
+    user_id: any,
+    account_id: any,
+    targetLocationId?: any,
+    session?: any,
+    correlationId?: string
+  ): Promise<any> {
+    const eventCorrelationId = correlationId || randomUUID();
     const dataExists: any = await AssetModel.find({
       _id: helperService.validateObjectId(String(id)),
       account_id,
@@ -263,13 +382,13 @@ class AssetService {
     const newParentId = await this.makeAssetCopyByIdWithChildren(
       sourceAsset,
       user_id,
-      token,
       account_id,
       parentForCopy,
       idMap,
       null,
       session,
-      targetLocationId
+      targetLocationId,
+      eventCorrelationId
     );
 
     const newTopLevelId = sourceAsset.top_level ? newParentId : originalTopLevelId;
@@ -281,28 +400,46 @@ class AssetService {
       const newChildId = await this.makeAssetCopyByIdWithChildren(
         childObj,
         user_id,
-        token,
         account_id,
         newParent,
         idMap,
         newTopLevelId,
         session,
-        targetLocationId
+        targetLocationId,
+        eventCorrelationId
       );
       idMap[childObj._id.toString()] = newChildId;
     }
 
-    await processorAPIService.setAssetHealthStatus(
-      [{ assetId: newParentId }, ...allChildren.map((c) => ({ assetId: idMap[c._id.toString()] }))],
-      account_id,
-      user_id,
-      token
-    );
+    const createdAssetIds = [
+      String(newParentId),
+      ...allChildren.map((child) => String(idMap[child._id.toString()]))
+    ];
+    const healthQueued = await queueAssetHealthInitialization({
+      assetIds: createdAssetIds,
+      tenantId: String(account_id),
+      actorId: String(user_id),
+      correlationId: eventCorrelationId
+    }, session);
+    if (!healthQueued) {
+      await synchronizeAssetHealthInitialization(
+        createdAssetIds,
+        String(account_id),
+        String(user_id)
+      );
+    }
 
     return newParentId;
   }
 
-  async cloneAssetsByLocation(oldLocationId: string, newLocationId: string, account_id: any, user_id: any, token: string, session?: any) {
+  async cloneAssetsByLocation(
+    oldLocationId: string,
+    newLocationId: string,
+    account_id: any,
+    user_id: any,
+    session?: any,
+    correlationId?: string
+  ) {
     const topLevelAssets = await AssetModel.find({
       locationId: helperService.validateObjectId(oldLocationId),
       $or: [
@@ -315,11 +452,28 @@ class AssetService {
     }).session(session);
 
     for (const asset of topLevelAssets) {
-      await this.makeAssetCopyRecursive(String(asset._id), user_id, token, account_id, newLocationId, session);
+      await this.makeAssetCopyRecursive(
+        String(asset._id),
+        user_id,
+        account_id,
+        newLocationId,
+        session,
+        correlationId
+      );
     }
   }
 
-  async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any, newLocationId?: any): Promise<any> {
+  async makeAssetCopyByIdWithChildren(
+    sourceAsset: any,
+    user_id: any,
+    account_id: any,
+    newParentId?: any,
+    idMap?: any,
+    newTopLevelId?: any,
+    session?: any,
+    newLocationId?: any,
+    correlationId?: string
+  ): Promise<any> {
     return await withTransaction(async (innerSession) => {
       const activeSession = session || innerSession;
       const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
@@ -366,31 +520,34 @@ class AssetService {
       }
       let userList: any[] = [];
       try {
-        const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
+        const userMappings = await mapUserToAssetService.getDataByAssetId(
+          `${sourceAsset.id || sourceAsset._id}`,
+          activeSession
+        );
         userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
       } catch { }
-      try {
-        const endPointList: any = await processorAPIService.getEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
-        if (endPointList?.data?.length > 0) {
-          for (const item of endPointList.data) {
-            const newEndPointPayload = {
-              org_id: item.org_id,
-              point_name: item.point_name,
-              asset_id: savedAsset._id.toString(),
-              mount_location: item.mount_location,
-              rpm: item.rpm || "",
-              bsf: item.bsf || "",
-              ftf: item.ftf || "",
-              bpfo: item.bpfo || "",
-              bpfi: item.bpfi || "",
-              bearing_number: item.bearing_number || "",
-              parent_asset_id: newParentId || null
-            };
-            await processorAPIService.createEndPoint(newEndPointPayload, user_id, token);
-          }
+      const sourceAssetId = String(sourceAsset.id || sourceAsset._id);
+      const targetAssetId = String(savedAsset._id);
+      const eventCorrelationId = correlationId || randomUUID();
+      const endpointCloneQueued = await queueAssetEndpointClone({
+        sourceAssetId,
+        targetAssetId,
+        tenantId: String(account_id),
+        actorId: String(user_id),
+        correlationId: eventCorrelationId
+      }, activeSession);
+      if (!endpointCloneQueued) {
+        try {
+          await synchronizeAssetEndpointClone(
+            sourceAssetId,
+            targetAssetId,
+            String(account_id),
+            String(user_id),
+            `${eventCorrelationId}:${targetAssetId}`
+          );
+        } catch (err) {
+          applicationLogger.error({ err }, "Endpoint copy failed:");
         }
-      } catch (err) {
-        console.error("Endpoint copy failed:", err);
       }
       if (userList.length > 0) {
         const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u, account_id }));

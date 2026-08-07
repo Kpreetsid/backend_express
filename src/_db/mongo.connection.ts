@@ -1,3 +1,4 @@
+import { applicationLogger } from '../observability/logger';
 import mongoose from "mongoose";
 import { database } from "../configDB";
 import { idStandardizationPlugin } from "./mongoosePlugins";
@@ -9,39 +10,36 @@ export class MongoConnection {
 
   static async connect(): Promise<typeof mongoose> {
     if (this.instance) {
-      console.log("⚡ MongoDB already connected (pooled)");
+      applicationLogger.info("⚡ MongoDB already connected (pooled)");
       return this.instance;
     }
     try {
       const hasCredentials = !!database.userName && !!database.password;
-      const credentials = hasCredentials
-        ? `${encodeURIComponent(database.userName!)}:${encodeURIComponent(database.password!)}@`
-        : "";
-      const query = new URLSearchParams({ retryWrites: "false" });
+      const credentials = hasCredentials ? `${encodeURIComponent(database.userName!)}:${encodeURIComponent(database.password!)}@` : "";
+      const query = new URLSearchParams({ retryWrites: String(database.retryWrites) });
 
       if (hasCredentials && database.authSource) {
         query.set("authSource", database.authSource);
       }
 
-      const mongoUri = database.uri ||
-        `mongodb://${credentials}${database.host}:${database.port}/${database.databaseName}?${query.toString()}`;
+      const mongoUri = database.uri || `mongodb://${credentials}${database.host}:${database.port}/${database.databaseName}?${query.toString()}`;
       await mongoose.connect(mongoUri, {
-        autoIndex: true,
+        autoIndex: database.autoIndex,
         connectTimeoutMS: 10000,
         maxPoolSize: database.maxPoolSize,
         minPoolSize: database.minPoolSize,
         serverSelectionTimeoutMS: 5000,
         socketTimeoutMS: 45000,
       });
-      console.log("✅ MongoDB connected (pooled connection)");
+      applicationLogger.info("✅ MongoDB connected (pooled connection)");
       this.instance = mongoose;
       // 🟦 Optional event listeners
-      mongoose.connection.on("connected", () => console.log("📡 Mongoose connected"));
-      mongoose.connection.on("error", (err) => console.error("❗ Mongoose error:", err));
-      mongoose.connection.on("disconnected", () => console.log("🔌 Mongoose disconnected"));
+      mongoose.connection.on("connected", () => applicationLogger.info("📡 Mongoose connected"));
+      mongoose.connection.on("error", (err) => applicationLogger.error("❗ Mongoose error:", err));
+      mongoose.connection.on("disconnected", () => applicationLogger.info("🔌 Mongoose disconnected"));
       return mongoose;
     } catch (error) {
-      console.error('❌ MongoDB connection error:', error);
+      applicationLogger.error({ err: error }, '❌ MongoDB connection error:');
       process.exit(1);
     }
   }
@@ -50,7 +48,7 @@ export class MongoConnection {
     if (this.instance) {
       await mongoose.disconnect();
       this.instance = null;
-      console.log('✅ MongoDB disconnected');
+      applicationLogger.info('✅ MongoDB disconnected');
     }
   }
 }

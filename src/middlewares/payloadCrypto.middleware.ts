@@ -18,7 +18,7 @@ interface PayloadCryptoContext {
   nonce: string;
 }
 
-export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, next: NextFunction): void => {
+export const payloadCryptoRequestMiddleware = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!payloadCryptoService.isEnabled()) {
       next();
@@ -51,7 +51,7 @@ export const payloadCryptoRequestMiddleware = (req: Request, _res: Response, nex
 
     const keyId = String(req.headers[KEY_ID_HEADER] || bodyEnvelope?.kid || '');
     const keyRecord = payloadCryptoService.getKeyRecord(keyId);
-    const replay = payloadCryptoService.validateReplay(
+    const replay = await payloadCryptoService.validateReplay(
       keyRecord,
       req.headers[TIMESTAMP_HEADER],
       req.headers[NONCE_HEADER]

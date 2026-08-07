@@ -1,3 +1,4 @@
+import { applicationLogger } from '../../observability/logger';
 import { MailerService } from "../../_config/mailer";
 import { companyService } from "../../masters/company/company.service";
 import { usersService } from "../../masters/user/user.service";
@@ -53,10 +54,10 @@ class RegistrationService {
       // Manual cleanup for standalone instances where transactions are not supported
       if (createdAccountId) {
         try {
-          console.log(`Cleaning up account ${createdAccountId} due to registration failure...`);
-          await companyService.removeById(createdAccountId, null);
+          applicationLogger.info(`Cleaning up account ${createdAccountId} due to registration failure...`);
+          await companyService.removeById(createdAccountId, null, createdAccountId);
         } catch (cleanupError) {
-          console.error("Manual cleanup failed:", cleanupError);
+          applicationLogger.error({ err: cleanupError }, "Manual cleanup failed:");
         }
       }
       throw error;

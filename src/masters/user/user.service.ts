@@ -1,3 +1,4 @@
+import { applicationLogger } from '../../observability/logger';
 import { UserModel, IUser, UserLoginPayload } from "../../models/user.model";
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
@@ -24,9 +25,9 @@ class UsersService {
       if (user.user_role) {
         const newRoleMenu = await RoleManager.getRoleMenuData(user.user_role);
         await RoleMenuModel.updateOne({ user_id: user._id }, { roleMenu: newRoleMenu });
-        console.log(`Updated user role menu for user: ${user._id}, role: ${user.user_role}`);
+        applicationLogger.info(`Updated user role menu for user: ${user._id}, role: ${user.user_role}`);
       } else {
-        console.log(`User role not found for user: ${user._id}`);
+        applicationLogger.info(`User role not found for user: ${user._id}`);
       }
     }
   }
@@ -60,10 +61,10 @@ class UsersService {
   };
 
   async createNewUser(body: IUser, account_id: any, session?: any) {
-    body.password = await passwordService.hashPassword(body.password);
-    
+    const password = await passwordService.hashPassword(body.password);
+
     // Use the provided session (or explicitly use the fallback if session is undefined but provided in arguments)
-    const newUser = new UserModel({ ...body, account_id });
+    const newUser = new UserModel({ ...body, password, account_id });
     const userDetails = await newUser.save({ session });
     const roleDetails = await rolesService.createUserRole(body.user_role, userDetails, session);
     return { userDetails, roleDetails };
@@ -76,8 +77,12 @@ class UsersService {
     return updatedUser;
   };
 
-  async updateUserDetails(id: string, body: IUser) {
-    return await UserModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
+  async updateUserDetails(id: string, body: IUser, session?: any) {
+    return await UserModel.findOneAndUpdate(
+      { _id: id, account_id: body.account_id },
+      body,
+      { returnDocument: 'after', session }
+    );
   }
 
   async removeById(id: string) {

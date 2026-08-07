@@ -30,3 +30,18 @@ export const userAssetUpdateValidator = [
   body('userIdList.*')
     .isMongoId().withMessage('Invalid User ID format in list')
 ];
+
+export const userAssetMailFlagValidator = [
+  body()
+    .isArray({ min: 1 }).withMessage('Request body must be a non-empty array'),
+  body('*._id')
+    .isMongoId().withMessage('Invalid mapping ID format'),
+  body('*.sendMail')
+    .isBoolean().withMessage('sendMail must be a boolean'),
+  body('*.alert')
+    .isBoolean().withMessage('alert must be a boolean'),
+  body('*.danger')
+    .isBoolean().withMessage('danger must be a boolean'),
+  body('*.critical')
+    .isBoolean().withMessage('critical must be a boolean')
+];

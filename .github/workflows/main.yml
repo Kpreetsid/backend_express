@@ -1,74 +1,245 @@
-name: Express Backend Live Deployment
+name: CMMS API CI and immutable deployment
 
 on:
+  pull_request:
   push:
     branches: [new-infra]
+  workflow_dispatch:
+    inputs:
+      change_approval_id:
+        description: Approved change-control identifier
+        required: true
+        type: string
+      staging_soak_evidence_url:
+        description: Stable HTTPS link to staging soak evidence for this commit
+        required: true
+        type: string
+      staging_soak_started_at:
+        description: Staging soak start time in ISO-8601 format
+        required: true
+        type: string
+      staging_soak_ended_at:
+        description: Staging soak end time in ISO-8601 format
+        required: true
+        type: string
+      backup_evidence_url:
+        description: Stable HTTPS link to the pre-release backup evidence
+        required: true
+        type: string
+      backup_confirmed_at:
+        description: Backup confirmation time in ISO-8601 format
+        required: true
+        type: string
+      database_compatibility_evidence_url:
+        description: Stable HTTPS link to backward-compatibility evidence
+        required: true
+        type: string
+      rollback_evidence_url:
+        description: Stable HTTPS link to the latest rollback rehearsal
+        required: true
+        type: string
+      rollback_rehearsed_at:
+        description: Rollback rehearsal time in ISO-8601 format
+        required: true
+        type: string
+
+concurrency:
+  group: api-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  continuous-integration:
+  build-and-verify:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
+      id-token: write
+      attestations: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Use Node.js 18
+      - name: Use Node.js 24 LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+      - name: Deterministic dependency install
+        run: npm ci
 
-      - name: Validate and build API
+      - name: Enterprise checks and coverage
         run: |
           npm run check:enterprise
-          npm run build
+          npm run test:coverage
+          npm run test:coverage:repository
+          npm audit --audit-level=critical
+
+      - name: Retain API coverage evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmms-api-coverage-${{ github.sha }}
+          path: coverage
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Production license policy
+        run: npm run license:check
+
+      - name: Validate deployment scripts
+        run: |
+          bash -n scripts/*.sh
+          node --check scripts/*.cjs
+
+      - name: Use Terraform 1.15.8
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.15.8
+          terraform_wrapper: false
+
+      - name: Validate AWS infrastructure
+        working-directory: infrastructure/terraform
+        run: |
+          terraform fmt -check -recursive
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+
+      - name: Build API once
+        run: npm run build
+
+      - name: Generate CycloneDX SBOM
+        run: npm sbom --sbom-format cyclonedx > sbom.cdx.json
+
+      - name: Assemble production artifact
+        run: |
+          npm prune --omit=dev
+          mkdir -p deployment
+          cp appspec.yml ecosystem.config.cjs deployment/
+          cp package.json package-lock.json deployment/
+          cp -r dist node_modules scripts deployment/
+          cp sbom.cdx.json deployment/
+          tar -C deployment -czf "cmms-api-${GITHUB_SHA}.tgz" .
+          sha256sum "cmms-api-${GITHUB_SHA}.tgz" > "cmms-api-${GITHUB_SHA}.tgz.sha256"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: cmms-api-${{ github.sha }}.tgz
+
+      - name: Retain immutable build
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmms-api-${{ github.sha }}
+          path: |
+            cmms-api-${{ github.sha }}.tgz
+            cmms-api-${{ github.sha }}.tgz.sha256
+            sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Configure AWS credentials via OIDC
+        if: github.event_name == 'workflow_dispatch'
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::059361097726:role/oidc-for-github-actions-role
-          aws-region: ap-south-1
+          role-to-assume: ${{ secrets.PRODUCTION_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Prepare deployment package
+      - name: Upload versioned artifact to S3
+        if: github.event_name == 'workflow_dispatch'
         run: |
-          mkdir -p deployment
-          cp appspec.yml deployment/
-          cp -r scripts deployment/
-          cp -r src deployment/
-          cp package*.json deployment/
-          cp tsconfig.json deployment/
-          cd deployment
-          tar -czf ../express.tar.gz .
+          aws s3 cp "cmms-api-${GITHUB_SHA}.tgz" "s3://${{ vars.CODEDEPLOY_ARTIFACT_BUCKET }}/cmms_express/${GITHUB_SHA}/cmms-api.tgz"
+          aws s3 cp "cmms-api-${GITHUB_SHA}.tgz.sha256" "s3://${{ vars.CODEDEPLOY_ARTIFACT_BUCKET }}/cmms_express/${GITHUB_SHA}/cmms-api.tgz.sha256"
 
-      - name: Upload artifact to S3
-        run: |
-          aws s3 cp express.tar.gz s3://presage-codedeploy-artifact/cmms_express/
-
-  continuous-deployment:
+  deploy:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    needs: continuous-integration
+    needs: build-and-verify
+    environment: production
     permissions:
       id-token: write
       contents: read
 
     steps:
+      - name: Checkout deployment smoke tooling
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24 LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Validate release-specific approval and recovery evidence
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+          CHANGE_APPROVAL_ID: ${{ inputs.change_approval_id }}
+          STAGING_SOAK_EVIDENCE_URL: ${{ inputs.staging_soak_evidence_url }}
+          STAGING_SOAK_STARTED_AT: ${{ inputs.staging_soak_started_at }}
+          STAGING_SOAK_ENDED_AT: ${{ inputs.staging_soak_ended_at }}
+          BACKUP_EVIDENCE_URL: ${{ inputs.backup_evidence_url }}
+          BACKUP_CONFIRMED_AT: ${{ inputs.backup_confirmed_at }}
+          DATABASE_COMPATIBILITY_EVIDENCE_URL: ${{ inputs.database_compatibility_evidence_url }}
+          ROLLBACK_EVIDENCE_URL: ${{ inputs.rollback_evidence_url }}
+          ROLLBACK_REHEARSED_AT: ${{ inputs.rollback_rehearsed_at }}
+        run: node scripts/validate-release-gates.cjs > release-gate-evidence.json
+
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::059361097726:role/oidc-for-github-actions-role
-          aws-region: ap-south-1
+          role-to-assume: ${{ secrets.PRODUCTION_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Create CodeDeploy Deployment
+      - name: Create CodeDeploy deployment
+        id: deployment
         run: |
-          aws deploy create-deployment \
-            --application-name Presage-GithubAction-EC2 \
-            --deployment-group-name Presage-Mean-Stack \
-            --deployment-config-name CodeDeployDefault.OneAtATime \
+          deployment_id="$(aws deploy create-deployment \
+            --application-name "${{ vars.CODEDEPLOY_APPLICATION_NAME }}" \
+            --deployment-group-name "${{ vars.CODEDEPLOY_DEPLOYMENT_GROUP }}" \
+            --deployment-config-name CodeDeployDefault.HalfAtATime \
             --file-exists-behavior OVERWRITE \
-            --s3-location bucket=presage-codedeploy-artifact,key=cmms_express/express.tar.gz,bundleType=tgz
+            --description "CMMS API ${GITHUB_SHA}" \
+            --s3-location "bucket=${{ vars.CODEDEPLOY_ARTIFACT_BUCKET }},key=cmms_express/${GITHUB_SHA}/cmms-api.tgz,bundleType=tgz" \
+            --query deploymentId \
+            --output text)"
+          test -n "$deployment_id"
+          echo "deployment_id=$deployment_id" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for deployment and automatic rollback outcome
+        timeout-minutes: 30
+        run: |
+          aws deploy wait deployment-successful \
+            --deployment-id "${{ steps.deployment.outputs.deployment_id }}"
+
+      - name: Run post-deployment API smoke
+        env:
+          CMMS_SMOKE_BASE_URL: ${{ vars.PRODUCTION_API_BASE_URL }}
+        run: npm run smoke:deployment > api-deployment-smoke.json
+
+      - name: Run production API DAST baseline
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: ${{ vars.PRODUCTION_API_BASE_URL }}
+          fail_action: true
+          allow_issue_writing: false
+          artifact_name: cmms-api-zap-${{ github.sha }}
+
+      - name: Capture deployment evidence
+        if: always()
+        run: |
+          aws deploy get-deployment \
+            --deployment-id "${{ steps.deployment.outputs.deployment_id }}" \
+            > api-codedeploy-evidence.json
+
+      - name: Retain deployment and smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmms-api-deployment-${{ github.sha }}
+          path: |
+            release-gate-evidence.json
+            api-codedeploy-evidence.json
+            api-deployment-smoke.json
+          if-no-files-found: warn
+          retention-days: 90

@@ -7,6 +7,7 @@ import { SOPsModel } from "../../models/sops.model";
 import { UserModel } from "../../models/user.model";
 import { mapInspectionService } from "../../transaction/mapUserInspection/userInspection.service";
 import { withTransaction } from "../../utils/transaction.helper";
+import { ClientSession } from "mongoose";
 
 class InspectionService {
  async getAllInspection (filter: any) {
@@ -92,7 +93,7 @@ class InspectionService {
   return data;
  };
 
- async createInspection (body: any, account_id: any, user_id: any) {
+ async createInspection (body: any, account_id: any, user_id: any, existingSession?: ClientSession) {
   return await withTransaction(async (session) => {
     const newInspection = new InspectionModel({
       account_id,
@@ -112,10 +113,10 @@ class InspectionService {
     });
     await mapInspectionService.setInspection(account_id, newInspection._id, body.assignedUser, session);
     return await newInspection.save({ session });
-  });
+  }, existingSession);
  };
 
- async updateInspection (id: any, body: any, account_id: any, user_id: any) {
+ async updateInspection (id: any, body: any, account_id: any, user_id: any, existingSession?: ClientSession) {
   return await withTransaction(async (session) => {
     await mapInspectionService.setInspection(account_id, id, body.assignedUser, session);
     return await InspectionModel.findOneAndUpdate(
@@ -123,7 +124,7 @@ class InspectionService {
       { ...body, updatedBy: user_id },
       { returnDocument: 'after', session }
     );
-  });
+  }, existingSession);
  };
 
  async removeInspection (id: any, account_id: any, user_id: any) {

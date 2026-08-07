@@ -7,19 +7,43 @@ import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
 import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
+import { withTransaction } from '../../utils/transaction.helper';
+import { ClientSession } from 'mongoose';
+
+const queueWorkRequestNotification = async (
+  payload: Parameters<typeof notificationService.queueAccountNotification>[0],
+  session: ClientSession,
+  correlationId: string
+): Promise<void> => {
+  await notificationService.queueAccountNotification(payload, { session, correlationId });
+};
 
 class RequestController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
       const { account_id } = user;
-      const { query: { priority, location, status, assignedTo, assignedBy, approvedBy, rejectedBy } } = req;
+      const {
+        query: {
+          priority,
+          location,
+          asset,
+          status,
+          assignedTo,
+          assignedBy,
+          approvedBy,
+          rejectedBy
+        }
+      } = req;
       const baseFilter: any = { account_id: account_id, visible: true };
       if (priority) {
         baseFilter.priority = priority.toString().split(",").map((p) => p.trim()).filter((p) => p !== "");
       }
       if (location) {
         baseFilter.location_id = { $in: helperService.validateObjectIds(location.toString()) };
+      }
+      if (asset) {
+        baseFilter.asset_id = { $in: helperService.validateObjectIds(asset.toString()) };
       }
       if (status) {
         baseFilter.status = status.toString().split(",").map((s) => s.trim()).filter((s) => s !== "");
@@ -45,7 +69,7 @@ class RequestController {
         idField: "location_id"
       });
 
-      const data = await requestService.getAllRequests(filter);
+      const data = await requestService.getAllRequests(account_id, filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
@@ -63,7 +87,13 @@ class RequestController {
       const requestId = helperService.validateObjectId(id);
       let baseFilter: any = { _id: requestId, account_id: account_id, visible: true };
       if (query) {
-        baseFilter = { ...baseFilter, ...query };
+        const {
+          _id: _ignoredId,
+          account_id: _ignoredAccountId,
+          visible: _ignoredVisibility,
+          ...safeQuery
+        } = query;
+        baseFilter = { ...safeQuery, ...baseFilter };
       }
 
       const filter = await applyRoleFilter({
@@ -74,7 +104,7 @@ class RequestController {
         idField: "location_id"
       });
 
-      const data = await requestService.getAllRequests(filter);
+      const data = await requestService.getAllRequests(account_id, filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
@@ -89,19 +119,23 @@ class RequestController {
     try {
       const user = get(req, "user", {}) as IUser;
       const body = req.body;
-      const data = await requestService.createRequest(body, user);
-      if (!data) {
-        throw Object.assign(new Error('Work request not created'), { status: 404 });
-      }
-      await notificationService.notifyAccountUsers({
-        accountId: String(user.account_id),
-        module: 'Work Request',
-        event: 'created',
-        entityId: String(data._id),
-        entityName: data.title || data.problemType || 'Work Request',
-        actionUrl: '/work-request',
-        queryParams: { id: String(data._id) },
-        sourceUserId: String(user._id)
+      const correlationId = String(res.locals['correlationId'] || '');
+      const data = await withTransaction(async (session) => {
+        const createdRequest = await requestService.createRequest(body, user, session);
+        if (!createdRequest) {
+          throw Object.assign(new Error('Work request not created'), { status: 404 });
+        }
+        await queueWorkRequestNotification({
+          accountId: String(user.account_id),
+          module: 'Work Request',
+          event: 'created',
+          entityId: String(createdRequest._id),
+          entityName: createdRequest.title || createdRequest.problemType || 'Work Request',
+          actionUrl: '/work-request',
+          queryParams: { id: String(createdRequest._id) },
+          sourceUserId: String(user._id)
+        }, session, correlationId);
+        return createdRequest;
       });
       setSyncVersionEtag(res, data);
       res.status(200).json({ status: true, message: "Work request created successfully.", data });
@@ -129,14 +163,17 @@ class RequestController {
           throw Object.assign(new Error('Invalid priority value'), { status: 400 });
         }
       }
-      const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
+      const existingRequest = await requestService.getAllRequests(account_id, { _id: requestId });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
       const currentRequest = existingRequest[0]!;
       const expectedVersion = getExpectedSyncVersion(req);
       assertSyncVersion(currentRequest, expectedVersion);
-      if (body.remarks !== currentRequest.remarks) {
+      if (
+        Object.prototype.hasOwnProperty.call(body, 'remarks')
+        && body.remarks !== currentRequest.remarks
+      ) {
         const dateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
         body.remarks = currentRequest.remarks ? `${currentRequest.remarks} ${body.remarks} by ${firstName} ${lastName} on ${dateTime}` : `${body.remarks} by ${firstName} ${lastName} on ${dateTime}`;
       }
@@ -149,21 +186,31 @@ class RequestController {
       if (['Approved', 'Rejected'].includes(currentRequest.status)) {
         throw Object.assign(new Error('Finalized work requests cannot be edited'), { status: 400 });
       }
-      const data = await requestService.updateRequest(String(id), body, user_id, undefined, expectedVersion);
-      if (!data || data.modifiedCount === 0) {
-        throw Object.assign(new Error('Work request not updated'), { status: 404 });
-      }
-      await notificationService.notifyAccountUsers({
-        accountId: String(account_id),
-        module: 'Work Request',
-        event: 'updated',
-        entityId: String(id),
-        entityName: body.title || currentRequest.title || currentRequest.problemType || 'Work Request',
-        actionUrl: '/work-request',
-        queryParams: { id: String(id) },
-        sourceUserId: String(user_id)
+      const correlationId = String(res.locals['correlationId'] || '');
+      await withTransaction(async (session) => {
+        const data = await requestService.updateRequest(
+          String(id),
+          account_id,
+          body,
+          user_id,
+          session,
+          expectedVersion
+        );
+        if (!data || data.modifiedCount === 0) {
+          throw Object.assign(new Error('Work request not updated'), { status: 404 });
+        }
+        await queueWorkRequestNotification({
+          accountId: String(account_id),
+          module: 'Work Request',
+          event: 'updated',
+          entityId: String(id),
+          entityName: body.title || currentRequest.title || currentRequest.problemType || 'Work Request',
+          actionUrl: '/work-request',
+          queryParams: { id: String(id) },
+          sourceUserId: String(user_id)
+        }, session, correlationId);
       });
-      const updatedRequest = await requestService.getRequestById(String(id));
+      const updatedRequest = await requestService.getRequestById(String(id), account_id);
       setSyncVersionEtag(res, updatedRequest);
       res.status(200).json({ status: true, message: "Work request updated successfully.", data: updatedRequest });
     } catch (error) {
@@ -179,7 +226,7 @@ class RequestController {
       }
       const { params: { id } } = req;
       const requestId = helperService.validateObjectId(id);
-      const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
+      const existingRequest = await requestService.getAllRequests(account_id, { _id: requestId });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
@@ -195,21 +242,31 @@ class RequestController {
       if (currentRequest.converted_work_order_id) {
         throw Object.assign(new Error('This request has already been converted into a work order'), { status: 400 });
       }
-      const data = await requestService.markApproved(String(id), user_id, currentRequest.priority, undefined, expectedVersion);
-      if (!data || data.modifiedCount === 0) {
-        throw Object.assign(new Error('Work request not updated'), { status: 404 });
-      }
-      await notificationService.notifyAccountUsers({
-        accountId: String(account_id),
-        module: 'Work Request',
-        event: 'updated',
-        entityId: String(id),
-        entityName: currentRequest.title || currentRequest.problemType || 'Work Request',
-        actionUrl: '/work-request',
-        queryParams: { id: String(id) },
-        sourceUserId: String(user_id)
+      const correlationId = String(res.locals['correlationId'] || '');
+      await withTransaction(async (session) => {
+        const data = await requestService.markApproved(
+          String(id),
+          account_id,
+          user_id,
+          currentRequest.priority,
+          session,
+          expectedVersion
+        );
+        if (!data || data.modifiedCount === 0) {
+          throw Object.assign(new Error('Work request not updated'), { status: 404 });
+        }
+        await queueWorkRequestNotification({
+          accountId: String(account_id),
+          module: 'Work Request',
+          event: 'updated',
+          entityId: String(id),
+          entityName: currentRequest.title || currentRequest.problemType || 'Work Request',
+          actionUrl: '/work-request',
+          queryParams: { id: String(id) },
+          sourceUserId: String(user_id)
+        }, session, correlationId);
       });
-      const updatedRequest = await requestService.getRequestById(String(id));
+      const updatedRequest = await requestService.getRequestById(String(id), account_id);
       setSyncVersionEtag(res, updatedRequest);
       res.status(200).json({ status: true, message: "Work request approved successfully.", data: updatedRequest });
     } catch (error) {
@@ -228,7 +285,7 @@ class RequestController {
       if (!remarks) {
         throw Object.assign(new Error('Remarks is required'), { status: 400 });
       }
-      const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
+      const existingRequest = await requestService.getAllRequests(account_id, { _id: requestId });
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
@@ -246,21 +303,31 @@ class RequestController {
       }
       const dateTime = new Date().toISOString().slice(0, 19).replace('T', ' ');
       const updatedRemarks = currentRequest.remarks ? `${currentRequest.remarks} ${remarks} by ${firstName} ${lastName} on ${dateTime}` : `${remarks} by ${firstName} ${lastName} on ${dateTime}`;
-      const data = await requestService.markRejected(String(id), user_id, updatedRemarks, undefined, expectedVersion);
-      if (!data || data.modifiedCount === 0) {
-        throw Object.assign(new Error('Work request not updated'), { status: 404 });
-      }
-      await notificationService.notifyAccountUsers({
-        accountId: String(account_id),
-        module: 'Work Request',
-        event: 'updated',
-        entityId: String(id),
-        entityName: currentRequest.title || currentRequest.problemType || 'Work Request',
-        actionUrl: '/work-request',
-        queryParams: { id: String(id) },
-        sourceUserId: String(user_id)
+      const correlationId = String(res.locals['correlationId'] || '');
+      await withTransaction(async (session) => {
+        const data = await requestService.markRejected(
+          String(id),
+          account_id,
+          user_id,
+          updatedRemarks,
+          session,
+          expectedVersion
+        );
+        if (!data || data.modifiedCount === 0) {
+          throw Object.assign(new Error('Work request not updated'), { status: 404 });
+        }
+        await queueWorkRequestNotification({
+          accountId: String(account_id),
+          module: 'Work Request',
+          event: 'updated',
+          entityId: String(id),
+          entityName: currentRequest.title || currentRequest.problemType || 'Work Request',
+          actionUrl: '/work-request',
+          queryParams: { id: String(id) },
+          sourceUserId: String(user_id)
+        }, session, correlationId);
       });
-      const updatedRequest = await requestService.getRequestById(String(id));
+      const updatedRequest = await requestService.getRequestById(String(id), account_id);
       setSyncVersionEtag(res, updatedRequest);
       res.status(200).json({ status: true, message: "Work request rejected successfully.", data: updatedRequest });
     } catch (error) {
@@ -274,11 +341,11 @@ class RequestController {
       const { params: { id } } = req;
       const requestId = helperService.validateObjectId(id);
       const match: any = { _id: requestId, account_id: account_id };
-      const existingRequest = await requestService.getAllRequests(match);
+      const existingRequest = await requestService.getAllRequests(account_id, match);
       if (!existingRequest || existingRequest.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
-      await requestService.deleteRequestById(id, user_id);
+      await requestService.deleteRequestById(id, account_id, user_id);
       res.status(200).json({ status: true, message: "Work request deleted successfully." });
     } catch (error) {
       next(error);

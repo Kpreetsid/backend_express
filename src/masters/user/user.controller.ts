@@ -8,6 +8,10 @@ import { applyRoleFilter } from '../../utils/roleFilter';
 import { mailerService } from '../../_config/mailer';
 import { helperService } from '../../utils/helper';
 import { notificationService } from '../../utils/notification.service';
+import { randomUUID } from 'node:crypto';
+import { queueConfig } from '../../configDB';
+import { createOutboxEvent } from '../../queue/outbox-writer';
+import { withTransaction } from '../../utils/transaction.helper';
 
 class UserController {
 
@@ -78,17 +82,51 @@ class UserController {
       body.account_id = account_id;
       body.createdBy = user_id;
 
-      const data = await usersService.createNewUser(body, account_id);
-      await mailerService.sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email });
-      await notificationService.notifyAccountUsers({
-        accountId: String(account_id),
-        module: 'User',
-        event: 'created',
-        entityId: String(data.userDetails._id || data.userDetails.id),
-        entityName: `${data.userDetails.firstName || ''} ${data.userDetails.lastName || ''}`.trim() || data.userDetails.username || 'User',
-        actionUrl: `/admin-panel/users/${data.userDetails._id || data.userDetails.id}`,
-        sourceUserId: String(user_id)
+      const correlationId = String(res.locals['correlationId'] || randomUUID());
+      const data = await withTransaction(async (session) => {
+        const created = await usersService.createNewUser(body, account_id, session);
+        const createdUserId = String(created.userDetails._id || created.userDetails.id);
+        if (queueConfig.domainEventOutboxEnabled) {
+          await createOutboxEvent({
+            type: 'email.user.created',
+            version: 1,
+            tenantId: String(account_id),
+            actorId: String(user_id),
+            correlationId,
+            entity: { type: 'user', id: createdUserId },
+            payload: { userId: createdUserId }
+          }, { session });
+          await notificationService.queueAccountNotification({
+            accountId: String(account_id),
+            module: 'User',
+            event: 'created',
+            entityId: createdUserId,
+            entityName: `${created.userDetails.firstName || ''} ${created.userDetails.lastName || ''}`.trim()
+              || created.userDetails.username
+              || 'User',
+            actionUrl: `/admin-panel/users/${createdUserId}`,
+            sourceUserId: String(user_id)
+          }, { session, correlationId });
+        }
+        return created;
       });
+      if (!queueConfig.domainEventOutboxEnabled) {
+        await mailerService.sendUserCreatedMail({
+          userName: data.userDetails.username,
+          userEmail: data.userDetails.email
+        });
+        await notificationService.notifyAccountUsers({
+          accountId: String(account_id),
+          module: 'User',
+          event: 'created',
+          entityId: String(data.userDetails._id || data.userDetails.id),
+          entityName: `${data.userDetails.firstName || ''} ${data.userDetails.lastName || ''}`.trim()
+            || data.userDetails.username
+            || 'User',
+          actionUrl: `/admin-panel/users/${data.userDetails._id || data.userDetails.id}`,
+          sourceUserId: String(user_id)
+        });
+      }
       res.status(201).json({ status: true, message: "User created successfully", data: data.userDetails, roleData: data.roleDetails });
     } catch (error) {
       next(error);
@@ -110,18 +148,35 @@ class UserController {
         throw Object.assign(new Error("User not found"), { status: 404 });
       }
       const existingUser = userData[0]!;
-      const data = await usersService.updateUserDetails(String(id), { ...existingUser.toObject(), ...body, updatedBy: user._id });
-      if (!data) {
-        throw Object.assign(new Error("Failed to update user"), { status: 500 });
-      }
-      await notificationService.notifyAccountUsers({
-        accountId: String(user.account_id),
-        module: 'User',
-        event: 'updated',
-        entityId: String(id),
-        entityName: `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.username || 'User',
-        actionUrl: `/admin-panel/users/${id}`,
-        sourceUserId: String(user._id)
+      const {
+        _id: _ignoredId,
+        account_id: _ignoredAccountId,
+        createdBy: _ignoredCreatedBy,
+        ...mutableBody
+      } = body;
+      const correlationId = String(res.locals['correlationId'] || randomUUID());
+      const data = await withTransaction(async (session) => {
+        const updated = await usersService.updateUserDetails(String(id), {
+          ...existingUser.toObject(),
+          ...mutableBody,
+          _id: existingUser._id,
+          account_id: user.account_id,
+          createdBy: existingUser.createdBy,
+          updatedBy: user._id
+        }, session);
+        if (!updated) {
+          throw Object.assign(new Error("Failed to update user"), { status: 500 });
+        }
+        await notificationService.queueAccountNotification({
+          accountId: String(user.account_id),
+          module: 'User',
+          event: 'updated',
+          entityId: String(id),
+          entityName: `${updated.firstName || ''} ${updated.lastName || ''}`.trim() || updated.username || 'User',
+          actionUrl: `/admin-panel/users/${id}`,
+          sourceUserId: String(user._id)
+        }, { session, correlationId });
+        return updated;
       });
       res.status(200).json({ status: true, message: "User updated successfully", data });
     } catch (error) {
@@ -163,12 +218,17 @@ class UserController {
       const userData = await usersService.getAllUsers({ email, user_status: "active" });
       if (!userData.length) throw Object.assign(new Error("User not found"), { status: 404 });
       const existingUser = userData[0]!;
-      const otpExists = await resetPasswordService.verifyOTPExists({ email });
-      if (!otpExists) throw Object.assign(new Error("OTP has expired. Please request a new one."), { status: 410 });
+      const resetAuthorization =
+        await resetPasswordService.consumePasswordResetAuthorization(email);
+      if (!resetAuthorization) {
+        throw Object.assign(
+          new Error("OTP verification is required. Please request a new one."),
+          { status: 403 }
+        );
+      }
       existingUser.password = newPassword;
       existingUser.passwordExpiredAt = new Date();
       await usersService.updateUserPassword(`${existingUser._id}`, existingUser);
-      await resetPasswordService.deleteVerificationCode({ email });
       res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
       next(error);

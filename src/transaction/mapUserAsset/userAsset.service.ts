@@ -19,26 +19,39 @@ class MapUserToAssetService {
     }).lean();
   };
 
-  getDataByAssetId = async (assetId: string) => {
+  getDataByAssetId = async (assetId: string, session?: any) => {
     return await MapUserAssetLocationModel.find({
       assetId: assetId,
       userId: { $exists: true },
-    }).lean();
+    }).lean().session(session);
   };
 
   createMapUserAssets = async (data: any, session?: any): Promise<any> => {
     return await MapUserAssetLocationModel.insertMany(data, { session });
   };
 
-  userAssets = async (match: any, populate: any): Promise<any> => {
+  getMappingsByIds = async (ids: any[]): Promise<any> => {
+    return await MapUserAssetLocationModel.find({ _id: { $in: ids } })
+      .select('_id assetId userId')
+      .lean();
+  };
+
+  userAssets = async (match: any, populate: any, accountId?: any): Promise<any> => {
     const pipeline: any[] = [{ $match: match }];
     if (populate === "assetId") {
+      const assetLookupMatch: any = {
+        $expr: { $eq: ["$_id", "$$assetId"] },
+        visible: true
+      };
+      if (accountId) {
+        assetLookupMatch.account_id = accountId;
+      }
       pipeline.push({
         $lookup: {
           from: AssetModel.collection.name,
           let: { assetId: "$assetId" },
           pipeline: [
-            { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
+            { $match: assetLookupMatch },
             { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, asset_model: 1, top_level: 1, parent_id: 1, visible: 1 } },
           ],
           as: "asset",
@@ -47,12 +60,16 @@ class MapUserToAssetService {
       pipeline.push({ $unwind: "$asset" });
     }
     if (populate === "userId") {
+      const userLookupMatch: any = { $expr: { $eq: ["$_id", "$$userId"] } };
+      if (accountId) {
+        userLookupMatch.account_id = accountId;
+      }
       pipeline.push({
         $lookup: {
           from: UserModel.collection.name,
           let: { userId: "$userId" },
           pipeline: [
-            { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+            { $match: userLookupMatch },
             { $project: { _id: 1, id: "$_id", firstName: 1, lastName: 1, email: 1, username: 1, user_role: 1, user_status: 1, user_profile_img: 1 } },
           ],
           as: "user",
@@ -64,7 +81,8 @@ class MapUserToAssetService {
     return await MapUserAssetLocationModel.aggregate(pipeline);
   };
 
-  updateMappedUserFlags = async (body: any): Promise<any> => {
+  updateMappedUserFlags = async (body: any, mappings: any[]): Promise<any> => {
+    const mappingById = new Map(mappings.map((mapping: any) => [String(mapping._id), mapping]));
     const bulkOps = body.map((doc: any) => {
       if (
         !doc._id ||
@@ -78,9 +96,17 @@ class MapUserToAssetService {
           { status: 400 },
         );
       }
+      const mapping = mappingById.get(String(doc._id));
+      if (!mapping) {
+        throw Object.assign(new Error("Asset mapping not found"), { status: 404 });
+      }
       return {
         updateOne: {
-          filter: { _id: helperService.validateObjectId(String(doc._id)) },
+          filter: {
+            _id: helperService.validateObjectId(String(doc._id)),
+            assetId: mapping.assetId,
+            userId: mapping.userId
+          },
           update: {
             $set: {
               sendMail: doc.sendMail,
@@ -110,24 +136,29 @@ class MapUserToAssetService {
     }
   };
 
-  updateUserMapping = async (assetId: string, userIdList: any, inheritedAdded: string[] = [], inheritedRemoved: string[] = [], session?: any) => {
-    const assetUserMappings = await this.getDataByAssetId(assetId);
+  updateUserMapping = async (assetId: string, userIdList: any, inheritedAdded: string[] = [], inheritedRemoved: string[] = [], session?: any, accountId?: any) => {
+    const assetUserMappings = await this.getDataByAssetId(assetId, session);
     const existingUsers = assetUserMappings.map((u: any) => String(u.userId));
     const addedUsers = userIdList.filter((id: any) => !existingUsers.includes(id));
     const removedUsers = existingUsers.filter((id: any) => !userIdList.includes(id));
     const effectiveAdded = Array.from([...new Set([...addedUsers, ...inheritedAdded])]);
     const effectiveRemoved = Array.from([...new Set([...removedUsers, ...inheritedRemoved])]);
     if (effectiveAdded.length > 0) {
-      await this.addChildAssetMapping(assetId, effectiveAdded, session);
+      await this.addChildAssetMapping(assetId, effectiveAdded, session, accountId);
     }
     if (effectiveRemoved.length > 0) {
       await this.removeChildAssetMapping(assetId, effectiveRemoved, session);
     }
-    const assetChildList = await AssetModel.find({ parent_id: helperService.validateObjectId(assetId) }).select("_id").lean().session(session);
+    const childMatch: any = { parent_id: helperService.validateObjectId(assetId) };
+    if (accountId) {
+      childMatch.account_id = accountId;
+      childMatch.visible = true;
+    }
+    const assetChildList = await AssetModel.find(childMatch).select("_id").lean().session(session);
     for (const { _id } of assetChildList) {
-      const childExisting = await this.getDataByAssetId(String(_id));
+      const childExisting = await this.getDataByAssetId(String(_id), session);
       const childUserList = childExisting.map((d: any) => String(d.userId));
-      await this.updateUserMapping(String(_id), childUserList, effectiveAdded, effectiveRemoved, session);
+      await this.updateUserMapping(String(_id), childUserList, effectiveAdded, effectiveRemoved, session, accountId);
     }
   };
 
@@ -162,7 +193,7 @@ class MapUserToAssetService {
     };
   };
 
-  addChildAssetMapping = async (id: string, userIdList: string[], session?: any) => {
+  addChildAssetMapping = async (id: string, userIdList: string[], session?: any, accountId?: any) => {
     const assetId = helperService.validateObjectId(id);
     const userIds = helperService.validateObjectIds(userIdList.join(','));
     const queryArray = userIds.map((userId) => {
@@ -170,6 +201,9 @@ class MapUserToAssetService {
         assetId: assetId,
         userId: userId,
       };
+      if (accountId) {
+        mapData.account_id = accountId;
+      }
       return mapData;
     });
     await MapUserAssetLocationModel.insertMany(queryArray, { session });
@@ -245,4 +279,4 @@ export const updateLocationAssetMapping = async (locationId: string, userIdList:
     const childUsers = childMappings.map(d => String(d.userId));
     await updateLocationAssetMapping(String(child._id), childUsers, effectiveAdded, effectiveRemoved, session);
   }
-};
+};

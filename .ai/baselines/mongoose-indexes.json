@@ -1,0 +1,933 @@
+{
+  "version": 1,
+  "generatedFrom": "Mongoose schemas loaded by src/app.ts",
+  "productionAutoIndex": false,
+  "modelCount": 43,
+  "models": [
+    {
+      "model": "IdempotencyRecord",
+      "collection": "idempotency_records",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "user_id": 1,
+            "key": 1
+          },
+          "options": {
+            "unique": true
+          }
+        },
+        {
+          "fields": {
+            "expiresAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 0
+          }
+        }
+      ]
+    },
+    {
+      "model": "Notification",
+      "collection": "notification",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "deliveryEventId": 1,
+            "targetUser": 1
+          },
+          "options": {
+            "partialFilterExpression": {
+              "deliveryEventId": {
+                "$type": "string"
+              }
+            },
+            "unique": true
+          }
+        },
+        {
+          "fields": {
+            "targetUser": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_Account",
+      "collection": "account_master",
+      "indexes": [
+        {
+          "fields": {
+            "account_name": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "Schema_Asset",
+      "collection": "asset_master",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "locationId": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "parent_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "top_level_asset_id": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_AssetReportPdfJob",
+      "collection": "asset_report_pdf_jobs",
+      "indexes": [
+        {
+          "fields": {
+            "accountId": 1,
+            "jobId": 1
+          },
+          "options": {
+            "unique": true
+          }
+        },
+        {
+          "fields": {
+            "accountId": 1,
+            "reportId": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "expiresAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 0
+          }
+        },
+        {
+          "fields": {
+            "status": 1,
+            "updatedAt": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_Category",
+      "collection": "form_category",
+      "indexes": []
+    },
+    {
+      "model": "Schema_Comments",
+      "collection": "work_order_comment",
+      "indexes": [
+        {
+          "fields": {
+            "order_id": 1,
+            "visible": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "parentCommentId": 1,
+            "visible": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_CycleCount",
+      "collection": "cycle_counts",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "part_id": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "status": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "location_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "part_id": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_EndPoints",
+      "collection": "floor_map",
+      "indexes": []
+    },
+    {
+      "model": "Schema_HistoryWorkOrder",
+      "collection": "history_work_orders",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "priority": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "status": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "createdBy": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "order_no": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "original_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "parentId": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "wo_asset_id": 1,
+            "visible": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "wo_location_id": 1,
+            "visible": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_Inspection",
+      "collection": "mst_inspection",
+      "indexes": []
+    },
+    {
+      "model": "Schema_InventoryMovement",
+      "collection": "inventory_movements",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "part_id": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "work_order_id": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "location_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "movement_type": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "part_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "work_order_id": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_Location",
+      "collection": "location_master",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "parent_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "top_level_location_id": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_MailLog",
+      "collection": "mail_logs",
+      "indexes": []
+    },
+    {
+      "model": "Schema_MapUserInspection",
+      "collection": "map_user_inspection",
+      "indexes": []
+    },
+    {
+      "model": "Schema_MapUserLocation",
+      "collection": "location_user_mapping",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "assetId": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "locationId": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "userId": 1,
+            "assetId": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "userId": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_Observation",
+      "collection": "observation",
+      "indexes": []
+    },
+    {
+      "model": "Schema_OutboxEvent",
+      "collection": "outbox_events",
+      "indexes": [
+        {
+          "fields": {
+            "eventId": 1
+          },
+          "options": {
+            "unique": true
+          }
+        },
+        {
+          "fields": {
+            "nextAttemptAt": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "status": 1,
+            "nextAttemptAt": 1,
+            "createdAt": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "status": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "tenantId": 1,
+            "type": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "tenantId": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "type": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_Part",
+      "collection": "parts",
+      "indexes": []
+    },
+    {
+      "model": "Schema_PartHistory",
+      "collection": "part_history",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "part_id": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "action_type": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "location_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "part_id": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_PartsTypes",
+      "collection": "mst_part_types",
+      "indexes": []
+    },
+    {
+      "model": "Schema_Post",
+      "collection": "posts",
+      "indexes": []
+    },
+    {
+      "model": "Schema_Procedure",
+      "collection": "procedures",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "is_latest": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "name": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "version_group_id": 1,
+            "version": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "asset_ids": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "location_ids": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_ReportAsset",
+      "collection": "assets-report",
+      "indexes": []
+    },
+    {
+      "model": "Schema_ReportLocation",
+      "collection": "location-report",
+      "indexes": []
+    },
+    {
+      "model": "Schema_RoleMenu",
+      "collection": "platform-control",
+      "indexes": []
+    },
+    {
+      "model": "Schema_SOPs",
+      "collection": "sops",
+      "indexes": []
+    },
+    {
+      "model": "Schema_Schedule",
+      "collection": "schedule_master",
+      "indexes": []
+    },
+    {
+      "model": "Schema_TroubleshootGuide",
+      "collection": "troubleshoot_guide",
+      "indexes": []
+    },
+    {
+      "model": "Schema_Upload",
+      "collection": "schema_uploads",
+      "indexes": []
+    },
+    {
+      "model": "Schema_User",
+      "collection": "users",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "user_status": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "email": 1
+          },
+          "options": {
+            "unique": true
+          }
+        },
+        {
+          "fields": {
+            "user_role": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "username": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "Schema_UserLog",
+      "collection": "user_logs",
+      "indexes": [
+        {
+          "fields": {
+            "createdAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 15552000
+          }
+        }
+      ]
+    },
+    {
+      "model": "Schema_UserToken",
+      "collection": "CustomAccessToken",
+      "indexes": [
+        {
+          "fields": {
+            "expiresAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 0
+          }
+        },
+        {
+          "fields": {
+            "tokenType": 1,
+            "userId": 1,
+            "accountId": 1,
+            "revokedAt": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_VerificationCode",
+      "collection": "user_verification_code",
+      "indexes": [
+        {
+          "fields": {
+            "createdAt": 1
+          },
+          "options": {
+            "expireAfterSeconds": 1800
+          }
+        }
+      ]
+    },
+    {
+      "model": "Schema_WorkInstructions",
+      "collection": "work_instructions",
+      "indexes": []
+    },
+    {
+      "model": "Schema_WorkOrder",
+      "collection": "work_orders",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "priority": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "status": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "createdBy": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "order_no": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "parentId": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "wo_asset_id": 1,
+            "visible": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "wo_location_id": 1,
+            "visible": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_WorkOrderActivity",
+      "collection": "work_order_activity",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "work_order_id": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "action_type": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "work_order_id": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_WorkOrderAssignee",
+      "collection": "wo_user_mapping",
+      "indexes": [
+        {
+          "fields": {
+            "userId": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "woId": 1,
+            "userId": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "Schema_WorkOrderTemplate",
+      "collection": "work_order_templates",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "maintenance_type": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "template_name": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "visible": 1,
+            "updatedAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1
+          },
+          "options": {}
+        }
+      ]
+    },
+    {
+      "model": "Schema_WorkRequest",
+      "collection": "work_request",
+      "indexes": []
+    },
+    {
+      "model": "StoredUploadMetadata",
+      "collection": "stored_upload_metadata",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "checksumSha256": 1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "account_id": 1,
+            "status": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "storageKey": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "UploadQuotaLedger",
+      "collection": "upload_quota_ledgers",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1
+          },
+          "options": {
+            "unique": true
+          }
+        }
+      ]
+    },
+    {
+      "model": "UploadQuotaReservation",
+      "collection": "upload_quota_reservations",
+      "indexes": [
+        {
+          "fields": {
+            "account_id": 1,
+            "status": 1,
+            "createdAt": -1
+          },
+          "options": {}
+        },
+        {
+          "fields": {
+            "reservationId": 1
+          },
+          "options": {
+            "unique": true
+          }
+        },
+        {
+          "fields": {
+            "status": 1,
+            "expiresAt": 1
+          },
+          "options": {}
+        }
+      ]
+    }
+  ]
+}

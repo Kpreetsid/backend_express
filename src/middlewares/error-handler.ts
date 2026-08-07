@@ -1,24 +1,94 @@
 import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import { environment } from '../configDB';
+import { applicationLogger } from '../observability/logger';
+import { uploadOperationsCounter } from '../observability/metrics';
+
+const errorStatusByName: Readonly<Record<string, number>> = Object.freeze({
+  BadRequestError: 400,
+  JsonWebTokenError: 401,
+  InvalidTokenError: 401,
+  TokenExpiredError: 401,
+  UnauthorizedError: 401,
+  ForbiddenError: 403,
+  NotFoundError: 404,
+  MethodNotAllowedError: 405,
+  NotAcceptableError: 406,
+  RequestTimeoutError: 408,
+  ConflictError: 409,
+  LengthRequiredError: 411,
+  PreconditionFailedError: 412,
+  UnsupportedMediaTypeError: 415,
+  RangeNotSatisfiableError: 416,
+  ExpectationFailedError: 417,
+  ValidationError: 422,
+  TooManyRequestsError: 429,
+  UnavailableForLegalReasonsError: 451,
+  InternalServerError: 500,
+  NotImplementedError: 501,
+  BadGatewayError: 502,
+  ServiceUnavailableError: 503,
+  GatewayTimeoutError: 504,
+  InsufficientStorageError: 507,
+  LoopDetectedError: 508,
+  NotExtendedError: 510,
+  NetworkAuthenticationRequiredError: 511,
+  CastError: 400
+});
+
+const uploadErrorCodes = new Set([
+  'LIMIT_FILE_SIZE',
+  'LIMIT_FILE_COUNT',
+  'LIMIT_UNEXPECTED_FILE'
+]);
+
+const resolveStatusCode = (err: any): number => {
+  if (err instanceof multer.MulterError || uploadErrorCodes.has(err?.code)) return 400;
+  if (err?.name === 'MongoServerError') return err?.code === 11000 ? 409 : 500;
+  const explicitStatus = Number(err?.status);
+  if (Number.isInteger(explicitStatus) && explicitStatus >= 400 && explicitStatus <= 599) {
+    return explicitStatus;
+  }
+  return errorStatusByName[err?.name] || 500;
+};
 
 export const errorMiddleware = (err: any, req: Request, res: Response, next: NextFunction): Response | void => {
   if (res.headersSent) {
     return next(err);
   }
 
+  const statusCode = resolveStatusCode(err);
+  const safeMessage = environment.isProduction && statusCode >= 500
+    ? 'Internal Server Error'
+    : err.message || 'Internal Server Error';
   const response: { status: boolean; message: string; error?: string; data?: unknown; errors?: unknown } = {
     status: false,
-    message: err.message || 'Internal Server Error',
-    error: err.message || 'Something went wrong'
+    message: safeMessage,
+    error: safeMessage
   };
 
-  const statusCode = err.status || 500;
   if (err.data !== undefined) response.data = err.data;
   if (err.errors !== undefined) response.errors = err.errors;
 
-  console.error({ name: err.name, method: req.method, statusCode: err.status, path: req.path, message: err.message, stack: err.stack });
+  const logContext = {
+    err,
+    method: req.method,
+    path: req.path,
+    statusCode,
+    requestId: res.locals?.['requestId'],
+    correlationId: res.locals?.['correlationId'],
+    tenantId: req.headers['accountid'],
+    userId: (req as Request & { user?: { id?: string; _id?: string } }).user?.id
+      || (req as Request & { user?: { id?: string; _id?: string } }).user?._id
+  };
+  if (statusCode >= 500) {
+    applicationLogger.error(logContext, 'Request failed');
+  } else {
+    applicationLogger.warn(logContext, 'Request rejected');
+  }
 
   if (err instanceof multer.MulterError) {
+    uploadOperationsCounter.inc({ result: 'failure' });
     let message = 'File upload error';
     switch (err.code) {
       case 'LIMIT_FILE_SIZE':

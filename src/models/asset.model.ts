@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const COLLECTION_NAME = 'asset_master';
 
 export const ASSETS_TYPE = ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other'];
 
@@ -187,7 +188,7 @@ const assetSchema = new Schema<IAsset>(
     updatedBy: { type: Schema.Types.ObjectId, ref: "UserModel" },
   },
   {
-    collection: "asset_master",
+    collection: COLLECTION_NAME,
     timestamps: true,
     versionKey: false,
   },

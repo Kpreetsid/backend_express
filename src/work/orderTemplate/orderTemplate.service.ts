@@ -6,6 +6,7 @@ import { ProcedureModel } from '../../models/procedure.model';
 import { UserModel } from '../../models/user.model';
 import { WorkOrderTemplateModel } from '../../models/workOrderTemplate.model';
 import { helperService } from '../../utils/helper';
+import { requireTenantReferenceIds } from '../../utils/tenant-references';
 
 class OrderTemplateService {
   async getAllTemplates(match: any): Promise<any[]> {
@@ -33,9 +34,11 @@ class OrderTemplateService {
   }
 
   async createTemplate(body: any, account_id: any, user_id: any): Promise<any> {
+    const payload = this.normalizeTemplatePayload(body);
+    await this.requireTenantReferences(payload, account_id);
     const template = await WorkOrderTemplateModel.create({
       account_id,
-      ...this.normalizeTemplatePayload(body),
+      ...payload,
       createdBy: user_id,
       updatedBy: user_id
     });
@@ -44,6 +47,8 @@ class OrderTemplateService {
   }
 
   async updateTemplate(id: string, body: any, account_id: any, user_id: any): Promise<any | null> {
+    const payload = this.normalizeTemplatePayload(body);
+    await this.requireTenantReferences(payload, account_id);
     const updated = await WorkOrderTemplateModel.findOneAndUpdate(
       {
         _id: helperService.validateObjectId(id),
@@ -52,7 +57,7 @@ class OrderTemplateService {
       },
       {
         $set: {
-          ...this.normalizeTemplatePayload(body),
+          ...payload,
           updatedBy: user_id
         }
       },
@@ -249,6 +254,42 @@ class OrderTemplateService {
         };
       })
     }));
+  }
+
+  private async requireTenantReferences(payload: any, account_id: any): Promise<void> {
+    await Promise.all([
+      requireTenantReferenceIds({
+        ids: payload.procedure_ids || [],
+        accountId: account_id,
+        label: 'Procedure',
+        model: ProcedureModel
+      }),
+      requireTenantReferenceIds({
+        ids: payload.assignee_ids || [],
+        accountId: account_id,
+        label: 'Assignee',
+        model: UserModel,
+        match: { user_status: 'active' }
+      }),
+      requireTenantReferenceIds({
+        ids: payload.location_ids || [],
+        accountId: account_id,
+        label: 'Location',
+        model: LocationModel
+      }),
+      requireTenantReferenceIds({
+        ids: payload.asset_ids || [],
+        accountId: account_id,
+        label: 'Asset',
+        model: AssetModel
+      }),
+      requireTenantReferenceIds({
+        ids: (payload.parts || []).map((part: any) => part?.part_id),
+        accountId: account_id,
+        label: 'Part',
+        model: PartsModel
+      })
+    ]);
   }
 }
 
