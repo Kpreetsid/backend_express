@@ -5,10 +5,6 @@ import { auth } from '../configDB';
 import { notificationService } from '../utils/notification.service';
 import { isOriginAllowed } from './cors';
 
-/**
- * Initialize Socket.io server
- * @param httpServer The HTTP server instance
- */
 export const initSocket = (httpServer: HttpServer) => {
   const io = new Server(httpServer, {
     cors: {
@@ -24,23 +20,18 @@ export const initSocket = (httpServer: HttpServer) => {
     }
   });
 
-  // Authentication Middleware
   io.use((socket: Socket, next) => {
     const token = socket.handshake.auth.token || socket.handshake.headers['authorization']?.split(' ')[1];
     const accountId = socket.handshake.auth.accountId || socket.handshake.headers['accountid'];
-
     if (!token || !accountId) {
       return next(new Error('Authentication error: Token and Account ID required'));
     }
-
     try {
       const decoded: any = jwt.verify(token, auth.secret, {
         algorithms: [auth.algorithm as jwt.Algorithm],
         issuer: auth.issuer,
         audience: auth.audience
       });
-
-      // Attach user info to socket
       socket.data.user = decoded;
       socket.data.accountId = accountId;
       next();
@@ -51,32 +42,27 @@ export const initSocket = (httpServer: HttpServer) => {
 
   io.on('connection', (socket: Socket) => {
     const userId = socket.data.user.id;
-    const accountId = socket.data.accountId;
-
-    console.log(`Notification socket connected: ${userId} (Account: ${accountId})`);
-
-    // Notification delivery is user-scoped. Account-wide events are expanded to user rooms
-    // by NotificationService when a server-side API action creates notifications.
+    const userName = socket.data.user.username;
+    const dateIst = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    const url = socket.handshake.url;
+    const customLog = `${dateIst} | CONNECTED | ${userId} | ${userName} | SOCKET_CONNECT | WS | - ms | ${url}`;
+    console.log(`Notification socket connected: ${userName}`);
+    console.log(customLog);
     socket.join(userId.toString());
-
-    // Handle "Notification Reached" acknowledgment from client
     socket.on('notification_reached', async (payload: { notificationId: string }) => {
       try {
-        const userId = socket.data.user.id;
         await notificationService.markAsReached(payload.notificationId, userId);
-        console.log(`Notification ${payload.notificationId} reached user ${userId}`);
+        const actionDate = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        console.log(`${actionDate} | ACKNOWLEDGED | ${userId} | ${userName} | NOTIFICATION_REACHED | WS | - ms | payload: ${payload.notificationId}`);
       } catch (err) {
         console.error('Error marking notification as reached:', err);
       }
     });
-
     socket.on('disconnect', () => {
-      console.log(`Notification socket disconnected: ${userId}`);
+      const disconnectDate = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+      console.log(`${disconnectDate} | DISCONNECTED | ${userId} | ${userName} | SOCKET_DISCONNECT | WS | - ms | ${url}`);
     });
   });
-
-  // Initialize the singleton service with this io instance
   notificationService.init(io);
-
   return io;
 };
