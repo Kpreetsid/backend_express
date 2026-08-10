@@ -283,6 +283,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       : '/dashboard';
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleMenu, accountDetails[0]);
     const isCookieAuth = accountDetails[0].cookie_status === 'enabled';
+    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id })
 
     if (isCookieAuth) {
       setAccessCookies(res, {
@@ -302,7 +303,8 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
           token: newToken,
           isExternal: !!isExternal,
           isInternal: !!isInternal,
-          redirectPath: safeRedirectPath
+          redirectPath: safeRedirectPath,
+          analysisFeature: analysisFeature
         }
       });
     }
@@ -426,6 +428,7 @@ export const userGetMeService = async (req: Request, res: Response, next: NextFu
     const { password: _, ...safeUser } = user;
     safeUser.id = safeUser._id || safeUser.id;
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails[0]);
+    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
 
     const userToken = String(get(req, 'userToken') || '');
     return res.status(200).json({
@@ -438,6 +441,7 @@ export const userGetMeService = async (req: Request, res: Response, next: NextFu
         platformControl: effectivePermissions.platformControl,
         roleMenu: effectivePermissions.roleMenu,
         accountPermissionVersion: Number(accountDetails[0].account_permission_version || 1),
+        analysisFeature: analysisFeature,
         isExternal: !!get(req, 'authFlags.isExternal'),
         isInternal: !!get(req, 'authFlags.isInternal')
       }

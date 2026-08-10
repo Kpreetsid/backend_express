@@ -13,6 +13,7 @@ import { TokenBlacklist } from '../_cache/auth/tokenBlacklist';
 import { tokenSessionStore, TokenSessionRecord } from '../_cache/session/tokenSessionStore';
 import { getAccessTokenFromCookies, getAccountIdFromCookies } from '../user/authentication/authCookie.service';
 import { accountAccessService } from '../_role/accountAccess.service';
+import { analysisFeatureService } from '../masters/analysisFeature/analysisFeature.service';
 
 const invalidTokenError = (): Error => Object.assign(new Error('Invalid token'), { status: 401 });
 
@@ -70,6 +71,7 @@ interface AuthenticatedTokenContext {
   role: any;
   roleMenu: any;
   accountPermissionVersion: number;
+  analysisFeature: any;
   isExternal: boolean;
   isInternal: boolean;
 }
@@ -117,6 +119,7 @@ export const authenticateTokenContext = async (token: string, accountId: string)
   }
 
   const effectivePermissions = accountAccessService.getEffectivePermissions(userRole, companyData);
+  const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: companyID })
 
   return {
     token,
@@ -128,6 +131,7 @@ export const authenticateTokenContext = async (token: string, accountId: string)
     role: effectivePermissions.platformControl,
     roleMenu: effectivePermissions.roleMenu,
     accountPermissionVersion: Number(companyData.account_permission_version || 1),
+    analysisFeature: analysisFeature,
     isExternal: !!accessSession.isExternal,
     isInternal: !!accessSession.isInternal
   };
