@@ -8,6 +8,8 @@ import multer from 'multer';
 import path from 'path';
 import { uploadFilesService } from '../../upload/upload.multer';
 import { payloadCryptoMultipartMiddleware } from '../../middlewares/payloadCrypto.middleware';
+import { hasAccountFeature } from '../../middlewares/permission';
+import { idempotencyMiddleware } from '../../middlewares/idempotency.middleware';
 
 const importStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -35,20 +37,21 @@ const importUpload = multer({
 
 export default (router: express.Router) => {
     const partRouter = express.Router();
+    partRouter.use(idempotencyMiddleware);
     partRouter.get('/', partsController.getParts);
     partRouter.get('/cycle-counts', partsController.getCycleCounts);
     partRouter.get('/replenishment-suggestions', partsController.getReplenishmentSuggestions);
-    partRouter.post('/import', importUpload.single('file'), payloadCryptoMultipartMiddleware, partsController.importParts);
+    partRouter.post('/import', hasAccountFeature('inventory', 'import'), importUpload.single('file'), payloadCryptoMultipartMiddleware, partsController.importParts);
     partRouter.get('/:id/history', validateParamId, partsController.getPartHistory);
     partRouter.get('/:id', validateParamId, partsController.getPart);
-    partRouter.post('/cycle-counts', partsController.createCycleCount);
-    partRouter.put('/cycle-counts/:id/approve', validateParamId, partsController.approveCycleCount);
-    partRouter.post('/', partValidator, validate, partsController.createPart);
-    partRouter.put('/:id', validateParamId, partValidator, validate, partsController.updatePart);
-    partRouter.patch('/:id', validateParamId, partsController.updateStock);
+    partRouter.post('/cycle-counts', hasAccountFeature('inventory', 'add'), partsController.createCycleCount);
+    partRouter.put('/cycle-counts/:id/approve', hasAccountFeature('inventory', 'edit'), validateParamId, partsController.approveCycleCount);
+    partRouter.post('/', hasAccountFeature('inventory', 'add'), partValidator, validate, partsController.createPart);
+    partRouter.put('/:id', hasAccountFeature('inventory', 'edit'), validateParamId, partValidator, validate, partsController.updatePart);
+    partRouter.patch('/:id', hasAccountFeature('inventory', 'edit'), validateParamId, partsController.updateStock);
     // Dedicated stock-transfer endpoint — POST body: { destination_part_id, quantity, note }
-    partRouter.post('/:id/transfer', validateParamId, transferValidator, validate, partsController.transferStock);
-    partRouter.delete('/:id', validateParamId, partsController.removePart);
+    partRouter.post('/:id/transfer', hasAccountFeature('inventory', 'edit'), validateParamId, transferValidator, validate, partsController.transferStock);
+    partRouter.delete('/:id', hasAccountFeature('inventory', 'delete'), validateParamId, partsController.removePart);
     router.use('/parts', partRouter);
 }
 

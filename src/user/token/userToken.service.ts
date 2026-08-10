@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { decodedAccessToken } from "../../_config/auth";
 import { rolesService } from "../../masters/user/role/roles.service";
+import { companyService } from "../../masters/company/company.service";
+import { accountAccessService } from "../../_role/accountAccess.service";
 import { usersService } from "../../masters/user/user.service";
-import { TokenModel } from "../../models/userToken.model";
+import { getAccessTokenTypeFilter, TokenModel } from "../../models/userToken.model";
 
 class UserTokenService {
   async getAllUserTokens (req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -11,7 +13,10 @@ class UserTokenService {
       if(!token) {
         throw Object.assign(new Error('Invalid link'), { status: 401 });
       }
-      const data = await TokenModel.find({_id: token});
+      const data = await TokenModel.find({
+        _id: token,
+        ...getAccessTokenTypeFilter()
+      });
       if (data.length === 0) {
         throw Object.assign(new Error('No data found'), { status: 404 });
       }
@@ -28,7 +33,20 @@ class UserTokenService {
       if (!userRoleData) {
         throw Object.assign(new Error('User does not have any permission'), { status: 403 });
       }
-      return res.status(200).json({ status: true, message: "Data fetched successfully", data: {userDetails: safeUser, token, platformControl: userRoleData.data} });
+      const accountDetails = await companyService.getAllCompanies({ _id: getUserDetails.account_id });
+      const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails?.[0]);
+      return res.status(200).json({
+        status: true,
+        message: "Data fetched successfully",
+        data: {
+          userDetails: safeUser,
+          accountDetails: accountDetails[0],
+          token,
+          platformControl: effectivePermissions.platformControl,
+          roleMenu: effectivePermissions.roleMenu,
+          accountPermissionVersion: Number(accountDetails[0]?.account_permission_version || 1)
+        }
+      });
     } catch (error) {
       next(error);     
     }
@@ -47,3 +65,4 @@ class UserTokenService {
 }
 
 export const userTokenService = new UserTokenService();
+

@@ -1,6 +1,14 @@
 import mongoose from 'mongoose';
 
 class HelperService {
+  hasValue(value: unknown): boolean {
+    if (Array.isArray(value)) {
+      return value.some((item) => this.hasValue(item));
+    }
+    const normalized = String(value ?? '').trim().toLowerCase();
+    return normalized !== '' && normalized !== 'null' && normalized !== 'undefined';
+  }
+
   validateObjectId(id: unknown): mongoose.Types.ObjectId {
     if (id instanceof mongoose.Types.ObjectId) return id;
     if (typeof id !== 'string' || !id.trim() || !mongoose.Types.ObjectId.isValid(id)) {
@@ -23,6 +31,27 @@ class HelperService {
       throw Object.assign(new Error('No ObjectIds provided'), { status: 400 });
     }
     return idsArray.map(id => this.validateObjectId(id));
+  }
+
+  validateOptionalObjectId(id: unknown): mongoose.Types.ObjectId | null {
+    return this.hasValue(id) ? this.validateObjectId(String(id)) : null;
+  }
+
+  validateOptionalObjectIds(ids: unknown): mongoose.Types.ObjectId[] {
+    if (!this.hasValue(ids)) {
+      return [];
+    }
+    return this.validateObjectIds(ids);
+  }
+
+  toPlainObject<T = any>(doc: any): T {
+    if (!doc || typeof doc !== 'object') {
+      return doc;
+    }
+    if (typeof doc.toObject === 'function') {
+      return doc.toObject();
+    }
+    return { ...doc };
   }
 }
 

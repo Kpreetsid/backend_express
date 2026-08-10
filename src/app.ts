@@ -1,5 +1,6 @@
 import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -15,16 +16,21 @@ import notificationRoutes from './notification/notification.routes';
 import reliabilityRoutes from './reliability/reliability.routes';
 import { logger, errorMiddleware } from './middlewares';
 import { healthRouter, metricsRouter } from './routes/health.routes';
+import { accountPermissionEventRoutes } from './routes/accountPermissionEvent.routes';
 import { requestContextMiddleware } from './middlewares/requestContext';
 import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
 import { cryptoRouter } from './routes/crypto.routes';
 import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
+import { corsOptions } from './_config/cors';
+import { csrfProtection } from './middlewares/csrf.middleware';
 
 const app: Express = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
-app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce'] }));
+app.use(cors({ ...corsOptions, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce', 'X-Account-Permission-Version', 'ETag', 'Retry-After', 'Idempotency-Replayed'] }));
+app.use(cookieParser());
+app.use(csrfProtection);
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));
 app.use(express.urlencoded({ limit: process.env.URLENCODED_BODY_LIMIT || '5mb', extended: true }));
 app.use(payloadCryptoResponseMiddleware());
@@ -63,6 +69,7 @@ app.use('/metrics', metricsRouter);
 
 const apiRouter: Router = Router();
 apiRouter.use('/crypto', cryptoRouter);
+apiRouter.use('/internal/account-permissions', accountPermissionEventRoutes());
 apiRouter.use('/', routerIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
 apiRouter.use('/master', isAuthenticated, masterRoutes());

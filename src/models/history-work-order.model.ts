@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const HISTORY_WORK_ORDER_COLLECTION_NAME = 'history_work_orders';
+
 
 export const WORK_ORDER_STATUSES = ['Open', 'Pending', 'Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'On-Hold', 'In-Progress', 'Approved', 'Rejected', 'Completed'];
 export const WORK_ORDER_PRIORITIES = ['None', 'Low', 'Medium', 'High', 'Urgent'];
@@ -259,7 +261,7 @@ const WorkOrderSchema = new Schema<IHistoryWorkOrder>({
   history_created_at: { type: Date, required: true, default: Date.now },
   history_created_by: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true }
 }, {
-  collection: 'history_work_orders',
+  collection: HISTORY_WORK_ORDER_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

@@ -1,21 +1,23 @@
 import express from 'express';
 import { orderController } from './order.controller';
 import commentsRoutes from '../comments/comment.routes';
-import { hasRolePermission } from '../../middlewares';
+import { hasAccountFeature, hasRolePermission } from '../../middlewares';
 import { validateParamId } from '../../middlewares/validate';
 import { upload } from '../../upload/upload.routes';
 import { workOrderValidator, updateWorkOrderValidator } from './workOrder.validator';
 import { validate } from '../../middlewares/validator.middleware';
 import { payloadCryptoMultipartMiddleware } from '../../middlewares/payloadCrypto.middleware';
+import { idempotencyMiddleware } from '../../middlewares/idempotency.middleware';
 
 export default (router: express.Router) => {
     const orderRouter = express.Router();
+    orderRouter.use(idempotencyMiddleware);
     orderRouter.get('/', orderController.getAll);
     orderRouter.get('/get-work-order', orderController.getAllWorkOrders);
     orderRouter.get('/activity/:id', validateParamId, orderController.getActivity);
     orderRouter.get('/history/:id', validateParamId, orderController.getHistory);
     orderRouter.get('/:id', validateParamId, orderController.getOrderById);
-    orderRouter.post('/', hasRolePermission('workOrder', 'create_work_order'), workOrderValidator, validate, orderController.createOrder);
+    orderRouter.post('/', hasAccountFeature('work_order', 'add'), hasRolePermission('workOrder', 'create_work_order'), workOrderValidator, validate, orderController.createOrder);
     orderRouter.post('/status', orderController.getOrderStatus);
     orderRouter.post('/summary', orderController.getSummaryData);
     orderRouter.post('/overview-summary', orderController.getOverviewSummary);
@@ -37,11 +39,11 @@ export default (router: express.Router) => {
     orderRouter.post('/priority', orderController.getOrderPriority);
     orderRouter.post('/monthly-count', orderController.getMonthlyCount);
     orderRouter.post('/planned-unplanned', orderController.getPlannedUnplanned);
-    orderRouter.put('/status/:id', validateParamId, hasRolePermission('workOrder', 'update_work_order_status'), orderController.statusUpdateOrder);
-    orderRouter.put('/:id', validateParamId, updateWorkOrderValidator, validate, orderController.updateOrder);
-    orderRouter.patch('/:id', validateParamId, updateWorkOrderValidator, validate, orderController.updateOrderSubmitData);
-    orderRouter.delete('/:id', validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
-    orderRouter.post('/:id/attachments', validateParamId, (req, res, next) => { req.params.folderName = 'work_order'; next(); }, upload.array('files', 12), payloadCryptoMultipartMiddleware, orderController.uploadAttachments);
+    orderRouter.put('/status/:id', hasAccountFeature('work_order_status', 'edit'), validateParamId, hasRolePermission('workOrder', 'update_work_order_status'), orderController.statusUpdateOrder);
+    orderRouter.put('/:id', hasAccountFeature('work_order', 'edit'), validateParamId, updateWorkOrderValidator, validate, orderController.updateOrder);
+    orderRouter.patch('/:id', hasAccountFeature('work_order', 'edit'), validateParamId, updateWorkOrderValidator, validate, orderController.updateOrderSubmitData);
+    orderRouter.delete('/:id', hasAccountFeature('work_order', 'delete'), validateParamId, hasRolePermission('workOrder', 'delete_work_order'), orderController.remove);
+    orderRouter.post('/:id/attachments', hasAccountFeature('work_order', 'edit'), validateParamId, (req, res, next) => { req.params.folderName = 'work_order'; next(); }, upload.array('files', 12), payloadCryptoMultipartMiddleware, orderController.uploadAttachments);
     const commentRouter = express.Router({ mergeParams: true });
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));
     router.use('/orders', orderRouter);

@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const PARTS_TYPES_COLLECTION_NAME = 'mst_part_types';
+
 
 export interface IPartType extends Document {
   name: string;
@@ -18,7 +20,7 @@ const partsTypeSchema = new Schema<IPartType>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'mst_part_types',
+  collection: PARTS_TYPES_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

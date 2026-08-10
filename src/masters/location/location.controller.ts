@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { locationService } from './location.service';
 import { assetService } from '../asset/asset.service';
@@ -16,9 +17,9 @@ class LocationController {
     try {
       const { query: { locationId, parent_id, account_id } } = req;
       const baseFilter: any = {};
-      if (locationId) baseFilter._id = { $in: helperService.validateObjectIds(String(locationId)) };
-      if (parent_id) baseFilter.parent_id = { $in: helperService.validateObjectIds(String(parent_id)) };
-      if (account_id) baseFilter.account_id = { $in: helperService.validateObjectIds(String(account_id)) };
+      if (helperService.hasValue(locationId)) baseFilter._id = { $in: helperService.validateObjectIds(String(locationId)) };
+      if (helperService.hasValue(parent_id)) baseFilter.parent_id = { $in: helperService.validateObjectIds(String(parent_id)) };
+      if (helperService.hasValue(account_id)) baseFilter.account_id = { $in: helperService.validateObjectIds(String(account_id)) };
       const filter: any = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, accountField: "account_id", mapping: "location", idField: "_id" });
       let data = await locationService.getAllLocations(filter);
       if (!data || data.length === 0) {
@@ -37,11 +38,11 @@ class LocationController {
       let match: any = { account_id, visible: true };
       let allowedLocationIds: any = [];
       if (location_floor_map_tree) {
-        if (location_id) {
+        if (helperService.hasValue(location_id)) {
           match._id = helperService.validateObjectId(String(location_id));
         }
       } else {
-        if (location_id) {
+        if (helperService.hasValue(location_id)) {
           match._id = helperService.validateObjectId(String(location_id));
         } else {
           match.parent_id = { $exists: false };
@@ -136,11 +137,11 @@ class LocationController {
       let match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
       if (location_floor_map_tree) {
         match.top_level = true;
-        if (location_id) {
+        if (helperService.hasValue(location_id)) {
           match._id = helperService.validateObjectId(String(location_id));
         }
       } else {
-        if (location_id) {
+        if (helperService.hasValue(location_id)) {
           match._id = helperService.validateObjectId(String(location_id));
         }
       }
@@ -180,7 +181,7 @@ class LocationController {
       body.createdBy = user_id;
       const data: any = await locationService.insertLocation(body);
       await mapUserToLocationService.mapUserLocationData(data._id, body.userIdList, account_id);
-      
+
       await notificationService.notifyAccountUsers({
         accountId: String(account_id),
         module: 'Location',
@@ -325,4 +326,4 @@ class LocationController {
   };
 }
 
-export const locationController = new LocationController();
+export const locationController = controllerCache.withCache(new LocationController(), { namespace: 'locations', ttlSeconds: 300, tags: ['locations', 'assets', 'equipment', 'work'], skipMethods: ['getChildLocationByRecursive'] });

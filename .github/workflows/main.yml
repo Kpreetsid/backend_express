@@ -2,7 +2,7 @@ name: Express Backend Live Deployment
 
 on:
   push:
-    branches: [new-infra]
+    branches: [staging]
 
 jobs:
   continuous-integration:

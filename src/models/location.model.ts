@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const LOCATION_COLLECTION_NAME = 'location_master';
+
 
 export interface ILocationMaster extends Document {
   location_name: string;
@@ -32,7 +34,7 @@ const locationMasterSchema = new Schema<ILocationMaster>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'location_master',
+  collection: LOCATION_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

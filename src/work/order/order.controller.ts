@@ -1,9 +1,11 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { orderService } from './order.service';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { storageProvider } from '../../_config/storage';
+import { getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
 
 class OrderController {
 
@@ -65,6 +67,7 @@ class OrderController {
       const { account_id } = get(req, "user", {}) as IUser;
       const orderId = helperService.validateObjectId(String(req.params.id));
       const data = await orderService.getAllOrders({ _id: orderId, account_id, visible: true });
+      setSyncVersionEtag(res, data);
       res.status(200).json({ status: true, message: "Work order fetched.", data });
     } catch (error) {
       next(error);
@@ -75,6 +78,7 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const data = await orderService.createWorkOrder(req.body, user);
+      setSyncVersionEtag(res, data);
       res.status(201).send({ status: true, message: 'Work order created.', data });
     } catch (error) {
       next(error);
@@ -85,7 +89,8 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const id = String(req.params.id);
-      const data = await orderService.updateById(id, req.body, user);
+      const data = await orderService.updateById(id, req.body, user, getExpectedSyncVersion(req));
+      setSyncVersionEtag(res, data);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
       next(error);
@@ -97,8 +102,9 @@ class OrderController {
       const user = get(req, "user", {}) as IUser;
       const id = String(req.params.id);
       const { status, block_reason } = req.body;
-      await orderService.orderStatusChange(id, status, user, block_reason);
-      res.status(200).send({ status: true, message: 'Work order updated successfully.' });
+      const data = await orderService.orderStatusChange(id, status, user, block_reason, getExpectedSyncVersion(req));
+      setSyncVersionEtag(res, data);
+      res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
       next(error);
     }
@@ -108,12 +114,13 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
-      
+
       if (!body || Object.keys(body).length === 0) {
         throw Object.assign(new Error('No data provided for update'), { status: 400 });
       }
 
-      const data = await orderService.updateById(helperService.validateObjectId(String(id)), body, user);
+      const data = await orderService.updateById(helperService.validateObjectId(String(id)), body, user, getExpectedSyncVersion(req));
+      setSyncVersionEtag(res, data);
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
       next(error);
@@ -158,7 +165,7 @@ class OrderController {
 
       const newFiles = [...(existingOrder.files || []), ...fileDataList];
       await orderService.updateDataById(id, { files: newFiles }, user);
-      
+
       res.status(200).send({ status: true, message: 'Attachments uploaded successfully.', data: newFiles });
     } catch (error) {
       next(error);
@@ -606,4 +613,4 @@ class OrderController {
   }
 }
 
-export const orderController = new OrderController();
+export const orderController = controllerCache.withCache(new OrderController(), { namespace: 'work-orders', ttlSeconds: 120, tags: ['work-orders', 'assets', 'locations', 'parts', 'requests'] });

@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const PART_HISTORY_COLLECTION_NAME = 'part_history';
+
 
 export const PART_HISTORY_ACTIONS = [
   'created',
@@ -51,7 +53,7 @@ const partHistorySchema = new Schema<IPartHistory>({
   actor_name: { type: String, trim: true },
   visible: { type: Boolean, default: true }
 }, {
-  collection: 'part_history',
+  collection: PART_HISTORY_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

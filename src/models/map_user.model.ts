@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const MAP_USER_COLLECTION_NAME = 'map_users';
+
 
 export interface IUser extends Document {
   user_id: ObjectId;
@@ -14,7 +16,7 @@ const userSchema = new Schema<IUser>({
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   visible: { type: Boolean, default: true }
 }, {
-  collection: 'map_users',
+  collection: MAP_USER_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

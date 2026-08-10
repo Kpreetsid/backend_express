@@ -1,4 +1,5 @@
 import { WorkRequestModel, IWorkRequest, WORK_REQUEST_ORDER_SLA_HOURS, WORK_REQUEST_REVIEW_SLA_HOURS } from "../../models/workRequest.model";
+import { createSyncConflict } from "../../utils/sync-concurrency";
 
 class RequestService {
   private getReviewSlaHours(priority: string): number {
@@ -90,7 +91,7 @@ class RequestService {
     return await newWorkRequest.save();
   };
   
-  async updateRequest (id: string, body: any, user_id: any, session?: any): Promise<any> {
+  async updateRequest (id: string, body: any, user_id: any, session?: any, expectedVersion?: number): Promise<any> {
     body.updatedBy = user_id;
     if (body.asset_id === '') {
       body.asset_id = null;
@@ -106,14 +107,23 @@ class RequestService {
         body.order_due_at = this.buildOrderGovernance(body.priority, new Date(body.approvedAt)).order_due_at;
       }
     }
-    return await WorkRequestModel.updateOne({ _id: id }, body, { session });
+    const filter: any = { _id: id };
+    if (expectedVersion !== undefined) filter.sync_version = expectedVersion;
+    const result = await WorkRequestModel.updateOne(filter, body, { session });
+    if (expectedVersion !== undefined && result.matchedCount === 0) {
+      const latest = session
+        ? await WorkRequestModel.findById(id).session(session)
+        : await WorkRequestModel.findById(id);
+      throw createSyncConflict(latest);
+    }
+    return result;
   };
   
   async deleteRequestById (id: any, user_id: any): Promise<any> {
     return await WorkRequestModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
   };
 
-  async markApproved(id: string, user_id: any, priority?: string, session?: any): Promise<any> {
+  async markApproved(id: string, user_id: any, priority?: string, session?: any, expectedVersion?: number): Promise<any> {
     const approvedAt = new Date();
     return await this.updateRequest(id, {
       status: 'Approved',
@@ -122,16 +132,16 @@ class RequestService {
       rejectedAt: null,
       rejectedBy: null,
       ...this.buildOrderGovernance(priority || 'Low', approvedAt)
-    }, user_id, session);
+    }, user_id, session, expectedVersion);
   }
 
-  async markRejected(id: string, user_id: any, remarks: string, session?: any): Promise<any> {
+  async markRejected(id: string, user_id: any, remarks: string, session?: any, expectedVersion?: number): Promise<any> {
     return await this.updateRequest(id, {
       status: 'Rejected',
       remarks,
       rejectedBy: user_id,
       rejectedAt: new Date()
-    }, user_id, session);
+    }, user_id, session, expectedVersion);
   }
 
   async markConverted(id: string, body: { workOrderId: any; orderNo: string; priority?: string; approvedBy?: any; approvedAt?: Date; convertedBy: any }, session?: any): Promise<any> {

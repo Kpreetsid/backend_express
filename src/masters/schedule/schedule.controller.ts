@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { scheduleService } from './schedule.service';
 import { IUser } from '../../models/user.model';
@@ -108,4 +109,4 @@ class ScheduleController {
   }
 }
 
-export const scheduleController = new ScheduleController();
+export const scheduleController = controllerCache.withCache(new ScheduleController(), { namespace: 'schedules', ttlSeconds: 300, tags: ['schedules', 'work'] });

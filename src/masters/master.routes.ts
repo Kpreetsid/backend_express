@@ -15,22 +15,43 @@ import floorMapRoutes from './floorMap/floorMap.routes';
 import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.routes';
 import partsTypeRoutes from './part-type/parts-type.routes';
 import inspectionRoutes from './inspection/inspection.routes';
+import { hasAccountFeature, hasAnyAccountFeature } from '../middlewares/permission';
+
+const withAccountFeature = (
+    menuKey: string,
+    registerRoutes: (router: express.Router) => void
+): express.Router => {
+    const featureRouter = express.Router();
+    featureRouter.use(hasAccountFeature(menuKey));
+    registerRoutes(featureRouter);
+    return featureRouter;
+};
+
+const withAnyAccountFeature = (
+    menuKeys: string[],
+    registerRoutes: (router: express.Router) => void
+): express.Router => {
+    const featureRouter = express.Router();
+    featureRouter.use(hasAnyAccountFeature(menuKeys));
+    registerRoutes(featureRouter);
+    return featureRouter;
+};
 
 export default (): express.Router => {
     usersRouter(router);
     companyRoutes(router);
-    assetsRouter(router);
-    equipmentRoutes(router);
-    partsRoutes(router);
-    partsTypeRoutes(router);
-    postsRoutes(router);
-    scheduleRoutes(router);
-    inspectionRoutes(router);
-    sopsRoutes(router);
-    locationRoutes(router);
-    formCategoryRoutes(router);
-    observationRoutes(router);
-    floorMapRoutes(router);
-    troubleshootGuideRoutes(router);
+    router.use(withAccountFeature('asset', assetsRouter));
+    router.use(withAccountFeature('asset', equipmentRoutes));
+    router.use(withAccountFeature('inventory', partsRoutes));
+    router.use(withAccountFeature('inventory', partsTypeRoutes));
+    router.use(withAccountFeature('posts', postsRoutes));
+    router.use(withAccountFeature('preventive', scheduleRoutes));
+    router.use(withAccountFeature('inspections', inspectionRoutes));
+    router.use(withAccountFeature('form', sopsRoutes));
+    router.use(withAccountFeature('location', locationRoutes));
+    router.use(withAccountFeature('form_category', formCategoryRoutes));
+    router.use(withAccountFeature('observation', observationRoutes));
+    router.use(withAnyAccountFeature(['floor_map', 'location_floor_map'], floorMapRoutes));
+    router.use(withAnyAccountFeature(['asset', 'location'], troubleshootGuideRoutes));
     return router;
 }

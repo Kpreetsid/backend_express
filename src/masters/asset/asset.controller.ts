@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { assetService } from './asset.service';
@@ -20,10 +21,10 @@ class AssetController {
       const {
         query: { top_level_asset_id, top_level, locationId, parent_id },
       }: any = req;
-      if (top_level_asset_id) {
+      if (helperService.hasValue(top_level_asset_id)) {
         baseFilter.top_level_asset_id = { $in: helperService.validateObjectIds(String(top_level_asset_id)) };
       }
-      if (parent_id) {
+      if (helperService.hasValue(parent_id)) {
         const validatedParentIds = helperService.validateObjectIds(String(parent_id));
         baseFilter._id = { $in: validatedParentIds };
         baseFilter.parent_id = { $in: validatedParentIds };
@@ -31,7 +32,7 @@ class AssetController {
       if (top_level) {
         baseFilter.top_level = top_level == "true" ? true : false;
       }
-      if (locationId) {
+      if (helperService.hasValue(locationId)) {
         const validatedLocationIds = helperService.validateObjectIds(String(locationId));
         const rootLocationIds = validatedLocationIds.map((id) => String(id));
         const childLocationGroups = await Promise.all(rootLocationIds.map((id) => locationService.getAllChildLocationIds(id)));
@@ -65,13 +66,13 @@ class AssetController {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, query: { top_level_asset_id, top_level, locationId } } = req;
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)) };
-      if (top_level_asset_id) {
+      if (helperService.hasValue(top_level_asset_id)) {
         baseFilter.top_level_asset_id = helperService.validateObjectIds(String(top_level_asset_id));
       }
       if (top_level) {
         baseFilter.top_level = top_level == "true" ? true : false;
       }
-      if (locationId) {
+      if (helperService.hasValue(locationId)) {
         baseFilter.locationId = helperService.validateObjectId(String(locationId));
       }
       const filter = await applyRoleFilter({
@@ -475,4 +476,4 @@ class AssetController {
   }
 }
 
-export const assetController = new AssetController();
+export const assetController = controllerCache.withCache(new AssetController(), { namespace: 'assets', ttlSeconds: 300, tags: ['assets', 'locations', 'work'] });

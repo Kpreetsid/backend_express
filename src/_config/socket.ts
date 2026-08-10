@@ -1,9 +1,23 @@
 import { Server, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
-import jwt from 'jsonwebtoken';
-import { auth } from '../configDB';
+import { cookieAuth } from '../configDB';
 import { notificationService } from '../utils/notification.service';
 import { isOriginAllowed } from './cors';
+import { authenticateTokenContext } from './auth';
+import { LEGACY_ACCESS_COOKIE_NAME, LEGACY_ACCOUNT_COOKIE_NAME } from '../user/authentication/authCookie.service';
+import { cookieService } from '../utils/cookie';
+
+let socketServer: Server | null = null;
+
+const accountRoom = (accountId: string): string => `account:${accountId}`;
+
+export const emitAccountPermissionsChanged = (accountId: string, accountPermissionVersion: number): boolean => {
+  if (!socketServer) {
+    return false;
+  }
+  socketServer.to(accountRoom(accountId)).emit('account_permissions_changed', { accountPermissionVersion });
+  return true;
+};
 
 /**
  * Initialize Socket.io server
@@ -23,26 +37,29 @@ export const initSocket = (httpServer: HttpServer) => {
       credentials: true
     }
   });
+  socketServer = io;
 
   // Authentication Middleware
-  io.use((socket: Socket, next) => {
-    const token = socket.handshake.auth.token || socket.handshake.headers['authorization']?.split(' ')[1];
-    const accountId = socket.handshake.auth.accountId || socket.handshake.headers['accountid'];
+  io.use(async (socket: Socket, next) => {
+    const cookies = cookieService.parseHeader(socket.handshake.headers.cookie);
+    const authHeader = String(socket.handshake.headers.authorization || '');
+    const token = socket.handshake.auth.token
+      || (authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : '')
+      || cookieService.getFromRecord(cookies, [cookieAuth.accessCookieName, LEGACY_ACCESS_COOKIE_NAME]);
+    const accountId = socket.handshake.auth.accountId
+      || socket.handshake.headers['accountid']
+      || cookieService.getFromRecord(cookies, [cookieAuth.accountCookieName, LEGACY_ACCOUNT_COOKIE_NAME]);
 
     if (!token || !accountId) {
       return next(new Error('Authentication error: Token and Account ID required'));
     }
 
     try {
-      const decoded: any = jwt.verify(token, auth.secret, {
-        algorithms: [auth.algorithm as jwt.Algorithm],
-        issuer: auth.issuer,
-        audience: auth.audience
-      });
+      const context = await authenticateTokenContext(String(token), String(accountId));
 
       // Attach user info to socket
-      socket.data.user = decoded;
-      socket.data.accountId = accountId;
+      socket.data.user = context.decoded;
+      socket.data.accountId = context.accountId;
       next();
     } catch (err) {
       return next(new Error('Authentication error: Invalid token'));
@@ -58,6 +75,7 @@ export const initSocket = (httpServer: HttpServer) => {
     // Notification delivery is user-scoped. Account-wide events are expanded to user rooms
     // by NotificationService when a server-side API action creates notifications.
     socket.join(userId.toString());
+    socket.join(accountRoom(String(accountId)));
 
     // Handle "Notification Reached" acknowledgment from client
     socket.on('notification_reached', async (payload: { notificationId: string }) => {

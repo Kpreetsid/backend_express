@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const WORK_ORDER_ACTIVITY_COLLECTION_NAME = 'work_order_activity';
+
 
 export const WORK_ORDER_ACTIVITY_ACTIONS = [
   'created',
@@ -46,7 +48,7 @@ const workOrderActivitySchema = new Schema<IWorkOrderActivity>({
   actor_name: { type: String, trim: true },
   visible: { type: Boolean, default: true }
 }, {
-  collection: 'work_order_activity',
+  collection: WORK_ORDER_ACTIVITY_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

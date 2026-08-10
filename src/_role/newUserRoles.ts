@@ -64,6 +64,9 @@ export class RoleManager {
     location_floor_map: { level: 1, parent: "master_location", view: true, add: true, edit: true, delete: true, import: true, export: true },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: true, edit: true, delete: true, import: true, export: true },
     reliability_case: { level: 1, parent: "master_reliability", view: true, add: true, edit: true, delete: true, import: false, export: true },
+    oem_report: { level: 1, parent: "master_report", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    pump_asset_health: { level: 1, parent: "master_asset", view: true, add: true, edit: true, delete: true, import: true, export: true },
+    pdm_location_filter: { level: 1, parent: "master_dashboard", view: true, add: true, edit: true, delete: true, import: true, export: true },
   };
 
   private static readonly MANAGER_ROLES: RoleMenu = {
@@ -118,6 +121,9 @@ export class RoleManager {
     work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
     reliability_case: { level: 1, parent: "master_reliability", view: true, add: true, edit: true, delete: false, import: false, export: true },
+    oem_report: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pump_asset_health: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pdm_location_filter: { level: 1, parent: "master_dashboard", view: true, add: false, edit: false, delete: false, import: false, export: false },
   };
 
   private static readonly EMPLOYEE_ROLES: RoleMenu = {
@@ -172,6 +178,9 @@ export class RoleManager {
     work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
     reliability_case: { level: 1, parent: "master_reliability", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    oem_report: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pump_asset_health: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pdm_location_filter: { level: 1, parent: "master_dashboard", view: true, add: false, edit: false, delete: false, import: false, export: false },
   };
 
   private static readonly CUSTOMER_ROLES: RoleMenu = {
@@ -226,6 +235,9 @@ export class RoleManager {
     work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
     reliability_case: { level: 1, parent: "master_reliability", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    oem_report: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pump_asset_health: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pdm_location_filter: { level: 1, parent: "master_dashboard", view: true, add: false, edit: false, delete: false, import: false, export: false },
   };
 
   private static readonly USER_ROLES: RoleMenu = {
@@ -280,6 +292,9 @@ export class RoleManager {
     work_order_status: { level: 1, parent: "master_work_order", view: true, add: false, edit: false, delete: false, import: false, export: false },
     work_request_status: { level: 1, parent: "master_work_request", view: true, add: false, edit: false, delete: false, import: false, export: false },
     reliability_case: { level: 1, parent: "master_reliability", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    oem_report: { level: 1, parent: "master_report", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pump_asset_health: { level: 1, parent: "master_asset", view: true, add: false, edit: false, delete: false, import: false, export: false },
+    pdm_location_filter: { level: 1, parent: "master_dashboard", view: true, add: false, edit: false, delete: false, import: false, export: false },
   };
 
   public static async getRoleMenuData(role: any): Promise<any> {

@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { troubleshootGuideService } from './troubleshoot-guide.service';
 import { get } from 'lodash';
@@ -104,4 +105,4 @@ class TroubleshootGuideController {
     }
 }
 
-export const troubleshootGuideController = new TroubleshootGuideController();
+export const troubleshootGuideController = controllerCache.withCache(new TroubleshootGuideController(), { namespace: 'troubleshoot-guides', ttlSeconds: 600, tags: ['troubleshoot-guides'] });

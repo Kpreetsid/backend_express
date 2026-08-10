@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { WORK_ORDER_PRIORITIES } from './workOrder.model';
+export const WORK_ORDER_TEMPLATE_COLLECTION_NAME = 'work_order_templates';
+
 
 export const WORK_ORDER_TEMPLATE_MAINTENANCE_TYPES = ['Preventive', 'Reactive', 'Other'] as const;
 export const WORK_ORDER_TEMPLATE_TIME_UNITS = ['minutes', 'hours', 'days', 'weeks'] as const;
@@ -128,7 +130,7 @@ const WorkOrderTemplateSchema = new Schema<IWorkOrderTemplate>({
   createdBy: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'Schema_User' }
 }, {
-  collection: 'work_order_templates',
+  collection: WORK_ORDER_TEMPLATE_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const USER_COLLECTION_NAME = 'users';
+
 
 export const STATUS = ['active', 'inactive'];
 export const USER_ROLES = ["admin", "manager", "employee", "customer", "user"];
@@ -8,6 +10,7 @@ export interface UserLoginPayload {
   id: string;
   companyID: string;
   username: string;
+  jti?: string;
 }
 export interface IUser extends Document {
   firstName: string;
@@ -25,12 +28,13 @@ export interface IUser extends Document {
   isVerified: boolean;
   createdBy?: ObjectId;
   updatedBy?: ObjectId;
+  passwordExpiredAt?: Date;
 }
 
 export const userSchema = new Schema<IUser>({
   firstName: { type: String, required: true, trim: true },
   lastName: { type: String, trim: true },
-  username: { type: String, required: true, unique: true , trim: true },
+  username: { type: String, required: true, unique: true, trim: true },
   password: { type: String, required: true, select: false },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   user_profile_img: { type: String },
@@ -41,9 +45,10 @@ export const userSchema = new Schema<IUser>({
   isFirstUser: { type: Boolean, default: false },
   isVerified: { type: Boolean, default: false },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
-  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
+  passwordExpiredAt: { type: Date }
 }, {
-  collection: 'users',
+  collection: USER_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

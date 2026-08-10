@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const USER_LOGS_COLLECTION_NAME = 'user_logs';
+
 
 export interface IUserLog extends Document {
     account_id: ObjectId;
@@ -122,7 +124,7 @@ const userLogSchema = new Schema<IUserLog>({
         durationMs: Number
     }
 }, {
-    collection: 'user_logs',
+    collection: USER_LOGS_COLLECTION_NAME,
     versionKey: false,
     timestamps: true
 });

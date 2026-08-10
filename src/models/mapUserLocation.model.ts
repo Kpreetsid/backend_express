@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const MAP_USER_LOCATION_COLLECTION_NAME = 'location_user_mapping';
+
 
 export interface IMapUserLocation extends Document {
   account_id?: ObjectId;
@@ -23,7 +25,7 @@ const MapUserLocationSchema = new Schema<IMapUserLocation>({
   danger: { type: Boolean, default: true },
   critical: { type: Boolean, default: true }
 }, {
-  collection: 'location_user_mapping',
+  collection: MAP_USER_LOCATION_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

@@ -40,7 +40,7 @@ export const withTransaction = async <T>(fn: (session: ClientSession) => Promise
   let sessionEnded = false;
 
   try {
-    session.startTransaction();
+    session.startTransaction({ readPreference: 'primary' });
     const result = await fn(session);
     await session.commitTransaction();
     sessionEnded = true;

@@ -10,6 +10,7 @@ import { PlatformControlManager } from "../../_role/userRoles";
 import { RoleMenuModel } from "../../models/userRoleMenu.model";
 
 import { withTransaction } from "../../utils/transaction.helper";
+import { subscriptionLimitService } from "../company/subscriptionLimit.service";
 
 class UsersService {
 
@@ -62,6 +63,7 @@ class UsersService {
   };
 
   async createNewUser(body: IUser, account_id: any, session?: any) {
+    await subscriptionLimitService.assertCanCreate(account_id, 'user', 1, session);
     body.password = await passwordService.hashPassword(body.password);
     
     // Use the provided session (or explicitly use the fallback if session is undefined but provided in arguments)

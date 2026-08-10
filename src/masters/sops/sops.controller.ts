@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { sopsService } from './sops.service';
 import { IUser } from '../../models/user.model';
@@ -100,4 +101,4 @@ class SOPsController {
   }
 }
 
-export const sopsController = new SOPsController();
+export const sopsController = controllerCache.withCache(new SOPsController(), { namespace: 'sops', ttlSeconds: 300, tags: ['sops', 'inspections', 'procedures'] });

@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
@@ -87,4 +88,4 @@ class InstructionController {
   }
 }
 
-export const instructionController = new InstructionController();
+export const instructionController = controllerCache.withCache(new InstructionController(), { namespace: 'work-instructions', ttlSeconds: 300, tags: ['work-instructions', 'work-orders'] });

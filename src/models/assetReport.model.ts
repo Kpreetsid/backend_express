@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const ASSET_REPORT_COLLECTION_NAME = 'assets-report';
+
 
 const Created_From_Enum = ["Asset Report", "Asset Alarm"];
 export const ASSET_REPORT_STATUS = ['Open', 'On-Hold', 'In-Progress', 'Completed'];
@@ -176,7 +178,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
   createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'assets-report',
+  collection: ASSET_REPORT_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

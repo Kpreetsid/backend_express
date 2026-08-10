@@ -1,0 +1,15 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      name: "Sustained load"
+  engines:
+    socketio: {}
+scenarios:
+  - engine: "socketio"
+    flow:
+      - emit:
+          channel: "mqtt:data"
+          data: { "sensor": "temp", "value": 24.5 }
+      - think: 1

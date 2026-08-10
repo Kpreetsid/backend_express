@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const USER_ROLE_MENU_COLLECTION_NAME = 'platform-control';
+
 
 export interface IUserRoleMenu extends Document {
   account_id: ObjectId;
@@ -18,7 +20,7 @@ const userRoleMenuSchema = new Schema<IUserRoleMenu>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'platform-control',
+  collection: USER_ROLE_MENU_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });
