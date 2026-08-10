@@ -31,7 +31,8 @@ class AnalysisFeatureController {
                 throw Object.assign(new Error("Unauthorized"), { status: 401 });
             } else {
                 const { params: { id }, body } = req;
-                const updatedFeatureData = await analysisFeatureService.updateFeatureData(id, body, user_id);
+                const featureId = Array.isArray(id) ? id[0] : id;
+                const updatedFeatureData = await analysisFeatureService.updateFeatureData(featureId, body, user_id);
                 if (!updatedFeatureData) {
                     throw Object.assign(new Error("No feature data found"), { status: 404 });
                 }
