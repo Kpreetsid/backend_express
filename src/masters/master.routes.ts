@@ -15,6 +15,7 @@ import floorMapRoutes from './floorMap/floorMap.routes';
 import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.routes';
 import partsTypeRoutes from './part-type/parts-type.routes';
 import inspectionRoutes from './inspection/inspection.routes';
+import analysisFeatureRoutes from './analysisFeature/analysisFeature.routes';
 
 export default (): express.Router => {
     usersRouter(router);
@@ -32,5 +33,6 @@ export default (): express.Router => {
     observationRoutes(router);
     floorMapRoutes(router);
     troubleshootGuideRoutes(router);
+    analysisFeatureRoutes(router);
     return router;
 }
