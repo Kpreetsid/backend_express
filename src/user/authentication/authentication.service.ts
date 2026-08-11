@@ -13,6 +13,7 @@ import { IAccount } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
+import { analysisFeatureService } from "../../masters/analysisFeature/analysisFeature.service";
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
@@ -56,6 +57,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!userRoleData) {
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
+    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
     const token_id = new mongoose.Types.ObjectId();
     const userTokenData = new TokenModel({
       _id: token,
@@ -66,7 +68,11 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: { token, token_id, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu } });
+    res.status(200).json({
+      status: true, message: 'Login successful', data: {
+        token, token_id, accountDetails: userAccount[0], userDetails: safeUser, platformControl: userRoleData.data, roleMenu: userRoleData.roleMenu, analysisFeature: analysisFeature,
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -177,21 +183,22 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
       ? redirectPath
       : '/dashboard';
-
+    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id })
     res.status(200).json(
-      { 
-        status: true, 
-        message: 'Login successful', 
-        data: { 
-          token: newToken, 
-          accountDetails: accountDetails[0], 
-          userDetails: newSafeUserValue, 
-          platformControl: userRoleMenu.data, 
-          roleMenu: userRoleMenu.roleMenu, 
+      {
+        status: true,
+        message: 'Login successful',
+        data: {
+          token: newToken,
+          accountDetails: accountDetails[0],
+          userDetails: newSafeUserValue,
+          platformControl: userRoleMenu.data,
+          roleMenu: userRoleMenu.roleMenu,
+          analysisFeature: analysisFeature,
           isExternal: !!isExternal,
           isInternal: !!isInternal,
           redirectPath: safeRedirectPath
-        } 
+        }
       });
   } catch (error) {
     next(error);

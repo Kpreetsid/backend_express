@@ -7,7 +7,6 @@ import { server as hostDetails } from './configDB';
 import { connectDB, disconnectDB } from "./_db";
 import { initJobScheduler } from "./cron";
 import { initSocket } from "./_config/socket";
-
 const server = app.listen(hostDetails.port, async () => {
   await connectDB();
   initSocket(server);
