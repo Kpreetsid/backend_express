@@ -69,8 +69,12 @@ export const initSocket = (httpServer: HttpServer) => {
   io.on('connection', (socket: Socket) => {
     const userId = socket.data.user.id;
     const accountId = socket.data.accountId;
+    const userName = socket.data.user.username || socket.data.user.email || userId;
+    const connectionUrl = socket.handshake.url;
+    const connectedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
-    console.log(`Notification socket connected: ${userId} (Account: ${accountId})`);
+    console.log(`Notification socket connected: ${userName} (Account: ${accountId})`);
+    console.log(`${connectedAt} | CONNECTED | ${userId} | ${userName} | SOCKET_CONNECT | WS | - ms | ${connectionUrl}`);
 
     // Notification delivery is user-scoped. Account-wide events are expanded to user rooms
     // by NotificationService when a server-side API action creates notifications.
@@ -82,14 +86,16 @@ export const initSocket = (httpServer: HttpServer) => {
       try {
         const userId = socket.data.user.id;
         await notificationService.markAsReached(payload.notificationId, userId);
-        console.log(`Notification ${payload.notificationId} reached user ${userId}`);
+        const acknowledgedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        console.log(`${acknowledgedAt} | ACKNOWLEDGED | ${userId} | ${userName} | NOTIFICATION_REACHED | WS | - ms | payload: ${payload.notificationId}`);
       } catch (err) {
         console.error('Error marking notification as reached:', err);
       }
     });
 
     socket.on('disconnect', () => {
-      console.log(`Notification socket disconnected: ${userId}`);
+      const disconnectedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+      console.log(`${disconnectedAt} | DISCONNECTED | ${userId} | ${userName} | SOCKET_DISCONNECT | WS | - ms | ${connectionUrl}`);
     });
   });
 
