@@ -90,6 +90,22 @@ class ScheduleController {
     }
   }
 
+  async updateStatus(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { params: { id }, body } = req;
+      const existingData = await scheduleService.getSchedules({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
+      if (!existingData || existingData.length === 0) {
+        throw Object.assign(new Error('Schedule not found'), { status: 404 });
+      }
+      const enabledStatus = body.rescheduleEnabled ?? body.enabled ?? body.schedule?.enabled;
+      const data = await scheduleService.updateStatus(id, Boolean(enabledStatus), user_id);
+      res.status(200).json({ status: true, message: "Status updated successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
