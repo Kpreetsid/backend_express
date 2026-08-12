@@ -59,13 +59,15 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     }
     const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
     const token_id = new mongoose.Types.ObjectId();
+    const ttlSeconds = helperService.parseDurationSeconds(auth.expiresIn);
+    const value = new Date(Date.now() + ttlSeconds * 1000);
     const userTokenData = new TokenModel({
       _id: token,
       token_id: token_id,
       userId: user._id,
       principalType: 'user',
-      ttl: parseInt(auth.expiresIn as string),
-      expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
+      ttl: ttlSeconds,
+      expiresAt: value
     });
     await userTokenData.save();
     res.status(200).json({
@@ -112,12 +114,13 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     if (!userRoleData) {
       userRoleData = await rolesService.createUserRole(user.user_role, user);
     }
+    const ttlSeconds = helperService.parseDurationSeconds(auth.expiresIn);
     const userTokenData = new TokenModel({
       _id: token,
       userId: user._id,
       principalType: 'user',
-      ttl: parseInt(auth.expiresIn as string),
-      expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
+      ttl: ttlSeconds,
+      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
     });
     await userTokenData.save();
     res.status(200).json({ status: true, message: 'Login successful', data: { token, org_id: user.account_id, user_id: user._id } });
@@ -170,14 +173,15 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     }
     const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id) };
     const newToken = generateAccessToken(userTokenPayload);
+    const ttlSeconds = helperService.parseDurationSeconds(auth.expiresIn);
     const userTokenData = new TokenModel({
       _id: newToken,
       userId: userDetails._id,
       principalType: 'user',
       isExternal,
       isInternal,
-      ttl: parseInt(auth.expiresIn as string),
-      expiresAt: new Date(Date.now() + parseInt(auth.expiresIn as string) * 1000)
+      ttl: ttlSeconds,
+      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
     });
     await userTokenData.save();
     const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
