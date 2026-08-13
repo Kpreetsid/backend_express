@@ -53,6 +53,29 @@ class HelperService {
     }
     return { ...doc };
   }
+
+  parseDurationSeconds(value: string | number | undefined, fallbackSeconds: number = 7 * 24 * 60 * 60): number {
+    if (!value) {
+      return fallbackSeconds;
+    }
+    if (typeof value === 'number') {
+      return value;
+    }
+    const match = /^(\d+)([smhd])?$/i.exec(String(value).trim());
+    if (!match) {
+      const parsed = Number.parseInt(String(value), 10);
+      return Number.isNaN(parsed) ? fallbackSeconds : parsed;
+    }
+    const amount = Number(match[1]);
+    const unit = match[2]?.toLowerCase();
+    switch (unit) {
+      case 's': return amount;
+      case 'm': return amount * 60;
+      case 'h': return amount * 60 * 60;
+      case 'd': return amount * 24 * 60 * 60;
+      default: return amount;
+    }
+  }
 }
 
 export const helperService = new HelperService();
