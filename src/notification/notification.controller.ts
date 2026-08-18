@@ -5,9 +5,17 @@ import { notificationRepository } from './notification.service';
 interface AuthRequest extends Request {
   user: {
     id: string;
+    _id?: string;
+    account_id?: string;
     [key: string]: any;
   };
 }
+
+const paginationValue = (value: unknown, fallback: number, maximum?: number): number => {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return maximum ? Math.min(parsed, maximum) : parsed;
+};
 
 export class NotificationController {
   /**
@@ -16,11 +24,16 @@ export class NotificationController {
   public async getNotifications(req: AuthRequest, res: Response) {
     try {
       const userId = req.user.id;
-      const limit = parseInt(req.query.limit as string) || 50;
-      const skip = parseInt(req.query.skip as string) || 0;
+      const limit = paginationValue(req.query.limit, 25, 100);
+      const skip = paginationValue(req.query.skip, 0);
 
-      const notifications = await notificationRepository.getUserNotifications(userId, limit, skip);
-      res.json({ success: true, data: notifications });
+      const result = await notificationRepository.getUserNotifications(userId, limit, skip);
+      res.json({
+        success: true,
+        data: result.notifications,
+        unreadCount: result.unreadCount,
+        pagination: { limit, skip, total: result.total }
+      });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });
     }
@@ -66,11 +79,14 @@ export class NotificationController {
    */
   public async testNotification(req: Request, res: Response) {
     try {
-      const { userId, type, message, companyId } = req.body;
+      const authRequest = req as AuthRequest;
+      const userId = authRequest.user.id || authRequest.user._id;
+      const companyId = authRequest.user.account_id;
+      const { type, message } = req.body;
       const { notificationService } = require('../utils/notification.service');
       
       await notificationService.notifyUser(
-        userId || (req as any).user?.id,
+        userId,
         type || 'TEST_NOTIFICATION',
         message || 'This is a test notification',
         { entityId: 'test-123' },

@@ -1,5 +1,7 @@
 import { Schema, model, Document, Types } from 'mongoose';
 
+export type NotificationStatus = 'Sent' | 'Delivered' | 'Reached' | 'Opened';
+
 export interface INotification {
   message: string;
   type: string;
@@ -15,9 +17,9 @@ export interface INotification {
     sourceUserId?: string;
     [key: string]: any;
   };
-  status: 'Sent' | 'Delivered' | 'Reached' | 'Opened';
+  status: NotificationStatus;
   statusHistory: Array<{
-    status: string;
+    status: NotificationStatus;
     timestamp: Date;
     userId?: Types.ObjectId;
   }>;
@@ -50,6 +52,7 @@ const NotificationSchema = new Schema({
  });
 
 NotificationSchema.index({ targetUser: 1, createdAt: -1 });
+NotificationSchema.index({ targetUser: 1, status: 1, createdAt: -1 });
 NotificationSchema.index({ account_id: 1, createdAt: -1 });
 
 export const Notification = model<INotificationDocument>('Notification', NotificationSchema);

@@ -1,12 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { notificationController } from './notification.controller';
-import { isAuthenticated } from '../_config/auth';
 import { rateLimiter } from '../middlewares/rateLimits';
 
 const router = Router();
 
-// All notification routes require authentication
-router.use(isAuthenticated);
+// Authentication is applied once at the mount point in app.ts.
 router.use(rateLimiter.notificationLimiter);
 
 router.get('/', (req: Request, res: Response, next: NextFunction) => {
@@ -21,8 +19,10 @@ router.patch('/mark-all-opened', (req: Request, res: Response, next: NextFunctio
   notificationController.markAllAsOpened(req as any, res).catch(next);
 });
 
-router.post('/test-notification', (req: Request, res: Response, next: NextFunction) => {
-  notificationController.testNotification(req, res).catch(next);
-});
+if (process.env.NODE_ENV !== 'production' && process.env.ENABLE_NOTIFICATION_TEST_ENDPOINT === 'true') {
+  router.post('/test-notification', (req: Request, res: Response, next: NextFunction) => {
+    notificationController.testNotification(req, res).catch(next);
+  });
+}
 
 export default router;
