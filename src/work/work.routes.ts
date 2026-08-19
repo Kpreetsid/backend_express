@@ -18,13 +18,13 @@ const router = express.Router();
 // };
 
 export default (): express.Router => {
-  router.use(orderRoutes);
-  router.use(orderTemplateRoutes);
-  router.use(requestRoutes);
+  orderRoutes(router);
+  orderTemplateRoutes(router);
+  requestRoutes(router);
   const instructionRouter = express.Router();
   // instructionRouter.use(hasAnyAccountFeature(['asset', 'location', 'work_order']));
   instructionsRoutes(instructionRouter);
   router.use(instructionRouter);
-  router.use(procedureRoutes);
+  procedureRoutes(router);
   return router;
 }
