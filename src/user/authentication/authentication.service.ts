@@ -217,25 +217,36 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
 
 export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const match: any = { isExternal: false, isInternal: true };
     const { params: { email }, query: { type } } = req;
+    const match: any = { isExternal: false, isInternal: true };
     if (!email) {
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
     match.email = email;
-    if (type === 'DOWNLOAD_DATA') {
-      match.isExternal = false;
-      match.isInternal = false;
-      match.isDownloadData = true;
-    }
     const external_user = await UserModel.findOne({ email, user_status: 'active' });
     if (!external_user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
+    match.org_id = external_user.account_id;
     if (type === 'DOWNLOAD_DATA') {
+      match.isInternal = false;
       match.isDownloadData = true;
     }
     const external_token = generateExternalAccessToken(match);
+    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const userTokenData = new TokenModel({
+      _id: external_token,
+      tokenType: 'access',
+      token_id: new mongoose.Types.ObjectId(),
+      userId: external_user._id,
+      account_id: external_user.account_id,
+      principalType: type === 'DOWNLOAD_DATA' ? 'download_data' : 'user',
+      isExternal: true,
+      isInternal: false,
+      ttl: ttlSeconds,
+      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+    });
+    await userTokenData.save();
     res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
   } catch (error) {
     next(error);
@@ -249,9 +260,12 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
     const decoded = decryptToken(external_token);
-    const { email, org_id, isExternal, isInternal, redirectPath } = decoded;
+    const { email, org_id, isExternal, isInternal, isDownloadData, redirectPath } = decoded;
     if (!email && !org_id) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
+    }
+    if (true === !!isDownloadData) {
+      throw Object.assign(new Error(`User can't access this application resource.`), { status: 401 });
     }
     const userDetails = await UserModel.findOne({ email, account_id: helperService.validateObjectId(org_id), user_status: 'active' });
     if (!userDetails) {
