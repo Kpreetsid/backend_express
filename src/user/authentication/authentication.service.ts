@@ -9,7 +9,7 @@ import { MailerService } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
 import { helperService } from "../../utils/helper";
-import { IAccount } from "../../models/account.model";
+import { IAccount, AccountModel } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
@@ -217,41 +217,107 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
 
 export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { params: { email }, query: { type } } = req;
-    const match: any = { isExternal: false, isInternal: true };
-    if (!email) {
-      throw Object.assign(new Error('Bad request'), { status: 404 });
+    const identifier = String(req.params.email || req.params.accountId || req.params.id || '').trim();
+    const { type } = req.query;
+    if (!identifier) {
+      throw Object.assign(new Error('Bad request: identifier is required'), { status: 400 });
     }
-    match.email = email;
-    const external_user = await UserModel.findOne({ email, user_status: 'active' });
+
+    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+
+    if (type === 'DOWNLOAD_DATA') {
+      let account: any = null;
+      let user: any = null;
+
+      // 1. Try resolving by Account ID if valid ObjectId
+      if (mongoose.Types.ObjectId.isValid(identifier)) {
+        account = await AccountModel.findOne({ _id: identifier, visible: true });
+      }
+
+      // 2. If not found by Account ID, resolve by User Email
+      if (!account) {
+        user = await UserModel.findOne({ email: identifier, user_status: 'active' });
+        if (user?.account_id) {
+          account = await AccountModel.findOne({ _id: user.account_id, visible: true });
+        }
+      }
+
+      if (!account) {
+        throw Object.assign(new Error('Account data not found'), { status: 404 });
+      }
+
+      const match: any = {
+        org_id: account._id,
+        account_name: account.account_name,
+        isExternal: false,
+        isInternal: false,
+        isDownloadData: true,
+        type: 'DOWNLOAD_DATA'
+      };
+      if (user?.email) {
+        match.email = user.email;
+      }
+
+      const external_token = generateExternalAccessToken(match);
+      const tokenData = new TokenModel({
+        _id: external_token,
+        tokenType: 'access',
+        token_id: new mongoose.Types.ObjectId(),
+        ...(user?._id ? { userId: user._id } : {}),
+        account_id: account._id,
+        accountId: account._id,
+        principalType: 'download_data',
+        isExternal: true,
+        isInternal: false,
+        ttl: ttlSeconds,
+        expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+      });
+      await tokenData.save();
+
+      return res.status(200).json({
+        status: true,
+        message: 'Download token generated successfully',
+        data: { external_token, account_id: account._id, account_name: account.account_name }
+      });
+    }
+
+    // Interactive user login token
+    const external_user = await UserModel.findOne({ email: identifier, user_status: 'active' });
     if (!external_user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
-    match.org_id = external_user.account_id;
-    if (type === 'DOWNLOAD_DATA') {
-      match.isInternal = false;
-      match.isDownloadData = true;
-    }
+
+    const match: any = {
+      email: external_user.email,
+      org_id: external_user.account_id,
+      isExternal: false,
+      isInternal: true
+    };
     const external_token = generateExternalAccessToken(match);
-    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
     const userTokenData = new TokenModel({
       _id: external_token,
       tokenType: 'access',
       token_id: new mongoose.Types.ObjectId(),
       userId: external_user._id,
       account_id: external_user.account_id,
-      principalType: type === 'DOWNLOAD_DATA' ? 'download_data' : 'user',
+      accountId: external_user.account_id,
+      principalType: 'user',
       isExternal: true,
       isInternal: false,
       ttl: ttlSeconds,
       expiresAt: new Date(Date.now() + ttlSeconds * 1000)
     });
     await userTokenData.save();
-    res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
+
+    return res.status(200).json({
+      status: true,
+      message: 'Login successful',
+      data: { external_token, org_id: external_user.account_id, user_id: external_user._id }
+    });
   } catch (error) {
     next(error);
   }
-}
+};
 
 export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {

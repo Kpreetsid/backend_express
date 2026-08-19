@@ -9,7 +9,7 @@ export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
   token_id?: mongoose.Types.ObjectId;
   ttl?: number;
   created: Date;
-  userId: ObjectId;
+  userId?: ObjectId;
   accountId?: ObjectId;
   account_id?: ObjectId;
   principalType?: string;
@@ -38,12 +38,18 @@ const userTokenSchema = new Schema<IUserToken>({
     }
   },
   created: { type: Date, required: true, default: Date.now },
-  userId: { type: Schema.Types.ObjectId, required: true, ref: 'UserModel' },
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: 'UserModel',
+    required: function(this: IUserToken): boolean {
+      return this.tokenType === 'refresh' || (this.tokenType === 'access' && this.principalType === 'user');
+    }
+  },
   accountId: {
     type: Schema.Types.ObjectId,
     ref: 'AccountModel',
     required: function(this: IUserToken): boolean {
-      return this.tokenType === 'refresh';
+      return this.tokenType === 'refresh' || (this.tokenType === 'access' && (this.principalType === 'download_data' || this.principalType === 'account'));
     }
   },
   account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', index: true },
