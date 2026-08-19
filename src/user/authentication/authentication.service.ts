@@ -217,8 +217,8 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
 
 export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { params: { email }, query: { type } } = req;
     const match: any = { isExternal: false, isInternal: true };
+    const { params: { email }, query: { type } } = req;
     if (!email) {
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
@@ -232,7 +232,9 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
     if (!external_user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
-    match.org_id = external_user.account_id;
+    if (type === 'DOWNLOAD_DATA') {
+      match.isDownloadData = true;
+    }
     const external_token = generateExternalAccessToken(match);
     res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
   } catch (error) {

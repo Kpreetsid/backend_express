@@ -116,7 +116,6 @@ class AccountAccessService {
     if (!menuKey) return false;
     return !!RoleManager.getRoleMenu("standard_account")[menuKey]
       || !!UserRoleManager.getAdminRoleMenu()[menuKey]
-      || ACCOUNT_ADDITIVE_FEATURE_KEYS.includes(menuKey)
       || !!PLATFORM_MODULE_RULES[menuKey]
       || !!PARENT_PLATFORM_MODULE_RULES[menuKey]
       || !!PLATFORM_MODULE_VIEW_RULES[menuKey];
