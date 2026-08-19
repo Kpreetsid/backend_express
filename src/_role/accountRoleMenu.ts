@@ -29,7 +29,6 @@ export class RoleManager {
     master_inventory: { level: 0, view: true },
     master_devices: { level: 0, view: true },
     master_admin_panel: { level: 0, view: true },
-    master_form: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
     master_library: { level: 0, view: true }
   };
@@ -47,7 +46,6 @@ export class RoleManager {
     master_inventory: { level: 0, view: true },
     master_devices: { level: 0, view: true },
     master_admin_panel: { level: 0, view: false },
-    master_form: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
     master_library: { level: 0, view: true }
   };
