@@ -217,15 +217,23 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
 
 export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { params: { email } } = req;
+    const { params: { email }, query: { type } } = req;
+    const match: any = { isExternal: false, isInternal: true };
     if (!email) {
       throw Object.assign(new Error('Bad request'), { status: 404 });
+    }
+    match.email = email;
+    if (type === 'DOWNLOAD_DATA') {
+      match.isExternal = true;
+      match.isInternal = false;
+      match.isDownloadData = true;
     }
     const external_user = await UserModel.findOne({ email, user_status: 'active' });
     if (!external_user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
-    const external_token = generateExternalAccessToken({ email, org_id: external_user.account_id, isExternal: false, isInternal: true });
+    match.org_id = external_user.account_id;
+    const external_token = generateExternalAccessToken(match);
     res.status(200).json({ status: true, message: 'Login successful', data: { external_token } });
   } catch (error) {
     next(error);
