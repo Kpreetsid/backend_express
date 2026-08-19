@@ -309,4 +309,8 @@ export class RoleManager {
       }
     }
   }
+
+  public static getAdminRoleMenu(): RoleMenu {
+    return this.ADMIN_ROLES;
+  }
 }

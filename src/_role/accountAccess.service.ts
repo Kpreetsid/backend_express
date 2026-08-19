@@ -1,5 +1,6 @@
 import { IAccount } from "../models/account.model";
 import { Permission, RoleManager, RoleMenu } from "./accountRoleMenu";
+import { RoleManager as UserRoleManager } from "./newUserRoles";
 import { normalizeExperienceProfile } from "./experienceProfile";
 
 export type AccountAction = "view" | "add" | "edit" | "delete" | "import" | "export";
@@ -112,7 +113,13 @@ const isRecord = (value: unknown): value is Record<string, any> => {
 
 class AccountAccessService {
   isKnownFeature(menuKey: string): boolean {
-    return !!RoleManager.getRoleMenu("standard_account")[menuKey];
+    if (!menuKey) return false;
+    return !!RoleManager.getRoleMenu("standard_account")[menuKey]
+      || !!UserRoleManager.getAdminRoleMenu()[menuKey]
+      || ACCOUNT_ADDITIVE_FEATURE_KEYS.includes(menuKey)
+      || !!PLATFORM_MODULE_RULES[menuKey]
+      || !!PARENT_PLATFORM_MODULE_RULES[menuKey]
+      || !!PLATFORM_MODULE_VIEW_RULES[menuKey];
   }
 
   isKnownAction(action: string): action is AccountAction {
