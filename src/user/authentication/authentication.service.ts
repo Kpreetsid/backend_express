@@ -224,7 +224,7 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
     }
     match.email = email;
     if (type === 'DOWNLOAD_DATA') {
-      match.isExternal = true;
+      match.isExternal = false;
       match.isInternal = false;
       match.isDownloadData = true;
     }
