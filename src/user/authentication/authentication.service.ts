@@ -243,7 +243,7 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
         isDownloadData: true,
         type: 'DOWNLOAD_DATA'
       };
-
+      await TokenModel.deleteMany({ account_id: account._id, principalType: 'download_data' });
       const external_token = generateExternalAccessToken(match);
       const tokenData = new TokenModel({
         _id: external_token,
