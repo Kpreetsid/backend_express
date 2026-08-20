@@ -15,25 +15,13 @@ import floorMapRoutes from './floorMap/floorMap.routes';
 import troubleshootGuideRoutes from './troubleshoot-guide/troubleshoot-guide.routes';
 import partsTypeRoutes from './part-type/parts-type.routes';
 import inspectionRoutes from './inspection/inspection.routes';
-import { hasAccountFeature, hasAnyAccountFeature } from '../middlewares/permission';
 import analysisFeatureRoutes from './analysisFeature/analysisFeature.routes';
 
 const withAccountFeature = (
-    menuKey: string,
+    _menuKey: string,
     registerRoutes: (router: express.Router) => void
 ): express.Router => {
     const featureRouter = express.Router();
-    featureRouter.use(hasAccountFeature(menuKey));
-    registerRoutes(featureRouter);
-    return featureRouter;
-};
-
-const withAnyAccountFeature = (
-    menuKeys: string[],
-    registerRoutes: (router: express.Router) => void
-): express.Router => {
-    const featureRouter = express.Router();
-    featureRouter.use(hasAnyAccountFeature(menuKeys));
     registerRoutes(featureRouter);
     return featureRouter;
 };
@@ -52,8 +40,9 @@ export default (): express.Router => {
     router.use(withAccountFeature('location', locationRoutes));
     router.use(withAccountFeature('form_category', formCategoryRoutes));
     router.use(withAccountFeature('observation', observationRoutes));
-    router.use(withAnyAccountFeature(['floor_map', 'location_floor_map'], floorMapRoutes));
-    router.use(withAnyAccountFeature(['asset', 'location'], troubleshootGuideRoutes));
+    floorMapRoutes(router);
+    troubleshootGuideRoutes(router);
     analysisFeatureRoutes(router);
     return router;
 }
+

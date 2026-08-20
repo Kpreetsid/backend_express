@@ -9,8 +9,7 @@ export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
   token_id?: mongoose.Types.ObjectId;
   ttl?: number;
   created: Date;
-  userId: ObjectId;
-  accountId?: ObjectId;
+  userId?: ObjectId;
   account_id?: ObjectId;
   principalType?: string;
   isExternal?: boolean;
@@ -38,15 +37,21 @@ const userTokenSchema = new Schema<IUserToken>({
     }
   },
   created: { type: Date, required: true, default: Date.now },
-  userId: { type: Schema.Types.ObjectId, required: true, ref: 'UserModel' },
-  accountId: {
+  userId: {
     type: Schema.Types.ObjectId,
-    ref: 'AccountModel',
+    ref: 'UserModel',
     required: function(this: IUserToken): boolean {
-      return this.tokenType === 'refresh';
+      return this.tokenType === 'refresh' || (this.tokenType === 'access' && this.principalType === 'user');
     }
   },
-  account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', index: true },
+  account_id: {
+    type: Schema.Types.ObjectId,
+    ref: 'AccountModel',
+    index: true,
+    required: function(this: IUserToken): boolean {
+      return this.tokenType === 'refresh' || (this.tokenType === 'access' && (this.principalType === 'download_data' || this.principalType === 'account'));
+    }
+  },
   principalType: {
     type: String,
     required: function(this: IUserToken): boolean {
@@ -66,8 +71,7 @@ const userTokenSchema = new Schema<IUserToken>({
 });
 
 userTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-userTokenSchema.index({ tokenType: 1, userId: 1, accountId: 1, revokedAt: 1 });
-
+userTokenSchema.index({ tokenType: 1, userId: 1, account_id: 1, revokedAt: 1 });
 userTokenSchema.index({ principalType: 1, userId: 1, account_id: 1, revokedAt: 1 });
 
 export const TokenModel = mongoose.model<IUserToken>('Schema_UserToken', userTokenSchema);

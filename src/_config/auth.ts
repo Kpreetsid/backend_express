@@ -82,8 +82,11 @@ export const authenticateTokenContext = async (token: string, accountId: string)
   }
 
   const decoded = verifyAccessToken(token);
-  const { id, username, companyID } = decoded;
+  const { id, username, companyID, isDownloadData } = decoded;
   const normalizedAccountId = String(accountId);
+  if(true === !!isDownloadData) {
+    throw Object.assign(new Error('User does not belong to the application'), { status: 403 });
+  }
 
   if (!id || !username || !companyID || normalizedAccountId !== String(companyID)) {
     throw invalidTokenError();

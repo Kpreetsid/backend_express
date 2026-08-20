@@ -1,5 +1,6 @@
 import { IAccount } from "../models/account.model";
 import { Permission, RoleManager, RoleMenu } from "./accountRoleMenu";
+import { RoleManager as UserRoleManager } from "./newUserRoles";
 import { normalizeExperienceProfile } from "./experienceProfile";
 
 export type AccountAction = "view" | "add" | "edit" | "delete" | "import" | "export";
@@ -7,19 +8,19 @@ type PlatformControl = Record<string, Record<string, boolean>>;
 type PlatformActionRule = { menuKey: string | string[]; action: AccountAction };
 
 const ACCOUNT_ACTIONS: AccountAction[] = ["view", "add", "edit", "delete", "import", "export"];
-const ACCOUNT_ADDITIVE_FEATURE_KEYS = [
-  "master_alarm",
-  "alarm_overview",
-  "alarm_configuration",
-  "master_library",
-  "work_order_templates",
-  "procedures",
-  "asset_alarms",
-  "ai_chatbot",
-  "oem_report",
-  "pump_asset_health",
-  "pdm_location_filter"
-];
+const ACCOUNT_ADDITIVE_FEATURES: Record<string, { level: number; parent?: string; defaultView: boolean }> = {
+  master_alarm: { level: 0, defaultView: true },
+  alarm_overview: { level: 1, parent: "master_alarm", defaultView: true },
+  alarm_configuration: { level: 1, parent: "master_alarm", defaultView: true },
+  master_library: { level: 0, defaultView: true },
+  work_order_templates: { level: 1, parent: "master_library", defaultView: true },
+  procedures: { level: 1, parent: "master_library", defaultView: true },
+  asset_alarms: { level: 1, parent: "master_asset", defaultView: true },
+  ai_chatbot: { level: 1, parent: "master_asset", defaultView: true },
+  oem_report: { level: 1, parent: "master_report", defaultView: false },
+  pump_asset_health: { level: 1, parent: "master_asset", defaultView: false },
+  pdm_location_filter: { level: 1, parent: "master_dashboard", defaultView: true }
+};
 
 const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> = {
   asset: {
@@ -112,7 +113,12 @@ const isRecord = (value: unknown): value is Record<string, any> => {
 
 class AccountAccessService {
   isKnownFeature(menuKey: string): boolean {
-    return !!RoleManager.getRoleMenu("standard_account")[menuKey];
+    if (!menuKey) return false;
+    return !!RoleManager.getRoleMenu("standard_account")[menuKey]
+      || !!UserRoleManager.getAdminRoleMenu()[menuKey]
+      || !!PLATFORM_MODULE_RULES[menuKey]
+      || !!PARENT_PLATFORM_MODULE_RULES[menuKey]
+      || !!PLATFORM_MODULE_VIEW_RULES[menuKey];
   }
 
   isKnownAction(action: string): action is AccountAction {
@@ -169,9 +175,9 @@ class AccountAccessService {
   applyRoleMenuCap(userRoleMenu: any, accountRoleMenu: RoleMenu): RoleMenu {
     const effectiveRoleMenu = clone(userRoleMenu);
 
-    for (const menuKey of ACCOUNT_ADDITIVE_FEATURE_KEYS) {
-      if (!effectiveRoleMenu[menuKey] && accountRoleMenu[menuKey]) {
-        effectiveRoleMenu[menuKey] = this.createLegacyFeaturePermission(accountRoleMenu[menuKey]);
+    for (const [menuKey, additiveFeature] of Object.entries(ACCOUNT_ADDITIVE_FEATURES)) {
+      if (!effectiveRoleMenu[menuKey]) {
+        effectiveRoleMenu[menuKey] = this.createLegacyFeaturePermission(menuKey, additiveFeature, accountRoleMenu);
       }
     }
 
@@ -190,12 +196,24 @@ class AccountAccessService {
     return effectiveRoleMenu;
   }
 
-  private createLegacyFeaturePermission(accountPermission: Permission): Permission {
+  private createLegacyFeaturePermission(
+    menuKey: string,
+    additiveFeature: { level: number; parent?: string; defaultView: boolean },
+    accountRoleMenu: RoleMenu
+  ): Permission {
+    const accountPermission = accountRoleMenu[menuKey];
+    const parentPermission = additiveFeature.parent ? accountRoleMenu[additiveFeature.parent] : undefined;
+    const viewEnabled = accountPermission
+      ? accountPermission.view === true
+      : parentPermission
+        ? parentPermission.view === true && additiveFeature.defaultView
+        : additiveFeature.defaultView;
+
     return {
-      level: accountPermission.level,
-      ...(accountPermission.parent ? { parent: accountPermission.parent } : {}),
-      view: accountPermission.view === true,
-      ...(accountPermission.level === 1
+      level: accountPermission?.level ?? additiveFeature.level,
+      ...((accountPermission?.parent || additiveFeature.parent) ? { parent: accountPermission?.parent || additiveFeature.parent } : {}),
+      view: viewEnabled,
+      ...((accountPermission?.level ?? additiveFeature.level) === 1
         ? { add: false, edit: false, delete: false, import: false, export: false }
         : {})
     };
