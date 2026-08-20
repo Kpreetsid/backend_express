@@ -47,8 +47,21 @@ const accountSchema = new Schema<IAccount>(
     cookie_status: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     encrypt_payload: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
     encrypt_response: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[0] },
-    account_role_menu: { type: Object, required: true, default: () => RoleManager.getRoleMenu(EXPERIENCE_PROFILES[0]) },
-    account_role_menu_profile: { type: String, trim: true, enum: EXPERIENCE_PROFILES },
+    account_role_menu: {
+      type: Object,
+      required: true,
+      default: function (this: IAccount) {
+        return RoleManager.getRoleMenu(this.experience_profile || EXPERIENCE_PROFILES[0]);
+      }
+    },
+    account_role_menu_profile: {
+      type: String,
+      trim: true,
+      enum: EXPERIENCE_PROFILES,
+      default: function (this: IAccount) {
+        return this.experience_profile || EXPERIENCE_PROFILES[0];
+      }
+    },
     account_permission_version: { type: Number, default: 1 },
     account_role_menu_schema_version: { type: Number, default: ACCOUNT_ROLE_MENU_SCHEMA_VERSION },
     account_role_menu_updated_by: { type: mongoose.Schema.Types.ObjectId },

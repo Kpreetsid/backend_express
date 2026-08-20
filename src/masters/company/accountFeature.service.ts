@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import { redisConfig } from '../../configDB';
 import { AccountModel } from '../../models/account.model';
+import { accountAccessService } from '../../_role/accountAccess.service';
 
 const ENABLED_STATUS = 'enabled';
 
@@ -36,12 +37,14 @@ class AccountFeatureService {
     try {
       const account = await AccountModel
         .findOne({ _id: accountId, visible: true, account_status: 'active' })
-        .select('cookie_status encrypt_payload encrypt_response account_role_menu')
+        .select('cookie_status encrypt_payload encrypt_response account_role_menu experience_profile account_role_menu_profile')
         .lean<{
           cookie_status?: string;
           encrypt_payload?: string;
           encrypt_response?: string;
           account_role_menu?: Record<string, any>;
+          experience_profile?: string;
+          account_role_menu_profile?: string;
         }>();
 
       const flags: AccountFeatureFlags = account
@@ -49,7 +52,7 @@ class AccountFeatureService {
           cookieEnabled: account.cookie_status === ENABLED_STATUS,
           payloadEncryptionEnabled: account.encrypt_payload === ENABLED_STATUS,
           responseEncryptionEnabled: account.encrypt_response === ENABLED_STATUS,
-          accountRoleMenu: account.account_role_menu || {}
+          accountRoleMenu: accountAccessService.getAccountRoleMenu(account)
         }
         : this.disabledFlags();
 
@@ -87,11 +90,7 @@ class AccountFeatureService {
     if (!roleMenu || Object.keys(roleMenu).length === 0) {
       return true; // Default to open if no specific account role menu configured
     }
-    const moduleConfig = roleMenu[moduleKey];
-    if (!moduleConfig) {
-      return true; // Not explicitly restricted in account_role_menu
-    }
-    return moduleConfig.view !== false;
+    return accountAccessService.isAccountPermissionEnabled(roleMenu, moduleKey, 'view');
   }
 
   clear(accountId?: string): void {

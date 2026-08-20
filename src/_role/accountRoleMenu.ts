@@ -30,7 +30,13 @@ export class RoleManager {
     master_devices: { level: 0, view: true },
     master_admin_panel: { level: 0, view: true },
     master_inspections: { level: 0, view: true },
-    master_library: { level: 0, view: true }
+    master_library: { level: 0, view: true },
+    oem_report: { level: 1, parent: "master_report", view: false },
+    pump_asset_health: { level: 1, parent: "master_asset", view: false },
+    pdm_location_filter: { level: 1, parent: "master_dashboard", view: true },
+    users: { level: 1, parent: "master_admin_panel", view: true },
+    permission: { level: 1, parent: "master_admin_panel", view: true },
+    asset_mail: { level: 1, parent: "master_admin_panel", view: true }
   };
 
   private static readonly OEM_ROLES: RoleMenu = {
@@ -47,7 +53,13 @@ export class RoleManager {
     master_devices: { level: 0, view: true },
     master_admin_panel: { level: 0, view: false },
     master_inspections: { level: 0, view: true },
-    master_library: { level: 0, view: true }
+    master_library: { level: 0, view: true },
+    oem_report: { level: 1, parent: "master_report", view: true },
+    pump_asset_health: { level: 1, parent: "master_asset", view: true },
+    pdm_location_filter: { level: 1, parent: "master_dashboard", view: false },
+    users: { level: 1, parent: "master_admin_panel", view: false },
+    permission: { level: 1, parent: "master_admin_panel", view: false },
+    asset_mail: { level: 1, parent: "master_admin_panel", view: false }
   };
 
   private static cloneRoleMenu(roleMenu: RoleMenu): RoleMenu {
@@ -59,22 +71,26 @@ export class RoleManager {
       return false;
     }
 
-    const candidate = roleMenu as RoleMenu;
-    if (Object.keys(candidate).length !== Object.keys(template).length) {
+    const candidate = roleMenu as Record<string, any>;
+    const templateKeys = Object.keys(template);
+    const candidateKeys = Object.keys(candidate);
+
+    if (candidateKeys.length === 0) {
       return false;
     }
 
-    return Object.entries(template).every(([key, expectedPermission]) => {
-      const actualPermission = candidate[key];
-      if (!actualPermission || typeof actualPermission !== "object" || Array.isArray(actualPermission)) {
-        return false;
-      }
+    return templateKeys.every((key) => {
+      const expected = template[key];
+      const actual = candidate[key];
+      if (actual === undefined) return false;
 
-      const expectedKeys = Object.keys(expectedPermission).sort();
-      const actualKeys = Object.keys(actualPermission).sort();
-      return expectedKeys.length === actualKeys.length
-        && expectedKeys.every((field, index) => field === actualKeys[index])
-        && expectedKeys.every((field) => actualPermission[field as keyof Permission] === expectedPermission[field as keyof Permission]);
+      if (typeof actual === "boolean") {
+        return actual === expected.view;
+      }
+      if (typeof actual === "object" && actual !== null) {
+        return actual.view === expected.view;
+      }
+      return false;
     });
   }
 

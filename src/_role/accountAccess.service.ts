@@ -8,6 +8,87 @@ type PlatformControl = Record<string, Record<string, boolean>>;
 type PlatformActionRule = { menuKey: string | string[]; action: AccountAction };
 
 const ACCOUNT_ACTIONS: AccountAction[] = ["view", "add", "edit", "delete", "import", "export"];
+
+export const CHILD_TO_PARENT_MODULE_MAP: Record<string, string> = {
+  // master_asset
+  asset: "master_asset",
+  child_asset: "master_asset",
+  report_asset: "master_asset",
+  asset_sensors: "master_asset",
+  endpoint: "master_asset",
+  observation: "master_asset",
+  config: "master_asset",
+  config_alarm: "master_asset",
+  attach_sensor: "master_asset",
+  pump_asset_health: "master_asset",
+  asset_alarms: "master_asset",
+  ai_chatbot: "master_asset",
+
+  // master_location
+  location: "master_location",
+  child_location: "master_location",
+  location_report: "master_location",
+  location_floor_map: "master_location",
+
+  // master_dashboard
+  floor_map: "master_dashboard",
+  pdm: "master_dashboard",
+  cmms: "master_dashboard",
+  pdm_location_filter: "master_dashboard",
+
+  // master_report
+  reports_monitoring: "master_report",
+  reports_health_monitoring: "master_report",
+  reports_sensor_data_tracking: "master_report",
+  oem_report: "master_report",
+
+  // master_alarm
+  alarm_overview: "master_alarm",
+  alarm_configuration: "master_alarm",
+
+  // master_work_order
+  work_order: "master_work_order",
+  comment_work_order: "master_work_order",
+  parts_work_order: "master_work_order",
+  work_order_status: "master_work_order",
+
+  // master_inspections
+  inspections: "master_inspections",
+
+  // master_preventive
+  preventive: "master_preventive",
+
+  // master_form
+  form: "master_form",
+  form_category: "master_form",
+
+  // master_work_request
+  work_request: "master_work_request",
+  work_request_status: "master_work_request",
+
+  // master_posts
+  posts: "master_posts",
+
+  // master_inventory
+  inventory: "master_inventory",
+
+  // master_devices
+  devices: "master_devices",
+  gateways: "master_devices",
+  peripheral_sensors: "master_devices",
+
+  // master_admin_panel
+  admin_panel: "master_admin_panel",
+  users: "master_admin_panel",
+  permission: "master_admin_panel",
+  asset_mail: "master_admin_panel",
+
+  // master_library
+  master_library: "master_library",
+  work_order_templates: "master_library",
+  procedures: "master_library"
+};
+
 const ACCOUNT_ADDITIVE_FEATURES: Record<string, { level: number; parent?: string; defaultView: boolean }> = {
   master_alarm: { level: 0, defaultView: true },
   alarm_overview: { level: 1, parent: "master_alarm", defaultView: true },
@@ -24,60 +105,62 @@ const ACCOUNT_ADDITIVE_FEATURES: Record<string, { level: number; parent?: string
 
 const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> = {
   asset: {
-    add_asset: { menuKey: "asset", action: "add" },
-    delete_asset: { menuKey: "asset", action: "delete" },
-    add_child_asset: { menuKey: "child_asset", action: "add" },
-    edit_asset: { menuKey: "asset", action: "edit" },
-    create_report: { menuKey: "report_asset", action: "add" },
-    delete_report: { menuKey: "report_asset", action: "delete" },
-    download_report: { menuKey: "report_asset", action: "export" },
-    edit_report: { menuKey: "report_asset", action: "edit" },
-    config_alarm: { menuKey: "config_alarm", action: "edit" },
-    add_observation: { menuKey: "observation", action: "add" },
-    create_endpoint: { menuKey: "endpoint", action: "add" },
-    edit_endpoint: { menuKey: "endpoint", action: "edit" },
-    delete_end_point: { menuKey: "endpoint", action: "delete" },
-    attach_sensor: { menuKey: "attach_sensor", action: "add" },
-    update_config: { menuKey: "config", action: "edit" }
+    add_asset: { menuKey: "master_asset", action: "add" },
+    delete_asset: { menuKey: "master_asset", action: "delete" },
+    add_child_asset: { menuKey: "master_asset", action: "add" },
+    edit_asset: { menuKey: "master_asset", action: "edit" },
+    create_report: { menuKey: "master_asset", action: "add" },
+    delete_report: { menuKey: "master_asset", action: "delete" },
+    download_report: { menuKey: "master_asset", action: "export" },
+    edit_report: { menuKey: "master_asset", action: "edit" },
+    config_alarm: { menuKey: "master_asset", action: "edit" },
+    add_observation: { menuKey: "master_asset", action: "add" },
+    create_endpoint: { menuKey: "master_asset", action: "add" },
+    edit_endpoint: { menuKey: "master_asset", action: "edit" },
+    delete_end_point: { menuKey: "master_asset", action: "delete" },
+    attach_sensor: { menuKey: "master_asset", action: "add" },
+    update_config: { menuKey: "master_asset", action: "edit" }
   },
   location: {
-    add_location: { menuKey: "location", action: "add" },
-    delete_location: { menuKey: "location", action: "delete" },
-    add_child_location: { menuKey: "child_location", action: "add" },
-    edit_location: { menuKey: "location", action: "edit" },
-    create_report: { menuKey: "location_report", action: "add" },
-    delete_report: { menuKey: "location_report", action: "delete" },
-    download_report: { menuKey: "location_report", action: "export" }
+    add_location: { menuKey: "master_location", action: "add" },
+    delete_location: { menuKey: "master_location", action: "delete" },
+    add_child_location: { menuKey: "master_location", action: "add" },
+    edit_location: { menuKey: "master_location", action: "edit" },
+    create_report: { menuKey: "master_location", action: "add" },
+    delete_report: { menuKey: "master_location", action: "delete" },
+    download_report: { menuKey: "master_location", action: "export" }
   },
   workOrder: {
-    create_work_order: { menuKey: "work_order", action: "add" },
-    edit_work_order: { menuKey: "work_order", action: "edit" },
-    delete_work_order: { menuKey: "work_order", action: "delete" },
-    update_work_order_status: { menuKey: "work_order_status", action: "edit" },
-    add_comment_work_order: { menuKey: "comment_work_order", action: "add" },
-    add_task_work_order: { menuKey: "inspections", action: "add" },
-    update_parts_work_order: { menuKey: "parts_work_order", action: "edit" }
+    create_work_order: { menuKey: "master_work_order", action: "add" },
+    edit_work_order: { menuKey: "master_work_order", action: "edit" },
+    delete_work_order: { menuKey: "master_work_order", action: "delete" },
+    update_work_order_status: { menuKey: "master_work_order", action: "edit" },
+    add_comment_work_order: { menuKey: "master_work_order", action: "add" },
+    add_task_work_order: { menuKey: "master_work_order", action: "add" },
+    update_parts_work_order: { menuKey: "master_work_order", action: "edit" }
   },
   floorMap: {
-    create_kpi: { menuKey: ["floor_map", "location_floor_map"], action: "add" },
-    view_floor_map: { menuKey: ["floor_map", "location_floor_map"], action: "view" },
-    delete_kpi: { menuKey: ["floor_map", "location_floor_map"], action: "delete" },
-    upload_floor_map: { menuKey: ["floor_map", "location_floor_map"], action: "edit" }
+    create_kpi: { menuKey: "master_dashboard", action: "add" },
+    view_floor_map: { menuKey: "master_dashboard", action: "view" },
+    delete_kpi: { menuKey: "master_dashboard", action: "delete" },
+    upload_floor_map: { menuKey: "master_dashboard", action: "edit" }
   }
 };
 
 const PLATFORM_MODULE_RULES: Record<string, string> = {
-  preventive: "preventive",
-  form: "form",
-  form_category: "form_category",
-  work_request: "work_request",
-  posts: "posts",
-  inventory: "inventory",
-  gateways: "gateways",
-  peripheral_sensors: "peripheral_sensors",
-  users: "users",
-  permission: "permission",
-  asset_mail: "asset_mail"
+  preventive: "master_preventive",
+  form: "master_form",
+  form_category: "master_form",
+  work_request: "master_work_request",
+  posts: "master_posts",
+  inventory: "master_inventory",
+  devices: "master_devices",
+  gateways: "master_devices",
+  peripheral_sensors: "master_devices",
+  admin_panel: "master_admin_panel",
+  users: "master_admin_panel",
+  permission: "master_admin_panel",
+  asset_mail: "master_admin_panel"
 };
 
 const PARENT_PLATFORM_MODULE_RULES: Record<string, string> = {
@@ -86,23 +169,23 @@ const PARENT_PLATFORM_MODULE_RULES: Record<string, string> = {
 };
 
 const PLATFORM_MODULE_VIEW_RULES: Record<string, string | string[]> = {
-  asset: "asset",
-  location: "location",
-  workOrder: "work_order",
-  floorMap: ["floor_map", "location_floor_map"],
-  preventive: "preventive",
-  form: "form",
-  form_category: "form_category",
-  work_request: "work_request",
-  posts: "posts",
-  inventory: "inventory",
+  asset: "master_asset",
+  location: "master_location",
+  workOrder: "master_work_order",
+  floorMap: "master_dashboard",
+  preventive: "master_preventive",
+  form: "master_form",
+  form_category: "master_form",
+  work_request: "master_work_request",
+  posts: "master_posts",
+  inventory: "master_inventory",
   devices: "master_devices",
-  gateways: "gateways",
-  peripheral_sensors: "peripheral_sensors",
+  gateways: "master_devices",
+  peripheral_sensors: "master_devices",
   admin_panel: "master_admin_panel",
-  users: "users",
-  permission: "permission",
-  asset_mail: "asset_mail"
+  users: "master_admin_panel",
+  permission: "master_admin_panel",
+  asset_mail: "master_admin_panel"
 };
 
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value || {}));
@@ -116,6 +199,7 @@ class AccountAccessService {
     if (!menuKey) return false;
     return !!RoleManager.getRoleMenu("standard_account")[menuKey]
       || !!UserRoleManager.getAdminRoleMenu()[menuKey]
+      || !!CHILD_TO_PARENT_MODULE_MAP[menuKey]
       || !!PLATFORM_MODULE_RULES[menuKey]
       || !!PARENT_PLATFORM_MODULE_RULES[menuKey]
       || !!PLATFORM_MODULE_VIEW_RULES[menuKey];
@@ -146,19 +230,51 @@ class AccountAccessService {
     const storedProfile = accountObject?.account_role_menu_profile
       ? normalizeExperienceProfile(accountObject.account_role_menu_profile)
       : RoleManager.detectRoleMenuProfile(storedMenu);
+
     if (storedProfile && storedProfile !== experienceProfile) {
       return defaults;
     }
     const merged = clone(defaults);
 
     for (const [key, value] of Object.entries(storedMenu)) {
-      if (!isRecord(value)) {
-        continue;
+      if (typeof value === "boolean") {
+        merged[key] = {
+          ...(merged[key] || { level: CHILD_TO_PARENT_MODULE_MAP[key] ? 1 : 0 }),
+          ...(CHILD_TO_PARENT_MODULE_MAP[key] ? { parent: CHILD_TO_PARENT_MODULE_MAP[key] } : {}),
+          view: value
+        } as Permission;
+      } else if (isRecord(value)) {
+        merged[key] = {
+          ...(merged[key] || {}),
+          ...value
+        } as Permission;
       }
-      merged[key] = {
-        ...(merged[key] || {}),
-        ...value
-      } as Permission;
+    }
+
+    if (experienceProfile === "oem") {
+      merged.master_admin_panel = { ...(merged.master_admin_panel || { level: 0 }), view: false };
+      merged.users = { ...(merged.users || { level: 1, parent: "master_admin_panel" }), view: false };
+      merged.permission = { ...(merged.permission || { level: 1, parent: "master_admin_panel" }), view: false };
+      merged.asset_mail = { ...(merged.asset_mail || { level: 1, parent: "master_admin_panel" }), view: false };
+      if (storedMenu.oem_report === undefined) {
+        merged.oem_report = { ...(merged.oem_report || { level: 1, parent: "master_report" }), view: true };
+      }
+      if (storedMenu.pump_asset_health === undefined) {
+        merged.pump_asset_health = { ...(merged.pump_asset_health || { level: 1, parent: "master_asset" }), view: true };
+      }
+      if (storedMenu.pdm_location_filter === undefined) {
+        merged.pdm_location_filter = { ...(merged.pdm_location_filter || { level: 1, parent: "master_dashboard" }), view: false };
+      }
+    } else if (experienceProfile === "standard_account") {
+      if (storedMenu.oem_report === undefined) {
+        merged.oem_report = { ...(merged.oem_report || { level: 1, parent: "master_report" }), view: false };
+      }
+      if (storedMenu.pump_asset_health === undefined) {
+        merged.pump_asset_health = { ...(merged.pump_asset_health || { level: 1, parent: "master_asset" }), view: false };
+      }
+      if (storedMenu.pdm_location_filter === undefined) {
+        merged.pdm_location_filter = { ...(merged.pdm_location_filter || { level: 1, parent: "master_dashboard" }), view: true };
+      }
     }
 
     return merged;
@@ -182,7 +298,33 @@ class AccountAccessService {
     }
 
     for (const [menuKey, permission] of Object.entries(effectiveRoleMenu)) {
-      if (!isRecord(permission) || !accountRoleMenu[menuKey]) {
+      if (!isRecord(permission)) {
+        continue;
+      }
+
+      const parentKey = permission.parent || CHILD_TO_PARENT_MODULE_MAP[menuKey];
+      const parentPermission = parentKey ? accountRoleMenu[parentKey] : undefined;
+      const accountPermission = accountRoleMenu[menuKey];
+
+      // If parent module is disabled in account, child view and actions must all be disabled
+      if (parentPermission && parentPermission.view === false) {
+        permission.view = false;
+        for (const action of ACCOUNT_ACTIONS) {
+          if (typeof permission[action] === "boolean") {
+            permission[action] = false;
+          }
+        }
+        continue;
+      }
+
+      // If direct module is disabled in account, view and actions must be disabled
+      if (accountPermission && accountPermission.view === false) {
+        permission.view = false;
+        for (const action of ACCOUNT_ACTIONS) {
+          if (typeof permission[action] === "boolean") {
+            permission[action] = false;
+          }
+        }
         continue;
       }
 
@@ -305,42 +447,59 @@ class AccountAccessService {
       return this.isAccountPermissionEnabled(accountRoleMenu, directMenuKey, action);
     }
 
-    const parentMenuKey = PARENT_PLATFORM_MODULE_RULES[moduleName];
+    const parentMenuKey = PARENT_PLATFORM_MODULE_RULES[moduleName] || CHILD_TO_PARENT_MODULE_MAP[moduleName];
     if (parentMenuKey) {
       return this.isAccountPermissionEnabled(accountRoleMenu, parentMenuKey, "view");
     }
 
-    return true;
+    return this.isAccountPermissionEnabled(accountRoleMenu, moduleName, action || "view");
   }
 
-  isAccountPermissionEnabled(accountRoleMenu: RoleMenu, menuKey: string, action: AccountAction): boolean {
-    const accountPermission = accountRoleMenu[menuKey];
-    if (!accountPermission) {
+  isAccountPermissionEnabled(accountRoleMenu: RoleMenu, menuKey: string, action: AccountAction = "view"): boolean {
+    if (!accountRoleMenu) {
       return true;
     }
 
-    if (accountPermission.parent) {
-      const parentPermission = accountRoleMenu[accountPermission.parent];
+    const accountPermission = accountRoleMenu[menuKey];
+    if (accountPermission) {
+      if (accountPermission.parent) {
+        const parentPermission = accountRoleMenu[accountPermission.parent];
+        if (parentPermission && parentPermission.view === false) {
+          return false;
+        }
+      }
+
+      if (accountPermission.view === false) {
+        return false;
+      }
+
+      const actionValue = accountPermission[action];
+      if (typeof actionValue === "boolean") {
+        return actionValue;
+      }
+
+      return action === "view" ? accountPermission.view === true : true;
+    }
+
+    // If menuKey is not defined in accountRoleMenu, check if its parent module is disabled
+    const parentKey = CHILD_TO_PARENT_MODULE_MAP[menuKey];
+    if (parentKey) {
+      const parentPermission = accountRoleMenu[parentKey];
       if (parentPermission && parentPermission.view === false) {
         return false;
       }
     }
 
-    if (accountPermission.view === false) {
-      return false;
-    }
-
-    const actionValue = accountPermission[action];
-    if (typeof actionValue === "boolean") {
-      return actionValue;
-    }
-
-    return action === "view" ? accountPermission.view === true : true;
+    return true;
   }
 
   private isPlatformModuleVisible(accountRoleMenu: RoleMenu, moduleName: string): boolean {
     const menuKeys = PLATFORM_MODULE_VIEW_RULES[moduleName];
     if (!menuKeys) {
+      const parentKey = CHILD_TO_PARENT_MODULE_MAP[moduleName];
+      if (parentKey) {
+        return this.isAccountPermissionEnabled(accountRoleMenu, parentKey, "view");
+      }
       return true;
     }
     const keys = Array.isArray(menuKeys) ? menuKeys : [menuKeys];
@@ -359,11 +518,14 @@ class AccountAccessService {
         errors.push(`Unknown permission module: ${menuKey}`);
         continue;
       }
-      if (!isRecord(permission)) {
-        errors.push(`${menuKey} must be an object`);
+      if (typeof permission === "boolean") {
         continue;
       }
-      if (typeof permission.level !== "number") {
+      if (!isRecord(permission)) {
+        errors.push(`${menuKey} must be an object or boolean`);
+        continue;
+      }
+      if (typeof permission.level !== "number" && permission.level !== undefined) {
         errors.push(`${menuKey}.level must be a number`);
       }
       if (permission.parent && !template[permission.parent]) {
@@ -385,3 +547,4 @@ class AccountAccessService {
 }
 
 export const accountAccessService = new AccountAccessService();
+

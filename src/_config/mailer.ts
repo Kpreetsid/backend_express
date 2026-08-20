@@ -5,6 +5,7 @@ import fs from 'fs';
 import path from 'path';
 import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
 import { VerificationCodeModel, VERIFICATION_CODE_EXPIRY_SECONDS } from '../models/userVerification.model';
+import { normalizeExperienceProfile } from '../_role/experienceProfile';
 
 interface MailPayload {
   to: string;
@@ -72,7 +73,7 @@ export class MailerService {
   }
 
   private getExperienceProfileLabel(value: any): string {
-    switch (String(value || '').trim()) {
+    switch (normalizeExperienceProfile(value)) {
       case 'oem':
         return 'Pump OEM';
       case 'standard_account':

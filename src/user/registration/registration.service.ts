@@ -4,6 +4,7 @@ import { usersService } from "../../masters/user/user.service";
 import { IAccount } from "../../models/account.model";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { withTransaction } from "../../utils/transaction.helper";
+import { normalizeExperienceProfile } from "../../_role/experienceProfile";
 
 class RegistrationService {
   private mailerService: MailerService;
@@ -27,7 +28,7 @@ class RegistrationService {
         const accountBody = {
           account_name: body.account_name,
           type: body.type,
-          experience_profile: body.experience_profile || 'standard_account',
+          experience_profile: normalizeExperienceProfile(body.experience_profile),
           description: body.description
         };
         const account: IAccount = await companyService.createCompany(accountBody, session);
