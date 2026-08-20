@@ -226,22 +226,11 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
     const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
 
     if (type === 'DOWNLOAD_DATA') {
-      let account: any = null;
-      let user: any = null;
-
-      // 1. Try resolving by Account ID if valid ObjectId
-      if (mongoose.Types.ObjectId.isValid(identifier)) {
-        account = await AccountModel.findOne({ _id: identifier, visible: true });
+      if (!mongoose.Types.ObjectId.isValid(identifier)) {
+        throw Object.assign(new Error('Invalid account ID for download token'), { status: 400 });
       }
 
-      // 2. If not found by Account ID, resolve by User Email
-      if (!account) {
-        user = await UserModel.findOne({ email: identifier, user_status: 'active' });
-        if (user?.account_id) {
-          account = await AccountModel.findOne({ _id: user.account_id, visible: true });
-        }
-      }
-
+      const account = await AccountModel.findOne({ _id: identifier, visible: true });
       if (!account) {
         throw Object.assign(new Error('Account data not found'), { status: 404 });
       }
@@ -254,18 +243,13 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
         isDownloadData: true,
         type: 'DOWNLOAD_DATA'
       };
-      if (user?.email) {
-        match.email = user.email;
-      }
 
       const external_token = generateExternalAccessToken(match);
       const tokenData = new TokenModel({
         _id: external_token,
         tokenType: 'access',
         token_id: new mongoose.Types.ObjectId(),
-        ...(user?._id ? { userId: user._id } : {}),
         account_id: account._id,
-        accountId: account._id,
         principalType: 'download_data',
         isExternal: true,
         isInternal: false,
@@ -300,7 +284,6 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
       token_id: new mongoose.Types.ObjectId(),
       userId: external_user._id,
       account_id: external_user.account_id,
-      accountId: external_user.account_id,
       principalType: 'user',
       isExternal: true,
       isInternal: false,
