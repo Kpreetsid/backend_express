@@ -22,8 +22,12 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     const decoded = verifyAccessToken(headerToken);
-    const { id, username, companyID } = decoded;
+    const { id, username, companyID, isDownloadData } = decoded;
     const accountID = req.headers.accountid as string;
+
+    if (true === !!isDownloadData) {
+      throw Object.assign(new Error('User does not belong to the application'), { status: 403 });
+    }
 
     if (!id || !username || !companyID || headerAccountID !== accountID) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
