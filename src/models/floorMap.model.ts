@@ -77,4 +77,7 @@ const endpointLocationSchema = new Schema<IEndpointLocation>({
   versionKey: false
 });
 
+endpointLocationSchema.index({ account_id: 1, locationId: 1 });
+endpointLocationSchema.index({ account_id: 1, data_type: 1 });
+
 export const EndpointLocationModel = mongoose.model<IEndpointLocation>('Schema_EndPoints', endpointLocationSchema);
