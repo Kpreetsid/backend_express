@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { redisConfig } from '../configDB';
 import { isRedisReady } from '../_config/redis';
+import { notificationSocketMetrics } from '../_config/socket';
 
 const mongoState = () => {
   switch (mongoose.connection.readyState) {
@@ -62,6 +63,19 @@ metricsRouter.get('/', (_req: Request, res: Response) => {
     `cmms_mongodb_ready ${mongoose.connection.readyState === 1 ? 1 : 0}`,
     '# HELP cmms_redis_ready Redis readiness, 1 when enabled and connected.',
     '# TYPE cmms_redis_ready gauge',
-    `cmms_redis_ready ${redisConfig.enabled && isRedisReady() ? 1 : 0}`
+    `cmms_redis_ready ${redisConfig.enabled && isRedisReady() ? 1 : 0}`,
+    '# HELP cmms_notification_socket_connections Active notification Socket.IO connections.',
+    '# TYPE cmms_notification_socket_connections gauge',
+    `cmms_notification_socket_connections ${notificationSocketMetrics.activeConnections}`,
+    '# HELP cmms_notification_socket_transport_connections Active notification connections by transport.',
+    '# TYPE cmms_notification_socket_transport_connections gauge',
+    `cmms_notification_socket_transport_connections{transport="websocket"} ${notificationSocketMetrics.websocketConnections}`,
+    `cmms_notification_socket_transport_connections{transport="polling"} ${notificationSocketMetrics.pollingConnections}`,
+    '# HELP cmms_notification_socket_connections_total Notification socket connections accepted since process start.',
+    '# TYPE cmms_notification_socket_connections_total counter',
+    `cmms_notification_socket_connections_total ${notificationSocketMetrics.totalConnections}`,
+    '# HELP cmms_notification_socket_connection_errors_total Notification socket transport errors since process start.',
+    '# TYPE cmms_notification_socket_connection_errors_total counter',
+    `cmms_notification_socket_connection_errors_total ${notificationSocketMetrics.totalConnectionErrors}`
   ].join('\n'));
 });

@@ -44,20 +44,30 @@ app.use(compression({
     return !req.headers['x-no-compression'];
   }
 }));
+const uploadDirs = [
+  'assets',
+  'asset_report',
+  'endpointImages',
+  'floor_map',
+  'locations',
+  'logo',
+  'mailers',
+  'observations',
+  'posts',
+  'user_profile_img',
+  'WO_docs',
+  'work_request',
+  'work_order'
+];
+
 app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/assets')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/asset_report')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/endpointImages')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/floor_map')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/locations')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/logo')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/mailers')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/observations')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/posts')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/user_profile_img')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/WO_docs')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_request')));
-app.use('/', express.static(path.join(__dirname, '../uploadFiles/work_order')));
+uploadDirs.forEach((dir) => {
+  const dirPath = path.join(__dirname, '../uploadFiles', dir);
+  app.use('/', express.static(dirPath));
+  app.use(`/${dir}`, express.static(dirPath));
+  const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
+  app.use(`${apiBasePath}/${dir}`, express.static(dirPath));
+});
 
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });

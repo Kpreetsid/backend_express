@@ -15,6 +15,7 @@ export interface AccountNotificationPayload {
   actionUrl: string;
   queryParams?: Record<string, string>;
   sourceUserId?: string;
+  recipientRoles?: string[];
   type?: string;
   message?: string;
 }
@@ -33,8 +34,12 @@ export class NotificationService {
 
   private setupEventListeners(): void {
     globalEmitter.on(Events.NOTIFICATION_CREATED, async (payload: any) => {
-      const { userId, type, message, data, companyId } = payload;
-      await this.notifyUser(userId, type, message, data, companyId);
+      try {
+        const { userId, type, message, data, companyId } = payload;
+        await this.notifyUser(userId, type, message, data, companyId);
+      } catch (error) {
+        console.error('NotificationService: failed to process notification event.', error);
+      }
     });
   }
 
@@ -67,8 +72,10 @@ export class NotificationService {
     return id instanceof Types.ObjectId ? id : new Types.ObjectId(id);
   }
 
-  private emitNotification(userId: string, notification: any, type: string, message: string, metadata: any): void {
-    if (!this.io) return;
+  private emitNotification(userId: string, notification: any, type: string, message: string, metadata: any): boolean {
+    if (!this.io) return false;
+
+    const hasConnectedRecipient = (this.io.sockets.adapter.rooms.get(userId)?.size || 0) > 0;
     this.io.to(userId).emit('notification', {
       id: notification._id,
       _id: notification._id,
@@ -80,6 +87,7 @@ export class NotificationService {
       createdAt: notification.createdAt,
       timestamp: notification.createdAt || new Date()
     });
+    return hasConnectedRecipient;
   }
 
   /**
@@ -106,10 +114,13 @@ export class NotificationService {
     });
 
     // 2. Emit via socket
-    this.emitNotification(userId.toString(), notification, type, message, data);
+    const emittedToConnectedRecipient = this.emitNotification(userId.toString(), notification, type, message, data);
 
-    // 3. Update status to Delivered
-    await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
+    // Delivery means at least one active socket was present. The client acknowledgement
+    // advances this to Reached, and monotonic repository updates prevent race regression.
+    if (emittedToConnectedRecipient) {
+      await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
+    }
   }
 
   /**
@@ -145,11 +156,12 @@ export class NotificationService {
 
       const createdNotifications = await notificationRepository.createMany(notificationData);
 
-      // 3. Emit the matching notification id to each user's socket room.
-      await Promise.all(createdNotifications.map(async (notification: any) => {
-        this.emitNotification(notification.targetUser.toString(), notification, type, message, data);
-        await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
-      }));
+      // 3. Emit the matching notification id to each user's socket room and update
+      // connected recipients in one database operation.
+      const deliveredIds = createdNotifications
+        .filter((notification: any) => this.emitNotification(notification.targetUser.toString(), notification, type, message, data))
+        .map((notification: any) => notification._id.toString());
+      await notificationRepository.markManyAsDelivered(deliveredIds);
 
     } catch (error) {
       console.error('Error in notifyCompany:', error);
@@ -174,25 +186,39 @@ export class NotificationService {
       sourceUserId: payload.sourceUserId
     };
 
-    const users = await UserModel.find({
-      account_id: this.toObjectId(payload.accountId),
-      user_status: 'active'
-    }).select('_id');
+    try {
+      const recipientMatch: any = {
+        account_id: this.toObjectId(payload.accountId),
+        user_status: 'active'
+      };
+      if (payload.sourceUserId && Types.ObjectId.isValid(payload.sourceUserId)) {
+        recipientMatch._id = { $ne: this.toObjectId(payload.sourceUserId) };
+      }
+      if (payload.recipientRoles?.length) {
+        recipientMatch.user_role = { $in: payload.recipientRoles };
+      }
 
-    if (!users.length) return;
+      const users = await UserModel.find(recipientMatch).select('_id');
 
-    const notifications = await notificationRepository.createMany(users.map(user => ({
-      targetUser: user._id,
-      account_id: this.toObjectId(payload.accountId),
-      type,
-      message,
-      metadata
-    })));
+      if (!users.length) return;
 
-    await Promise.all(notifications.map(async (notification: any) => {
-      this.emitNotification(notification.targetUser.toString(), notification, type, message, metadata);
-      await notificationRepository.updateStatus(notification._id.toString(), 'Delivered');
-    }));
+      const notifications = await notificationRepository.createMany(users.map(user => ({
+        targetUser: user._id,
+        account_id: this.toObjectId(payload.accountId),
+        type,
+        message,
+        metadata
+      })));
+
+      const deliveredIds = notifications
+        .filter((notification: any) => this.emitNotification(notification.targetUser.toString(), notification, type, message, metadata))
+        .map((notification: any) => notification._id.toString());
+      await notificationRepository.markManyAsDelivered(deliveredIds);
+    } catch (error) {
+      // Notification fan-out is a side effect and must not turn an already committed
+      // business operation into an HTTP failure.
+      console.error('NotificationService: failed to notify account users.', error);
+    }
   }
 
   /**
@@ -213,8 +239,8 @@ export class NotificationService {
    * @param notificationId The ID of the notification
    * @param userId The ID of the user who received it
    */
-  public async markAsReached(notificationId: string, userId: string): Promise<void> {
-    await notificationRepository.updateStatus(notificationId, 'Reached', userId);
+  public async markAsReached(notificationId: string, userId: string) {
+    return await notificationRepository.updateStatus(notificationId, 'Reached', userId);
   }
 }
 
