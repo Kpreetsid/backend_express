@@ -29,6 +29,7 @@ export interface IUser extends Document {
   createdBy?: ObjectId;
   updatedBy?: ObjectId;
   passwordExpiredAt?: Date;
+  isTourCompleted: boolean;
 }
 
 export const userSchema = new Schema<IUser>({
@@ -46,7 +47,8 @@ export const userSchema = new Schema<IUser>({
   isVerified: { type: Boolean, default: false },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
-  passwordExpiredAt: { type: Date }
+  passwordExpiredAt: { type: Date },
+  isTourCompleted: { type: Boolean, default: false }
 }, {
   collection: USER_COLLECTION_NAME,
   timestamps: true,
