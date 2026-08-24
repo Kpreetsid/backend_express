@@ -19,8 +19,8 @@ import { accountPermissionEventRoutes } from './routes/accountPermissionEvent.ro
 import { requestContextMiddleware } from './middlewares/requestContext';
 import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
 import { cryptoRouter } from './routes/crypto.routes';
-import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
 import { corsOptions } from './_config/cors';
+import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
 import { csrfProtection } from './middlewares/csrf.middleware';
 
 const app: Express = express();
@@ -38,8 +38,8 @@ app.use(mongoSanitizeMiddleware());
 app.use(logger.logMiddleware());
 app.use(rateLimiter.globalLimiter);
 app.use(compression({
-  level: 9,
-  threshold: 0,
+  level: 6,
+  threshold: 1024,
   filter: (req: Request, res: Response) => {
     return !req.headers['x-no-compression'];
   }

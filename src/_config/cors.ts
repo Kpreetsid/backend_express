@@ -40,6 +40,7 @@ export const isOriginAllowed = (origin?: string): boolean => {
 export const corsOptions: CorsOptions = {
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce'],
   origin: (origin, callback) => {
     if (isOriginAllowed(origin)) {
       callback(null, true);

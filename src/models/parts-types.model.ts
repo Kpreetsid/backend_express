@@ -25,4 +25,6 @@ const partsTypeSchema = new Schema<IPartType>({
   versionKey: false
 });
 
+partsTypeSchema.index({ account_id: 1, visible: 1 });
+
 export const PartsTypeModel = mongoose.model<IPartType>('Schema_PartsTypes', partsTypeSchema);

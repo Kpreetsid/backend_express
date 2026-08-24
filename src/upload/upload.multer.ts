@@ -3,6 +3,22 @@ import fs from "fs";
 import crypto from "crypto";
 import { storageProvider } from "../_config/storage";
 
+const ALLOWED_FOLDERS = new Set([
+  'assets',
+  'asset_report',
+  'endpointImages',
+  'floor_map',
+  'locations',
+  'logo',
+  'mailers',
+  'observations',
+  'posts',
+  'user_profile_img',
+  'WO_docs',
+  'work_request',
+  'work_order'
+]);
+
 class UploadFilesService {
   private getFormattedDate(): string {
     const iso = new Date().toISOString();
@@ -17,10 +33,11 @@ class UploadFilesService {
     const randomId = crypto.randomBytes(4).toString("hex");
     const parts: string[] = [timestamp];
     if (folderName) {
-      parts.push(folderName.trim().replace(/\s+/g, "-").toLowerCase());
+      const sanitizedFolder = folderName.trim().replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase();
+      if (sanitizedFolder) parts.push(sanitizedFolder);
     }
     if (companyId) {
-      parts.push(String(companyId));
+      parts.push(String(companyId).replace(/[^a-zA-Z0-9_-]/g, ""));
     }
     parts.push(randomId);
     let ext = (extension || '').startsWith('.') ? extension : `.${extension}`;
@@ -29,11 +46,20 @@ class UploadFilesService {
 
   getDestinationPath(folderName?: string): string {
     const root = (storageProvider as any).getRootPath ? (storageProvider as any).getRootPath() : path.resolve(__dirname, '../../uploadFiles');
-    const destination = folderName ? path.join(root, folderName) : root;
-    if (!fs.existsSync(destination)) {
-      fs.mkdirSync(destination, { recursive: true });
+    const cleanFolder = folderName ? folderName.trim().replace(/[^a-zA-Z0-9_-]/g, '') : '';
+    if (cleanFolder && !ALLOWED_FOLDERS.has(cleanFolder)) {
+      throw Object.assign(new Error('Invalid destination folder'), { status: 400 });
     }
-    return destination;
+    const destination = cleanFolder ? path.join(root, cleanFolder) : root;
+    const resolvedRoot = path.resolve(root);
+    const resolvedDest = path.resolve(destination);
+    if (!resolvedDest.startsWith(resolvedRoot)) {
+      throw Object.assign(new Error('Invalid folder path traversal detected'), { status: 400 });
+    }
+    if (!fs.existsSync(resolvedDest)) {
+      fs.mkdirSync(resolvedDest, { recursive: true });
+    }
+    return resolvedDest;
   }
 
   async uploadBase64Image(base64Image: string, folderName?: string, accountId?: string) {
