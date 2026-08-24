@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { notificationRepository } from './notification.service';
+import { IUser } from '../models/user.model';
+import { get } from 'lodash';
 
 // Extend Request type to include user property from auth middleware
 interface AuthRequest extends Request {
@@ -23,11 +25,11 @@ export class NotificationController {
    */
   public async getNotifications(req: AuthRequest, res: Response) {
     try {
-      const userId = req.user.id;
+      const user = get(req, "user", {}) as IUser;
       const limit = paginationValue(req.query.limit, 25, 100);
       const skip = paginationValue(req.query.skip, 0);
 
-      const result = await notificationRepository.getUserNotifications(userId, limit, skip);
+      const result = await notificationRepository.getUserNotifications(user._id, limit, skip);
       res.json({
         success: true,
         data: result.notifications,
@@ -45,13 +47,13 @@ export class NotificationController {
   public async markAsOpened(req: AuthRequest, res: Response) {
     try {
       const { id } = req.params;
-      const userId = req.user.id;
+      const user = get(req, "user", {}) as IUser;
 
       if (!id || typeof id !== 'string') {
         return res.status(400).json({ success: false, message: 'Invalid notification ID' });
       }
 
-      const updated = await notificationRepository.updateStatus(id, 'Opened', userId);
+      const updated = await notificationRepository.updateStatus(id, 'Opened', user._id);
       if (!updated) {
         return res.status(404).json({ success: false, message: 'Notification not found' });
       }
@@ -66,8 +68,8 @@ export class NotificationController {
    */
   public async markAllAsOpened(req: AuthRequest, res: Response) {
     try {
-      const userId = req.user.id;
-      const result = await notificationRepository.markAllAsOpened(userId);
+      const user = get(req, "user", {}) as IUser;
+      const result = await notificationRepository.markAllAsOpened(user._id);
       return res.json({ success: true, data: result });
     } catch (error: any) {
       return res.status(500).json({ success: false, message: error.message });
@@ -79,18 +81,16 @@ export class NotificationController {
    */
   public async testNotification(req: Request, res: Response) {
     try {
-      const authRequest = req as AuthRequest;
-      const userId = authRequest.user.id || authRequest.user._id;
-      const companyId = authRequest.user.account_id;
+      const user = get(req, "user", {}) as IUser;
       const { type, message } = req.body;
       const { notificationService } = require('../utils/notification.service');
       
       await notificationService.notifyUser(
-        userId,
+        user._id,
         type || 'TEST_NOTIFICATION',
         message || 'This is a test notification',
         { entityId: 'test-123' },
-        companyId
+        user.account_id
       );
 
       res.json({ success: true, message: 'Test notification triggered' });
