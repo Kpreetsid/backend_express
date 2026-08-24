@@ -17,13 +17,14 @@ import { healthRouter, metricsRouter } from './routes/health.routes';
 import { requestContextMiddleware } from './middlewares/requestContext';
 import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
 import { cryptoRouter } from './routes/crypto.routes';
+import { corsOptions } from './_config/cors';
 import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
 
 const app: Express = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
-app.use(cors({ credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], origin: true, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce'] }));
+app.use(cors(corsOptions));
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));
 app.use(express.urlencoded({ limit: process.env.URLENCODED_BODY_LIMIT || '5mb', extended: true }));
 app.use(payloadCryptoResponseMiddleware());
@@ -32,8 +33,8 @@ app.use(mongoSanitizeMiddleware());
 app.use(logger.logMiddleware());
 app.use(rateLimiter.globalLimiter);
 app.use(compression({
-  level: 9,
-  threshold: 0,
+  level: 6,
+  threshold: 1024,
   filter: (req: Request, res: Response) => {
     return !req.headers['x-no-compression'];
   }

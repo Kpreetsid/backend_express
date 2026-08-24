@@ -49,4 +49,8 @@ const partSchema = new Schema<IPart>({
   versionKey: false
 });
 
+partSchema.index({ account_id: 1, visible: 1 });
+partSchema.index({ account_id: 1, part_number: 1 });
+partSchema.index({ account_id: 1, location_id: 1 });
+
 export const PartsModel = mongoose.model<IPart>('Schema_Part', partSchema);

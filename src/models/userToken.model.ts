@@ -28,4 +28,7 @@ const userTokenSchema = new Schema<IUserToken>({
   versionKey: false
 });
 
+userTokenSchema.index({ userId: 1 });
+userTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+
 export const TokenModel = mongoose.model<IUserToken>('Schema_UserToken', userTokenSchema);

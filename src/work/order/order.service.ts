@@ -4591,8 +4591,14 @@ class OrderService {
 
   async removeOrder(id: any, user: any): Promise<any> {
     return await withTransaction(async (session) => {
+      const tenantId = user?.companyID || user?.account_id;
+      const filter: any = { _id: id };
+      if (tenantId) filter.account_id = tenantId;
+      const order: any = await WorkOrderModel.findOne(filter).session(session).lean();
+      if (!order) {
+        throw Object.assign(new Error('Work Order not found or unauthorized'), { status: 404 });
+      }
       await userWorkOrderService.removeMappedUsers(id, session);
-      const order: any = await WorkOrderModel.findById(id).session(session).lean();
       if (order?.parts?.length > 0) {
         await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user?._id || user }, session, {
           account_id: order.account_id,
@@ -4612,14 +4618,20 @@ class OrderService {
         note: 'Work order removed from the active list.',
         actor: user
       }, session);
-      return await WorkOrderModel.findByIdAndUpdate(id, { visible: false, updatedBy: user?._id || user }, { returnDocument: 'after', session });
+      return await WorkOrderModel.findOneAndUpdate(filter, { visible: false, updatedBy: user?._id || user }, { returnDocument: 'after', session });
     });
   };
 
   async deleteWorkOrderById(id: any, user: any): Promise<any> {
     return await withTransaction(async (session) => {
+      const tenantId = user?.companyID || user?.account_id;
+      const filter: any = { _id: id };
+      if (tenantId) filter.account_id = tenantId;
+      const order: any = await WorkOrderModel.findOne(filter).session(session).lean();
+      if (!order) {
+        throw Object.assign(new Error('Work Order not found or unauthorized'), { status: 404 });
+      }
       await userWorkOrderService.removeMappedUsers(id, session);
-      const order: any = await WorkOrderModel.findById(id).session(session).lean();
       if (order?.parts?.length > 0) {
         await partsService.adjustInventoryByWorkOrder(order.parts, [], { _id: user?._id || user }, session, {
           account_id: order.account_id,
@@ -4639,7 +4651,7 @@ class OrderService {
         note: 'Work order permanently deleted.',
         actor: user
       }, session);
-      return await WorkOrderModel.findByIdAndDelete(id, { session });
+      return await WorkOrderModel.findOneAndDelete(filter, { session });
     });
   }
 

@@ -72,12 +72,16 @@ class FloorMapService {
     return await endpointLocation.save();
   }
 
-  async updateById(id: any, body: any, user_id: any): Promise<any> {
-    return await EndpointLocationModel.findByIdAndUpdate(id, { coordinate: body.coordinate, locationId: body.locationId, data_type: body.data_type, updatedBy: user_id }, { returnDocument: 'after' });
+  async updateById(id: any, body: any, user_id: any, account_id?: any): Promise<any> {
+    const filter: any = { _id: id };
+    if (account_id) filter.account_id = account_id;
+    return await EndpointLocationModel.findOneAndUpdate(filter, { coordinate: body.coordinate, locationId: body.locationId, data_type: body.data_type, updatedBy: user_id }, { returnDocument: 'after' });
   }
 
-  async removeById(id: any, user_id: any): Promise<any> {
-    return await EndpointLocationModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
+  async removeById(id: any, user_id: any, account_id?: any): Promise<any> {
+    const filter: any = { _id: id };
+    if (account_id) filter.account_id = account_id;
+    return await EndpointLocationModel.findOneAndUpdate(filter, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
   }
 
   async deleteCoordinates(match: any) {

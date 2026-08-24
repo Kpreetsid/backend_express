@@ -23,4 +23,6 @@ const userRoleMenuSchema = new Schema<IUserRoleMenu>({
   versionKey: false
 });
 
+userRoleMenuSchema.index({ user_id: 1, account_id: 1 });
+
 export const RoleMenuModel = mongoose.model<IUserRoleMenu>('Schema_RoleMenu', userRoleMenuSchema);

@@ -10,25 +10,54 @@ import { rolesService } from '../masters/user/role/roles.service';
 import { companyService } from '../masters/company/company.service';
 import { TokenModel } from '../models/userToken.model';
 
+interface CachedAuthSession {
+  user: any;
+  companyID: string;
+  role: any;
+  userToken: string;
+  expiresAt: number;
+}
+
+const authSessionCache = new Map<string, CachedAuthSession>();
+const AUTH_CACHE_TTL_MS = 60 * 1000; // 60s TTL for high-frequency dashboard requests
+
+export const clearAuthSessionCache = (tokenKey?: string) => {
+  if (tokenKey) {
+    authSessionCache.delete(tokenKey);
+  } else {
+    authSessionCache.clear();
+  }
+};
+
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const headerToken = req.headers.authorization?.split(' ')[1];
-    const headerAccountID = req.headers.accountid;
+    const headerAccountID = req.headers.accountid as string;
     if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
+
+    const cacheKey = `${headerToken}:${headerAccountID}`;
+    const now = Date.now();
+    const cached = authSessionCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      merge(req, { user: cached.user, companyID: cached.companyID, role: cached.role, userToken: cached.userToken });
+      return next();
+    }
+
     const isTokenExist: any = await TokenModel.findOne({ _id: headerToken });
     if (!isTokenExist) {
+      authSessionCache.delete(cacheKey);
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
-    const accountID = req.headers.accountid as string;
 
-    if (!id || !username || !companyID || headerAccountID !== accountID) {
+    if (!id || !username || !companyID || headerAccountID !== companyID) {
+      authSessionCache.delete(cacheKey);
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
-    const companyData = await companyService.verifyCompany(accountID);
+    const companyData = await companyService.verifyCompany(headerAccountID);
     if (!companyData) {
       throw Object.assign(new Error('Account ID is invalid'), { status: 401 });
     }
@@ -43,7 +72,25 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
     if (userRole.account_id.toString() !== companyID) {
       throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
     }
-    merge(req, { user: userData.toObject(), companyID, role: userRole.toObject().data, userToken: headerToken });
+
+    const userObj = userData.toObject();
+    const roleData = userRole.toObject().data;
+
+    // Prune stale cache entries if growing
+    if (authSessionCache.size > 5000) {
+      for (const [key, value] of authSessionCache.entries()) {
+        if (value.expiresAt <= now) authSessionCache.delete(key);
+      }
+    }
+    authSessionCache.set(cacheKey, {
+      user: userObj,
+      companyID,
+      role: roleData,
+      userToken: headerToken,
+      expiresAt: now + AUTH_CACHE_TTL_MS
+    });
+
+    merge(req, { user: userObj, companyID, role: roleData, userToken: headerToken });
     next();
   } catch (error) {
     next(error)
@@ -57,6 +104,7 @@ export const isLogOutAuthenticated = async (req: Request, res: Response, next: N
     if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
+    clearAuthSessionCache(`${headerToken}:${headerAccountID}`);
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
     const accountID = req.headers.accountid as string;
