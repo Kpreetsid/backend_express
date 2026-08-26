@@ -7,6 +7,14 @@ import { authenticateTokenContext } from './auth';
 import { LEGACY_ACCESS_COOKIE_NAME, LEGACY_ACCOUNT_COOKIE_NAME } from '../user/authentication/authCookie.service';
 import { cookieService } from '../utils/cookie';
 
+export const notificationSocketMetrics = {
+  activeConnections: 0,
+  pollingConnections: 0,
+  websocketConnections: 0,
+  totalConnections: 0,
+  totalConnectionErrors: 0
+};
+
 let socketServer: Server | null = null;
 
 const accountRoom = (accountId: string): string => `account:${accountId}`;
@@ -25,6 +33,8 @@ export const emitAccountPermissionsChanged = (accountId: string, accountPermissi
  */
 export const initSocket = (httpServer: HttpServer) => {
   const io = new Server(httpServer, {
+    serveClient: false,
+    maxHttpBufferSize: 100_000,
     cors: {
       origin: (origin, callback) => {
         if (isOriginAllowed(origin)) {
@@ -58,7 +68,7 @@ export const initSocket = (httpServer: HttpServer) => {
       const context = await authenticateTokenContext(String(token), String(accountId));
 
       // Attach user info to socket
-      socket.data.user = context.decoded;
+      socket.data.user = { ...context.decoded, username: context.userData.username || context.decoded.username };
       socket.data.accountId = context.accountId;
       next();
     } catch (err) {
@@ -66,13 +76,22 @@ export const initSocket = (httpServer: HttpServer) => {
     }
   });
 
+  io.engine.on('connection_error', (error: any) => {
+    notificationSocketMetrics.totalConnectionErrors += 1;
+    console.error('Notification socket transport error:', error.code, error.message);
+  });
+
   io.on('connection', (socket: Socket) => {
     const userId = socket.data.user.id;
     const accountId = socket.data.accountId;
     const userName = socket.data.user.username || socket.data.user.email || userId;
     const connectionUrl = socket.handshake.url;
-    const connectedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    let transportName = socket.conn.transport.name;
+    notificationSocketMetrics.activeConnections += 1;
+    notificationSocketMetrics.totalConnections += 1;
+    notificationSocketMetrics[transportName === 'websocket' ? 'websocketConnections' : 'pollingConnections'] += 1;
 
+    const connectedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     console.log(`Notification socket connected: ${userName} (Account: ${accountId})`);
     console.log(`${connectedAt} | CONNECTED | ${userId} | ${userName} | SOCKET_CONNECT | WS | - ms | ${connectionUrl}`);
 
@@ -81,21 +100,48 @@ export const initSocket = (httpServer: HttpServer) => {
     socket.join(userId.toString());
     socket.join(accountRoom(String(accountId)));
 
-    // Handle "Notification Reached" acknowledgment from client
-    socket.on('notification_reached', async (payload: { notificationId: string }) => {
-      try {
-        const userId = socket.data.user.id;
-        await notificationService.markAsReached(payload.notificationId, userId);
-        const acknowledgedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-        console.log(`${acknowledgedAt} | ACKNOWLEDGED | ${userId} | ${userName} | NOTIFICATION_REACHED | WS | - ms | payload: ${payload.notificationId}`);
-      } catch (err) {
-        console.error('Error marking notification as reached:', err);
+    socket.conn.once('upgrade', () => {
+      if (transportName === 'polling') {
+        notificationSocketMetrics.pollingConnections = Math.max(0, notificationSocketMetrics.pollingConnections - 1);
+      }
+      transportName = socket.conn.transport.name;
+      if (transportName === 'websocket') {
+        notificationSocketMetrics.websocketConnections += 1;
       }
     });
 
-    socket.on('disconnect', () => {
+    // Handle "Notification Reached" acknowledgment from client
+    socket.on('notification_reached', async (
+      payload: { notificationId?: string },
+      acknowledge?: (result: { success: boolean; message?: string }) => void
+    ) => {
+      try {
+        const notificationId = payload?.notificationId;
+        if (!notificationId) {
+          acknowledge?.({ success: false, message: 'Invalid notification ID' });
+          return;
+        }
+        const updated = await notificationService.markAsReached(notificationId, userId);
+        if (!updated) {
+          acknowledge?.({ success: false, message: 'Notification not found' });
+          return;
+        }
+        const acknowledgedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        console.log(`${acknowledgedAt} | ACKNOWLEDGED | ${userId} | ${userName} | NOTIFICATION_REACHED | WS | - ms | payload: ${notificationId}`);
+        acknowledge?.({ success: true });
+      } catch (err) {
+        console.error('Error marking notification as reached:', err);
+        acknowledge?.({ success: false, message: 'Unable to acknowledge notification' });
+      }
+    });
+
+    socket.on('disconnect', (reason) => {
+      notificationSocketMetrics.activeConnections = Math.max(0, notificationSocketMetrics.activeConnections - 1);
+      const metricKey = transportName === 'websocket' ? 'websocketConnections' : 'pollingConnections';
+      notificationSocketMetrics[metricKey] = Math.max(0, notificationSocketMetrics[metricKey] - 1);
+
       const disconnectedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-      console.log(`${disconnectedAt} | DISCONNECTED | ${userId} | ${userName} | SOCKET_DISCONNECT | WS | - ms | ${connectionUrl}`);
+      console.log(`${disconnectedAt} | DISCONNECTED | ${userId} | ${userName} | SOCKET_DISCONNECT | ${transportName} | - ms | ${connectionUrl} | reason: ${reason}`);
     });
   });
 

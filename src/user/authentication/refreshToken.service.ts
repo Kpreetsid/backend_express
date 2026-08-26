@@ -136,7 +136,6 @@ class RefreshTokenService {
       tokenType: 'refresh' as const,
       token_id: accessTokenId,
       userId: user._id,
-      accountId: user.account_id,
       account_id: user.account_id,
       principalType: REFRESH_PRINCIPAL_TYPE,
       ttl: ttlSeconds,

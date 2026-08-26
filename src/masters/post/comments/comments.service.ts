@@ -49,12 +49,16 @@ class CommentService {
     return await newComment.save();
   };
 
-  async updateComment (commentId: any, message: any, user_id: any): Promise<any> {
-    return await CommentsModel.findByIdAndUpdate(commentId, { comments: message, updatedBy: user_id }, { returnDocument: 'after' });
+  async updateComment (commentId: any, message: any, user_id: any, account_id?: any): Promise<any> {
+    const filter: any = { _id: commentId };
+    if (account_id) filter.account_id = account_id;
+    return await CommentsModel.findOneAndUpdate(filter, { comments: message, updatedBy: user_id }, { returnDocument: 'after' });
   };
 
-  async removeComment (commentId: any, user_id: any): Promise<any> {
-    const deletedComment = await CommentsModel.findByIdAndUpdate(commentId, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
+  async removeComment (commentId: any, user_id: any, account_id?: any): Promise<any> {
+    const filter: any = { _id: commentId };
+    if (account_id) filter.account_id = account_id;
+    const deletedComment = await CommentsModel.findOneAndUpdate(filter, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
     if (!deletedComment) {
       throw Object.assign(new Error('Comment not found'), { status: 404 });
     }

@@ -73,7 +73,7 @@ export const server = {
 export const auth = {
   secret: process.env.AUTH_SECRET!,
   external_secret: process.env.EXTERNAL_AUTH_SECRET!,
-  expiresIn: process.env.AUTH_EXPIRES_IN || '1d',
+  expiresIn: process.env.AUTH_EXPIRES_IN || '604800',
   algorithm: process.env.AUTH_ALGORITHM || 'HS256',
   issuer: process.env.AUTH_ISSUER!,
   audience: process.env.AUTH_AUDIENCE!,

@@ -34,7 +34,8 @@ jobs:
 
       - name: Upload artifact to S3
         run: |
-          aws s3 cp express.tar.gz s3://presage-codedeploy-artifact/cmms_express/
+          aws s3 cp express.tar.gz s3://presage-codedeploy-artifact/cmms_express/express-${{ github.sha }}.tar.gz
+          aws s3 cp express.tar.gz s3://presage-codedeploy-artifact/cmms_express/express.tar.gz
 
   continuous-deployment:
     runs-on: ubuntu-latest
@@ -57,4 +58,4 @@ jobs:
             --deployment-group-name Presage-Mean-Stack \
             --deployment-config-name CodeDeployDefault.OneAtATime \
             --file-exists-behavior OVERWRITE \
-            --s3-location bucket=presage-codedeploy-artifact,key=cmms_express/express.tar.gz,bundleType=tgz
+            --s3-location bucket=presage-codedeploy-artifact,key=cmms_express/express-${{ github.sha }}.tar.gz,bundleType=tgz

@@ -55,4 +55,6 @@ const troubleshootGuideSchema = new Schema<ITroubleshootGuide>(
   }
 );
 
+troubleshootGuideSchema.index({ account_id: 1, visible: 1 });
+
 export const TroubleshootGuideModel = mongoose.model<ITroubleshootGuide>('Schema_TroubleshootGuide', troubleshootGuideSchema);

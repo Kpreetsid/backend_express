@@ -154,4 +154,7 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
   }
 );
 
+ScheduleMasterSchema.index({ account_id: 1, visible: 1 });
+ScheduleMasterSchema.index({ account_id: 1, "work_order.wo_location_id": 1 });
+ScheduleMasterSchema.index({ "schedule.enabled": 1, visible: 1 });
 export const SchedulerModel = mongoose.model<IScheduleMaster>("Schema_Schedule", ScheduleMasterSchema);
