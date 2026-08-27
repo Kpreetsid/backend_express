@@ -304,4 +304,4 @@ export const verifyEncryptedToken = (req: Request, res: Response, next: NextFunc
   } catch (error: any) {
     next(error);
   }
-}
+};

@@ -46,4 +46,7 @@ const InspectionSchema = new Schema<IInspection>(
   }
 );
 
+InspectionSchema.index({ account_id: 1, visible: 1 });
+InspectionSchema.index({ account_id: 1, location_id: 1 });
+
 export const InspectionModel = mongoose.model<IInspection>('Schema_Inspection', InspectionSchema);

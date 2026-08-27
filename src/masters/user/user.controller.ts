@@ -89,7 +89,8 @@ class UserController {
         entityId: String(data.userDetails._id || data.userDetails.id),
         entityName: `${data.userDetails.firstName || ''} ${data.userDetails.lastName || ''}`.trim() || data.userDetails.username || 'User',
         actionUrl: `/admin-panel/users/${data.userDetails._id || data.userDetails.id}`,
-        sourceUserId: String(user_id)
+        sourceUserId: String(user_id),
+        recipientRoles: ['admin']
       });
       res.status(201).json({ status: true, message: "User created successfully", data: data.userDetails, roleData: data.roleDetails });
     } catch (error) {
@@ -125,7 +126,8 @@ class UserController {
         entityId: String(id),
         entityName: `${data.firstName || ''} ${data.lastName || ''}`.trim() || data.username || 'User',
         actionUrl: `/admin-panel/users/${id}`,
-        sourceUserId: String(user._id)
+        sourceUserId: String(user._id),
+        recipientRoles: ['admin']
       });
       res.status(200).json({ status: true, message: "User updated successfully", data });
     } catch (error) {

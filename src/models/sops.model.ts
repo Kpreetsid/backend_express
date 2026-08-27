@@ -34,4 +34,7 @@ const SopsMasterSchema = new Schema<ISopsMaster>(
     }
 );
 
+SopsMasterSchema.index({ account_id: 1, visible: 1 });
+SopsMasterSchema.index({ account_id: 1, locationId: 1 });
+
 export const SOPsModel = mongoose.model<ISopsMaster>("Schema_SOPs", SopsMasterSchema);

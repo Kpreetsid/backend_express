@@ -88,5 +88,8 @@ const WorkRequestSchema = new Schema<IWorkRequest>({
 });
 
 WorkRequestSchema.plugin(syncVersionPlugin);
+WorkRequestSchema.index({ account_id: 1, visible: 1, createdAt: -1 });
+WorkRequestSchema.index({ account_id: 1, status: 1 });
+WorkRequestSchema.index({ account_id: 1, location_id: 1 });
 
 export const WorkRequestModel = mongoose.model<IWorkRequest>('Schema_WorkRequest', WorkRequestSchema);
