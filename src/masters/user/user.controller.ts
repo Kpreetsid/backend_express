@@ -17,6 +17,17 @@ import { rolesService } from './role/roles.service';
 import { withTransaction } from '../../utils/transaction.helper';
 
 class UserController {
+  constructor() {
+    this.getUsers = this.getUsers.bind(this);
+    this.getUser = this.getUser.bind(this);
+    this.createUser = this.createUser.bind(this);
+    this.updateUser = this.updateUser.bind(this);
+    this.updatePasswordUser = this.updatePasswordUser.bind(this);
+    this.changeUserPassword = this.changeUserPassword.bind(this);
+    this.removeUser = this.removeUser.bind(this);
+    this.assertAccountAdmin = this.assertAccountAdmin.bind(this);
+    this.pickAllowedFields = this.pickAllowedFields.bind(this);
+  }
 
   async getUsers(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
@@ -29,16 +40,13 @@ class UserController {
       if (username) {
         baseFilter.$or = [{ username: username }, { email: username }];
       }
-      if (user.user_role === "admin") {
+      if (['admin', 'super_admin', 'manager'].includes(String(user?.user_role || '').toLowerCase())) {
         delete baseFilter.user_status;
       }
       const filter: any = await applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
       delete filter.visible;
       const data = await usersService.getAllUsers(filter);
-      if (!data.length) {
-        throw Object.assign(new Error("No users found"), { status: 404 });
-      }
-      res.status(200).json({ status: true, message: "Users retrieved successfully", data });
+      res.status(200).json({ status: true, message: "Users retrieved successfully", data: data || [] });
     } catch (error) {
       next(error);
     }
@@ -49,7 +57,7 @@ class UserController {
       const user = get(req, "user", {}) as IUser;
       const { id } = req.params;
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)), user_status: "active" };
-      if (user.user_role === "admin") {
+      if (['admin', 'super_admin', 'manager'].includes(String(user?.user_role || '').toLowerCase())) {
         delete baseFilter.user_status;
       }
       const filter: any = await applyRoleFilter({ user, baseFilter, accountField: "account_id", createdByField: "createdBy" });
@@ -118,7 +126,7 @@ class UserController {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
 
-      const isAdmin = user.user_role === 'admin';
+      const isAdmin = ['admin', 'super_admin', 'manager'].includes(String(user?.user_role || '').trim().toLowerCase());
       const isSelf = String(user._id) === String(id);
       if (!isAdmin && !isSelf) {
         throw Object.assign(new Error('Only an account administrator can update another user'), { status: 403 });
@@ -266,7 +274,8 @@ class UserController {
   };
 
   private assertAccountAdmin(user: IUser): void {
-    if (!user?._id || user.user_role !== 'admin') {
+    const role = String(user?.user_role || '').trim().toLowerCase();
+    if (!user?._id || !['admin', 'super_admin', 'manager'].includes(role)) {
       throw Object.assign(new Error('Account administrator access is required'), { status: 403 });
     }
   }

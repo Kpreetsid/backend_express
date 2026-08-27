@@ -3,10 +3,8 @@ import { IUser } from '../../models/user.model';
 import { get } from "lodash";
 import { analysisFeatureService } from './analysisFeature.service';
 
-
 class AnalysisFeatureController {
-
-    async getFeatureData(req: Request, res: Response, next: NextFunction): Promise<any> {
+    getFeatureData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
         try {
             const user = get(req, "user", {}) as IUser;
             this.assertAccountAdmin(user);
@@ -15,9 +13,9 @@ class AnalysisFeatureController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async updateFeatureData(req: Request, res: Response, next: NextFunction): Promise<any> {
+    updateFeatureData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
         try {
             const user = get(req, "user", {}) as IUser;
             this.assertAccountAdmin(user);
@@ -36,13 +34,14 @@ class AnalysisFeatureController {
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    private assertAccountAdmin(user: IUser): void {
-        if (!user?._id || user.user_role !== 'admin') {
+    private assertAccountAdmin = (user: IUser): void => {
+        const role = String(user?.user_role || '').trim().toLowerCase();
+        if (!user?._id || !['admin', 'super_admin', 'manager'].includes(role)) {
             throw Object.assign(new Error('Account administrator access is required'), { status: 403 });
         }
-    }
+    };
 }
 
-export const analysisFeatureController = new AnalysisFeatureController()
+export const analysisFeatureController = new AnalysisFeatureController();

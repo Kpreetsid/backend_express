@@ -25,11 +25,15 @@ class AnalysisFeatureService {
     }
 
     async updateFeatureData(id: string, accountId: any, requestedFeatures: any[], userId: any) {
-        const existing: any = await AnalysisFeatureModel.findOne({ _id: id, account_id: accountId });
+        const targetId = String(id);
+        const existing: any = await AnalysisFeatureModel.findOne({
+            $or: [{ _id: targetId }, { account_id: String(accountId) }],
+            account_id: String(accountId)
+        });
         if (!existing) return null;
         const featuresJson = sanitizeAnalysisFeatureSelection(existing.featuresJson, requestedFeatures);
         return await AnalysisFeatureModel.findOneAndUpdate(
-            { _id: id, account_id: accountId },
+            { _id: existing._id, account_id: String(accountId) },
             { $set: { featuresJson, updatedBy: userId } },
             { returnDocument: 'after', runValidators: true }
         );

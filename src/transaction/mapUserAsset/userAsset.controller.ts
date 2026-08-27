@@ -8,6 +8,12 @@ import { AssetModel } from '../../models/asset.model';
 import { UserModel } from '../../models/user.model';
 
 class MapUserAssetController {
+  constructor() {
+    this.getUserAssets = this.getUserAssets.bind(this);
+    this.setUserAssets = this.setUserAssets.bind(this);
+    this.updateUserAssets = this.updateUserAssets.bind(this);
+    this.updateSendMailFlag = this.updateSendMailFlag.bind(this);
+  }
 
   async getUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
@@ -17,7 +23,8 @@ class MapUserAssetController {
       if (userId) {
         match.userId = helperService.validateObjectId(String(userId));
       }
-      if (userRole === 'admin') {
+      const role = String(userRole || '').trim().toLowerCase();
+      if (['admin', 'super_admin', 'manager'].includes(role)) {
         if (userId) {
           const targetUser = await UserModel.exists({
             _id: helperService.validateObjectId(String(userId)),
@@ -34,7 +41,7 @@ class MapUserAssetController {
         }
         const assetIds = await AssetModel.find(assetMatch).distinct('_id');
         if (!assetIds || assetIds.length === 0) {
-          throw Object.assign(new Error('No assets found'), { status: 404 });
+          return res.status(200).json({ status: true, message: "User asset mappings fetched successfully", data: [] });
         }
         match.assetId = { $in: assetIds };
       } else {
@@ -45,10 +52,7 @@ class MapUserAssetController {
         }
       }
       const data = await mapUserToAssetService.userAssets(match, populate);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error('User asset mapping not found'), { status: 404 });
-      }
-      res.status(200).json({ status: true, message: "User asset mappings fetched successfully", data });
+      return res.status(200).json({ status: true, message: "User asset mappings fetched successfully", data: data || [] });
     } catch (error) {
       next(error);
     }
@@ -100,7 +104,8 @@ class MapUserAssetController {
   async updateSendMailFlag(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      if (!user?._id || user.user_role !== 'admin') {
+      const userRole = String(user?.user_role || '').trim().toLowerCase();
+      if (!user?._id || !['admin', 'super_admin', 'manager'].includes(userRole)) {
         throw Object.assign(new Error('Account administrator access is required'), { status: 403 });
       }
       const body = Array.isArray(req.body) ? req.body : (req.body ? [req.body] : []);

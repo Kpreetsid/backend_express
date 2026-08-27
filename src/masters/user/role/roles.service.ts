@@ -49,7 +49,7 @@ class RolesService {
 
   async updateById(id: any, account_id: any, data: any, user_id: any): Promise<any> {
     return await RoleMenuModel.findOneAndUpdate(
-      { _id: id, account_id },
+      { $or: [{ _id: id }, { user_id: id }], account_id },
       { $set: { data, updatedBy: user_id } },
       { returnDocument: 'after', runValidators: true }
     );
