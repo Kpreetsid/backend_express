@@ -28,8 +28,4 @@ export default (router: express.Router) => {
   locationRouter.patch('/:id', validateParamId, hasRolePermission('location', 'edit_location'), locationValidator, validate, locationController.updateLocation);
   locationRouter.delete('/:id', validateParamId, hasRolePermission('location', 'delete_location'), locationController.removeLocation);
   router.use('/locations', locationRouter);
-<<<<<<< Updated upstream
 };
-=======
-};
->>>>>>> Stashed changes

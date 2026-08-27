@@ -119,8 +119,4 @@ class MapUserAssetController {
   };
 }
 
-<<<<<<< Updated upstream
 export const userAssetController = controllerCache.withCache(new MapUserAssetController(), { namespace: 'mappings', ttlSeconds: 120, tags: ['mappings', 'assets', 'locations', 'work-orders', 'users'] });
-=======
-export const userAssetController = new MapUserAssetController();
->>>>>>> Stashed changes

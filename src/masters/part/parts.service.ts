@@ -10,12 +10,9 @@ import { PartsTypeModel } from "../../models/parts-types.model";
 import { PartHistoryAction, PartHistoryModel } from "../../models/partHistory.model";
 import { LocationModel } from "../../models/location.model";
 import { UserModel } from "../../models/user.model";
-<<<<<<< Updated upstream
 import { assertSyncVersion, createSyncConflict } from "../../utils/sync-concurrency";
-=======
 import { sanitizePartMetadataUpdatePayload, sanitizePartPayload } from "./part.policy";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
->>>>>>> Stashed changes
 
 interface InventoryAdjustmentResult {
   warnings: {
@@ -739,21 +736,17 @@ class PartsService {
       const changedFields = this.getChangedPartFields(existingPart.toObject(), normalizedBody);
       normalizedBody.updatedBy = user?._id || user;
 
-<<<<<<< Updated upstream
-      const updateFilter: any = { _id: id, account_id, visible: true };
-      if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
-      delete normalizedBody.sync_version;
-      const updatedPart = await PartsModel.findOneAndUpdate(updateFilter, normalizedBody, { returnDocument: 'after', session });
-      if (!updatedPart && expectedVersion !== undefined) {
-        throw createSyncConflict(await PartsModel.findById(id).session(session));
-      }
-=======
-      const updatedPart = await PartsModel.findOneAndUpdate({
+      const updateFilter: any = {
         _id: helperService.validateObjectId(String(id)),
         account_id,
         visible: true
-      }, { $set: normalizedBody }, { returnDocument: 'after', session });
->>>>>>> Stashed changes
+      };
+      if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
+      delete normalizedBody.sync_version;
+      const updatedPart = await PartsModel.findOneAndUpdate(updateFilter, { $set: normalizedBody }, { returnDocument: 'after', session });
+      if (!updatedPart && expectedVersion !== undefined) {
+        throw createSyncConflict(await PartsModel.findById(id).session(session));
+      }
 
       if (updatedPart && changedFields.length > 0) {
         await this.createPartHistoryEntry({

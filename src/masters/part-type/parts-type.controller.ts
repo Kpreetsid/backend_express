@@ -89,8 +89,6 @@ class PartsTypeController {
   }
 }
 
-<<<<<<< Updated upstream
+
 export const partsTypeController = controllerCache.withCache(new PartsTypeController(), { namespace: 'part-types', ttlSeconds: 300, tags: ['part-types', 'parts'] });
-=======
-export const partsTypeController = new PartsTypeController();
->>>>>>> Stashed changes
+

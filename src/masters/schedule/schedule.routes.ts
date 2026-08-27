@@ -15,9 +15,4 @@ export default (router: express.Router) => {
     scheduleRouter.patch('/:id', validateParamId, hasRolePermission('preventive', 'edit'), scheduleUpdateValidator, validate, scheduleController.update);
     scheduleRouter.delete('/:id', validateParamId, hasRolePermission('preventive', 'delete'), scheduleController.remove);
     router.use('/schedulers', scheduleRouter);
-<<<<<<< Updated upstream
 }
-
-=======
-}
->>>>>>> Stashed changes

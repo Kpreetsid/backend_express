@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 import { Request, Response, NextFunction } from 'express';
 import { createAuthenticationByToken, userAuthentication, userAuthenticationByToken, userAuthenticationToken, userLogOutService, userResetPassword, userGetMeService } from './authentication.service';
 import { refreshTokenService } from './refreshToken.service';
@@ -65,27 +64,4 @@ export const authorizeFeature = async (req: Request, res: Response, next: NextFu
     } catch (error) {
         next(error);
     }
-=======
-import { Request, Response, NextFunction } from 'express';
-import { createAuthenticationByToken, userAuthentication, userAuthenticationByToken, userAuthenticationToken, userLogOutService } from './authentication.service';
-
-export const authentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    await userAuthentication(req, res, next);
-}
-
-export const authenticationToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    await userAuthenticationToken(req, res, next);
-}
-
-export const externalToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    await createAuthenticationByToken(req, res, next);
-}
-
-export const authenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    await userAuthenticationByToken(req, res, next);
-}
-
-export const userLogOut = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-    await userLogOutService(req, res, next);
->>>>>>> Stashed changes
 };

@@ -83,12 +83,9 @@ class OrderTemplateController {
   }
 }
 
-<<<<<<< Updated upstream
+
 export const orderTemplateController = controllerCache.withCache(new OrderTemplateController(), { namespace: 'work-order-templates', ttlSeconds: 300, tags: ['work-order-templates', 'schedules', 'work-orders'] });
-=======
-export const orderTemplateController = new OrderTemplateController();
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
->>>>>>> Stashed changes

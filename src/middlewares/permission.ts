@@ -55,7 +55,6 @@ export const hasRolePermission = (moduleName: string, action: string) => {
   };
 };
 
-<<<<<<< Updated upstream
 export const hasAccountFeature = (menuKey: string, action: AccountAction = "view") => {
   validateFeatureRule(menuKey, action);
   return (req: Request, res: Response, next: NextFunction) => {
@@ -84,7 +83,9 @@ export const hasAccountFeatures = (menuKeys: string[], action: AccountAction = "
     }
     const deniedFeature = menuKeys.find((menuKey) => !hasEffectivePermission(req, menuKey, action)) || menuKeys[0];
     return denyAccountFeature(req, res, deniedFeature, action);
-=======
+  };
+};
+
 export const hasAnyRolePermission = (moduleName: string, actions: string[]) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -100,6 +101,5 @@ export const hasAnyRolePermission = (moduleName: string, actions: string[]) => {
     } catch (err) {
       next(err);
     }
->>>>>>> Stashed changes
   };
 };

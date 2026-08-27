@@ -5,7 +5,7 @@ import { partsService } from './parts.service';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
-import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
+import { setSyncVersionEtag } from '../../utils/sync-concurrency';
 
 class PartsController {
 
@@ -221,26 +221,18 @@ class PartsController {
       const { account_id } = user;
       const { params: { id }, body } = req;
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
-<<<<<<< Updated upstream
 
-      const isDataExists = await partsService.getAllParts(match);
-=======
       
       const scopedMatch = await applyRoleFilter({ user, baseFilter: match, accountField: 'account_id', mapping: 'location', idField: 'location_id' });
       const isDataExists = await partsService.getAllParts(scopedMatch);
->>>>>>> Stashed changes
+
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
 
-<<<<<<< Updated upstream
-      const expectedVersion = getExpectedSyncVersion(req);
-      assertSyncVersion(isDataExists[0], expectedVersion);
 
-      const updated = await partsService.updatePartById(String(id), body, get(req, "user", {}) as IUser, account_id, expectedVersion);
-=======
       const updated = await partsService.updatePartById(String(id), body, user, account_id);
->>>>>>> Stashed changes
+
       if (!updated) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }

@@ -7,20 +7,6 @@ import { validate } from '../../middlewares/validator.middleware';
 import multer from 'multer';
 import path from 'path';
 import { payloadCryptoMultipartMiddleware } from '../../middlewares/payloadCrypto.middleware';
-<<<<<<< Updated upstream
-import { idempotencyMiddleware } from '../../middlewares/idempotency.middleware';
-
-const importStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, uploadFilesService.getDestinationPath('parts_imports'));
-    },
-    filename: function (req, file, cb) {
-        const accountId = (req as any).user?.account_id;
-        const ext = path.extname(file.originalname);
-        cb(null, uploadFilesService.generateFileName(ext, 'parts-import', accountId));
-    }
-});
-=======
 import { hasRolePermission } from '../../middlewares';
 import { stockAdjustmentValidator } from './stock.validator';
 import {
@@ -28,7 +14,7 @@ import {
     createCycleCountValidator,
     cycleCountQueryValidator
 } from './cycle-count.validator';
->>>>>>> Stashed changes
+
 
 const importUpload = multer({
     // The browser parses the workbook and sends normalized JSON. Keep the
@@ -48,20 +34,7 @@ const importUpload = multer({
 
 export default (router: express.Router) => {
     const partRouter = express.Router();
-<<<<<<< Updated upstream
-    partRouter.use(idempotencyMiddleware);
-    partRouter.get('/', partsController.getParts);
-    partRouter.get('/cycle-counts', partsController.getCycleCounts);
-    partRouter.get('/replenishment-suggestions', partsController.getReplenishmentSuggestions);
-    partRouter.post('/import', importUpload.single('file'), payloadCryptoMultipartMiddleware, partsController.importParts);
-    partRouter.get('/:id/history', validateParamId, partsController.getPartHistory);
-    partRouter.get('/:id', validateParamId, partsController.getPart);
-    partRouter.post('/cycle-counts', partsController.createCycleCount);
-    partRouter.put('/cycle-counts/:id/approve', validateParamId, partsController.approveCycleCount);
-    partRouter.post('/', partValidator, validate, partsController.createPart);
-    partRouter.put('/:id', validateParamId, partValidator, validate, partsController.updatePart);
-    partRouter.patch('/:id', validateParamId, partsController.updateStock);
-=======
+
     partRouter.get('/', hasRolePermission('inventory', 'view'), partsController.getParts);
     partRouter.get('/cycle-counts', hasRolePermission('inventory', 'view'), cycleCountQueryValidator, validate, partsController.getCycleCounts);
     partRouter.get('/replenishment-suggestions', hasRolePermission('inventory', 'view'), partsController.getReplenishmentSuggestions);
@@ -73,7 +46,7 @@ export default (router: express.Router) => {
     partRouter.post('/', hasRolePermission('inventory', 'add'), partValidator, validate, partsController.createPart);
     partRouter.put('/:id', validateParamId, hasRolePermission('inventory', 'edit'), partValidator, validate, partsController.updatePart);
     partRouter.patch('/:id', validateParamId, hasRolePermission('inventory', 'edit'), stockAdjustmentValidator, validate, partsController.updateStock);
->>>>>>> Stashed changes
+
     // Dedicated stock-transfer endpoint — POST body: { destination_part_id, quantity, note }
     partRouter.post('/:id/transfer', validateParamId, hasRolePermission('inventory', 'edit'), transferValidator, validate, partsController.transferStock);
     partRouter.delete('/:id', validateParamId, hasRolePermission('inventory', 'delete'), partsController.removePart);

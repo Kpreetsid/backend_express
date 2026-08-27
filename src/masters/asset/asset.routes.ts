@@ -28,8 +28,4 @@ export default (router: express.Router) => {
     assetRouter.patch('/:id', validateParamId, hasRolePermission('asset', 'edit_asset'), assetController.updateAssetImage);
     assetRouter.delete('/:id', validateParamId, hasRolePermission('asset', 'delete_asset'), assetController.removeAsset);
     router.use('/assets', assetRouter);
-<<<<<<< Updated upstream
 }
-=======
-}
->>>>>>> Stashed changes

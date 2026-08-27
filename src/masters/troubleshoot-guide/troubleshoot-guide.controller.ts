@@ -104,8 +104,6 @@ class TroubleshootGuideController {
   }
 }
 
-<<<<<<< Updated upstream
+
 export const troubleshootGuideController = controllerCache.withCache(new TroubleshootGuideController(), { namespace: 'troubleshoot-guides', ttlSeconds: 600, tags: ['troubleshoot-guides'] });
-=======
-export const troubleshootGuideController = new TroubleshootGuideController();
->>>>>>> Stashed changes
+

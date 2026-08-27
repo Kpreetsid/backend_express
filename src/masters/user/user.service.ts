@@ -9,11 +9,8 @@ import { RoleManager } from "../../_role/newUserRoles";
 import { RoleMenuModel } from "../../models/userRoleMenu.model";
 
 import { withTransaction } from "../../utils/transaction.helper";
-<<<<<<< Updated upstream
 import { subscriptionLimitService } from "../company/subscriptionLimit.service";
-=======
 import { assertStrongPassword } from '../../utils/passwordPolicy';
->>>>>>> Stashed changes
 
 class UsersService {
 
@@ -79,17 +76,7 @@ class UsersService {
   };
 
   async createNewUser(body: IUser, account_id: any, session?: any) {
-<<<<<<< Updated upstream
     await subscriptionLimitService.assertCanCreate(account_id, 'user', 1, session);
-    body.password = await passwordService.hashPassword(body.password);
-    
-    // Use the provided session (or explicitly use the fallback if session is undefined but provided in arguments)
-    const newUser = new UserModel({ ...body, account_id });
-    const userDetails = await newUser.save({ session });
-    const roleDetails = await rolesService.createUserRole(body.user_role, userDetails, session);
-    return { userDetails, roleDetails };
-  };
-=======
     assertStrongPassword(body.password);
     body.password = await passwordService.hashPassword(body.password);
 
@@ -108,7 +95,6 @@ class UsersService {
       throw error;
     }
   };
->>>>>>> Stashed changes
 
   async updateUserPassword(user_id: any, password: string) {
     const hashedPassword = await passwordService.hashPassword(password);
@@ -147,20 +133,4 @@ class UsersService {
     });
   };
 }
-
-<<<<<<< Updated upstream
-  async updateUserDetails(id: string, body: IUser) {
-    return await UserModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
-  }
-
-  async removeById(id: string) {
-    return await withTransaction(async (session) => {
-      await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
-      return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { returnDocument: 'after', session });
-    });
-  };
-}
-
-=======
->>>>>>> Stashed changes
 export const usersService = new UsersService(new MailerService());

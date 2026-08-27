@@ -6,11 +6,9 @@ import multer from 'multer';
 import path from 'path';
 import { uploadFilesService } from './upload.multer';
 import { payloadCryptoMultipartMiddleware } from '../middlewares/payloadCrypto.middleware';
-<<<<<<< Updated upstream
-import { enforceUploadPermission } from '../middlewares/uploadPermission.middleware';
-=======
+
 import { hasAnyRolePermission, hasRolePermission } from '../middlewares/permission';
->>>>>>> Stashed changes
+
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -95,16 +93,11 @@ const requireFolderUploadPermission = (req: express.Request, res: express.Respon
 
 export default (): express.Router => {
     router.use(rateLimiter.uploadLimiter);
-<<<<<<< Updated upstream
-    router.post('/', upload.array('files', 12), payloadCryptoMultipartMiddleware, uploadController.uploadController);
-    router.post('/baseImage', enforceUploadPermission, uploadController.uploadBaseImage);
-    router.post('/baseImage/:folderName', enforceUploadPermission, uploadController.uploadBaseImage);
-    router.post('/:folderName', enforceUploadPermission, upload.array('files', 12), payloadCryptoMultipartMiddleware, uploadController.uploadController);
-=======
+
     router.post('/', processUploadedFiles, payloadCryptoMultipartMiddleware, uploadController.uploadController);
     router.post('/baseImage', requireFolderUploadPermission, uploadController.uploadBaseImage);
     router.post('/baseImage/:folderName', requireFolderUploadPermission, uploadController.uploadBaseImage);
     router.post('/:folderName', requireFolderUploadPermission, processUploadedFiles, payloadCryptoMultipartMiddleware, uploadController.uploadController);
->>>>>>> Stashed changes
+
     return router;
 }

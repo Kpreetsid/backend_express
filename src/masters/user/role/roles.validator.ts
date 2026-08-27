@@ -17,3 +17,5 @@ export const updateRoleValidator = [
     .notEmpty().withMessage('Role data is required')
     .isObject().withMessage('Role data must be an object')
 ];
+
+export const rolesValidator = createRoleValidator;

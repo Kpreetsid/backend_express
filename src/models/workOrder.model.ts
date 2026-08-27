@@ -278,15 +278,6 @@ WorkOrderSchema.index({ account_id: 1, visible: 1, status: 1 });
 WorkOrderSchema.index({ account_id: 1, visible: 1, priority: 1 });
 WorkOrderSchema.index({ wo_asset_id: 1, visible: 1 });
 WorkOrderSchema.index({ wo_location_id: 1, visible: 1 });
-<<<<<<< Updated upstream
-WorkOrderSchema.index({ parentId: 1 });
-WorkOrderSchema.index({ order_no: 1 });
-WorkOrderSchema.index({ createdBy: 1 });
-
-WorkOrderSchema.plugin(syncVersionPlugin);
-
-WorkOrderSchema.plugin(historyPlugin, {
-=======
 WorkOrderSchema.index({ parentId: 1 });
 WorkOrderSchema.index({ order_no: 1 });
 WorkOrderSchema.index({ createdBy: 1 });
@@ -303,8 +294,9 @@ WorkOrderSchema.index(
   { unique: true, partialFilterExpression: { work_request_id: { $type: 'objectId' } } }
 );
 
+WorkOrderSchema.plugin(syncVersionPlugin);
+
 WorkOrderSchema.plugin(historyPlugin, {
->>>>>>> Stashed changes
   historyModel: HistoryWorkOrderModel
 });
 

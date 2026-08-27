@@ -1,11 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
-<<<<<<< Updated upstream
 export const OBSERVATION_COLLECTION_NAME = 'observation';
-
-=======
 import { OBSERVATION_STATUSES } from '../masters/observation/observation.policy';
->>>>>>> Stashed changes
 
 export interface IObservation extends Document {
   observation: string;

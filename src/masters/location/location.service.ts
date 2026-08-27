@@ -271,36 +271,7 @@ class LocationService {
     return await LocationModel.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id } });
   };
 
-<<<<<<< Updated upstream
-  async getLocationSensor(account_id: any, user_id: any, userRole: string) {
-    try {
-      const match: any = { account_id, visible: true };
-      if (userRole !== 'admin') {
-        const mappedData = await mapUserToLocationService.getLocationsMappedData(`${user_id}`);
-        if (!mappedData || mappedData.length === 0) {
-          throw Object.assign(new Error('No records found'), { status: 404 });
-        }
-        match._id = { $in: mappedData.map(doc => doc.locationId) };
-      }
-      const data = await LocationModel.find(match).lean().populate([{ path: 'account_id', model: "Schema_Account", select: 'id account_name' }, { path: 'top_level_location_id', model: "Schema_Location", select: 'id location_name', match: { visible: true } }]);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error('No records found'), { status: 404 });
-      }
-      const result = data.map((doc: any) => {
-        return {
-          company_name: doc.account_id ? doc.account_id.account_name : "NA",
-          location_id: doc._id,
-          location_name: doc.location_name,
-          top_level_location_id: doc.top_level_location_id ? doc.top_level_location_id._id : "",
-          top_level_location_name: doc.top_level_location_id ? doc.top_level_location_id.location_name : "NA"
-        }
-      });
-      return result;
-    } catch (error) {
-      return null;
-    }
-  }
-=======
+
   async getLocationSensor(account_id: any, user_id: any, userRole: string) {
     const match: any = { account_id, visible: true };
     if (userRole !== 'admin') {
@@ -319,7 +290,7 @@ class LocationService {
       top_level_location_name: doc.top_level_location_id ? doc.top_level_location_id.location_name : "NA"
     }));
   }
->>>>>>> Stashed changes
+
 
   getLocationById(id: any, account_id: any) {
     return LocationModel.findOne({ _id: id, account_id, visible: true });

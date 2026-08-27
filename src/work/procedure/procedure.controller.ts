@@ -98,12 +98,9 @@ class ProcedureController {
   }
 }
 
-<<<<<<< Updated upstream
+
 export const procedureController = controllerCache.withCache(new ProcedureController(), { namespace: 'procedures', ttlSeconds: 300, tags: ['procedures', 'work-orders', 'inspections'] });
-=======
-export const procedureController = new ProcedureController();
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
->>>>>>> Stashed changes

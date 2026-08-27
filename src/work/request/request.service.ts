@@ -1,10 +1,7 @@
 import { WorkRequestModel, IWorkRequest, WORK_REQUEST_ORDER_SLA_HOURS, WORK_REQUEST_REVIEW_SLA_HOURS } from "../../models/workRequest.model";
-<<<<<<< Updated upstream
 import { createSyncConflict } from "../../utils/sync-concurrency";
-=======
 import { AssetModel } from "../../models/asset.model";
 import { LocationModel } from "../../models/location.model";
->>>>>>> Stashed changes
 
 class RequestService {
   private getReviewSlaHours(priority: string): number {
@@ -98,11 +95,7 @@ class RequestService {
     return await newWorkRequest.save();
   };
   
-<<<<<<< Updated upstream
-  async updateRequest (id: string, body: any, user_id: any, session?: any, expectedVersion?: number): Promise<any> {
-=======
-  async updateRequest (id: string, body: any, user_id: any, session?: any, additionalMatch: Record<string, any> = {}): Promise<any> {
->>>>>>> Stashed changes
+  async updateRequest (id: string, body: any, user_id: any, session?: any, additionalMatch: Record<string, any> = {}, expectedVersion?: number): Promise<any> {
     body.updatedBy = user_id;
     if (body.asset_id === '') {
       body.asset_id = null;
@@ -118,10 +111,9 @@ class RequestService {
         body.order_due_at = this.buildOrderGovernance(body.priority, new Date(body.approvedAt)).order_due_at;
       }
     }
-<<<<<<< Updated upstream
-    const filter: any = { _id: id };
+    const filter: any = { _id: id, ...additionalMatch };
     if (expectedVersion !== undefined) filter.sync_version = expectedVersion;
-    const result = await WorkRequestModel.updateOne(filter, body, { session });
+    const result = await WorkRequestModel.updateOne(filter, { $set: body }, { session });
     if (expectedVersion !== undefined && result.matchedCount === 0) {
       const latest = session
         ? await WorkRequestModel.findById(id).session(session)
@@ -129,9 +121,6 @@ class RequestService {
       throw createSyncConflict(latest);
     }
     return result;
-=======
-    return await WorkRequestModel.updateOne({ _id: id, ...additionalMatch }, { $set: body }, { session });
->>>>>>> Stashed changes
   };
   
   async deleteRequestById (id: any, account_id: any, user_id: any): Promise<any> {
@@ -151,11 +140,7 @@ class RequestService {
     );
   };
 
-<<<<<<< Updated upstream
-  async markApproved(id: string, user_id: any, priority?: string, session?: any, expectedVersion?: number): Promise<any> {
-=======
-  async markApproved(id: string, account_id: any, user_id: any, priority?: string, session?: any): Promise<any> {
->>>>>>> Stashed changes
+  async markApproved(id: string, account_id: any, user_id: any, priority?: string, session?: any, expectedVersion?: number): Promise<any> {
     const approvedAt = new Date();
     return await this.updateRequest(id, {
       status: 'Approved',
@@ -164,12 +149,6 @@ class RequestService {
       rejectedAt: null,
       rejectedBy: null,
       ...this.buildOrderGovernance(priority || 'Low', approvedAt)
-<<<<<<< Updated upstream
-    }, user_id, session, expectedVersion);
-  }
-
-  async markRejected(id: string, user_id: any, remarks: string, session?: any, expectedVersion?: number): Promise<any> {
-=======
     }, user_id, session, {
       account_id,
       visible: true,
@@ -178,19 +157,15 @@ class RequestService {
         { converted_work_order_id: { $exists: false } },
         { converted_work_order_id: null }
       ]
-    });
+    }, expectedVersion);
   }
 
-  async markRejected(id: string, account_id: any, user_id: any, remarks: string, session?: any): Promise<any> {
->>>>>>> Stashed changes
+  async markRejected(id: string, account_id: any, user_id: any, remarks: string, session?: any, expectedVersion?: number): Promise<any> {
     return await this.updateRequest(id, {
       status: 'Rejected',
       remarks,
       rejectedBy: user_id,
       rejectedAt: new Date()
-<<<<<<< Updated upstream
-    }, user_id, session, expectedVersion);
-=======
     }, user_id, session, {
       account_id,
       visible: true,
@@ -199,8 +174,7 @@ class RequestService {
         { converted_work_order_id: { $exists: false } },
         { converted_work_order_id: null }
       ]
-    });
->>>>>>> Stashed changes
+    }, expectedVersion);
   }
 
   async assertRequestReferences(body: any, account_id: any): Promise<void> {

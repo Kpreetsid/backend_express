@@ -15,7 +15,4 @@ export default (router: express.Router) => {
     observationRouter.delete('/:id', hasRolePermission('asset', 'add_observation'), validateParamId, observationController.removeObservation);
     router.use('/observations', observationRouter);
 }
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes

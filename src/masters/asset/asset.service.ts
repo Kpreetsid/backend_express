@@ -82,10 +82,7 @@ class AssetService {
     await AssetModel.bulkWrite(bulkOps);
   }
 
-<<<<<<< Updated upstream
-  async getAllChildAssetIDs(assetId: any): Promise<string[]> {
-    const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id').lean();
-=======
+
   async getAllChildAssetIDs(assetId: any, account_id?: any, visited = new Set<string>()): Promise<string[]> {
     const assetKey = String(assetId);
     if (visited.has(assetKey)) return [];
@@ -93,7 +90,7 @@ class AssetService {
     const match: any = { parent_id: assetId, visible: true };
     if (account_id) match.account_id = account_id;
     const children = await AssetModel.find(match).select('_id');
->>>>>>> Stashed changes
+
     if (!children || children.length === 0) {
       return [assetId];
     }
@@ -195,18 +192,7 @@ class AssetService {
   }
 
   async getAssetDataSensorList(match: any): Promise<any> {
-<<<<<<< Updated upstream
-    const data = await AssetModel.find(match).lean().populate([
-      { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
-      { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
-      { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
-    ]);
-    if (data.length === 0) {
-      throw Object.assign(new Error('No records found'), { status: 404 });
-    }
-    const result = data.map((doc: any) => {
-      doc = helperService.toPlainObject(doc);
-=======
+
     const data = await AssetModel.find(match)
       .select('_id asset_name top_level_asset_id locationId account_id')
       .populate([
@@ -216,7 +202,7 @@ class AssetService {
       ])
       .lean();
     const result = data.map((doc: any) => {
->>>>>>> Stashed changes
+
       return {
         "asset_id": doc._id,
         "asset_name": doc.asset_name,
@@ -268,39 +254,7 @@ class AssetService {
     }
   }
 
-<<<<<<< Updated upstream
-  async deleteAssetsById(assetId: any) {
-    const allChildIds = (await this.getAllChildAssetsRecursive(assetId, null)).map(c => c._id);
-    const idsToDelete = [assetId, ...allChildIds];
-    
-    for (const id of idsToDelete) {
-       await mapUserToAssetService.removeAssetMapping(id.toString());
-    }
 
-    await AssetModel.deleteMany({ _id: { $in: idsToDelete } });
-  }
-
-  async getAllChildAssetsRecursive(parentId: string, account_id: any): Promise<any[]> {
-    const match: any = { _id: helperService.validateObjectId(parentId), visible: true };
-    if (account_id) match.account_id = account_id;
-
-    const result = await AssetModel.aggregate([
-      { $match: match },
-      {
-        $graphLookup: {
-          from: 'assets',
-          startWith: '$_id',
-          connectFromField: '_id',
-          connectToField: 'parent_id',
-          as: 'children',
-          restrictSearchWithMatch: { visible: true }
-        }
-      }
-    ]);
-
-    return result.length > 0 ? result[0].children : [];
-  };
-=======
   async deleteAssetsById(assetId: any) {
     const childData = await AssetModel.find({ parent_id: assetId });
     if (childData.length > 0) {
@@ -327,7 +281,7 @@ class AssetService {
     return all;
   };
 
->>>>>>> Stashed changes
+
   async makeAssetCopyRecursive(id: string, user_id: any, token: string, account_id: any, targetLocationId?: any, session?: any): Promise<any> {
     const dataExists: any = await AssetModel.find({
       _id: helperService.validateObjectId(String(id)),
