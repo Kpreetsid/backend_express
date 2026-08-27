@@ -23,35 +23,55 @@ class RolesService {
     }
   }
 
-  async insertRole(body: any, account_id: any, user_id: any): Promise<any> {
-    const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({ ...body, account_id, user_id, createdBy: user_id });
+  async insertRole(body: any, account_id: any, target_user_id: any, actor_user_id: any): Promise<any> {
+    const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({
+      data: body.data,
+      roleMenu: body.roleMenu,
+      account_id,
+      user_id: target_user_id,
+      createdBy: actor_user_id
+    });
     return await newUserRoleMenu.save();
   }
 
   async createUserRole(userRole: any, userData: IUser, session?: any) {
-    try {
-      var platformControl = await PlatformControlManager.getRoleMenuData(userRole);
-      var newRoleMenu = await RoleManager.getRoleMenuData(userRole);
-      const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({
-        account_id: userData.account_id,
-        user_id: userData._id,
-        data: platformControl,
-        roleMenu: newRoleMenu,
-        createdBy: userData._id
-      });
-      return await newUserRoleMenu.save({ session });
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
+    const platformControl = await PlatformControlManager.getRoleMenuData(userRole);
+    const newRoleMenu = await RoleManager.getRoleMenuData(userRole);
+    const newUserRoleMenu: IUserRoleMenu = new RoleMenuModel({
+      account_id: userData.account_id,
+      user_id: userData._id,
+      data: platformControl,
+      roleMenu: newRoleMenu,
+      createdBy: userData._id
+    });
+    return await newUserRoleMenu.save({ session });
   }
 
-  async updateById(id: any, body: any, user_id: any): Promise<any> {
-    return await RoleMenuModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id }, { returnDocument: 'after' });
+  async updateById(id: any, account_id: any, data: any, user_id: any): Promise<any> {
+    return await RoleMenuModel.findOneAndUpdate(
+      { _id: id, account_id },
+      { $set: { data, updatedBy: user_id } },
+      { returnDocument: 'after', runValidators: true }
+    );
   }
 
-  async removeById(id: any, user_id: any): Promise<any> {
-    return await RoleMenuModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
+  async resetUserRole(userRole: any, userData: IUser, actorUserId: any): Promise<any> {
+    const [data, roleMenu] = await Promise.all([
+      PlatformControlManager.getRoleMenuData(userRole),
+      RoleManager.getRoleMenuData(userRole)
+    ]);
+    return await RoleMenuModel.findOneAndUpdate(
+      { user_id: userData._id, account_id: userData.account_id },
+      {
+        $set: { data, roleMenu, updatedBy: actorUserId },
+        $setOnInsert: { createdBy: actorUserId }
+      },
+      { returnDocument: 'after', upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+  }
+
+  async removeById(id: any, account_id: any): Promise<any> {
+    return await RoleMenuModel.findOneAndDelete({ _id: id, account_id });
   }
 }
 

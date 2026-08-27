@@ -33,9 +33,11 @@ class OrderTemplateService {
   }
 
   async createTemplate(body: any, account_id: any, user_id: any): Promise<any> {
+    const payload = this.normalizeTemplatePayload(body);
+    await this.assertReferences(payload, account_id);
     const template = await WorkOrderTemplateModel.create({
       account_id,
-      ...this.normalizeTemplatePayload(body),
+      ...payload,
       createdBy: user_id,
       updatedBy: user_id
     });
@@ -44,6 +46,32 @@ class OrderTemplateService {
   }
 
   async updateTemplate(id: string, body: any, account_id: any, user_id: any): Promise<any | null> {
+    const existing = await WorkOrderTemplateModel.findOne({
+      _id: helperService.validateObjectId(id),
+      account_id,
+      visible: true
+    }).lean();
+    if (!existing) return null;
+
+    const merged = this.normalizeTemplatePayload({
+      template_name: body.template_name !== undefined ? body.template_name : existing.template_name,
+      title: body.title !== undefined ? body.title : existing.title,
+      description: body.description !== undefined ? body.description : existing.description,
+      estimated_time: body.estimated_time !== undefined ? body.estimated_time : existing.estimated_time,
+      priority: body.priority !== undefined ? body.priority : existing.priority,
+      nature_of_work: body.nature_of_work !== undefined ? body.nature_of_work : existing.nature_of_work,
+      maintenance_type: body.maintenance_type !== undefined ? body.maintenance_type : existing.maintenance_type,
+      procedure_ids: body.procedure_ids !== undefined ? body.procedure_ids : existing.procedure_ids,
+      assignee_ids: body.assignee_ids !== undefined ? body.assignee_ids : existing.assignee_ids,
+      location_ids: body.location_ids !== undefined ? body.location_ids : existing.location_ids,
+      asset_ids: body.asset_ids !== undefined ? body.asset_ids : existing.asset_ids,
+      parts: body.parts !== undefined ? body.parts : existing.parts,
+      categories: body.categories !== undefined ? body.categories : existing.categories,
+      vendors: body.vendors !== undefined ? body.vendors : existing.vendors,
+      field_rules: body.field_rules !== undefined ? body.field_rules : existing.field_rules,
+      due_date_settings: body.due_date_settings !== undefined ? body.due_date_settings : existing.due_date_settings
+    });
+    await this.assertReferences(merged, account_id);
     const updated = await WorkOrderTemplateModel.findOneAndUpdate(
       {
         _id: helperService.validateObjectId(id),
@@ -52,11 +80,11 @@ class OrderTemplateService {
       },
       {
         $set: {
-          ...this.normalizeTemplatePayload(body),
+          ...merged,
           updatedBy: user_id
         }
       },
-      { new: true }
+      { new: true, runValidators: true }
     ).lean();
 
     if (!updated) {
@@ -107,9 +135,9 @@ class OrderTemplateService {
       return [];
     }
 
-    return values
+    return Array.from(new Set(values
       .map((value: any) => String(value || '').trim())
-      .filter((value: string) => mongoose.Types.ObjectId.isValid(value))
+      .filter((value: string) => mongoose.Types.ObjectId.isValid(value))))
       .map((value: string) => helperService.validateObjectId(value));
   }
 
@@ -131,7 +159,7 @@ class OrderTemplateService {
       quantity: Number(part?.quantity || part?.estimatedQuantity || 0),
       unit: String(part?.unit || '').trim(),
       cost: Number.isFinite(Number(part?.cost)) ? Number(part.cost) : undefined,
-      currency: String(part?.currency || '').trim()
+      currency: String(part?.currency || '').trim().toUpperCase()
     })).filter((part: any) => part.part_name && part.quantity > 0);
   }
 
@@ -163,11 +191,11 @@ class OrderTemplateService {
 
   private normalizeDueDateSettings(settings: any): any {
     return {
-      due_after_value: Number.isFinite(Number(settings?.due_after_value)) ? Number(settings.due_after_value) : null,
+      due_after_value: this.nullableNumber(settings?.due_after_value),
       due_after_unit: settings?.due_after_unit ? String(settings.due_after_unit).trim() : null,
-      start_before_value: Number.isFinite(Number(settings?.start_before_value)) ? Number(settings.start_before_value) : null,
+      start_before_value: this.nullableNumber(settings?.start_before_value),
       start_before_unit: settings?.start_before_unit ? String(settings.start_before_unit).trim() : null,
-      recurrence_value: Number.isFinite(Number(settings?.recurrence_value)) ? Number(settings.recurrence_value) : null,
+      recurrence_value: this.nullableNumber(settings?.recurrence_value),
       recurrence_unit: settings?.recurrence_unit ? String(settings.recurrence_unit).trim() : null
     };
   }
@@ -177,7 +205,7 @@ class OrderTemplateService {
       template_name: String(body?.template_name || '').trim(),
       title: String(body?.title || '').trim(),
       description: String(body?.description || '').trim(),
-      estimated_time: Number.isFinite(Number(body?.estimated_time)) ? Number(body.estimated_time) : null,
+      estimated_time: this.nullableNumber(body?.estimated_time),
       priority: String(body?.priority || 'Medium').trim(),
       nature_of_work: String(body?.nature_of_work || 'General').trim(),
       maintenance_type: String(body?.maintenance_type || 'Reactive').trim(),
@@ -191,6 +219,35 @@ class OrderTemplateService {
       field_rules: this.normalizeFieldRules(body?.field_rules),
       due_date_settings: this.normalizeDueDateSettings(body?.due_date_settings)
     };
+  }
+
+  private nullableNumber(value: any): number | null {
+    if (value === null || value === undefined || value === '') return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private async assertReferences(payload: any, account_id: any): Promise<void> {
+    const partIds = (payload.parts || []).map((part: any) => part.part_id).filter(Boolean);
+    const [procedureCount, assigneeCount, locationCount, assets, partCount] = await Promise.all([
+      payload.procedure_ids.length ? ProcedureModel.countDocuments({ _id: { $in: payload.procedure_ids }, account_id, visible: true }) : Promise.resolve(0),
+      payload.assignee_ids.length ? UserModel.countDocuments({ _id: { $in: payload.assignee_ids }, account_id, user_status: 'active' }) : Promise.resolve(0),
+      payload.location_ids.length ? LocationModel.countDocuments({ _id: { $in: payload.location_ids }, account_id, visible: true }) : Promise.resolve(0),
+      payload.asset_ids.length ? AssetModel.find({ _id: { $in: payload.asset_ids }, account_id, visible: true }, { locationId: 1 }).lean() : Promise.resolve([]),
+      partIds.length ? PartsModel.countDocuments({ _id: { $in: partIds }, account_id, visible: true }) : Promise.resolve(0)
+    ]);
+    if (procedureCount !== payload.procedure_ids.length) throw invalidReference('procedures');
+    if (assigneeCount !== payload.assignee_ids.length) throw invalidReference('assignees');
+    if (locationCount !== payload.location_ids.length) throw invalidReference('locations');
+    if (assets.length !== payload.asset_ids.length) throw invalidReference('assets');
+    if (partCount !== partIds.length) throw invalidReference('parts');
+
+    if (payload.location_ids.length) {
+      const allowedLocations = new Set(payload.location_ids.map((value: any) => String(value)));
+      if (assets.some((asset: any) => asset.locationId && !allowedLocations.has(String(asset.locationId)))) {
+        throw Object.assign(new Error('Every selected asset must belong to a selected location'), { status: 400 });
+      }
+    }
   }
 
   private async enrichTemplates(templates: any[], account_id: any): Promise<any[]> {
@@ -253,3 +310,7 @@ class OrderTemplateService {
 }
 
 export const orderTemplateService = new OrderTemplateService();
+
+function invalidReference(label: string): Error {
+  return Object.assign(new Error(`One or more ${label} are not available in this account`), { status: 400 });
+}

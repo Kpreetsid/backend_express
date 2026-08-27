@@ -12,6 +12,7 @@ import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
 import { withTransaction } from "../../utils/transaction.helper";
+import { sanitizeEquipmentPayload } from './equipment.policy';
 
 class EquipmentController {
 
@@ -35,7 +36,7 @@ class EquipmentController {
       }
       if (locationId) {
         const validatedLocationId = helperService.validateObjectId(String(locationId));
-        const childIds = await locationService.getAllChildLocationIds(String(validatedLocationId));
+        const childIds = await locationService.getAllChildLocationIds(String(validatedLocationId), account_id);
         const mappedData = await mapUserToLocationService.getDataByLocationIds([String(validatedLocationId), ...childIds]);
         baseFilter.locationId = { $in: mappedData.map(doc => doc.locationId) };
       }
@@ -94,9 +95,22 @@ class EquipmentController {
 
   getChildAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { params: { id } } = req;
-      const childIds = await equipmentService.getAllChildEquipmentIDs(helperService.validateObjectId(id));
+      const rootId = helperService.validateObjectId(id);
+      const permittedRoot = await applyRoleFilter({
+        user,
+        baseFilter: { _id: rootId, account_id, visible: true },
+        accountField: 'account_id',
+        mapping: 'asset',
+        idField: '_id'
+      });
+      const root = await equipmentService.getAllEquipment(permittedRoot);
+      if (!root.length) {
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
+      }
+      const childIds = await equipmentService.getAllChildEquipmentIDs(rootId, account_id);
       if (childIds.length === 0) {
         throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
@@ -115,18 +129,22 @@ class EquipmentController {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       let { location_id, id } = req.query;
-      let assetQuery: any = { account_id, visible: true };
+      const assetQuery: any = { account_id, visible: true };
+      const restrictions: any[] = [];
       if (userRole !== "admin") {
         const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
         const assetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : []);
-        assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
+        restrictions.push({ $or: [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }] });
       }
       if (id) {
         const assetIds = helperService.validateObjectIds(String(id));
-        assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
+        restrictions.push({ $or: [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }] });
       }
       if (location_id) {
         assetQuery.locationId = { $in: helperService.validateObjectIds(String(location_id)) };
+      }
+      if (restrictions.length) {
+        assetQuery.$and = restrictions;
       }
       const data = await equipmentService.getEquipmentTreeData(assetQuery);
       if (!data || data.length === 0) {
@@ -143,14 +161,17 @@ class EquipmentController {
       const userToken = get(req, "userToken", {}) as string;
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       let { id } = req.params;
-      let assetQuery: any = { account_id, visible: true };
-      const assetIds = helperService.validateObjectIds(id);
-      assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }]
+      const assetQuery: any = { account_id, visible: true };
+      const requestedAssetIds = helperService.validateObjectIds(id);
+      const restrictions: any[] = [
+        { $or: [{ _id: { $in: requestedAssetIds } }, { parent_id: { $in: requestedAssetIds } }] }
+      ];
       if (userRole !== "admin") {
         const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-        const assetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : []);
-        assetQuery.$or = [{ _id: { $in: assetIds } }, { parent_id: { $in: assetIds } }];
+        const mappedAssetIds = mapData.flatMap(doc => doc?.assetId ? [helperService.validateObjectId(doc.assetId)] : []);
+        restrictions.push({ $or: [{ _id: { $in: mappedAssetIds } }, { parent_id: { $in: mappedAssetIds } }] });
       }
+      assetQuery.$and = restrictions;
       const isAssetExists = await equipmentService.checkEquipment(assetQuery);
       if (!isAssetExists || isAssetExists.length === 0) {
         throw Object.assign(new Error('Equipment not found'), { status: 404 });
@@ -167,17 +188,22 @@ class EquipmentController {
 
   create = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     var equipmentId: any = '';
-    const asset_ids = [];
+    const asset_ids: any[] = [];
+    let uploadedImageFile = '';
     const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
     const userToken = get(req, "userToken", {}) as string;
     try {
-      const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } = req.body;
+      const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } = sanitizeEquipmentPayload(req.body);
       if (!Equipment.userList || Equipment.userList.length === 0) {
         throw Object.assign(new Error('User selection is required for equipment mapping'), { status: 400 });
       }
       if (Equipment.image_path) {
-        const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");
+        if (!Equipment.image_path.startsWith('data:image/')) {
+          throw Object.assign(new Error('A newly created equipment image must be uploaded image data'), { status: 400 });
+        }
+        const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets", String(account_id));
         Equipment.image_path = image.fileName;
+        uploadedImageFile = image.fileName;
       }
       const equipmentData = await equipmentService.createEquipment(Equipment, account_id, user_id);
       equipmentId = equipmentData._id;
@@ -293,8 +319,6 @@ class EquipmentController {
         }
       }
 
-      console.log("equipmentEndpoint", equipmentEndpoint);
-
       const assetData = await Promise.all(assetsPromiseList);
       const assetsMapData: any = Equipment.userList.map((user: any) => ({ userId: user, assetId: equipmentData._id, account_id }));
       assetData.forEach((asset: any) => {
@@ -302,6 +326,7 @@ class EquipmentController {
           assetsMapData.push({ userId: user, assetId: asset._id, account_id })
         ));
       });
+      await mapUserToAssetService.assertMappingsBelongToAccount(assetsMapData, account_id);
       await mapUserToAssetService.createMapUserAssets(assetsMapData);
       await processorAPIService.setAssetHealthStatus(assetsMapData, account_id, user_id, userToken);
       await processorAPIService.createEquipmentEndPoints(equipmentEndpoint, user_id, userToken);
@@ -317,8 +342,17 @@ class EquipmentController {
       res.status(200).json({ status: true, message: "Equipment created successfully", data: equipmentData._id });
     } catch (error) {
       if (equipmentId) {
-        await equipmentService.deleteAssetsById(equipmentId);
-        await processorAPIService.deleteEquipmentEndpointByAssetId(asset_ids, userToken, user_id);
+        try {
+          await equipmentService.deleteAssetsById(equipmentId);
+        } catch { }
+        try {
+          await processorAPIService.deleteEquipmentEndpointByAssetId(asset_ids, userToken, user_id);
+        } catch { }
+      }
+      if (uploadedImageFile) {
+        try {
+          await uploadFilesService.deleteBase64Image(uploadedImageFile, 'assets');
+        } catch { }
       }
       next(error);
     }
@@ -326,10 +360,14 @@ class EquipmentController {
 
   update = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     const newlyCreatedAssetId = [];
+    let uploadedImageFile = '';
+    let previousImageFile = '';
+    let equipmentUpdated = false;
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userToken = get(req, "userToken", {}) as string;
-      const { params: { id }, body: { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } } = req;
+      const { params: { id } } = req;
+      const { Equipment, Motor, Flexible, Rigid, Belt_Pulley, Gearbox, Fan_Blower, Pumps, Compressor } = sanitizeEquipmentPayload(req.body);
       if (!Equipment || !Equipment.id) {
         throw Object.assign(new Error("Invalid request: Equipment ID is required"), { status: 400 });
       }
@@ -340,18 +378,24 @@ class EquipmentController {
         throw Object.assign(new Error("Please select at least one user"), { status: 400 });
       }
       const existEquipmentData = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
-      if (Equipment.image_path && Equipment.image_path.startsWith("data:image")) {
-        const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");
-        Equipment.image_path = image.fileName;
+      if (!existEquipmentData.length) {
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      if (Equipment.image_path) {
-        if (existEquipmentData.image_path && existEquipmentData.image_path['fileName']) {
-          await uploadFilesService.deleteBase64Image(existEquipmentData.image_path['fileName'], "asset");
-        }
-        const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets");
+      await mapUserToAssetService.assertAssetAndUsersBelongToAccount(id, Equipment.userList, account_id);
+      previousImageFile = typeof existEquipmentData[0]?.image_path === 'string'
+        ? existEquipmentData[0].image_path
+        : '';
+      if (Equipment.image_path && Equipment.image_path.startsWith("data:image")) {
+        const image = await uploadFilesService.uploadBase64Image(Equipment.image_path, "assets", String(account_id));
         Equipment.image_path = image.fileName;
+        uploadedImageFile = image.fileName;
+      } else if (Equipment.image_path && Equipment.image_path !== previousImageFile) {
+        throw Object.assign(new Error('Equipment image must be a new upload or the existing image'), { status: 400 });
+      } else if (!Equipment.image_path && previousImageFile) {
+        Equipment.image_path = previousImageFile;
       }
       await equipmentService.updateEquipment(Equipment, account_id, user_id);
+      equipmentUpdated = true;
       const assetUpdatePromises: any[] = [];
       const equipmentEndpoint: any = {
         Motor: {},
@@ -412,7 +456,7 @@ class EquipmentController {
           if (rigidData) {
             equipmentEndpoint.Rigid = { ...Rigid, asset_id: rigidData.id, org_id: account_id, asset_timezone: Equipment.asset_timezone };
             equipmentEndpoint.Rigid.asset_id = rigidData.id;
-            newlyCreatedAssetId.push(Rigid._id);
+            newlyCreatedAssetId.push(rigidData._id);
             assetUpdatePromises.push(rigidData);
           }
         }
@@ -512,7 +556,7 @@ class EquipmentController {
         }
       }
       const updatedAssets = await Promise.all(assetUpdatePromises);
-      const newlyCreatedAssetList = updatedAssets.filter(asset => asset?.isNew && asset?._id);
+      const newlyCreatedAssetList = newlyCreatedAssetId.map((assetId: any) => ({ assetId }));
       const assetsMapData: any[] = Equipment.userList.map((userId: any) => (
         { userId, assetId: Equipment.id, account_id }
       ));
@@ -524,11 +568,11 @@ class EquipmentController {
           });
         }
       }
+      await mapUserToAssetService.assertMappingsBelongToAccount(assetsMapData, account_id);
       await mapUserToAssetService.createMapUserAssets(assetsMapData);
       if (newlyCreatedAssetList.length > 0) {
         await processorAPIService.setAssetHealthStatus(newlyCreatedAssetList, account_id, user_id, userToken);
       }
-      console.log("---Put payload----", equipmentEndpoint);
       await processorAPIService.createEquipmentEndPoints(equipmentEndpoint, user_id, userToken);
       const data = await equipmentService.getAllEquipment({ _id: id, account_id: account_id, visible: true });
       await notificationService.notifyAccountUsers({
@@ -540,10 +584,22 @@ class EquipmentController {
         actionUrl: `/assets/asset-health/${id}/health`,
         sourceUserId: String(user_id)
       });
+      if (uploadedImageFile && previousImageFile && previousImageFile !== uploadedImageFile) {
+        try {
+          await uploadFilesService.deleteBase64Image(previousImageFile, 'assets');
+        } catch { }
+      }
       res.status(200).json({ status: true, message: "Equipment updated successfully", data });
     } catch (error) {
       if (newlyCreatedAssetId.length > 0) {
-        await equipmentService.deleteEquipmentAssetIds(newlyCreatedAssetId);
+        try {
+          await equipmentService.deleteEquipmentAssetIds(newlyCreatedAssetId);
+        } catch { }
+      }
+      if (uploadedImageFile && !equipmentUpdated) {
+        try {
+          await uploadFilesService.deleteBase64Image(uploadedImageFile, 'assets');
+        } catch { }
       }
       next(error);
     }
@@ -554,14 +610,17 @@ class EquipmentController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
       const { image_path } = req.body;
-      if (!image_path) {
-        throw Object.assign(new Error('Image path is required'), { status: 400 });
+      if (typeof image_path !== 'string' || !/^[a-z\d][a-z\d._/-]{0,299}$/i.test(image_path) || image_path.includes('..')) {
+        throw Object.assign(new Error('A valid image path is required'), { status: 400 });
       }
       const dataExists: any = await equipmentService.getAllEquipment({ _id: helperService.validateObjectId(id), account_id: account_id, visible: true });
       if (!dataExists || dataExists.length === 0) {
         throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      await equipmentService.updateEquipmentImageById(String(id), image_path, `${user_id}`);
+      const updated = await equipmentService.updateEquipmentImageById(String(id), image_path, `${user_id}`, account_id);
+      if (!updated) {
+        throw Object.assign(new Error('Equipment not found'), { status: 404 });
+      }
       await notificationService.notifyAccountUsers({
         accountId: String(account_id),
         module: 'Asset',
@@ -586,7 +645,6 @@ class EquipmentController {
       if (!dataExists || dataExists.length === 0) {
         throw Object.assign(new Error('Equipment not found'), { status: 404 });
       }
-      await mapUserToLocationService.removeLocationMapping(String(id));
       await equipmentService.removeEquipmentById(match, user_id);
       res.status(200).json({ status: true, message: "Equipment deleted successfully" });
     } catch (error) {

@@ -10,7 +10,11 @@ class VerificationController {
             if (!email) {
                 throw Object.assign(new Error('Email is required'), { status: 400 });
             }
-            const emailCheck: any = await usersService.getAllUsers({ $or: [{ username: email }, { email: email }], user_status: 'active' });
+            const identifier = String(email).trim();
+            const emailCheck: any = await usersService.getAllUsers({
+                $or: [{ username: identifier }, { email: identifier.toLowerCase() }],
+                user_status: 'active'
+            });
             if(emailCheck.length === 0) {
                 throw Object.assign(new Error('Email not found'), { status: 404 });
             }
@@ -34,19 +38,17 @@ class VerificationController {
             if (verificationCode.toString().length !== 6) {
                 throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
             }
-            const emailCheck: any = await usersService.getAllUsers({ $or: [{ username: email }, { email: email }], user_status: 'active' });
+            const identifier = String(email).trim();
+            const emailCheck: any = await usersService.getAllUsers({
+                $or: [{ username: identifier }, { email: identifier.toLowerCase() }],
+                user_status: 'active'
+            });
             if (emailCheck.length === 0) {
                 throw Object.assign(new Error('Email not found'), { status: 404 });
             }
-            const match: any = { email: emailCheck[0].email };
-            const otpExists = await verificationService.verifyOTPExists(match);
-            if (!otpExists) {
-                throw Object.assign(new Error('OTP has expired. Please request a new one.'), { status: 410 });
-            }
-            match.code = verificationCode;
-            const data = await verificationService.verifyUserOTP(match);
+            const data = await verificationService.consumeUserOTP(emailCheck[0].email, String(verificationCode));
             if (!data) {
-                throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
+                throw Object.assign(new Error('Invalid or expired verification code'), { status: 400 });
             }
             const user = await usersService.userVerified(String(emailCheck[0]._id));
             if (!user) {

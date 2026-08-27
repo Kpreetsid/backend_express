@@ -13,10 +13,12 @@ class OrderTemplateController {
       const maintenanceType = String(req.query.maintenance_type || '').trim();
 
       if (search && search !== 'undefined' && search !== 'null') {
+        if (search.length > 120) throw Object.assign(new Error('Search text is too long'), { status: 400 });
+        const escapedSearch = escapeRegExp(search);
         match.$or = [
-          { template_name: { $regex: search, $options: 'i' } },
-          { title: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } }
+          { template_name: { $regex: escapedSearch, $options: 'i' } },
+          { title: { $regex: escapedSearch, $options: 'i' } },
+          { description: { $regex: escapedSearch, $options: 'i' } }
         ];
       }
 
@@ -81,4 +83,12 @@ class OrderTemplateController {
   }
 }
 
+<<<<<<< Updated upstream
 export const orderTemplateController = controllerCache.withCache(new OrderTemplateController(), { namespace: 'work-order-templates', ttlSeconds: 300, tags: ['work-order-templates', 'schedules', 'work-orders'] });
+=======
+export const orderTemplateController = new OrderTemplateController();
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+>>>>>>> Stashed changes

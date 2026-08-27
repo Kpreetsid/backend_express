@@ -17,8 +17,8 @@ export interface ISopsMaster extends Document {
 
 const SopsMasterSchema = new Schema<ISopsMaster>(
     {
-        name: { type: String, trim: true, required: true },
-        description: { type: String, trim: true },
+        name: { type: String, trim: true, required: true, maxlength: 160 },
+        description: { type: String, trim: true, maxlength: 4000 },
         account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
         locationId: { type: Schema.Types.ObjectId, ref: 'LocationModel', required: true },
         categoryId: { type: Schema.Types.ObjectId, ref: 'CategoryModel', required: true },
@@ -36,5 +36,6 @@ const SopsMasterSchema = new Schema<ISopsMaster>(
 
 SopsMasterSchema.index({ account_id: 1, visible: 1 });
 SopsMasterSchema.index({ account_id: 1, locationId: 1 });
+SopsMasterSchema.index({ account_id: 1, visible: 1, categoryId: 1, locationId: 1, name: 1 });
 
 export const SOPsModel = mongoose.model<ISopsMaster>("Schema_SOPs", SopsMasterSchema);

@@ -5,7 +5,7 @@ export const ANALYSIS_FEATURE_COLLECTION_NAME = `analysis_feature`;
 export interface IAnalysisFeature extends Document {
     account_id: string,
     featuresJson: object[],
-    updateBy: ObjectId,
+    updatedBy: ObjectId,
     createdBy: ObjectId,
 }
 
@@ -18,7 +18,7 @@ const featureSchema = new Schema<IAnalysisFeature>({
         type: [Object],
         required: true
     },
-    updateBy: {
+    updatedBy: {
         type: Schema.Types.ObjectId,
         ref: "UserModel"
     },
@@ -31,5 +31,7 @@ const featureSchema = new Schema<IAnalysisFeature>({
     timestamps: true,
     versionKey: false
 })
+
+featureSchema.index({ account_id: 1 });
 
 export const AnalysisFeatureModel = mongoose.model("AnalysisFeatureModel", featureSchema)

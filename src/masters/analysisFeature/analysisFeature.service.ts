@@ -1,6 +1,7 @@
 import { AccountModel } from "../../models/account.model";
 import { AnalysisFeatureModel } from "../../models/analysisFeature.model";
 import { DEFAULT_ANALYSIS_FEATURES } from "./defaultAnalysisFeatures";
+import { mergeDefaultFeatureSelections, sanitizeAnalysisFeatureSelection } from "./selectionPolicy";
 
 class AnalysisFeatureService {
 
@@ -8,12 +9,30 @@ class AnalysisFeatureService {
         return await AnalysisFeatureModel.findOne(filter)
     }
 
-    async createFeatureData(body: any) {
-        return await AnalysisFeatureModel.create(body)
+    async createFeatureData(body: any, session?: any) {
+        const feature = new AnalysisFeatureModel(body);
+        return await feature.save({ session });
     }
 
-    async updateFeatureData(id: string, body: any, user_id: any) {
-        return await AnalysisFeatureModel.findByIdAndUpdate(id, { ...body, updatedBy: user_id });
+    async getOrCreateFeatureData(accountId: any, userId?: any) {
+        const existing = await this.getFeatureData({ account_id: accountId });
+        if (existing) return existing;
+        return await this.createFeatureData({
+            account_id: String(accountId),
+            featuresJson: DEFAULT_ANALYSIS_FEATURES,
+            createdBy: userId
+        });
+    }
+
+    async updateFeatureData(id: string, accountId: any, requestedFeatures: any[], userId: any) {
+        const existing: any = await AnalysisFeatureModel.findOne({ _id: id, account_id: accountId });
+        if (!existing) return null;
+        const featuresJson = sanitizeAnalysisFeatureSelection(existing.featuresJson, requestedFeatures);
+        return await AnalysisFeatureModel.findOneAndUpdate(
+            { _id: id, account_id: accountId },
+            { $set: { featuresJson, updatedBy: userId } },
+            { returnDocument: 'after', runValidators: true }
+        );
     }
 
     async removeFeatureData(id: string) {
@@ -27,14 +46,17 @@ class AnalysisFeatureService {
         }
 
         const accountIds = accounts.map((account: any) => String(account._id));
-        const existingFeatureDocs = await AnalysisFeatureModel.find({ account_id: { $in: accountIds } }, { account_id: 1 }).lean();
+        const existingFeatureDocs = await AnalysisFeatureModel.find(
+            { account_id: { $in: accountIds } },
+            { account_id: 1, featuresJson: 1 }
+        ).lean();
         const existingAccountIds = new Set(existingFeatureDocs.map((doc: any) => String(doc.account_id)));
         const missingAccountIds = accountIds.filter((accountId) => !existingAccountIds.has(accountId));
 
-        const bulkOperations = accountIds.map((accountId) => ({
+        const bulkOperations = existingFeatureDocs.map((doc: any) => ({
             updateMany: {
-                filter: { account_id: accountId },
-                update: { $set: { featuresJson: DEFAULT_ANALYSIS_FEATURES } }
+                filter: { _id: doc._id, account_id: doc.account_id },
+                update: { $set: { featuresJson: mergeDefaultFeatureSelections(DEFAULT_ANALYSIS_FEATURES, doc.featuresJson) } }
             }
         }));
 
@@ -52,7 +74,7 @@ class AnalysisFeatureService {
         }
 
         return {
-            updatedAccounts: accountIds.length,
+            updatedAccounts: existingFeatureDocs.length,
             insertedAccounts: missingAccountIds.length
         };
     }

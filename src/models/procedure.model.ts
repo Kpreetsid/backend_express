@@ -69,12 +69,12 @@ export interface IProcedure extends Document {
 const ProcedureSchema = new Schema<IProcedure>(
   {
     account_id: { type: Schema.Types.ObjectId, ref: 'AccountModel', required: true },
-    name: { type: String, trim: true, required: true },
-    category: { type: String, trim: true },
+    name: { type: String, trim: true, required: true, maxlength: 180 },
+    category: { type: String, trim: true, maxlength: 120 },
     tags: { type: [String], default: [] },
     location_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_Location', default: [] },
     asset_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_Asset', default: [] },
-    description: { type: String, trim: true },
+    description: { type: String, trim: true, maxlength: 4000 },
     required_parts: { type: [Schema.Types.Mixed] as any, default: [] },
     steps: { type: [Schema.Types.Mixed] as any, default: [] },
     version_group_id: { type: Schema.Types.ObjectId, required: true },
@@ -97,6 +97,7 @@ const ProcedureSchema = new Schema<IProcedure>(
 ProcedureSchema.index({ account_id: 1, visible: 1, createdAt: -1 });
 ProcedureSchema.index({ account_id: 1, visible: 1, name: 1 });
 ProcedureSchema.index({ account_id: 1, visible: 1, version_group_id: 1, version: -1 });
+ProcedureSchema.index({ account_id: 1, version_group_id: 1, version: 1 }, { unique: true });
 ProcedureSchema.index({ account_id: 1, visible: 1, is_latest: 1 });
 ProcedureSchema.index({ location_ids: 1 });
 ProcedureSchema.index({ asset_ids: 1 });

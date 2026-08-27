@@ -1,7 +1,6 @@
 import { AssetModel } from '../../models/asset.model';
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../transaction/mapUserAsset/userAsset.service";
-import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
 import { processorAPIService } from '../../api-processor';
 import { helperService } from '../../utils/helper';
 import { withTransaction } from "../../utils/transaction.helper";
@@ -61,23 +60,41 @@ class EquipmentService {
     return await AssetModel.find(match).lean();
   }
 
-  async getAllChildEquipmentIDs(assetId: any): Promise<string[]> {
-    const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id');
-    if (!children || children.length === 0) {
-      return [assetId];
+  async getAllChildEquipmentIDs(assetId: any, accountId: any, session?: any): Promise<string[]> {
+    const rootId = String(assetId);
+    const visited = new Set<string>([rootId]);
+    const allIds = [rootId];
+    let frontier: string[] = [rootId];
+
+    for (let depth = 0; frontier.length > 0; depth++) {
+      if (depth >= 50) {
+        throw Object.assign(new Error('Equipment hierarchy exceeds the supported depth'), { status: 400 });
+      }
+      const children = await AssetModel.find({
+        parent_id: { $in: frontier },
+        account_id: accountId,
+        visible: true
+      }).select('_id').session(session).lean();
+      const nextFrontier: string[] = [];
+      for (const child of children) {
+        const childId = String(child._id);
+        if (visited.has(childId)) continue;
+        visited.add(childId);
+        allIds.push(childId);
+        nextFrontier.push(childId);
+        if (allIds.length > 10000) {
+          throw Object.assign(new Error('Equipment hierarchy exceeds the supported size'), { status: 400 });
+        }
+      }
+      frontier = nextFrontier;
     }
-    const allChildIds: string[] = [];
-    for (const child of children) {
-      const subChildIds = await this.getAllChildEquipmentIDs(child._id);
-      allChildIds.push(...subChildIds);
-    }
-    return [assetId, ...allChildIds];
+    return allIds;
   };
 
   async getEquipmentTreeData(match: any): Promise<any> {
     const asset_type_list: string[] = ["Rigid", "Flexible", "Belt_Pulley"];
-    match.asset_type = { $nin: asset_type_list };
-    const allAssets = await AssetModel.find(match).lean();
+    const query = { ...match, asset_type: { $nin: asset_type_list } };
+    const allAssets = await AssetModel.find(query).lean();
     if (!allAssets.length) {
       throw Object.assign(new Error("No records found"), { status: 404 });
     }
@@ -89,23 +106,32 @@ class EquipmentService {
       if (!childrenMap.has(parent)) childrenMap.set(parent, []);
       childrenMap.get(parent)?.push(asset);
     });
-    const mapUsers = await MapUserAssetLocationModel.find({ assetId: { $in: allAssets.map((a) => a._id) } }).lean();
+    const mapUsers = await MapUserAssetLocationModel.find({
+      assetId: { $in: allAssets.map((a) => a._id) },
+      ...(match.account_id ? { account_id: match.account_id } : {})
+    }).lean();
     const assetUsersMap = new Map<string, string[]>();
     mapUsers.forEach((m) => {
       const assetId = String(m.assetId);
       if (!assetUsersMap.has(assetId)) assetUsersMap.set(assetId, []);
       assetUsersMap.get(assetId)?.push(String(m.userId));
     });
-    const buildTree: any = (asset: any) => {
+    const buildTree = (asset: any, ancestors = new Set<string>()): any => {
       const assetId = String(asset._id);
+      if (ancestors.has(assetId)) {
+        return { ...asset, id: assetId, userList: assetUsersMap.get(assetId) || [], childs: [] };
+      }
+      const nextAncestors = new Set(ancestors);
+      nextAncestors.add(assetId);
       return {
         ...asset,
         id: assetId,
-        childs: (childrenMap.get(assetId) || []).map((child) => buildTree(child))
+        userList: assetUsersMap.get(assetId) || [],
+        childs: (childrenMap.get(assetId) || []).map((child) => buildTree(child, nextAncestors))
       };
     };
-    const data = allAssets.map((asset) => buildTree(asset));
-    return data;
+    const roots = allAssets.filter((asset) => !asset.parent_id || !assetMap.has(String(asset.parent_id)));
+    return roots.map((asset) => buildTree(asset));
   };
 
   getEquipmentTreeDataById = async (match: any, token: string, user_id: any) => {
@@ -139,7 +165,6 @@ class EquipmentService {
     const childAssetIds = assets.filter(a => !a.top_level && a.parent_id).map(a => String(a._id));
     if (childAssetIds.length) {
       const childEquipmentDetail: any = await processorAPIService.getEquipmentDetails({ asset_ids: childAssetIds }, token, user_id);
-      console.log("--childEquipmentDetail--", childEquipmentDetail);
       const childEquipmentById = new Map(
         (childEquipmentDetail.data || []).map((a: any) => [String(a.asset_id || a.id), a])
       );
@@ -176,25 +201,44 @@ class EquipmentService {
         rootNodes.push(asset);
       }
     }
-    const attachChildren = (node: any): any => {
+    const attachChildren = (node: any, ancestors = new Set<string>()): any => {
       const nodeId = String(node._id);
-      node.childs = (childrenMap.get(nodeId) || []).map(attachChildren);
-      return node;
+      if (ancestors.has(nodeId)) {
+        return { ...node, childs: [] };
+      }
+      const nextAncestors = new Set(ancestors);
+      nextAncestors.add(nodeId);
+      return {
+        ...node,
+        childs: (childrenMap.get(nodeId) || []).map((child) => attachChildren(child, nextAncestors))
+      };
     };
-    return rootNodes.map(attachChildren);
+    return rootNodes.map((node) => attachChildren(node));
   };
 
-  async updateEquipmentImageById(id: string, image_path: string, user_id: string) {
-    return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { returnDocument: 'after' });
+  async updateEquipmentImageById(id: string, image_path: string, user_id: string, account_id: any) {
+    return await AssetModel.findOneAndUpdate(
+      { _id: id, account_id, visible: true },
+      { image_path: image_path, updatedBy: user_id },
+      { returnDocument: 'after' }
+    );
   }
 
   async removeEquipmentById(match: any, userID: any) {
     return await withTransaction(async (session) => {
-      const childAssets = await AssetModel.find({ parent_id: match._id }).session(session);
-      if (childAssets && childAssets.length > 0) {
-        await AssetModel.updateMany({ parent_id: match._id }, { visible: false, updatedBy: userID }, { session });
+      const hierarchyIds = await this.getAllChildEquipmentIDs(match._id, match.account_id, session);
+      const childIds = hierarchyIds.slice(1);
+      if (childIds.length > 0) {
+        await AssetModel.updateMany(
+          { _id: { $in: childIds }, account_id: match.account_id, visible: true },
+          { visible: false, updatedBy: userID },
+          { session }
+        );
+        for (const childId of childIds) {
+          await mapUserToAssetService.removeAssetMapping(childId, session);
+        }
       }
-      await mapUserToLocationService.removeLocationMapping(match._id, session);
+      await mapUserToAssetService.removeAssetMapping(String(match._id), session);
       return await AssetModel.findOneAndUpdate(match, { visible: false, updatedBy: userID }, { returnDocument: 'after', session });
     });
   };
@@ -215,6 +259,24 @@ class EquipmentService {
 
   removeExtraFields(obj: Record<string, any>) {
     return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined && value !== null));
+  }
+
+  private async updateOwnedAsset(
+    match: Record<string, any>,
+    update: Record<string, any>,
+    assetId: string,
+    session: any
+  ): Promise<any> {
+    const updated = await AssetModel.findOneAndUpdate(
+      match,
+      { $set: update },
+      { new: true, session }
+    ).lean();
+    if (!updated) {
+      throw Object.assign(new Error('Equipment component not found'), { status: 404 });
+    }
+    await mapUserToAssetService.removeAssetMapping(assetId, session);
+    return updated;
   }
 
   async createEquipment(equipment: any, account_id: any, user_id: any) {
@@ -566,8 +628,12 @@ class EquipmentService {
         imageNodeData: equipment.imageNodeData,
         updatedBy: user_id
       };
-      await mapUserToAssetService.removeAssetMapping(equipment.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: equipment.id }, { $set: updatedEquipment }, { new: true, session }).lean();
+      return this.updateOwnedAsset(
+        { _id: equipment.id, account_id, visible: true, top_level: true },
+        updatedEquipment,
+        equipment.id,
+        session
+      );
     });
   }
 
@@ -605,8 +671,12 @@ class EquipmentService {
         // year: motor.year,
         updatedBy: user_id
       };
-      await mapUserToAssetService.removeAssetMapping(motor.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: motor.id }, { $set: updatedMotor }, { new: true, session }).lean();
+      return this.updateOwnedAsset(
+        { _id: motor.id, account_id, parent_id: equipment.id, visible: true, asset_type: 'Motor' },
+        updatedMotor,
+        motor.id,
+        session
+      );
     });
   }
 
@@ -634,8 +704,12 @@ class EquipmentService {
         image_path: flexible.image_path,
         updatedBy: user_id
       };
-      await mapUserToAssetService.removeAssetMapping(flexible.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: flexible.id }, { $set: updatedFlexible }, { new: true, session }).lean();
+      return this.updateOwnedAsset(
+        { _id: flexible.id, account_id, parent_id: equipment.id, visible: true, asset_type: 'Flexible' },
+        updatedFlexible,
+        flexible.id,
+        session
+      );
     });
   }
 
@@ -664,8 +738,12 @@ class EquipmentService {
         image_path: rigid.image_path,
         updatedBy: user_id
       };
-      await mapUserToAssetService.removeAssetMapping(rigid.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: rigid.id }, { $set: updatedRigid }, { new: true, session }).lean();
+      return this.updateOwnedAsset(
+        { _id: rigid.id, account_id, parent_id: equipment.id, visible: true, asset_type: 'Rigid' },
+        updatedRigid,
+        rigid.id,
+        session
+      );
     });
   }
 
@@ -696,8 +774,12 @@ class EquipmentService {
         // drivingPulleyDiaUnit: beltPulley.drivingPulleyDiaUnit,
         updatedBy: user_id
       };
-      await mapUserToAssetService.removeAssetMapping(beltPulley.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: beltPulley.id }, { $set: updatedBeltPulley }, { new: true, session }).lean();
+      return this.updateOwnedAsset(
+        { _id: beltPulley.id, account_id, parent_id: equipment.id, visible: true, asset_type: 'Belt_Pulley' },
+        updatedBeltPulley,
+        beltPulley.id,
+        session
+      );
     });
   }
 
@@ -739,8 +821,12 @@ class EquipmentService {
         image_path: gearbox.image_path,
         updatedBy: user_id
       };
-      await mapUserToAssetService.removeAssetMapping(gearbox.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: gearbox.id }, { $set: updatedGearbox }, { new: true, session }).lean();
+      return this.updateOwnedAsset(
+        { _id: gearbox.id, account_id, parent_id: equipment.id, visible: true, asset_type: 'Gearbox' },
+        updatedGearbox,
+        gearbox.id,
+        session
+      );
     });
   }
 
@@ -776,8 +862,12 @@ class EquipmentService {
         image_path: fanBlower.image_path,
         updatedBy: user_id
       };
-      await mapUserToAssetService.removeAssetMapping(fanBlower.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: fanBlower.id }, { $set: updatedFanBlower }, { new: true, session }).lean();
+      return this.updateOwnedAsset(
+        { _id: fanBlower.id, account_id, parent_id: equipment.id, visible: true, asset_type: 'Fan_Blower' },
+        updatedFanBlower,
+        fanBlower.id,
+        session
+      );
     });
   }
 
@@ -819,8 +909,12 @@ class EquipmentService {
         // minimumContinuousStableFlowM3h: pumps.minimumContinuousStableFlowM3h,
         // motorToPumpSpeedRatio: pumps.motorToPumpSpeedRatio
       };
-      await mapUserToAssetService.removeAssetMapping(pumps.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: pumps.id }, { $set: updatedPumps }, { new: true, session }).lean();
+      return this.updateOwnedAsset(
+        { _id: pumps.id, account_id, parent_id: equipment.id, visible: true, asset_type: 'Pumps' },
+        updatedPumps,
+        pumps.id,
+        session
+      );
     });
   }
 
@@ -855,19 +949,40 @@ class EquipmentService {
         image_path: compressor.image_path,
         updatedBy: user_id
       };
-      await mapUserToAssetService.removeAssetMapping(compressor.id, session);
-      return await AssetModel.findOneAndUpdate({ _id: compressor.id }, { $set: updatedCompressor }, { new: true, session }).lean();
+      return this.updateOwnedAsset(
+        { _id: compressor.id, account_id, parent_id: equipment.id, visible: true, asset_type: 'Compressor' },
+        updatedCompressor,
+        compressor.id,
+        session
+      );
     });
   }
 
   async getAllChildEquipmentRecursive(parentId: string, account_id: any): Promise<any[]> {
-    const children = await AssetModel.find({ parent_id: parentId, account_id, visible: true }).lean();
+    const visited = new Set<string>([String(parentId)]);
     const all: any[] = [];
-    for (const child of children) {
-      if (child._id?.toString() === parentId) continue;
-      all.push(child);
-      const subChildren = await this.getAllChildEquipmentRecursive(child._id.toString(), account_id);
-      all.push(...subChildren);
+    let frontier = [String(parentId)];
+    for (let depth = 0; frontier.length > 0; depth++) {
+      if (depth >= 50) {
+        throw Object.assign(new Error('Equipment hierarchy exceeds the supported depth'), { status: 400 });
+      }
+      const children = await AssetModel.find({
+        parent_id: { $in: frontier },
+        account_id,
+        visible: true
+      }).lean();
+      const nextFrontier: string[] = [];
+      for (const child of children) {
+        const childId = String(child._id);
+        if (visited.has(childId)) continue;
+        visited.add(childId);
+        all.push(child);
+        nextFrontier.push(childId);
+        if (all.length > 10000) {
+          throw Object.assign(new Error('Equipment hierarchy exceeds the supported size'), { status: 400 });
+        }
+      }
+      frontier = nextFrontier;
     }
     return all;
   };
@@ -976,11 +1091,8 @@ class EquipmentService {
         savedAsset.top_level_asset_id = savedAsset._id;
         await savedAsset.save({ session: activeSession });
       }
-      let userList: any[] = [];
-      try {
-        const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
-        userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
-      } catch { }
+      const userMappings = await mapUserToAssetService.getDataByAssetId(`${sourceAsset.id || sourceAsset._id}`);
+      const userList = userMappings.map((doc: any) => doc.userId).filter(Boolean);
       try {
         const endPointList: any = await processorAPIService.getEndPoints([`${sourceAsset.id || sourceAsset._id}`], token, user_id);
         if (endPointList?.data?.length > 0) {
@@ -1001,8 +1113,14 @@ class EquipmentService {
             await processorAPIService.createEndPoint(newEndPointPayload, user_id, token);
           }
         }
-      } catch (err) {
-        console.error("Endpoint copy failed:", err);
+      } catch (error) {
+        try {
+          await processorAPIService.deleteEquipmentEndpointByAssetId([savedAsset._id], token, user_id);
+        } catch { }
+        if (error && typeof error === 'object' && !('status' in error)) {
+          Object.assign(error, { status: 502 });
+        }
+        throw error;
       }
       if (userList.length > 0) {
         const mappedData = userList.map((u: any) => ({ assetId: savedAsset._id, userId: u, account_id }));

@@ -24,17 +24,17 @@ export interface IInspection extends Document {
 const InspectionSchema = new Schema<IInspection>(
   {
     account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
-    title: { type: String, required: true, trim: true },
-    description: { type: String, trim: true },
-    start_date: { type: String, required: true, trim: true },
+    title: { type: String, required: true, trim: true, maxlength: 180 },
+    description: { type: String, trim: true, maxlength: 4000 },
+    start_date: { type: String, required: true, trim: true, maxlength: 40 },
     form_id: { type: mongoose.Schema.Types.ObjectId, ref: 'SOPsModel', required: true },
     inspection_report: { type: Object },
     location_id: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
     asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
-    status: { type: String, required: true, trim: true },
-    month: { type: String, required: true, trim: true },
-    createdFrom: { type: String, required: true, trim: true },
-    no_of_actions: { type: Number, required: true, default: 0 },
+    status: { type: String, required: true, trim: true, enum: ['Open', 'In-Progress', 'On-Hold', 'Completed'] },
+    month: { type: String, required: true, trim: true, maxlength: 32 },
+    createdFrom: { type: String, required: true, trim: true, maxlength: 100 },
+    no_of_actions: { type: Number, required: true, default: 0, min: 0 },
     visible: { type: Boolean, required: true, default: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
@@ -48,5 +48,6 @@ const InspectionSchema = new Schema<IInspection>(
 
 InspectionSchema.index({ account_id: 1, visible: 1 });
 InspectionSchema.index({ account_id: 1, location_id: 1 });
+InspectionSchema.index({ account_id: 1, visible: 1, status: 1, updatedAt: -1 });
 
 export const InspectionModel = mongoose.model<IInspection>('Schema_Inspection', InspectionSchema);

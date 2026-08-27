@@ -56,14 +56,14 @@ export interface IWorkOrderTemplate extends Document {
 
 const TemplatePartSchema = new Schema<IWorkOrderTemplatePart>({
   part_id: { type: Schema.Types.ObjectId, ref: 'PartModel' },
-  part_name: { type: String, trim: true, required: true },
-  part_number: { type: String, trim: true },
+  part_name: { type: String, trim: true, required: true, maxlength: 180 },
+  part_number: { type: String, trim: true, maxlength: 120 },
   part_source: { type: String, enum: ['manual', 'procedure', 'mixed'], default: 'manual' },
   procedureNames: { type: [String], default: [] },
   quantity: { type: Number, required: true, min: 0 },
-  unit: { type: String, trim: true },
-  cost: { type: Number },
-  currency: { type: String, trim: true }
+  unit: { type: String, trim: true, maxlength: 40 },
+  cost: { type: Number, min: 0 },
+  currency: { type: String, trim: true, minlength: 3, maxlength: 3, uppercase: true }
 }, { _id: false, versionKey: false });
 
 const FieldRuleSchema = new Schema<IWorkOrderTemplateFieldRule>({
@@ -96,12 +96,12 @@ const defaultFieldRules = () => ({
 
 const WorkOrderTemplateSchema = new Schema<IWorkOrderTemplate>({
   account_id: { type: Schema.Types.ObjectId, required: true, index: true },
-  template_name: { type: String, trim: true, required: true },
-  title: { type: String, trim: true, required: true },
-  description: { type: String, trim: true, default: '' },
-  estimated_time: { type: Number, default: null },
+  template_name: { type: String, trim: true, required: true, maxlength: 180 },
+  title: { type: String, trim: true, required: true, maxlength: 180 },
+  description: { type: String, trim: true, default: '', maxlength: 4000 },
+  estimated_time: { type: Number, min: 0, default: null },
   priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: 'Medium' },
-  nature_of_work: { type: String, trim: true, default: 'General' },
+  nature_of_work: { type: String, trim: true, default: 'General', maxlength: 120 },
   maintenance_type: { type: String, enum: WORK_ORDER_TEMPLATE_MAINTENANCE_TYPES, default: 'Reactive' },
   procedure_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_Procedure', default: [] },
   assignee_ids: { type: [Schema.Types.ObjectId], ref: 'Schema_User', default: [] },

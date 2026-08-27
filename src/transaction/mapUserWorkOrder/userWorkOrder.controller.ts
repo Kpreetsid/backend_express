@@ -6,6 +6,7 @@ import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { orderService } from '../../work/order/order.service';
 import { notificationService } from '../../utils/notification.service';
+<<<<<<< Updated upstream
 
 class UserWorkOrderController {
   async getUserWorkOrders(req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -66,13 +67,72 @@ class UserWorkOrderController {
       const firstMapping = validatedBody[0];
       if (firstMapping) {
         const orders = await orderService.getAllOrders({ _id: firstMapping.woId, account_id: firstMapping.account_id, visible: true });
+=======
+
+class UserWorkOrderController {
+  async getUserWorkOrders(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const match: any = {};
+      const { workOrderId } = req.query;
+      if (userRole === 'admin') {
+        const workOrderData: any = await orderService.getAllOrders({ account_id, visible: true });
+        if (!workOrderData || workOrderData.length === 0) {
+          throw Object.assign(new Error('Work order not found'), { status: 404 });
+        }
+        match.woId = { $in: workOrderData.map((doc: any) => doc._id) };
+      } else {
+        match.userId = user_id;
+      }
+      if (workOrderId) {
+        match.woId = helperService.validateObjectId(workOrderId);
+        const workOrderData: any = await orderService.getAllOrders({ _id: match.woId, account_id, visible: true });
+        if (!workOrderData || workOrderData.length === 0) {
+          throw Object.assign(new Error('Work order not found'), { status: 404 });
+        }
+      }
+      const data = await userWorkOrderService.getAll(match);
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error('User work order mapping not found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "User work order mappings fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async getMappedData(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id } = get(req, "user", {}) as IUser;
+      const { workOrderId } = req.params;
+      const woId = helperService.validateObjectId(workOrderId);
+      await userWorkOrderService.assertAccountMappings([woId], [], account_id);
+      const data = await userWorkOrderService.mappedData({ woId: woId });
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error('Mapped data not found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Mapped data fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  async create(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const workOrderId = helperService.validateObjectId(String(req.body.workOrderId));
+      const userIds = helperService.validateObjectIds((req.body.userIdList || []).join(','));
+      const data = await userWorkOrderService.replaceAccountMappedUsers(workOrderId, userIds, account_id);
+      if (workOrderId) {
+        const orders = await orderService.getAllOrders({ _id: workOrderId, account_id, visible: true });
+>>>>>>> Stashed changes
         await notificationService.notifyAccountUsers({
-          accountId: String(firstMapping.account_id),
+          accountId: String(account_id),
           module: 'Work Order',
           event: 'updated',
-          entityId: String(firstMapping.woId),
+          entityId: String(workOrderId),
           entityName: orders[0]?.title || orders[0]?.order_no || 'Work Order',
-          actionUrl: `/work-order/details/${firstMapping.woId}`,
+          actionUrl: `/work-order/details/${workOrderId}`,
           sourceUserId: String(user_id)
         });
       }
@@ -86,13 +146,17 @@ class UserWorkOrderController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { workOrderId } = req.params;
-      const { userIds } = req.body;
+      const { userIdList } = req.body;
       const woId = helperService.validateObjectId(workOrderId);
+<<<<<<< Updated upstream
       if (!Array.isArray(userIds)) {
+=======
+      if (!Array.isArray(userIdList)) {
+>>>>>>> Stashed changes
         throw Object.assign(new Error('Invalid request data'), { status: 400 });
       }
-      const validatedUserIds = helperService.validateObjectIds(userIds.join(','));
-      const data = await userWorkOrderService.updateMappedUsers(woId, validatedUserIds);
+      const validatedUserIds = helperService.validateObjectIds(userIdList.join(','));
+      const data = await userWorkOrderService.replaceAccountMappedUsers(woId, validatedUserIds, account_id);
       const orders = await orderService.getAllOrders({ _id: woId, account_id, visible: true });
       await notificationService.notifyAccountUsers({
         accountId: String(account_id),
@@ -104,6 +168,7 @@ class UserWorkOrderController {
         sourceUserId: String(user_id)
       });
       res.status(200).json({ status: true, message: "User work order mapping updated successfully", data });
+<<<<<<< Updated upstream
     } catch (error) {
       next(error);
     }
@@ -122,3 +187,25 @@ class UserWorkOrderController {
 }
 
 export const userWorkOrderController = controllerCache.withCache(new UserWorkOrderController(), { namespace: 'mappings', ttlSeconds: 120, tags: ['mappings', 'assets', 'locations', 'work-orders', 'users'] });
+=======
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id } = get(req, "user", {}) as IUser;
+      const { workOrderId } = req.params;
+      const woId = helperService.validateObjectId(workOrderId);
+      await userWorkOrderService.assertAccountMappings([woId], [], account_id);
+      const data = await userWorkOrderService.removeMappedUsers(woId);
+      res.status(200).json({ status: true, message: "User work order mapping removed successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export const userWorkOrderController = new UserWorkOrderController();
+>>>>>>> Stashed changes

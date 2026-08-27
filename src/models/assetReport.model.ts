@@ -185,4 +185,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
   versionKey: false
 });
 
+reportAssetSchema.index({ accountId: 1, visible: 1, top_level_asset_id: 1, _id: -1 });
+reportAssetSchema.index({ accountId: 1, visible: 1, assetId: 1, _id: -1 });
+
 export const ReportAssetModel = mongoose.model<IReportAsset>('Schema_ReportAsset', reportAssetSchema);

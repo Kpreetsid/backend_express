@@ -4,6 +4,8 @@ import { usersService } from "../../masters/user/user.service";
 import { IAccount } from "../../models/account.model";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { withTransaction } from "../../utils/transaction.helper";
+import { analysisFeatureService } from "../../masters/analysisFeature/analysisFeature.service";
+import { DEFAULT_ANALYSIS_FEATURES } from "../../masters/analysisFeature/defaultAnalysisFeatures";
 
 class RegistrationService {
   private mailerService: MailerService;
@@ -44,6 +46,11 @@ class RegistrationService {
         if (!userDetails) {
           throw Object.assign(new Error("User creation failed"), { status: 500 });
         }
+        await analysisFeatureService.createFeatureData({
+          account_id: String(account._id),
+          featuresJson: DEFAULT_ANALYSIS_FEATURES,
+          createdBy: userDetails.userDetails?._id
+        }, session);
         
         await this.mailerService.sendRegistrationConfirmation(userDetails.userDetails, account);
         await userVerification.deleteOne({ session });

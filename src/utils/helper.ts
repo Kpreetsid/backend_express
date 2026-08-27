@@ -17,7 +17,7 @@ class HelperService {
     return new mongoose.Types.ObjectId(id);
   }
 
-  validateObjectIds(ids: unknown): mongoose.Types.ObjectId[] {
+  validateObjectIds(ids: unknown, maxCount?: number): mongoose.Types.ObjectId[] {
     let idsArray: string[] = [];
     if (typeof ids === 'string') {
       idsArray = ids.split(',').map(id => id.trim()).filter(Boolean);
@@ -29,6 +29,12 @@ class HelperService {
 
     if (!idsArray.length) {
       throw Object.assign(new Error('No ObjectIds provided'), { status: 400 });
+    }
+    if (maxCount !== undefined && (!Number.isSafeInteger(maxCount) || maxCount < 1)) {
+      throw Object.assign(new Error('Invalid ObjectId limit'), { status: 500 });
+    }
+    if (maxCount !== undefined && idsArray.length > maxCount) {
+      throw Object.assign(new Error(`Too many ObjectIds provided (maximum ${maxCount})`), { status: 400 });
     }
     return idsArray.map(id => this.validateObjectId(id));
   }

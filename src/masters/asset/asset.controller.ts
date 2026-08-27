@@ -2,7 +2,7 @@ import { controllerCache } from '../../_cache/controllerCache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { assetService } from './asset.service';
-import { IUser } from '../../models/user.model';
+import { IUser, UserModel } from '../../models/user.model';
 import { mapUserToAssetService } from '../../transaction/mapUserAsset/userAsset.service';
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { locationService } from '../location/location.service';
@@ -35,7 +35,7 @@ class AssetController {
       if (helperService.hasValue(locationId)) {
         const validatedLocationIds = helperService.validateObjectIds(String(locationId));
         const rootLocationIds = validatedLocationIds.map((id) => String(id));
-        const childLocationGroups = await Promise.all(rootLocationIds.map((id) => locationService.getAllChildLocationIds(id)));
+        const childLocationGroups = await Promise.all(rootLocationIds.map((id) => locationService.getAllChildLocationIds(id, user.account_id)));
         const expandedLocationIds = [...new Set([...rootLocationIds, ...childLocationGroups.flat()])];
         if (user.user_role !== "admin") {
           const mappedData = await mapUserToLocationService.getDataByLocationIds(expandedLocationIds);
@@ -153,7 +153,7 @@ class AssetController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
-      const childIds = await assetService.getAllChildAssetIDs(helperService.validateObjectId(String(id)));
+      const childIds = await assetService.getAllChildAssetIDs(helperService.validateObjectId(String(id)), user.account_id);
       if (childIds.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
@@ -198,37 +198,48 @@ class AssetController {
 
   getFilteredAssets = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
       const { locationList = [], assets = [], top_level } = req.body;
-      const match: any = { account_id, visible: true };
-      if (userRole !== "admin") {
-        const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-        if (!mapData || mapData.length === 0) {
-          throw Object.assign(new Error("Asset not found"), { status: 404 });
-        }
-        match._id = { $in: mapData.map((doc) => doc.assetId) };
+      if (!Array.isArray(locationList) || !Array.isArray(assets)) {
+        throw Object.assign(new Error('Asset filters must be arrays'), { status: 400 });
       }
-      if (top_level) {
-        match.top_level = top_level;
+      const baseFilter: any = {};
+      if (top_level !== undefined) {
+        if (typeof top_level !== 'boolean') throw Object.assign(new Error('top_level must be a boolean'), { status: 400 });
+        baseFilter.top_level = top_level;
       }
-      if (locationList && locationList.length > 0) {
-        match.locationId = { $in: locationList };
-        if (userRole !== "admin") {
-          const mapData = await mapUserToAssetService.getAssetsMappedData(user_id);
-          match._id = { $in: mapData.map((doc) => doc.assetId) };
-        }
+      if (locationList.length > 0) {
+        baseFilter.locationId = { $in: helperService.validateObjectIds(locationList, 5000) };
       }
-      if (assets && assets.length > 0) {
-        match._id = { $in: assets };
+      if (assets.length > 0) {
+        baseFilter._id = { $in: helperService.validateObjectIds(assets, 5000) };
       }
+      const match = await this.buildMappedAssetFilter(user, baseFilter);
       const data = await assetService.getAllAssets(match);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error("No assets found matching the filter"), { status: 404 });
-      }
-      res.status(200).json({ status: true, message: "Filtered assets retrieved successfully", data });
+      res.status(200).json({ status: true, message: "Filtered assets retrieved successfully", data: data || [] });
     } catch (error) {
       next(error);
     }
+  };
+
+  private buildMappedAssetFilter = async (user: IUser, baseFilter: Record<string, any>): Promise<Record<string, any>> => {
+    const match: Record<string, any> = { ...baseFilter, account_id: user.account_id, visible: true };
+    if (user.user_role === 'admin') return match;
+
+    const mappedData = await mapUserToAssetService.getAssetsMappedData(user._id);
+    const mappedAssetIds = (mappedData || []).map((doc: any) => doc.assetId).filter(Boolean);
+    const requestedScope = match._id;
+    if (requestedScope) {
+      match.$and = [
+        ...(Array.isArray(match.$and) ? match.$and : []),
+        { _id: requestedScope },
+        { _id: { $in: mappedAssetIds } }
+      ];
+      delete match._id;
+    } else {
+      match._id = { $in: mappedAssetIds };
+    }
+    return match;
   };
 
   createOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -236,9 +247,43 @@ class AssetController {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userToken = get(req, "userToken", {}) as string;
-      const { body } = req;
-      if (body.userIdList?.length === 0) {
-        throw Object.assign(new Error("Please select at least one user"), { status: 400 });
+      const body = { ...(req.body || {}) };
+      body.userIdList = await this.assertAccountUsers(body.userIdList, account_id);
+      body.alarmType = this.normalizeAlarmTypes(body.alarmType);
+      delete body.account_id;
+      delete body.createdBy;
+      delete body.updatedBy;
+      delete body.visible;
+
+      const location = await locationService.getLocationById(
+        helperService.validateObjectId(String(body.locationId)),
+        account_id
+      );
+      if (!location) {
+        throw Object.assign(new Error('Location not found'), { status: 400 });
+      }
+      body.locationId = location._id;
+
+      if (body.parent_id) {
+        const parent = await assetService.getAssetHierarchyNode(
+          helperService.validateObjectId(String(body.parent_id)),
+          account_id
+        );
+        if (!parent) {
+          throw Object.assign(new Error('Parent asset not found'), { status: 400 });
+        }
+        if (String(parent.locationId) !== String(location._id)) {
+          throw Object.assign(new Error('Parent asset and location must match'), { status: 400 });
+        }
+        body.parent_id = parent._id;
+        body.top_level = false;
+        body.top_level_asset_id = parent.top_level
+          ? parent._id
+          : (parent.top_level_asset_id || parent._id);
+      } else {
+        body.top_level = true;
+        delete body.parent_id;
+        delete body.top_level_asset_id;
       }
       data = await assetService.createAssetOld(body, account_id, user_id);
       if (!data) {
@@ -262,7 +307,7 @@ class AssetController {
         user_id,
         userToken,
       );
-      const insertedData: any = await assetService.getAllAssets({ _id: data._id });
+      const insertedData: any = await assetService.getAllAssets({ _id: data._id, account_id, visible: true });
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
@@ -287,24 +332,52 @@ class AssetController {
   updateOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const { params: { id }, body } = req;
-      if (body.userIdList?.length === 0) {
-        throw Object.assign(new Error("Please select at least one user"), { status: 400 });
-      }
+      const { params: { id } } = req;
+      const body = { ...(req.body || {}) };
+      body.userIdList = await this.assertAccountUsers(body.userIdList, account_id);
+      delete body.account_id;
+      delete body.createdBy;
+      delete body.updatedBy;
+      delete body.visible;
+      delete body.top_level;
+      delete body.parent_id;
+      delete body.top_level_asset_id;
       const existingData: any = await assetService.getAllAssets({ _id: helperService.validateObjectId(String(id)), account_id, visible: true });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
-      if (body.locationId !== existingData[0].locationId) {
-        await assetService.updateAllChildAssetsLocation(
-          helperService.validateObjectId(String(id)), body.locationId, user_id);
+      body.alarmType = this.normalizeAlarmTypes(body.alarmType ?? existingData[0].alarmType);
+      const hierarchy = await assetService.getAssetHierarchyNode(helperService.validateObjectId(String(id)), account_id);
+      const targetLocation = await locationService.getLocationById(
+        helperService.validateObjectId(String(body.locationId)),
+        account_id
+      );
+      if (!hierarchy || !targetLocation) {
+        throw Object.assign(new Error('Asset location not found'), { status: 400 });
       }
-      const data = await assetService.updateAssetOld(helperService.validateObjectId(String(id)), body, user_id);
+      body.locationId = targetLocation._id;
+      if (hierarchy.parent_id) {
+        const parent = await assetService.getAssetHierarchyNode(hierarchy.parent_id, account_id);
+        if (!parent || String(parent.locationId) !== String(targetLocation._id)) {
+          throw Object.assign(new Error('Child asset must remain in its parent asset location'), { status: 400 });
+        }
+      }
+
+      const existingLocationId = existingData[0].locationId?.id
+        || existingData[0].locationId?._id
+        || existingData[0].locationId;
+      if (String(body.locationId) !== String(existingLocationId)) {
+        await assetService.updateAllChildAssetsLocation(
+          helperService.validateObjectId(String(id)), body.locationId, user_id, account_id);
+      }
+      const data = await assetService.updateAssetOld(helperService.validateObjectId(String(id)), body, user_id, account_id);
       if (!data) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
       const insertedData: any = await assetService.getAllAssets({
         _id: helperService.validateObjectId(String(id)),
+        account_id,
+        visible: true,
       });
       if (!insertedData || insertedData.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
@@ -386,30 +459,15 @@ class AssetController {
 
   getAssetSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const {
-        account_id,
-        _id: user_id,
-        user_role: userRole,
-      } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
-      let { assetList } = req.query;
-      if (assetList && assetList.toString().split(",").length > 0) {
-        match._id = helperService.validateObjectIds(String(assetList));
-      }
-      if (userRole !== "admin") {
-        const mapData =
-          await mapUserToAssetService.getAssetsMappedData(user_id);
-        if (mapData && mapData.length > 0) {
-          match._id = { $in: mapData.map((doc: any) => doc.assetId) };
-        }
-      }
+      const user = get(req, "user", {}) as IUser;
+      const { assetList } = req.query;
+      const baseFilter: any = {};
+      if (assetList) baseFilter._id = { $in: helperService.validateObjectIds(String(assetList), 5000) };
+      const match = await this.buildMappedAssetFilter(user, baseFilter);
       const data = await assetService.getAssetDataSensorList(match);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error("Asset sensor list not found"), { status: 404 });
-      }
       res
         .status(200)
-        .json({ status: true, message: "Asset sensor list fetched successfully", data });
+        .json({ status: true, message: "Asset sensor list fetched successfully", data: data || [] });
     } catch (error) {
       next(error);
     }
@@ -417,30 +475,16 @@ class AssetController {
 
   getFilteredAssetSensorList = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
-      const {
-        account_id,
-        _id: user_id,
-        user_role: userRole,
-      } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, visible: true };
-      let { assetList } = req.body;
-      if (assetList && assetList.length > 0) {
-        match._id = { $in: helperService.validateObjectIds(String(assetList)) };
-      }
-      if (userRole !== "admin") {
-        const mapData =
-          await mapUserToAssetService.getAssetsMappedData(user_id);
-        if (mapData && mapData.length > 0) {
-          match._id = { $in: mapData.map((doc: any) => doc.assetId) };
-        }
-      }
+      const user = get(req, "user", {}) as IUser;
+      const { assetList = [] } = req.body || {};
+      if (!Array.isArray(assetList)) throw Object.assign(new Error('assetList must be an array'), { status: 400 });
+      const baseFilter: any = {};
+      if (assetList.length > 0) baseFilter._id = { $in: helperService.validateObjectIds(assetList, 5000) };
+      const match = await this.buildMappedAssetFilter(user, baseFilter);
       const data = await assetService.getAssetDataSensorList(match);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error("Asset sensor list not found"), { status: 404 });
-      }
       res
         .status(200)
-        .json({ status: true, message: "Asset sensor list fetched successfully", data });
+        .json({ status: true, message: "Asset sensor list fetched successfully", data: data || [] });
     } catch (error) {
       next(error);
     }
@@ -451,6 +495,17 @@ class AssetController {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userToken = get(req, "userToken", "") as string;
       const { params: { id } } = req;
+
+      const source = await assetService.getAssetHierarchyNode(
+        helperService.validateObjectId(String(id)),
+        account_id
+      );
+      if (!source) {
+        throw Object.assign(new Error('Asset not found'), { status: 404 });
+      }
+      this.assertRolePermission(req, 'asset', source.top_level || !source.parent_id
+        ? 'add_asset'
+        : 'add_child_asset');
 
       const result = await withTransaction(async (session: any) => {
         const newParentId = await assetService.makeAssetCopyRecursive(String(id), user_id, userToken, account_id, undefined, session);
@@ -473,6 +528,34 @@ class AssetController {
     } catch (error) {
       next(error);
     }
+  }
+
+  private assertRolePermission(req: Request, moduleName: string, action: string): void {
+    const roleMenu: any = get(req, 'role', {});
+    if (roleMenu?.[moduleName]?.[action] !== true) {
+      throw Object.assign(new Error('You do not have permission to access.'), { status: 403 });
+    }
+  }
+
+  private async assertAccountUsers(userIdList: unknown, accountId: any): Promise<string[]> {
+    if (!Array.isArray(userIdList) || userIdList.length === 0) {
+      throw Object.assign(new Error('Please select at least one user'), { status: 400 });
+    }
+    const uniqueIds = Array.from(new Set(userIdList.map(String).map(id => id.trim()).filter(Boolean)));
+    const objectIds = helperService.validateObjectIds(uniqueIds, 500);
+    const count = await UserModel.countDocuments({ _id: { $in: objectIds }, account_id: accountId });
+    if (count !== objectIds.length) {
+      throw Object.assign(new Error('Every selected user must belong to the active account'), { status: 400 });
+    }
+    return objectIds.map(id => String(id));
+  }
+
+  private normalizeAlarmTypes(value: unknown): string[] {
+    const allowed = new Set(['alert', 'danger', 'critical', 'sendMail']);
+    const normalized = Array.isArray(value)
+      ? Array.from(new Set(value.map(String).map(item => item.trim()).filter(item => allowed.has(item))))
+      : [];
+    return normalized.length ? normalized : ['alert', 'danger', 'critical'];
   }
 }
 

@@ -5,6 +5,7 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { AssetModel } from '../../models/asset.model';
+import { UserModel } from '../../models/user.model';
 
 class MapUserAssetController {
 
@@ -17,6 +18,15 @@ class MapUserAssetController {
         match.userId = helperService.validateObjectId(String(userId));
       }
       if (userRole === 'admin') {
+        if (userId) {
+          const targetUser = await UserModel.exists({
+            _id: helperService.validateObjectId(String(userId)),
+            account_id
+          });
+          if (!targetUser) {
+            throw Object.assign(new Error('User not found in this account'), { status: 404 });
+          }
+        }
         const assetMatch: any = { account_id, visible: true };
         if (assetId) {
           const ids = helperService.validateObjectIds(String(assetId));
@@ -46,15 +56,22 @@ class MapUserAssetController {
 
   async setUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
+      const { account_id } = get(req, "user", {}) as IUser;
       const body = Array.isArray(req.body) ? req.body : (req.body ? [req.body] : []);
       const validatedBody = body.filter((doc: any) => doc.assetId && doc.userId).map((doc: any) => ({
         assetId: helperService.validateObjectId(String(doc.assetId)),
-        userId: helperService.validateObjectId(String(doc.userId))
+        userId: helperService.validateObjectId(String(doc.userId)),
+        account_id
       }));
       if (validatedBody.length === 0) {
         throw Object.assign(new Error('Invalid data'), { status: 400 });
       }
-      await mapUserToAssetService.createMapUserAssets(validatedBody);
+      const uniqueMappings = [...new Map(validatedBody.map(mapping => [
+        `${mapping.assetId}:${mapping.userId}`,
+        mapping
+      ])).values()];
+      await mapUserToAssetService.assertMappingsBelongToAccount(uniqueMappings, account_id);
+      await mapUserToAssetService.createMapUserAssets(uniqueMappings);
       res.status(201).json({ message: 'User assets mapped successfully' });
     } catch (error) {
       next(error);
@@ -63,12 +80,16 @@ class MapUserAssetController {
 
   async updateUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
+      const { account_id } = get(req, "user", {}) as IUser;
       const { params: { assetId }, body } = req;
       if (!assetId || !body || (Array.isArray(body) && body.length === 0) || (!Array.isArray(body) && Object.keys(body).length === 0)) {
         throw Object.assign(new Error('Bad request'), { status: 400 });
       }
       const validatedAssetId = helperService.validateObjectId(String(assetId));
-      const validatedUserIds = helperService.validateObjectIds(body.userIdList.join(','));
+      const validatedUserIds = body.userIdList.length
+        ? helperService.validateObjectIds(body.userIdList)
+        : [];
+      await mapUserToAssetService.assertAssetAndUsersBelongToAccount(validatedAssetId, validatedUserIds, account_id);
       await mapUserToAssetService.updateUserMapping(String(validatedAssetId), validatedUserIds);
       res.status(201).json({ status: true, message: 'User asset mappings updated successfully' });
     } catch (error) {
@@ -78,12 +99,19 @@ class MapUserAssetController {
 
   async updateSendMailFlag(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
+      const user = get(req, "user", {}) as IUser;
+      if (!user?._id || user.user_role !== 'admin') {
+        throw Object.assign(new Error('Account administrator access is required'), { status: 403 });
+      }
       const body = Array.isArray(req.body) ? req.body : (req.body ? [req.body] : []);
       const validatedBody = body.map((item: any) => ({
-        ...item,
-        _id: helperService.validateObjectId(String(item._id))
+        _id: helperService.validateObjectId(String(item._id)),
+        alert: item.alert,
+        danger: item.danger,
+        critical: item.critical,
+        sendMail: item.alert || item.danger || item.critical
       }));
-      await mapUserToAssetService.updateMappedUserFlags(validatedBody);
+      await mapUserToAssetService.updateMappedUserFlags(validatedBody, user.account_id);
       return res.status(200).json({ status: true, message: 'Asset mail notification settings updated successfully' });
     } catch (error) {
       next(error);
@@ -91,4 +119,8 @@ class MapUserAssetController {
   };
 }
 
+<<<<<<< Updated upstream
 export const userAssetController = controllerCache.withCache(new MapUserAssetController(), { namespace: 'mappings', ttlSeconds: 120, tags: ['mappings', 'assets', 'locations', 'work-orders', 'users'] });
+=======
+export const userAssetController = new MapUserAssetController();
+>>>>>>> Stashed changes

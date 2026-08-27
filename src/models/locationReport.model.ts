@@ -130,4 +130,6 @@ const LocationReportSchema = new Schema<ILocationReport>({
     versionKey: false
 });
 
+LocationReportSchema.index({ account_id: 1, visible: 1, location_id: 1, _id: -1 });
+
 export const ReportLocationModel = mongoose.model<ILocationReport>('Schema_ReportLocation', LocationReportSchema);

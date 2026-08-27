@@ -7,7 +7,8 @@
     "dev": "ts-node-dev --respawn --transpile-only --exit-child --inspect=0.0.0.0:9229 src/server.ts --host 0.0.0.0",
     "build": "npx shx rm -rf dist && npx tsc && npx shx mkdir -p dist/public && npx shx cp -r src/public/* dist/public/",
     "start": "npm run build && node dist/server.js",
-    "typecheck": "npx tsc --noEmit"
+    "typecheck": "npx tsc --noEmit",
+    "test:auth-security": "npm run build && node --test test/auth-reset-security.test.cjs"
   },
   "keywords": [],
   "author": "Pawan Kumar Gautam",
@@ -33,7 +34,8 @@
     "multer": "^2.2.0",
     "node-cron": "^4.6.0",
     "nodemailer": "^9.0.5",
-    "puppeteer": "^25.8.0",
+    "puppeteer": "^25.9.0",
+    "sanitize-html": "^2.17.7",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
@@ -46,9 +48,10 @@
     "@types/lodash": "^4.17.25",
     "@types/morgan": "^1.9.10",
     "@types/multer": "^2.2.0",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.3.0",
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^8.0.1",
+    "@types/sanitize-html": "^2.16.1",
     "ts-node-dev": "^2.0.0",
     "typescript": "^6.0.3"
   }

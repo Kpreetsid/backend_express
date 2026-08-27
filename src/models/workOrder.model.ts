@@ -205,7 +205,8 @@ export interface IWorkOrder extends Document {
   };
   sop_form_updated_at?: Date;
   asset_report_id: ObjectId;
-  cron_id: ObjectId;
+  cron_id?: ObjectId;
+  schedule_execution_key?: string;
   tasks: ITask[];
   parts: IParts[];
   labor_entries: ILaborEntry[];
@@ -259,6 +260,8 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   tasks: { type: [TaskSchema], default: [] },
   labor_entries: { type: [LaborEntrySchema], default: [] },
   asset_report_id: { type: Schema.Types.ObjectId, ref: 'AssetReportModel' },
+  cron_id: { type: Schema.Types.ObjectId, ref: 'Schema_Schedule' },
+  schedule_execution_key: { type: String, trim: true },
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
   files: { type: [Object] },
   visible: { type: Boolean, default: true },
@@ -275,6 +278,7 @@ WorkOrderSchema.index({ account_id: 1, visible: 1, status: 1 });
 WorkOrderSchema.index({ account_id: 1, visible: 1, priority: 1 });
 WorkOrderSchema.index({ wo_asset_id: 1, visible: 1 });
 WorkOrderSchema.index({ wo_location_id: 1, visible: 1 });
+<<<<<<< Updated upstream
 WorkOrderSchema.index({ parentId: 1 });
 WorkOrderSchema.index({ order_no: 1 });
 WorkOrderSchema.index({ createdBy: 1 });
@@ -282,6 +286,25 @@ WorkOrderSchema.index({ createdBy: 1 });
 WorkOrderSchema.plugin(syncVersionPlugin);
 
 WorkOrderSchema.plugin(historyPlugin, {
+=======
+WorkOrderSchema.index({ parentId: 1 });
+WorkOrderSchema.index({ order_no: 1 });
+WorkOrderSchema.index({ createdBy: 1 });
+WorkOrderSchema.index({ cron_id: 1, createdAt: -1 });
+WorkOrderSchema.index(
+  { account_id: 1, schedule_execution_key: 1 },
+  { unique: true, partialFilterExpression: { schedule_execution_key: { $type: 'string' } } }
+);
+// A request represents one conversion decision. The partial unique index keeps
+// concurrent conversion attempts safe even when MongoDB transactions are not
+// available (for example, a standalone development deployment).
+WorkOrderSchema.index(
+  { work_request_id: 1 },
+  { unique: true, partialFilterExpression: { work_request_id: { $type: 'objectId' } } }
+);
+
+WorkOrderSchema.plugin(historyPlugin, {
+>>>>>>> Stashed changes
   historyModel: HistoryWorkOrderModel
 });
 

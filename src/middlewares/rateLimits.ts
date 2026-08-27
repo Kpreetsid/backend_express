@@ -1,5 +1,10 @@
 import rateLimit from 'express-rate-limit';
 
+const configuredLimit = (name: string, fallback: number): number => {
+  const parsed = Number.parseInt(process.env[name] || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 class RateLimiterService {
   public readonly globalLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -14,7 +19,7 @@ class RateLimiterService {
 
   public readonly authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 300,
+    max: configuredLimit('RATE_LIMIT_AUTH_MAX', 60),
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -26,7 +31,7 @@ class RateLimiterService {
 
   public readonly uploadLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 75,
+    max: configuredLimit('RATE_LIMIT_UPLOAD_MAX', 75),
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -37,7 +42,7 @@ class RateLimiterService {
 
   public readonly otpLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 75,
+    max: configuredLimit('RATE_LIMIT_OTP_SEND_MAX', 10),
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -48,7 +53,7 @@ class RateLimiterService {
 
   public readonly otpValidateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 75,
+    max: configuredLimit('RATE_LIMIT_OTP_VALIDATE_MAX', 15),
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -59,7 +64,7 @@ class RateLimiterService {
 
   public readonly emailLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 75,
+    max: configuredLimit('RATE_LIMIT_EMAIL_MAX', 10),
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -70,7 +75,7 @@ class RateLimiterService {
 
   public readonly notificationLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 75,
+    max: configuredLimit('RATE_LIMIT_NOTIFICATION_MAX', 75),
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -81,7 +86,7 @@ class RateLimiterService {
 
   public readonly passwordResetLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 75,
+    max: configuredLimit('RATE_LIMIT_PASSWORD_RESET_MAX', 10),
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -92,7 +97,7 @@ class RateLimiterService {
 
   public readonly passwordResetValidateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 75,
+    max: configuredLimit('RATE_LIMIT_PASSWORD_RESET_VALIDATE_MAX', 15),
     standardHeaders: true,
     legacyHeaders: false,
     message: {
@@ -103,7 +108,7 @@ class RateLimiterService {
 
   public readonly unauthorizedRequestLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 75,
+    max: configuredLimit('RATE_LIMIT_UNAUTHORIZED_MAX', 30),
     standardHeaders: true,
     legacyHeaders: false,
     message: {

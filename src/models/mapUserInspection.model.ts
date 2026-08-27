@@ -20,4 +20,7 @@ const MapUserInspectionSchema = new Schema<IMapUserInspection>({
   versionKey: false
 });
 
+MapUserInspectionSchema.index({ account_id: 1, user_id: 1, inspection_id: 1 }, { unique: true });
+MapUserInspectionSchema.index({ account_id: 1, inspection_id: 1 });
+
 export const MapUserInspectionModel = mongoose.model<IMapUserInspection>('Schema_MapUserInspection', MapUserInspectionSchema);

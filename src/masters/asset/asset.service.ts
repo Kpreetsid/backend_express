@@ -82,14 +82,24 @@ class AssetService {
     await AssetModel.bulkWrite(bulkOps);
   }
 
+<<<<<<< Updated upstream
   async getAllChildAssetIDs(assetId: any): Promise<string[]> {
     const children = await AssetModel.find({ parent_id: assetId, visible: true }).select('_id').lean();
+=======
+  async getAllChildAssetIDs(assetId: any, account_id?: any, visited = new Set<string>()): Promise<string[]> {
+    const assetKey = String(assetId);
+    if (visited.has(assetKey)) return [];
+    visited.add(assetKey);
+    const match: any = { parent_id: assetId, visible: true };
+    if (account_id) match.account_id = account_id;
+    const children = await AssetModel.find(match).select('_id');
+>>>>>>> Stashed changes
     if (!children || children.length === 0) {
       return [assetId];
     }
     const allChildIds: string[] = [];
     for (const child of children) {
-      const subChildIds = await this.getAllChildAssetIDs(child._id);
+      const subChildIds = await this.getAllChildAssetIDs(child._id, account_id, visited);
       allChildIds.push(...subChildIds);
     }
     return [assetId, ...allChildIds];
@@ -185,6 +195,7 @@ class AssetService {
   }
 
   async getAssetDataSensorList(match: any): Promise<any> {
+<<<<<<< Updated upstream
     const data = await AssetModel.find(match).lean().populate([
       { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
       { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
@@ -195,6 +206,17 @@ class AssetService {
     }
     const result = data.map((doc: any) => {
       doc = helperService.toPlainObject(doc);
+=======
+    const data = await AssetModel.find(match)
+      .select('_id asset_name top_level_asset_id locationId account_id')
+      .populate([
+      { path: 'locationId', model: "Schema_Location", select: 'id location_name' },
+      { path: 'top_level_asset_id', model: "Schema_Asset", select: 'id asset_name' },
+      { path: 'account_id', model: "Schema_Account", select: 'id account_name' }
+      ])
+      .lean();
+    const result = data.map((doc: any) => {
+>>>>>>> Stashed changes
       return {
         "asset_id": doc._id,
         "asset_name": doc.asset_name,
@@ -215,24 +237,38 @@ class AssetService {
     return await data.save();
   }
 
-  async updateAssetOld(id: any, body: any, user_id: any): Promise<any> {
+  async getAssetHierarchyNode(id: any, account_id: any): Promise<any> {
+    return await AssetModel.findOne({ _id: id, account_id, visible: true })
+      .select('_id parent_id top_level top_level_asset_id locationId')
+      .lean();
+  }
+
+  async updateAssetOld(id: any, body: any, user_id: any, account_id: any): Promise<any> {
     return await withTransaction(async (session) => {
-      await mapUserToAssetService.updateUserMapping(String(id), body.userIdList);
-      await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType);
-      return await AssetModel.findOneAndUpdate({ _id: id }, { ...body, updatedBy: user_id }, { returnDocument: 'after', session });
+      await mapUserToAssetService.updateUserMapping(String(id), body.userIdList, [], [], session);
+      await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType, session);
+      return await AssetModel.findOneAndUpdate(
+        { _id: id, account_id, visible: true },
+        { ...body, updatedBy: user_id },
+        { returnDocument: 'after', session }
+      );
     });
   }
 
-  async updateAllChildAssetsLocation(id: any, locationId: any, user_id: any): Promise<any> {
-    const childAssets = await AssetModel.find({ parent_id: id });
+  async updateAllChildAssetsLocation(id: any, locationId: any, user_id: any, account_id: any): Promise<any> {
+    const childAssets = await AssetModel.find({ parent_id: id, account_id, visible: true });
     if (childAssets && childAssets.length > 0) {
       for (const asset of childAssets) {
-        await this.updateAllChildAssetsLocation(`${asset._id}`, locationId, user_id);
+        await this.updateAllChildAssetsLocation(`${asset._id}`, locationId, user_id, account_id);
       }
-      return await AssetModel.updateMany({ parent_id: id }, { locationId: locationId, updatedBy: user_id });
+      return await AssetModel.updateMany(
+        { parent_id: id, account_id, visible: true },
+        { locationId: locationId, updatedBy: user_id }
+      );
     }
   }
 
+<<<<<<< Updated upstream
   async deleteAssetsById(assetId: any) {
     const allChildIds = (await this.getAllChildAssetsRecursive(assetId, null)).map(c => c._id);
     const idsToDelete = [assetId, ...allChildIds];
@@ -264,6 +300,34 @@ class AssetService {
 
     return result.length > 0 ? result[0].children : [];
   };
+=======
+  async deleteAssetsById(assetId: any) {
+    const childData = await AssetModel.find({ parent_id: assetId });
+    if (childData.length > 0) {
+      for (const asset of childData) {
+        await mapUserToAssetService.removeAssetMapping(`${asset._id}`);
+      }
+      await AssetModel.deleteMany({ _id: { $in: childData.map(doc => doc._id) } });
+    }
+    await AssetModel.deleteMany({ _id: assetId });
+    await mapUserToAssetService.removeAssetMapping(assetId);
+  }
+
+  async getAllChildAssetsRecursive(parentId: string, account_id: any, visited = new Set<string>()): Promise<any[]> {
+    if (visited.has(parentId)) return [];
+    visited.add(parentId);
+    const children = await AssetModel.find({ parent_id: parentId, account_id, visible: true }).lean();
+    const all: any[] = [];
+    for (const child of children) {
+      if (child._id?.toString() === parentId) continue;
+      all.push(child);
+      const subChildren = await this.getAllChildAssetsRecursive(child._id.toString(), account_id, visited);
+      all.push(...subChildren);
+    }
+    return all;
+  };
+
+>>>>>>> Stashed changes
   async makeAssetCopyRecursive(id: string, user_id: any, token: string, account_id: any, targetLocationId?: any, session?: any): Promise<any> {
     const dataExists: any = await AssetModel.find({
       _id: helperService.validateObjectId(String(id)),
@@ -351,10 +415,11 @@ class AssetService {
       if (!cleanAsset.asset_name) cleanAsset.asset_name = "Unnamed Asset";
       if (!cleanAsset.account_id) cleanAsset.account_id = account_id;
       const baseName = (sourceAsset.asset_name || "Asset").replace(/\s-\s(Copy|\(\d+\))$/, "");
+      const escapedBaseName = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const existingCount = await AssetModel.countDocuments({
         parent_id: newParentId || { $exists: false },
         account_id,
-        asset_name: { $regex: `^${baseName} - Copy`, $options: "i" },
+        asset_name: { $regex: `^${escapedBaseName} - Copy`, $options: "i" },
         visible: true
       }).session(activeSession);
       const newName = existingCount > 0 ? `${baseName} - Copy (${existingCount + 1})` : `${baseName} - Copy`;

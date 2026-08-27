@@ -4,6 +4,7 @@ export const commentValidator = [
   body('comments')
     .notEmpty().withMessage('Comment text is required')
     .isString().withMessage('Comment must be a string')
+    .isLength({ max: 5000 }).withMessage('Comment cannot exceed 5000 characters')
     .trim(),
   
   body('order_id')

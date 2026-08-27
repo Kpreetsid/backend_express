@@ -31,9 +31,6 @@ class PartsController {
       });
 
       const data = await partsService.getAllParts(filter);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error('No parts found'), { status: 404 });
-      }
       res.status(200).json({ status: true, message: "Parts retrieved successfully", data });
     } catch (error) {
       next(error);
@@ -54,7 +51,14 @@ class PartsController {
       if (location_id) {
         match.location_id = { $in: helperService.validateObjectIds(String(location_id)) };
       }
-      const data = await partsService.getCycleCounts(match);
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter: match,
+        accountField: 'account_id',
+        mapping: 'location',
+        idField: 'location_id'
+      });
+      const data = await partsService.getCycleCounts(filter);
       res.status(200).json({ status: true, message: 'Cycle counts retrieved successfully', data });
     } catch (error) {
       next(error);
@@ -74,7 +78,7 @@ class PartsController {
   async approveCycleCount(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const decision = String(req.body?.decision || '').trim() === 'rejected' ? 'rejected' : 'approved';
+      const decision = String(req.body?.decision || '').trim() as 'approved' | 'rejected';
       const data = await partsService.approveCycleCount(String(req.params.id), decision, user.account_id, user, req.body?.approval_notes);
       res.status(200).json({ status: true, message: `Cycle count ${decision} successfully`, data });
     } catch (error) {
@@ -85,7 +89,14 @@ class PartsController {
   async getReplenishmentSuggestions(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const data = await partsService.getReplenishmentSuggestions(user.account_id);
+      const partsFilter = await applyRoleFilter({
+        user,
+        baseFilter: { account_id: user.account_id, visible: true },
+        accountField: 'account_id',
+        mapping: 'location',
+        idField: 'location_id'
+      });
+      const data = await partsService.getReplenishmentSuggestions(user.account_id, partsFilter);
       res.status(200).json({ status: true, message: 'Replenishment suggestions retrieved successfully', data });
     } catch (error) {
       next(error);
@@ -121,6 +132,21 @@ class PartsController {
   async getPartHistory(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
+      const partFilter = await applyRoleFilter({
+        user,
+        baseFilter: {
+          _id: helperService.validateObjectId(String(req.params.id)),
+          account_id: user.account_id,
+          visible: true
+        },
+        accountField: 'account_id',
+        mapping: 'location',
+        idField: 'location_id'
+      });
+      const accessibleParts = await partsService.getAllParts(partFilter);
+      if (!accessibleParts.length) {
+        throw Object.assign(new Error('Part not found'), { status: 404 });
+      }
       const data = await partsService.getPartHistory(String(req.params.id), user.account_id);
       res.status(200).json({ status: true, message: "Part history retrieved successfully", data });
     } catch (error) {
@@ -135,7 +161,7 @@ class PartsController {
       const createdData = await partsService.insert(req.body, account_id, user);
 
       // Fetch populated data
-      const data = await partsService.getAllParts({ _id: createdData._id });
+      const data = await partsService.getAllParts({ _id: createdData._id, account_id, visible: true });
       const result = data && data.length > 0 ? data[0] : createdData;
 
       setSyncVersionEtag(res, result);
@@ -147,12 +173,17 @@ class PartsController {
 
   async importParts(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const rawParts = req.body?.parts;
       let parts: any[] = [];
 
       if (typeof rawParts === 'string') {
-        parts = JSON.parse(rawParts);
+        try {
+          parts = JSON.parse(rawParts);
+        } catch {
+          throw Object.assign(new Error('Import data is not valid JSON'), { status: 400 });
+        }
       } else if (Array.isArray(rawParts)) {
         parts = rawParts;
       }
@@ -160,12 +191,13 @@ class PartsController {
       if (!Array.isArray(parts) || parts.length === 0) {
         throw Object.assign(new Error('Import file contains no valid parts data'), { status: 400 });
       }
+      if (parts.length > 500) {
+        throw Object.assign(new Error('A maximum of 500 parts can be imported at once'), { status: 400 });
+      }
 
-      const result = await partsService.importParts(parts, account_id, user_id);
+      const result = await partsService.importParts(parts, account_id, user);
       const file = req.file ? {
         originalName: req.file.originalname,
-        fileName: req.file.filename,
-        path: req.file.path,
         size: req.file.size,
         mimetype: req.file.mimetype
       } : null;
@@ -185,25 +217,36 @@ class PartsController {
 
   async updatePart(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { params: { id }, body } = req;
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
+<<<<<<< Updated upstream
 
       const isDataExists = await partsService.getAllParts(match);
+=======
+      
+      const scopedMatch = await applyRoleFilter({ user, baseFilter: match, accountField: 'account_id', mapping: 'location', idField: 'location_id' });
+      const isDataExists = await partsService.getAllParts(scopedMatch);
+>>>>>>> Stashed changes
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
 
+<<<<<<< Updated upstream
       const expectedVersion = getExpectedSyncVersion(req);
       assertSyncVersion(isDataExists[0], expectedVersion);
 
       const updated = await partsService.updatePartById(String(id), body, get(req, "user", {}) as IUser, account_id, expectedVersion);
+=======
+      const updated = await partsService.updatePartById(String(id), body, user, account_id);
+>>>>>>> Stashed changes
       if (!updated) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
 
       // Fetch populated data
-      const data = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)) });
+      const data = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)), account_id, visible: true });
 
       setSyncVersionEtag(res, data[0]);
       res.status(200).json({ status: true, message: "Part updated successfully", data: data[0] });
@@ -217,7 +260,14 @@ class PartsController {
       const user = get(req, "user", {}) as IUser;
       const { account_id } = user;
       const { params: { id }, body } = req;
-      const part = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)), account_id, visible: true });
+      const scopedMatch = await applyRoleFilter({
+        user,
+        baseFilter: { _id: helperService.validateObjectId(String(id)), account_id, visible: true },
+        accountField: 'account_id',
+        mapping: 'location',
+        idField: 'location_id'
+      });
+      const part = await partsService.getAllParts(scopedMatch);
       if (!part || part.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
@@ -228,7 +278,7 @@ class PartsController {
       }
 
       // Fetch populated data
-      const data = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)) });
+      const data = await partsService.getAllParts({ _id: helperService.validateObjectId(String(id)), account_id, visible: true });
 
       res.status(200).json({ status: true, message: "Part stock updated successfully", data: data[0] });
     } catch (error) {
@@ -253,11 +303,18 @@ class PartsController {
       const { params: { id }, body } = req;
 
       // Ensure the source part exists and belongs to this account
-      const sourceParts = await partsService.getAllParts({
+      const sourceMatch = await applyRoleFilter({
+        user,
+        baseFilter: {
         _id: helperService.validateObjectId(String(id)),
         account_id,
         visible: true
+        },
+        accountField: 'account_id',
+        mapping: 'location',
+        idField: 'location_id'
       });
+      const sourceParts = await partsService.getAllParts(sourceMatch);
       if (!sourceParts || sourceParts.length === 0) {
         throw Object.assign(new Error('Source part not found'), { status: 404 });
       }
@@ -279,8 +336,8 @@ class PartsController {
 
       // Fetch fresh, fully-populated data for the source and destination parts
       const [sourceFresh, destinationFresh] = await Promise.all([
-        partsService.getAllParts({ _id: helperService.validateObjectId(String(id)) }),
-        partsService.getAllParts({ _id: helperService.validateObjectId(String(body.destination_part_id)) })
+        partsService.getAllParts({ _id: helperService.validateObjectId(String(id)), account_id, visible: true }),
+        partsService.getAllParts({ _id: helperService.validateObjectId(String(body.destination_part_id)), account_id, visible: true })
       ]);
 
       res.status(200).json({
@@ -298,14 +355,16 @@ class PartsController {
 
   async removePart(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id, _id: user_id } = user;
       const { params: { id } } = req;
       const match: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
-      const isDataExists = await partsService.getAllParts(match);
+      const scopedMatch = await applyRoleFilter({ user, baseFilter: match, accountField: 'account_id', mapping: 'location', idField: 'location_id' });
+      const isDataExists = await partsService.getAllParts(scopedMatch);
       if (!isDataExists || isDataExists.length === 0) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-      const data = await partsService.removeById(String(id), user_id);
+      const data = await partsService.removeById(String(id), user_id, account_id);
       if (!data) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }

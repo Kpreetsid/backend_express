@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { scheduleService } from './schedule.service';
@@ -126,3 +127,136 @@ class ScheduleController {
 }
 
 export const scheduleController = controllerCache.withCache(new ScheduleController(), { namespace: 'schedules', ttlSeconds: 300, tags: ['schedules', 'work'] });
+=======
+import { Request, Response, NextFunction } from 'express';
+import { scheduleService } from './schedule.service';
+import { IUser } from '../../models/user.model';
+import { get } from 'lodash';
+import { helperService } from '../../utils/helper';
+import { applyRoleFilter } from '../../utils/roleFilter';
+import { sanitizeSchedulePayload } from './schedule.policy';
+
+class ScheduleController {
+
+  async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const baseFilter: any = { account_id, visible: true };
+      const { query: { priority, location_id, assignedUser } } = req;
+      if (priority) baseFilter["work_order.priority"] = { $in: priority.toString().split(',') };
+      if (location_id) baseFilter["work_order.wo_location_id"] = { $in: helperService.validateObjectIds(String(location_id)) };
+      if (assignedUser) baseFilter["work_order.userIdList"] = { $in: helperService.validateObjectIds(assignedUser.toString()) };
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location",
+        idField: "work_order.wo_location_id",
+        createdByField: "work_order.userIdList"
+      });
+
+      const data = await scheduleService.getSchedules(filter);
+      res.status(200).json({ status: true, message: "Schedules fetched successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getDataById(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const { params: { id } } = req;
+      const baseFilter: any = { _id: helperService.validateObjectId(String(id)), account_id, visible: true };
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location",
+        idField: "work_order.wo_location_id",
+        createdByField: "createdBy"
+      });
+
+      const data = await scheduleService.getSchedules(filter);
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error("Schedule not found"), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Schedule fetched successfully", data });
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  };
+
+  async create(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const body = sanitizeSchedulePayload(req.body, true);
+      await scheduleService.assertScheduleReferences(body, account_id);
+      const data = await scheduleService.createSchedules(body, account_id, user_id);
+      res.status(201).json({ status: true, message: "Schedule created successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async update(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { params: { id } } = req;
+      const body = sanitizeSchedulePayload(req.body);
+      const existingData = await scheduleService.getSchedules({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
+      if (!existingData || existingData.length === 0) {
+        throw Object.assign(new Error('Schedule not found'), { status: 404 });
+      }
+      await scheduleService.assertScheduleReferences(body, account_id);
+      const data = await scheduleService.updateSchedules(id, body, account_id, user_id);
+      res.status(200).json({ status: true, message: "Schedule updated successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateStatus(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { params: { id }, body } = req;
+      const existingData = await scheduleService.getSchedules({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
+      if (!existingData || existingData.length === 0) {
+        throw Object.assign(new Error('Schedule not found'), { status: 404 });
+      }
+      const enabledStatus = body.rescheduleEnabled ?? body.enabled ?? body.schedule?.enabled;
+      if (typeof enabledStatus !== 'boolean') {
+        throw Object.assign(new Error('A boolean schedule status is required'), { status: 400 });
+      }
+      const data = await scheduleService.updateStatus(id, enabledStatus, account_id, user_id);
+      res.status(200).json({ status: true, message: "Status updated successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { id } = req.params;
+      const existingData = await scheduleService.getSchedules({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
+      if (!existingData || existingData.length === 0) {
+        throw Object.assign(new Error('Schedule not found'), { status: 404 });
+      }
+      const data = await scheduleService.removeSchedules(id, account_id, user_id);
+      if (!data) {
+        throw Object.assign(new Error('Schedule not deleted'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Schedule deleted successfully" });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export const scheduleController = new ScheduleController();
+>>>>>>> Stashed changes

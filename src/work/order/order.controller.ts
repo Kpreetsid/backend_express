@@ -5,7 +5,11 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { storageProvider } from '../../_config/storage';
+<<<<<<< Updated upstream
 import { getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
+=======
+import { sanitizeWorkOrderPayload } from './workOrder.policy';
+>>>>>>> Stashed changes
 
 class OrderController {
 
@@ -77,8 +81,25 @@ class OrderController {
   async createOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
+<<<<<<< Updated upstream
       const data = await orderService.createWorkOrder(req.body, user);
       setSyncVersionEtag(res, data);
+=======
+      if (req.body?.work_request_id && (
+        user.user_role !== 'admin' || get(req, 'role.work_request.edit') !== true
+      )) {
+        throw Object.assign(new Error('Only administrators with work-request edit permission can convert a work request'), { status: 403 });
+      }
+      const body = sanitizeWorkOrderPayload(req.body, 'create');
+      // Only trusted server workflows may attach an asset-report source. Public
+      // work-request conversion is authorized separately above.
+      delete body.asset_report_id;
+      body.createdFrom = body.work_request_id ? 'Work Request' : 'Work Order';
+      if (body.status && body.status !== 'Open' && get(req, 'role.workOrder.update_work_order_status') !== true) {
+        throw Object.assign(new Error('You do not have permission to create a work order in this status'), { status: 403 });
+      }
+      const data = await orderService.createWorkOrder(body, user);
+>>>>>>> Stashed changes
       res.status(201).send({ status: true, message: 'Work order created.', data });
     } catch (error) {
       next(error);
@@ -89,8 +110,19 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const id = String(req.params.id);
+<<<<<<< Updated upstream
       const data = await orderService.updateById(id, req.body, user, getExpectedSyncVersion(req));
       setSyncVersionEtag(res, data);
+=======
+      const body = sanitizeWorkOrderPayload(req.body, 'update');
+      if (Object.keys(body).length === 0) {
+        throw Object.assign(new Error('No editable work-order fields were provided'), { status: 400 });
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'status') && get(req, 'role.workOrder.update_work_order_status') !== true) {
+        throw Object.assign(new Error('You do not have permission to update work-order status'), { status: 403 });
+      }
+      const data = await orderService.updateById(id, body, user);
+>>>>>>> Stashed changes
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
       next(error);
@@ -113,14 +145,28 @@ class OrderController {
   async updateOrderSubmitData(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
+<<<<<<< Updated upstream
       const { params: { id }, body } = req;
 
+=======
+      const { params: { id } } = req;
+      const body = sanitizeWorkOrderPayload(req.body, 'update');
+      
+>>>>>>> Stashed changes
       if (!body || Object.keys(body).length === 0) {
         throw Object.assign(new Error('No data provided for update'), { status: 400 });
       }
 
+<<<<<<< Updated upstream
       const data = await orderService.updateById(helperService.validateObjectId(String(id)), body, user, getExpectedSyncVersion(req));
       setSyncVersionEtag(res, data);
+=======
+      if (Object.prototype.hasOwnProperty.call(body, 'status') && get(req, 'role.workOrder.update_work_order_status') !== true) {
+        throw Object.assign(new Error('You do not have permission to update work-order status'), { status: 403 });
+      }
+
+      const data = await orderService.updateById(helperService.validateObjectId(String(id)), body, user);
+>>>>>>> Stashed changes
       res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
     } catch (error) {
       next(error);
@@ -584,7 +630,7 @@ class OrderController {
         query: req.body
       });
       match.status = { $in: ['Open', 'Blocked', 'Waiting-on-Parts', 'Waiting-on-Permit', 'In-Progress', 'On-Hold'] };
-      const data = await orderService.getAllOrders(match);
+      const data = await orderService.getDashboardPendingOrders(match, 100);
       res.status(200).json({ status: true, message: "Work order pending orders fetched successfully.", data });
     } catch (error) {
       next(error);
@@ -593,8 +639,9 @@ class OrderController {
 
   async getHistory(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
+      const { account_id } = get(req, "user", {}) as IUser;
       const orderId = String(req.params.id);
-      const data = await orderService.getHistory(orderId);
+      const data = await orderService.getHistory(orderId, account_id);
       res.status(200).json({ status: true, message: "Work order history fetched successfully.", data });
     } catch (error) {
       next(error);

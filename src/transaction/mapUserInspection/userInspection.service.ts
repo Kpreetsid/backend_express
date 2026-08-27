@@ -10,8 +10,10 @@ class MapInspectionService {
   }
   
   async setInspection (account_id: any, inspection_id: any, user_id: string[], session?: any) {
+    const userIds = Array.from(new Set((user_id || []).map(id => String(id).trim()).filter(Boolean)));
     await this.removeInspectionById(account_id, inspection_id, session);
-    await MapUserInspectionModel.insertMany(user_id.map(userId => ({ account_id, user_id: userId, inspection_id })), { session });
+    if (!userIds.length) return;
+    await MapUserInspectionModel.insertMany(userIds.map(userId => ({ account_id, user_id: userId, inspection_id })), { session });
   }
   
   async removeInspectionById (account_id: any, inspection_id: string, session?: any) {

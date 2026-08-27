@@ -7,6 +7,7 @@ import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../../models/wor
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
+<<<<<<< Updated upstream
 import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
 
 class RequestController {
@@ -31,12 +32,39 @@ class RequestController {
       if (assignedBy) {
         baseFilter.createdBy = { $in: helperService.validateObjectIds(assignedBy.toString()) };
       }
+=======
+import { sanitizeWorkRequestPayload } from './workRequest.policy';
+
+class RequestController {
+  async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const { query: { priority, location, status, assignedTo, assignedBy, approvedBy, rejectedBy } } = req;
+      const baseFilter: any = { account_id: account_id, visible: true };
+      if (priority) {
+        baseFilter.priority = { $in: priority.toString().split(",").map((p) => p.trim()).filter((p) => p !== "") };
+      }
+      if (location) {
+        baseFilter.location_id = { $in: helperService.validateObjectIds(location.toString()) };
+      }
+      if (status) {
+        baseFilter.status = { $in: status.toString().split(",").map((s) => s.trim()).filter((s) => s !== "") };
+      }
+      if (assignedTo) {
+        baseFilter.assigned_to = { $in: helperService.validateObjectIds(assignedTo.toString()) };
+      }
+      if (assignedBy) {
+        baseFilter.createdBy = { $in: helperService.validateObjectIds(assignedBy.toString()) };
+      }
+>>>>>>> Stashed changes
       if (approvedBy) {
         baseFilter.approvedBy = { $in: helperService.validateObjectIds(approvedBy.toString()) };
       }
       if (rejectedBy) {
         baseFilter.rejectedBy = { $in: helperService.validateObjectIds(rejectedBy.toString()) };
       }
+<<<<<<< Updated upstream
 
       const filter = await applyRoleFilter({
         user,
@@ -91,6 +119,56 @@ class RequestController {
       const user = get(req, "user", {}) as IUser;
       const body = req.body;
       const data = await requestService.createRequest(body, user);
+=======
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location",
+        idField: "location_id"
+      });
+
+      const data = await requestService.getAllRequests(filter);
+      res.status(200).json({ status: true, message: "Work requests fetched successfully.", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getById(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
+      const { params: { id } } = req;
+      const requestId = helperService.validateObjectId(id);
+      const baseFilter: any = { _id: requestId, account_id: account_id, visible: true };
+
+      const filter = await applyRoleFilter({
+        user,
+        baseFilter,
+        accountField: "account_id",
+        mapping: "location",
+        idField: "location_id"
+      });
+
+      const data = await requestService.getAllRequests(filter);
+      if (!data || data.length === 0) {
+        throw Object.assign(new Error('Work request not found'), { status: 404 });
+      }
+      res.status(200).json({ status: true, message: "Work request fetched successfully.", data: data[0] });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async create(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const body = sanitizeWorkRequestPayload(req.body);
+      await requestService.assertRequestReferences(body, user.account_id);
+      const data = await requestService.createRequest(body, user);
+>>>>>>> Stashed changes
       if (!data) {
         throw Object.assign(new Error('Work request not created'), { status: 404 });
       }
@@ -106,6 +184,7 @@ class RequestController {
       });
       setSyncVersionEtag(res, data);
       res.status(200).json({ status: true, message: "Work request created successfully.", data });
+<<<<<<< Updated upstream
     } catch (error) {
       next(error);
     }
@@ -115,6 +194,18 @@ class RequestController {
     try {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
       const { params: { id, status }, body } = req;
+=======
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async update(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
+      const { params: { id, status } } = req;
+      const body = sanitizeWorkRequestPayload(req.body);
+>>>>>>> Stashed changes
       const requestId = helperService.validateObjectId(id);
       if (status === 'Approved' || status === 'Rejected') {
         throw Object.assign(new Error('Use the dedicated approval actions for this request'), { status: 400 });
@@ -126,6 +217,7 @@ class RequestController {
         body.status = status;
       }
       if (body.priority) {
+<<<<<<< Updated upstream
         if (!WORK_REQUEST_PRIORITIES.includes(body.priority)) {
           throw Object.assign(new Error('Invalid priority value'), { status: 400 });
         }
@@ -140,16 +232,48 @@ class RequestController {
         const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
         body.remarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${body.remarks} by ${firstName} ${lastName} on ${dateTime}` : `${body.remarks} by ${firstName} ${lastName} on ${dateTime}`;
       }
+=======
+        if (!WORK_REQUEST_PRIORITIES.includes(body.priority)) {
+          throw Object.assign(new Error('Invalid priority value'), { status: 400 });
+        }
+      }
+      const existingRequest = await requestService.getAllRequests({ _id: requestId, account_id });
+      if (!existingRequest || existingRequest.length === 0) {
+        throw Object.assign(new Error('Work request not found'), { status: 404 });
+      }
+      if (Object.prototype.hasOwnProperty.call(body, 'remarks') && body.remarks !== existingRequest[0].remarks) {
+        const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
+        const nextRemark = String(body.remarks || '').trim();
+        if (nextRemark) {
+          body.remarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${nextRemark} by ${firstName} ${lastName} on ${dateTime}` : `${nextRemark} by ${firstName} ${lastName} on ${dateTime}`;
+        } else {
+          delete body.remarks;
+        }
+      }
+>>>>>>> Stashed changes
       if (status === existingRequest[0].status) {
         throw Object.assign(new Error('No changes detected'), { status: 400 });
       }
+      await requestService.assertRequestReferences(body, account_id);
       if (existingRequest[0].converted_work_order_id) {
         throw Object.assign(new Error('Converted work requests cannot be edited'), { status: 400 });
       }
       if (['Approved', 'Rejected'].includes(existingRequest[0].status)) {
         throw Object.assign(new Error('Finalized work requests cannot be edited'), { status: 400 });
       }
+<<<<<<< Updated upstream
       const data = await requestService.updateRequest(String(id), body, user_id, undefined, expectedVersion);
+=======
+      const data = await requestService.updateRequest(String(id), body, user_id, undefined, {
+        account_id,
+        visible: true,
+        status: existingRequest[0].status,
+        $or: [
+          { converted_work_order_id: { $exists: false } },
+          { converted_work_order_id: null }
+        ]
+      });
+>>>>>>> Stashed changes
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
@@ -194,7 +318,11 @@ class RequestController {
       if (existingRequest[0].converted_work_order_id) {
         throw Object.assign(new Error('This request has already been converted into a work order'), { status: 400 });
       }
+<<<<<<< Updated upstream
       const data = await requestService.markApproved(String(id), user_id, existingRequest[0].priority, undefined, expectedVersion);
+=======
+      const data = await requestService.markApproved(String(id), account_id, user_id, existingRequest[0].priority);
+>>>>>>> Stashed changes
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
@@ -244,7 +372,11 @@ class RequestController {
       }
       const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
       const updatedRemarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${remarks} by ${firstName} ${lastName} on ${dateTime}` : `${remarks} by ${firstName} ${lastName} on ${dateTime}`;
+<<<<<<< Updated upstream
       const data = await requestService.markRejected(String(id), user_id, updatedRemarks, undefined, expectedVersion);
+=======
+      const data = await requestService.markRejected(String(id), account_id, user_id, updatedRemarks);
+>>>>>>> Stashed changes
       if (!data || data.modifiedCount === 0) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
       }
@@ -258,6 +390,7 @@ class RequestController {
         queryParams: { id: String(id) },
         sourceUserId: String(user_id)
       });
+<<<<<<< Updated upstream
       const updatedRequest = await requestService.getRequestById(String(id));
       setSyncVersionEtag(res, updatedRequest);
       res.status(200).json({ status: true, message: "Work request rejected successfully.", data: updatedRequest });
@@ -285,3 +418,33 @@ class RequestController {
 }
 
 export const requestController = controllerCache.withCache(new RequestController(), { namespace: 'work-requests', ttlSeconds: 120, tags: ['work-requests', 'work-orders'] });
+=======
+      res.status(200).json({ status: true, message: "Work request rejected successfully." });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async remove(req: Request, res: Response, next: NextFunction): Promise<any> {
+    try {
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const { params: { id } } = req;
+      const requestId = helperService.validateObjectId(id);
+      const match: any = { _id: requestId, account_id: account_id };
+      const existingRequest = await requestService.getAllRequests(match);
+      if (!existingRequest || existingRequest.length === 0) {
+        throw Object.assign(new Error('Work request not found'), { status: 404 });
+      }
+      const removed = await requestService.deleteRequestById(id, account_id, user_id);
+      if (!removed) {
+        throw Object.assign(new Error('Only open, unconverted work requests can be deleted'), { status: 409 });
+      }
+      res.status(200).json({ status: true, message: "Work request deleted successfully." });
+    } catch (error) {
+      next(error);
+    }
+  }
+}
+
+export const requestController = new RequestController();
+>>>>>>> Stashed changes

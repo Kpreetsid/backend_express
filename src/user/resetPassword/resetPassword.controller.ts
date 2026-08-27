@@ -10,19 +10,24 @@ class ResetPasswordController {
             if (!email) {
                 throw Object.assign(new Error('Email is required'), { status: 400 });
             }
-            const emailCheck: any = await usersService.getAllUsers({ email: email });
-            if(emailCheck.length === 0) {
-                throw Object.assign(new Error('User not registered. Please register first.'), { status: 404 });
+            const normalizedEmail = String(email).trim().toLowerCase();
+            const emailCheck: any = await usersService.getAllUsers({ email: normalizedEmail, user_status: 'active' });
+            if (emailCheck.length) {
+                const match = {
+                    email: normalizedEmail,
+                    firstName: emailCheck[0].firstName,
+                    lastName: emailCheck[0].lastName
+                };
+                try {
+                    await resetPasswordService.sendVerificationEmailCode(match);
+                } catch (error) {
+                    console.error('Password reset email delivery failed', error);
+                }
             }
-            if(emailCheck[0].user_status !== 'active') {
-                throw Object.assign(new Error('User is not active, Please contact admin.'), { status: 404 });
-            }
-            const match = { email: req.body.email, firstName: emailCheck[0].firstName, lastName: emailCheck[0].lastName };
-            const data = await resetPasswordService.sendVerificationEmailCode(match);
-            if (!data) {
-                throw Object.assign(new Error('Failed to send verification email'), { status: 500 });
-            }
-            res.status(200).json({ status: true, message: "Verification email sent successfully" });
+            res.status(200).json({
+                status: true,
+                message: 'If an active account exists for this email, a verification code has been sent.'
+            });
         } catch (error) {
             next(error);
         }
@@ -37,24 +42,19 @@ class ResetPasswordController {
             if (verificationCode.toString().length !== 6) {
                 throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
             }
-            const emailCheck: any = await usersService.getAllUsers({ email });
-            if (emailCheck.length === 0) {
-                throw Object.assign(new Error('User not registered. Please register first.'), { status: 404 });
+            const normalizedEmail = String(email).trim().toLowerCase();
+            const emailCheck: any = await usersService.getAllUsers({ email: normalizedEmail, user_status: 'active' });
+            const resetToken = emailCheck.length
+                ? await resetPasswordService.createResetProof(normalizedEmail, String(verificationCode))
+                : null;
+            if (!resetToken) {
+                throw Object.assign(new Error('Invalid or expired verification code'), { status: 400 });
             }
-            if (emailCheck[0].user_status !== 'active') {
-                throw Object.assign(new Error('User is not active, Please contact admin.'), { status: 404 });
-            }
-            const match: any = { email: emailCheck[0].email };
-            const otpExists = await resetPasswordService.verifyOTPExists(match);
-            if (!otpExists) {
-                throw Object.assign(new Error('OTP has expired. Please request a new one.'), { status: 410 });
-            }
-            match.code = verificationCode;
-            const data = await resetPasswordService.verifyUserOTP(match);
-            if (!data) {
-                throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
-            }
-            res.status(200).json({ status: true, message: "User OTP verified successfully" });
+            res.status(200).json({
+                status: true,
+                message: "User OTP verified successfully",
+                data: { resetToken }
+            });
         } catch (error) {
             next(error);
         }

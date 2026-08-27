@@ -4,6 +4,8 @@ import { LocationModel } from '../../models/location.model';
 import { PartsModel } from '../../models/part.model';
 import { ProcedureModel } from '../../models/procedure.model';
 import { helperService } from '../../utils/helper';
+import { withTransaction } from '../../utils/transaction.helper';
+import { sanitizeProcedureContent } from './procedure.policy';
 
 class ProcedureService {
   async getAllProcedures(match: any, options: { includeHistory?: boolean } = {}): Promise<any[]> {
@@ -34,21 +36,26 @@ class ProcedureService {
   }
 
   async createProcedure(body: any, account_id: any, user_id: any): Promise<any> {
+    const payload = sanitizeProcedureContent(body);
+    const locationIds = this.normalizeObjectIds(payload.location_ids);
+    const assetIds = this.normalizeObjectIds(payload.asset_ids);
+    const requiredParts = this.normalizeRequiredParts(payload.required_parts);
+    await this.assertReferences(locationIds, assetIds, requiredParts, account_id);
     const versionGroupId = new mongoose.Types.ObjectId();
     const procedure = await ProcedureModel.create({
       account_id,
-      name: body.name,
-      category: body.category || '',
-      tags: this.normalizeTags(body.tags),
-      location_ids: this.normalizeObjectIds(body.location_ids),
-      asset_ids: this.normalizeObjectIds(body.asset_ids),
-      description: body.description || '',
-      required_parts: this.normalizeRequiredParts(body.required_parts),
-      steps: Array.isArray(body.steps) ? body.steps : [],
+      name: payload.name,
+      category: payload.category,
+      tags: this.normalizeTags(payload.tags),
+      location_ids: locationIds,
+      asset_ids: assetIds,
+      description: payload.description,
+      required_parts: requiredParts,
+      steps: payload.steps,
       version_group_id: versionGroupId,
       version: 1,
       is_latest: true,
-      version_notes: body.version_notes || '',
+      version_notes: payload.version_notes,
       published_at: new Date(),
       createdBy: user_id,
       updatedBy: user_id
@@ -58,51 +65,76 @@ class ProcedureService {
   }
 
   async updateProcedure(id: string, body: any, account_id: any, user_id: any): Promise<any | null> {
-    const existingProcedure = await ProcedureModel.findOne({
-      _id: helperService.validateObjectId(id),
-      account_id,
-      visible: true
-    }).lean();
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const createdId = await withTransaction(async (session) => {
+          const existingProcedure = await ProcedureModel.findOne({
+            _id: helperService.validateObjectId(id),
+            account_id,
+            visible: true
+          }).session(session || null).lean();
+          if (!existingProcedure) return null;
 
-    if (!existingProcedure) {
-      return null;
-    }
+          const versionGroupId = existingProcedure.version_group_id || existingProcedure._id;
+          const latestProcedure = await ProcedureModel.findOne({
+            account_id,
+            visible: true,
+            version_group_id: versionGroupId
+          }).sort({ version: -1 }).session(session || null).lean();
+          const merged = sanitizeProcedureContent({
+            name: body.name !== undefined ? body.name : existingProcedure.name,
+            category: body.category !== undefined ? body.category : existingProcedure.category,
+            tags: body.tags !== undefined ? body.tags : existingProcedure.tags,
+            location_ids: body.location_ids !== undefined ? body.location_ids : existingProcedure.location_ids,
+            asset_ids: body.asset_ids !== undefined ? body.asset_ids : existingProcedure.asset_ids,
+            description: body.description !== undefined ? body.description : existingProcedure.description,
+            required_parts: body.required_parts !== undefined ? body.required_parts : existingProcedure.required_parts,
+            steps: body.steps !== undefined ? body.steps : existingProcedure.steps,
+            version_notes: body.version_notes || ''
+          });
+          const locationIds = this.normalizeObjectIds(merged.location_ids);
+          const assetIds = this.normalizeObjectIds(merged.asset_ids);
+          const requiredParts = this.normalizeRequiredParts(merged.required_parts);
+          await this.assertReferences(locationIds, assetIds, requiredParts, account_id, session);
 
-    const nextVersion = Number(existingProcedure.version || 1) + 1;
-    const createdProcedure = await ProcedureModel.create({
-      account_id,
-      name: body.name !== undefined ? body.name : existingProcedure.name,
-      category: body.category !== undefined ? (body.category || '') : (existingProcedure.category || ''),
-      tags: body.tags !== undefined ? this.normalizeTags(body.tags) : this.normalizeTags(existingProcedure.tags),
-      location_ids: body.location_ids !== undefined ? this.normalizeObjectIds(body.location_ids) : this.normalizeObjectIds(existingProcedure.location_ids),
-      asset_ids: body.asset_ids !== undefined ? this.normalizeObjectIds(body.asset_ids) : this.normalizeObjectIds(existingProcedure.asset_ids),
-      description: body.description !== undefined ? (body.description || '') : (existingProcedure.description || ''),
-      required_parts: body.required_parts !== undefined ? this.normalizeRequiredParts(body.required_parts) : this.normalizeRequiredParts(existingProcedure.required_parts),
-      steps: body.steps !== undefined ? (Array.isArray(body.steps) ? body.steps : []) : (existingProcedure.steps || []),
-      version_group_id: existingProcedure.version_group_id || existingProcedure._id,
-      version: nextVersion,
-      is_latest: true,
-      version_notes: body.version_notes || '',
-      supersedes_id: existingProcedure._id,
-      published_at: new Date(),
-      createdBy: user_id,
-      updatedBy: user_id
-    });
-
-    await ProcedureModel.updateMany(
-      {
-        account_id,
-        visible: true,
-        version_group_id: existingProcedure.version_group_id || existingProcedure._id,
-        _id: { $ne: createdProcedure._id }
-      },
-      {
-        is_latest: false,
-        updatedBy: user_id
+          const createdProcedure = new ProcedureModel({
+            account_id,
+            name: merged.name,
+            category: merged.category,
+            tags: this.normalizeTags(merged.tags),
+            location_ids: locationIds,
+            asset_ids: assetIds,
+            description: merged.description,
+            required_parts: requiredParts,
+            steps: merged.steps,
+            version_group_id: versionGroupId,
+            version: Number(latestProcedure?.version || existingProcedure.version || 1) + 1,
+            is_latest: true,
+            version_notes: merged.version_notes,
+            supersedes_id: existingProcedure._id,
+            published_at: new Date(),
+            createdBy: user_id,
+            updatedBy: user_id
+          });
+          await createdProcedure.save({ session: session || undefined });
+          await ProcedureModel.updateMany(
+            {
+              account_id,
+              visible: true,
+              version_group_id: versionGroupId,
+              _id: { $ne: createdProcedure._id }
+            },
+            { $set: { is_latest: false, updatedBy: user_id } },
+            { session: session || undefined }
+          );
+          return String(createdProcedure._id);
+        });
+        return createdId ? await this.getProcedureById(createdId, account_id) : null;
+      } catch (error: any) {
+        if (error?.code !== 11000 || attempt === 1) throw error;
       }
-    );
-
-    return await this.getProcedureById(String(createdProcedure._id), account_id);
+    }
+    return null;
   }
 
   async removeProcedure(id: string, account_id: any, user_id: any): Promise<any> {
@@ -356,6 +388,30 @@ class ProcedureService {
         };
       })
       .filter((part: any) => part && part.part_name && Number(part.quantity) > 0);
+  }
+
+  private async assertReferences(
+    locationIds: mongoose.Types.ObjectId[],
+    assetIds: mongoose.Types.ObjectId[],
+    requiredParts: any[],
+    account_id: any,
+    session?: any
+  ): Promise<void> {
+    const partIds = requiredParts.map((part: any) => part.part_id).filter(Boolean);
+    const [locationCount, assetCount, partCount] = await Promise.all([
+      locationIds.length ? LocationModel.countDocuments({ _id: { $in: locationIds }, account_id, visible: true }).session(session || null) : Promise.resolve(0),
+      assetIds.length ? AssetModel.countDocuments({ _id: { $in: assetIds }, account_id, visible: true }).session(session || null) : Promise.resolve(0),
+      partIds.length ? PartsModel.countDocuments({ _id: { $in: partIds }, account_id, visible: true }).session(session || null) : Promise.resolve(0)
+    ]);
+    if (locationCount !== locationIds.length) {
+      throw Object.assign(new Error('One or more locations are not available in this account'), { status: 400 });
+    }
+    if (assetCount !== assetIds.length) {
+      throw Object.assign(new Error('One or more assets are not available in this account'), { status: 400 });
+    }
+    if (partCount !== partIds.length) {
+      throw Object.assign(new Error('One or more required parts are not available in this account'), { status: 400 });
+    }
   }
 }
 

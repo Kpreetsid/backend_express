@@ -38,6 +38,7 @@ export interface IEndpointLocation extends Document {
   end_point: IEndPoint;
   createdBy: ObjectId;
   updatedBy?: ObjectId;
+  visible: boolean;
 }
 
 const coordinateSchema = new Schema<ICoordinate>({
@@ -72,9 +73,16 @@ const endpointLocationSchema = new Schema<IEndpointLocation>({
   end_point_id: { type: Number },
   end_point: { type: endPointSchema },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+<<<<<<< Updated upstream
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
   collection: FLOOR_MAP_COLLECTION_NAME,
+=======
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
+  visible: { type: Boolean, default: true, index: true }
+}, {
+  collection: 'floor_map',
+>>>>>>> Stashed changes
   timestamps: true,
   versionKey: false
 });

@@ -1,5 +1,6 @@
 import { CategoryModel, ICategory } from "../../models/formCategory.model";
 import { IUser } from "../../models/user.model";
+import { SOPsModel } from '../../models/sops.model';
 
 class FormCategoryService {
 
@@ -12,7 +13,11 @@ class FormCategoryService {
   }
 
   async categoryExists(account_id: any, name: string, excludeId?: string) {
-    const filter: any = { account_id, name, visible: true };
+    const filter: any = {
+      account_id,
+      name: { $regex: `^${escapeRegExp(String(name || '').trim())}$`, $options: 'i' },
+      visible: true
+    };
     if (excludeId) {
       filter._id = { $ne: excludeId };
     }
@@ -30,12 +35,27 @@ class FormCategoryService {
   }
 
   async updateById(id: string, body: any, user: IUser) {
-    return CategoryModel.findByIdAndUpdate(id, { name: body.name, description: body.description, updatedBy: user._id }, { returnDocument: 'after' });
+    return CategoryModel.findOneAndUpdate(
+      { _id: id, account_id: user.account_id, visible: true },
+      { $set: { name: String(body.name || '').trim(), description: String(body.description || '').trim(), updatedBy: user._id } },
+      { returnDocument: 'after', runValidators: true }
+    );
   }
 
-  async removeById(id: string) {
-    return CategoryModel.findByIdAndUpdate(id, { visible: false }, { returnDocument: 'after' });
+  async removeById(id: string, user: IUser) {
+    if (await SOPsModel.exists({ account_id: user.account_id, categoryId: id, visible: true })) {
+      throw Object.assign(new Error('Category is assigned to an active form and cannot be deleted'), { status: 409 });
+    }
+    return CategoryModel.findOneAndUpdate(
+      { _id: id, account_id: user.account_id, visible: true },
+      { $set: { visible: false, updatedBy: user._id } },
+      { returnDocument: 'after' }
+    );
   }
 }
 
 export const formCategoryService = new FormCategoryService();
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
