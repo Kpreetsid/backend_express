@@ -6,9 +6,15 @@ export const userWorkOrderValidator = [
     .isMongoId().withMessage('Invalid Work Order ID format'),
 
   body('userIdList')
-    .notEmpty().withMessage('User ID list is required')
-    .isArray({ min: 1 }).withMessage('User ID list must be a non-empty array'),
+    .isArray({ max: 200 }).withMessage('User ID list must be an array with at most 200 entries'),
 
+  body('userIdList.*')
+    .isMongoId().withMessage('Invalid User ID format in list')
+];
+
+export const updateUserWorkOrderValidator = [
+  body('userIdList')
+    .isArray({ max: 200 }).withMessage('User ID list must be an array with at most 200 entries'),
   body('userIdList.*')
     .isMongoId().withMessage('Invalid User ID format in list')
 ];

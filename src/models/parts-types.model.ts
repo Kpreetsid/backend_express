@@ -13,8 +13,8 @@ export interface IPartType extends Document {
 }
 
 const partsTypeSchema = new Schema<IPartType>({
-  name: { type: String, required: true, trim: true },
-  description: { type: String, trim: true },
+  name: { type: String, required: true, trim: true, maxlength: 120 },
+  description: { type: String, trim: true, maxlength: 1000 },
   account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
   visible: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
@@ -26,5 +26,6 @@ const partsTypeSchema = new Schema<IPartType>({
 });
 
 partsTypeSchema.index({ account_id: 1, visible: 1 });
+partsTypeSchema.index({ account_id: 1, name: 1, visible: 1 });
 
 export const PartsTypeModel = mongoose.model<IPartType>('Schema_PartsTypes', partsTypeSchema);

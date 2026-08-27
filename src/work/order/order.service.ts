@@ -21,6 +21,7 @@ import { PartsModel } from "../../models/part.model";
 import { PartsTypeModel } from "../../models/parts-types.model";
 import { SOPsModel } from "../../models/sops.model";
 import { assertSyncVersion, createSyncConflict } from "../../utils/sync-concurrency";
+import { sanitizeWorkOrderPayload } from './workOrder.policy';
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -89,14 +90,23 @@ class OrderService {
   }
 
   private getQueryValues(value: any): string[] {
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      return [];
+    }
+
     if (Array.isArray(value)) {
-      return value.map((item: any) => String(item || '').trim()).filter(Boolean);
+      return value
+        .filter((item: any) => ['string', 'number'].includes(typeof item))
+        .map((item: any) => String(item || '').trim())
+        .filter(Boolean)
+        .slice(0, 500);
     }
 
     return String(value || '')
       .split(',')
       .map((item: string) => item.trim())
-      .filter(Boolean);
+      .filter(Boolean)
+      .slice(0, 500);
   }
 
   private normalizeAuditValue(value: any): any {
@@ -845,6 +855,75 @@ class OrderService {
         helperService.validateObjectId(rawPartId);
       } catch {
         throw Object.assign(new Error(`Invalid part selection for "${part?.part_name || 'Unnamed Part'}". Please reselect the part and try again.`), { status: 400 });
+      }
+    }
+  }
+
+  private async assertWorkOrderReferences(body: any, account_id: any, session?: any): Promise<void> {
+    const exists = async (model: any, match: Record<string, any>): Promise<boolean> => {
+      const query = model.exists(match);
+      if (session) query.session(session);
+      return Boolean(await query);
+    };
+
+    if (body.wo_location_id && !await exists(LocationModel, {
+      _id: body.wo_location_id,
+      account_id,
+      visible: true
+    })) {
+      throw Object.assign(new Error('Work-order location does not belong to the active account'), { status: 400 });
+    }
+
+    if (body.wo_asset_id && !await exists(AssetModel, {
+      _id: body.wo_asset_id,
+      account_id,
+      visible: true
+    })) {
+      throw Object.assign(new Error('Work-order asset does not belong to the active account'), { status: 400 });
+    }
+
+    if (body.sop_form_id && !await exists(SOPsModel, {
+      _id: body.sop_form_id,
+      account_id,
+      visible: true
+    })) {
+      throw Object.assign(new Error('SOP form does not belong to the active account'), { status: 400 });
+    }
+
+    const selectedUserIds = [
+      ...(Array.isArray(body.userIdList) ? body.userIdList : []),
+      ...(Array.isArray(body.labor_entries) ? body.labor_entries.map((entry: any) => entry?.user_id) : []),
+      ...(Array.isArray(body.tasks) ? body.tasks.map((task: any) => task?.assigned_user_id) : [])
+    ].map(String).filter(Boolean);
+    const uniqueUserIds = Array.from(new Set(selectedUserIds));
+    if (uniqueUserIds.length > 0) {
+      const userQuery = UserModel.countDocuments({
+        _id: { $in: helperService.validateObjectIds(uniqueUserIds.join(',')) },
+        account_id,
+        user_status: 'active'
+      });
+      if (session) userQuery.session(session);
+      if (await userQuery !== uniqueUserIds.length) {
+        throw Object.assign(new Error('Every work-order user must be active and belong to the active account'), { status: 400 });
+      }
+    }
+
+    if (Array.isArray(body.userIdList)) {
+      body.userIdList = Array.from(new Set(body.userIdList.map(String).filter(Boolean)));
+    }
+
+    const partIds = Array.from(new Set((Array.isArray(body.parts) ? body.parts : [])
+      .map((part: any) => String(part?.part_id || part?.id || part?._id || '').trim())
+      .filter(Boolean)));
+    if (partIds.length > 0) {
+      const partQuery = PartsModel.countDocuments({
+        _id: { $in: helperService.validateObjectIds(partIds.join(',')) },
+        account_id,
+        visible: true
+      });
+      if (session) partQuery.session(session);
+      if (await partQuery !== partIds.length) {
+        throw Object.assign(new Error('Every work-order part must belong to the active account'), { status: 400 });
       }
     }
   }
@@ -2214,6 +2293,14 @@ class OrderService {
     return this.decorateHierarchyCollection(result);
   };
 
+  async getDashboardPendingOrders(match: any, limit: number = 100): Promise<any[]> {
+    const safeLimit = Math.min(Math.max(Number(limit) || 100, 1), 100);
+    const pipeline = this.getWorkOrderPipeline(match);
+    pipeline.splice(1, 0, { $sort: { createdAt: -1 } }, { $limit: safeLimit });
+    const data = await WorkOrderModel.aggregate(pipeline);
+    return this.decorateHierarchyCollection(data || []);
+  }
+
   async buildSearchMatch(params: WorkOrderSearchParams): Promise<any> {
     const { account_id, user_id, user_role, query } = params;
     const match: any = { account_id, visible: true };
@@ -2226,11 +2313,17 @@ class OrderService {
     if (query.priority) match.priority = { $in: query.priority.toString().split(',') };
     if (assetIds.length > 0) match.wo_asset_id = { $in: helperService.validateObjectIds(assetIds.join(',')) };
     if (locationIds.length > 0) match.wo_location_id = { $in: helperService.validateObjectIds(locationIds.join(',')) };
-    if (query.order_no) match.order_no = query.order_no;
+    if (typeof query.order_no === 'string' && query.order_no.trim()) {
+      match.order_no = query.order_no.trim().slice(0, 100);
+    }
     if (createdFromValues.length > 0) match.createdFrom = { $in: createdFromValues };
 
-    if (query.fromDate && query.toDate) {
-      match.createdAt = { $gte: new Date(query.fromDate), $lte: new Date(query.toDate) };
+    if (query.fromDate || query.toDate) {
+      const range = this.normalizeDateRange({ fromDate: query.fromDate, toDate: query.toDate });
+      if (!range) {
+        throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
+      }
+      match.createdAt = { $gte: range.fromDate, $lte: range.toDate };
     }
 
     if (query.assignedUser) {
@@ -2441,6 +2534,16 @@ class OrderService {
     const fromDate = new Date(range.fromDate);
     const toDate = new Date(range.toDate);
     if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
+      return null;
+    }
+
+    const maximumRangeMs = 5 * 366 * 24 * 60 * 60 * 1000;
+    const allowedClockSkewMs = 5 * 60 * 1000;
+    if (
+      fromDate.getTime() > toDate.getTime()
+      || toDate.getTime() > Date.now() + allowedClockSkewMs
+      || toDate.getTime() - fromDate.getTime() > maximumRangeMs
+    ) {
       return null;
     }
 
@@ -2724,8 +2827,26 @@ class OrderService {
     return startDate <= range.toDate;
   }
 
-  private async getExecutionScopedOrders(match: any): Promise<any[]> {
-    const pipeline = this.getWorkOrderPipeline(match);
+  private async getExecutionScopedOrders(match: any, range?: { fromDate: Date; toDate: Date }): Promise<any[]> {
+    const scopedMatch = range
+      ? {
+          $and: [
+            match,
+            {
+              $or: [
+                { end_date: { $gte: range.fromDate, $lte: range.toDate } },
+                { start_date: { $gte: range.fromDate, $lte: range.toDate } },
+                {
+                  start_date: { $in: [null, ''] },
+                  end_date: { $in: [null, ''] },
+                  createdAt: { $gte: range.fromDate, $lte: range.toDate }
+                }
+              ]
+            }
+          ]
+        }
+      : match;
+    const pipeline = this.getWorkOrderPipeline(scopedMatch);
     const data = await WorkOrderModel.aggregate(pipeline);
     return this.decorateHierarchyCollection(data || []);
   }
@@ -3016,7 +3137,7 @@ class OrderService {
     waiting_on_parts_count: number;
     blocked_work_count: number;
   }> {
-    const scopedOrders = await this.getExecutionScopedOrders(match);
+    const scopedOrders = await this.getExecutionScopedOrders(match, range);
     const activeOrders = scopedOrders.filter((order: any) => this.isOpenOrder(order) && this.isOrderWithinActiveExecutionRange(order, range));
 
     return {
@@ -3074,7 +3195,7 @@ class OrderService {
       ? Number((completionHours.reduce((total: number, hours: number) => total + hours, 0) / completionHours.length).toFixed(2))
       : 0;
 
-    const scopedOrders = await this.getExecutionScopedOrders(match);
+    const scopedOrders = await this.getExecutionScopedOrders(match, range);
     const activeOrders = scopedOrders.filter((order: any) => this.isOpenOrder(order) && this.isOrderWithinActiveExecutionRange(order, range));
     const today = new Date();
     const overdueOpenCount = activeOrders.filter((order: any) => {
@@ -3117,7 +3238,7 @@ class OrderService {
     }).length;
     const completedLateCount = Math.max(completedOrders.length - onTimeCount, 0);
 
-    const scopedOrders = await this.getExecutionScopedOrders(match);
+    const scopedOrders = await this.getExecutionScopedOrders(match, range);
     const activeOrders = scopedOrders.filter((order: any) => this.isOpenOrder(order) && this.isOrderWithinActiveExecutionRange(order, range));
     const today = new Date();
     const overdueOpenCount = activeOrders.filter((order: any) => {
@@ -3471,7 +3592,10 @@ class OrderService {
       throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
     }
 
-    const orders = await this.getExecutionScopedOrders(match);
+    const orders = await this.getExecutionScopedOrders({
+      ...match,
+      createdAt: { $gte: range.fromDate, $lte: range.toDate }
+    });
     const scopedOrders = orders.filter((order: any) => {
       const createdAt = this.parseReportDate(order?.createdAt);
       return !!createdAt && createdAt >= range.fromDate && createdAt <= range.toDate;
@@ -3685,7 +3809,11 @@ class OrderService {
 
     const userIds = Array.from(userRollup.keys());
     const users = userIds.length
-      ? await UserModel.find({ _id: { $in: helperService.validateObjectIds(userIds.join(',')) } })
+      ? await UserModel.find({
+        _id: { $in: helperService.validateObjectIds(userIds.join(',')) },
+        account_id: match.account_id,
+        user_status: 'active'
+      })
         .select('firstName lastName username email')
         .lean()
       : [];
@@ -3810,7 +3938,7 @@ class OrderService {
       throw Object.assign(new Error('Valid fromDate and toDate are required'), { status: 400 });
     }
 
-    const orders = await this.getExecutionScopedOrders(match);
+    const orders = await this.getExecutionScopedOrders(match, range);
     const activeOrders = orders.filter((order: any) => this.isOpenOrder(order) && this.isOrderWithinActiveExecutionRange(order, range));
     if (!activeOrders.length) {
       throw Object.assign(new Error('No data found'), { status: 404 });
@@ -4037,7 +4165,15 @@ class OrderService {
       const overdueCount = result.overdue[0]?.count || 0;
       const plannedCount = result.planned[0]?.count || 0;
 
-      const workRequestMatch: any = { status: { $nin: ['completed'] } }
+      const workRequestMatch: any = {
+        account_id: workOrderMatch.account_id,
+        visible: true,
+        status: { $in: ['Open', 'Approved'] },
+        $or: [
+          { converted_work_order_id: { $exists: false } },
+          { converted_work_order_id: null }
+        ]
+      }
       if (workOrderMatch.wo_asset_id) workRequestMatch.asset_id = workOrderMatch.wo_asset_id;
       if (workOrderMatch.wo_location_id) workRequestMatch.location_id = workOrderMatch.wo_location_id;
       if (workOrderMatch.createdAt) workRequestMatch.createdAt = workOrderMatch.createdAt;
@@ -4066,9 +4202,22 @@ class OrderService {
     return `WO-${year}${sequence}`;
   };
 
-  async createWorkOrder(body: any, user: IUser): Promise<any> {
+  async createWorkOrder(
+    body: any,
+    user: IUser,
+    scheduleContext?: { scheduleId: any; executionKey: string }
+  ): Promise<any> {
     return await withTransaction(async (session) => {
-      let normalizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body })));
+      const allowedBody = sanitizeWorkOrderPayload(body, 'create');
+      allowedBody.status = allowedBody.status || 'Open';
+      allowedBody.createdFrom = scheduleContext
+        ? 'Preventive'
+        : allowedBody.work_request_id
+          ? 'Work Request'
+          : allowedBody.asset_report_id
+            ? 'Asset Report'
+            : 'Work Order';
+      let normalizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(allowedBody)));
       this.validateIncomingParts(normalizedBody.parts || []);
       let userIdList = Array.isArray(normalizedBody.userIdList) ? normalizedBody.userIdList.filter((userId: string) => !!userId) : [];
       let parentOrder: any = null;
@@ -4104,11 +4253,15 @@ class OrderService {
         }
       }
 
+      normalizedBody.userIdList = userIdList;
+      await this.assertWorkOrderReferences(normalizedBody, user.account_id, session);
+      userIdList = normalizedBody.userIdList || [];
+
       const procedureSync = await this.syncProcedureEntries(normalizedBody, user.account_id, user, []);
       let linkedRequest: any = null;
       if (normalizedBody.work_request_id) {
-        linkedRequest = await requestService.getRequestById(String(normalizedBody.work_request_id));
-        if (!linkedRequest || String(linkedRequest.account_id) !== String(user.account_id)) {
+        linkedRequest = await requestService.getRequestById(String(normalizedBody.work_request_id), user.account_id, session);
+        if (!linkedRequest) {
           throw Object.assign(new Error('Linked work request was not found'), { status: 404 });
         }
         if (linkedRequest.status === 'Rejected') {
@@ -4124,7 +4277,7 @@ class OrderService {
 
       const normalizedParts = partsService.normalizeWorkOrderParts(normalizedBody.parts || [], normalizedBody.status);
       const excludedProcedurePartIds = this.normalizeObjectIdArray(normalizedBody.excluded_procedure_part_ids);
-      await partsService.validateInventoryByWorkOrder([], normalizedParts, 'Open', normalizedBody.status, session);
+      await partsService.validateInventoryByWorkOrder([], normalizedParts, 'Open', normalizedBody.status, session, user.account_id);
 
       const newAssetPayload: any = {
         account_id: user.account_id,
@@ -4156,6 +4309,8 @@ class OrderService {
         labor_entries: normalizedBody.labor_entries,
         work_request_id: normalizedBody.work_request_id,
         asset_report_id: normalizedBody.asset_report_id,
+        cron_id: scheduleContext?.scheduleId,
+        schedule_execution_key: scheduleContext?.executionKey,
         status_details: [{ status: normalizedBody.status, createdBy: user._id }],
         createdBy: user._id
       };
@@ -4171,9 +4326,13 @@ class OrderService {
       let userDetails: IUser[] = [];
       if (userIdList.length > 0) {
         const mappedUsers = userIdList.map((userId: string) => ({ userId, woId: newAsset._id }));
-        userDetails = await UserModel.find({ _id: { $in: helperService.validateObjectIds(userIdList.join(',')) } }).session(session);
-        if (!userDetails || userDetails.length === 0) {
-          throw Object.assign(new Error('No users found'), { status: 404 });
+        userDetails = await UserModel.find({
+          _id: { $in: helperService.validateObjectIds(userIdList.join(',')) },
+          account_id: user.account_id,
+          user_status: 'active'
+        }).session(session);
+        if (userDetails.length !== userIdList.length) {
+          throw Object.assign(new Error('Every assigned user must be active and belong to the active account'), { status: 400 });
         }
 
         const result = await userWorkOrderService.mapUsersWorkOrder(mappedUsers, session);
@@ -4236,7 +4395,7 @@ class OrderService {
       }
 
       if (linkedRequest) {
-        await requestService.markConverted(String(linkedRequest._id), {
+        const conversion = await requestService.markConverted(String(linkedRequest._id), user.account_id, {
           workOrderId: data._id,
           orderNo: data.order_no,
           priority: linkedRequest.priority,
@@ -4244,6 +4403,9 @@ class OrderService {
           approvedAt: linkedRequest.approvedAt,
           convertedBy: user._id
         }, session);
+        if (!conversion || conversion.modifiedCount !== 1) {
+          throw Object.assign(new Error('This work request was already converted by another operation'), { status: 409 });
+        }
       }
 
       await workOrderActivityService.logActivity({
@@ -4313,11 +4475,18 @@ class OrderService {
 
   async updateById(id: any, body: any, user: IUser, expectedVersion?: number): Promise<any> {
     return await withTransaction(async (session) => {
-      let existingOrder: any = await WorkOrderModel.findById(id).session(session);
+      body = sanitizeWorkOrderPayload(body, 'update');
+      let existingOrder: any = await WorkOrderModel.findOne({
+        _id: id,
+        account_id: user.account_id,
+        visible: true
+      }).session(session);
       if (!existingOrder) {
         throw Object.assign(new Error('Work Order not found'), { status: 404 });
       }
       assertSyncVersion(existingOrder, expectedVersion);
+
+      await this.assertWorkOrderReferences(body, user.account_id, session);
 
       const childCount = await this.getChildOrderCount(id, session);
       if (childCount > 0 && this.hasExecutionOwnedFieldChanges(body)) {
@@ -4353,14 +4522,15 @@ class OrderService {
       if (body.hasOwnProperty('parts')) {
         const normalizedParts = partsService.normalizeWorkOrderParts(body.parts || [], updatedData.status || existingOrder.status);
         await partsService.validateInventoryByWorkOrder(
-          body.oldParts || existingOrder.parts || [],
+          existingOrder.parts || [],
           normalizedParts,
           existingOrder.status,
           updatedData.status || existingOrder.status,
-          session
+          session,
+          user.account_id
         );
         updatedData.parts = normalizedParts;
-        const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || existingOrder.parts || [], normalizedParts, user, session, {
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder(existingOrder.parts || [], normalizedParts, user, session, {
           account_id: user.account_id,
           work_order_id: existingOrder._id,
           work_order_no: existingOrder.order_no,
@@ -4377,7 +4547,8 @@ class OrderService {
           normalizedParts,
           existingOrder.status,
           updatedData.status || existingOrder.status,
-          session
+          session,
+          user.account_id
         );
         updatedData.parts = normalizedParts;
         const inventoryResult = await partsService.adjustInventoryByWorkOrder(existingOrder.parts || [], normalizedParts, user, session, {
@@ -4407,10 +4578,17 @@ class OrderService {
       
       updatedData = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData)));
       updatedData = this.syncStatusDetailAuditFields(this.syncCompletionAuditFields(updatedData, existingOrder.status, user), user);
-      delete updatedData.sync_version;
-      const updateFilter: any = { _id: id };
+      const updateFilter: any = { _id: id, account_id: user.account_id, visible: true };
       if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
-      const data = await WorkOrderModel.findOneAndUpdate(updateFilter, updatedData, { returnDocument: 'after', session });
+      delete updatedData.sync_version;
+      const data = await WorkOrderModel.findOneAndUpdate(
+        updateFilter,
+        updatedData,
+        { returnDocument: 'after', session, runValidators: true }
+      );
+      if (!data && expectedVersion !== undefined) {
+        throw createSyncConflict(await WorkOrderModel.findById(id).session(session));
+      }
       if (!data) {
         if (expectedVersion !== undefined) {
           throw createSyncConflict(await WorkOrderModel.findById(id).session(session));
@@ -4441,12 +4619,22 @@ class OrderService {
   };
 
   async updateDataById(id: any, body: any, user: IUser): Promise<any> {
-    const existingOrder = await WorkOrderModel.findById(id);
-    let sanitizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body, updatedBy: user._id })));
+    const existingOrder = await WorkOrderModel.findOne({ _id: id, account_id: user.account_id, visible: true });
+    if (!existingOrder) {
+      throw Object.assign(new Error('Work Order not found'), { status: 404 });
+    }
+    let sanitizedBody = sanitizeWorkOrderPayload(body, 'update');
+    await this.assertWorkOrderReferences(sanitizedBody, user.account_id);
+    sanitizedBody.updatedBy = user._id;
+    sanitizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(sanitizedBody)));
     if (existingOrder) {
       sanitizedBody = this.syncStatusDetailAuditFields(this.syncCompletionAuditFields({ ...existingOrder.toObject(), ...sanitizedBody }, existingOrder.status, user), user);
     }
-    const updatedOrder = await WorkOrderModel.findByIdAndUpdate(id, sanitizedBody, { returnDocument: 'after' });
+    const updatedOrder = await WorkOrderModel.findOneAndUpdate(
+      { _id: id, account_id: user.account_id, visible: true },
+      sanitizedBody,
+      { returnDocument: 'after', runValidators: true }
+    );
 
     if (existingOrder && updatedOrder && Object.prototype.hasOwnProperty.call(body || {}, 'files')) {
       const beforeFiles = Array.isArray(existingOrder.files) ? existingOrder.files : [];
@@ -4477,9 +4665,13 @@ class OrderService {
   };
 
   async orderStatusChange(id: string, status: string, user: IUser, blockReason?: string | null, expectedVersion?: number): Promise<any> {
+    return await withTransaction(async (session) => {
     const orderId = helperService.validateObjectId(id);
-    const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true });
+    const orders = await this.getAllOrders({ _id: orderId, account_id: user.account_id, visible: true }, session);
     const existingOrder = orders[0];
+    if (existingOrder.status === status) {
+      throw Object.assign(new Error(`Work Order is already ${status}`), { status: 409 });
+    }
     assertSyncVersion(existingOrder, expectedVersion);
     const hierarchy = existingOrder?.hierarchy || {};
     const previousParts = JSON.parse(JSON.stringify(existingOrder.parts || []));
@@ -4507,7 +4699,7 @@ class OrderService {
       if (existingOrder.parts?.length > 0) {
         existingOrder.parts = existingOrder.parts.map((part: any) => ({
           ...part,
-          actualQuantity: part.actualQuantity || part.estimatedQuantity
+          actualQuantity: part.actualQuantity ?? part.estimatedQuantity
         }));
       }
       if (!existingOrder.actual_start_date) {
@@ -4544,27 +4736,39 @@ class OrderService {
     }
 
     const statusEntry = { status, createdBy: user._id, createdAt: new Date() };
-    const statusDetails = [...(existingOrder.status_details || []), statusEntry];
     const lifecycleParts = partsService.normalizeWorkOrderParts(existingOrder.parts || [], status);
-    const data = await withTransaction(async (session) => {
-      const inventoryResult = await partsService.adjustInventoryByWorkOrder(previousParts, lifecycleParts, user, session, {
-        account_id: user.account_id,
-        work_order_id: existingOrder._id,
-        work_order_no: existingOrder.order_no,
-        location_id: existingOrder.wo_location_id,
-        previous_status: existingOrder.status,
-        next_status: status,
-        note: `Work order status moved to ${status}`
-      });
+    await partsService.validateInventoryByWorkOrder(
+      previousParts,
+      lifecycleParts,
+      existingOrder.status,
+      status,
+      session,
+      user.account_id
+    );
+    const inventoryResult = await partsService.adjustInventoryByWorkOrder(previousParts, lifecycleParts, user, session, {
+      account_id: user.account_id,
+      work_order_id: existingOrder._id,
+      work_order_no: existingOrder.order_no,
+      location_id: existingOrder.wo_location_id,
+      previous_status: existingOrder.status,
+      next_status: status,
+      note: `Work order status moved to ${status}`
+    });
 
-      const statusFilter: any = { _id: id };
-      if (expectedVersion !== undefined) statusFilter.sync_version = expectedVersion;
-      const updatedOrder = await WorkOrderModel.findOneAndUpdate(
-        statusFilter,
-        {
+    const statusFilter: any = {
+      _id: orderId,
+      account_id: user.account_id,
+      visible: true,
+      status: existingOrder.status
+    };
+    if (expectedVersion !== undefined) statusFilter.sync_version = expectedVersion;
+
+    const data = await WorkOrderModel.findOneAndUpdate(
+      statusFilter,
+      {
+        $set: {
           status,
           updatedBy: user._id,
-          status_details: statusDetails,
           parts: lifecycleParts,
           actual_start_date: existingOrder.actual_start_date,
           actual_end_date: existingOrder.actual_end_date,
@@ -4573,48 +4777,37 @@ class OrderService {
           actual_time: existingOrder.actual_time,
           block_reason: existingOrder.block_reason
         },
-        { returnDocument: 'after', session }
-      );
-      if (!updatedOrder && expectedVersion !== undefined) {
-        throw createSyncConflict(await WorkOrderModel.findById(id).session(session));
+        $push: { status_details: statusEntry }
+      },
+      { returnDocument: 'after', session, runValidators: true }
+    );
+    if (!data) {
+      if (expectedVersion !== undefined) {
+        throw createSyncConflict(await WorkOrderModel.findById(orderId).session(session));
       }
-      if (updatedOrder) {
-        (updatedOrder as any).inventoryWarnings = inventoryResult.warnings;
-        await workOrderActivityService.logActivity({
-          account_id: user.account_id,
-          work_order_id: id,
-          workOrder: updatedOrder,
-          action_type: 'status-changed',
-          note: `Status changed from ${existingOrder.status} to ${status}.${existingOrder.block_reason ? ` Reason: ${existingOrder.block_reason}` : ''}`,
-          metadata: {
-            from_status: existingOrder.status,
-            to_status: status,
-            block_reason: existingOrder.block_reason || null
-          },
-          actor: user
-        }, session);
-      }
-      return updatedOrder;
-    });
-    if (data) {
-      await notificationService.notifyAccountUsers({
-        accountId: String(user.account_id),
-        module: 'Work Order',
-        event: 'updated',
-        entityId: String(id),
-        entityName: data.title || data.order_no || 'Work Order',
-        actionUrl: `/work-order/details/${id}`,
-        sourceUserId: String(user._id)
-      });
+      throw Object.assign(new Error('Work-order status changed during this request; refresh and try again'), { status: 409 });
     }
+    (data as any).inventoryWarnings = inventoryResult.warnings;
+    await workOrderActivityService.logActivity({
+      account_id: user.account_id,
+      work_order_id: orderId,
+      workOrder: data,
+      action_type: 'status-changed',
+      note: `Status changed from ${existingOrder.status} to ${status}.${existingOrder.block_reason ? ` Reason: ${existingOrder.block_reason}` : ''}`,
+      metadata: {
+        from_status: existingOrder.status,
+        to_status: status,
+        block_reason: existingOrder.block_reason || null
+      },
+      actor: user
+    }, session);
     return data;
+  });
   }
 
   async removeOrder(id: any, user: any): Promise<any> {
     return await withTransaction(async (session) => {
-      const tenantId = user?.companyID || user?.account_id;
-      const filter: any = { _id: id };
-      if (tenantId) filter.account_id = tenantId;
+      const filter: any = { _id: id, account_id: user.account_id, visible: true };
       const order: any = await WorkOrderModel.findOne(filter).session(session).lean();
       if (!order) {
         throw Object.assign(new Error('Work Order not found or unauthorized'), { status: 404 });
@@ -4645,9 +4838,7 @@ class OrderService {
 
   async deleteWorkOrderById(id: any, user: any): Promise<any> {
     return await withTransaction(async (session) => {
-      const tenantId = user?.companyID || user?.account_id;
-      const filter: any = { _id: id };
-      if (tenantId) filter.account_id = tenantId;
+      const filter: any = { _id: id, account_id: user.account_id };
       const order: any = await WorkOrderModel.findOne(filter).session(session).lean();
       if (!order) {
         throw Object.assign(new Error('Work Order not found or unauthorized'), { status: 404 });
@@ -4676,10 +4867,10 @@ class OrderService {
     });
   }
 
-  async getHistory(id: string): Promise<any> {
+  async getHistory(id: string, account_id: any): Promise<any> {
     const objectId = helperService.validateObjectId(id);
     const HistoryModel = (WorkOrderModel as any).getHistoryModel();
-    const pipeline = this.getWorkOrderPipeline({ original_id: objectId });
+    const pipeline = this.getWorkOrderPipeline({ original_id: objectId, account_id });
     pipeline.push({ $sort: { history_created_at: -1 } });
     const history = await HistoryModel.aggregate(pipeline);
     if (!history || history.length === 0) {

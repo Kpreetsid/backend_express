@@ -49,17 +49,29 @@ class LocationService {
     ).then(results => results.filter(Boolean));
   };
 
-  async getAllChildLocationIds(locationId: string): Promise<string[]> {
-    const children = await LocationModel.find({ parent_id: locationId, visible: true }).lean();
+  async getAllChildLocationIds(
+    locationId: string,
+    account_id?: any,
+    visited: Set<string> = new Set<string>()
+  ): Promise<string[]> {
+    const normalizedLocationId = String(locationId);
+    if (visited.has(normalizedLocationId)) {
+      return [];
+    }
+    visited.add(normalizedLocationId);
+
+    const match: any = { parent_id: locationId, visible: true };
+    if (account_id) match.account_id = account_id;
+    const children = await LocationModel.find(match).lean();
     if (!children || children.length === 0) {
-      return [locationId];
+      return [normalizedLocationId];
     }
     const allChildIds: string[] = [];
     for (const child of children) {
-      const subChildIds = await this.getAllChildLocationIds(`${child._id}`);
+      const subChildIds = await this.getAllChildLocationIds(`${child._id}`, account_id, visited);
       allChildIds.push(...subChildIds);
     }
-    return [locationId, ...allChildIds];
+    return [...new Set([normalizedLocationId, ...allChildIds])];
   };
 
   async getTree(match: any, location_id: any, allowedLocationIds: string[], userRole: string): Promise<any> {
@@ -146,7 +158,7 @@ class LocationService {
 
   async childAssetsAgainstLocation(lOne: string[], lTwo: string[], account_id: any, user_id: any, userRole: string) {
     try {
-      const childIds = await this.getAllChildLocationsRecursive(lTwo);
+      const childIds = await this.getAllChildLocationsRecursive(lTwo, account_id);
       const finalList = [...new Set([...childIds, ...lOne, ...lTwo])];
       const assetMatch: any = { account_id, visible: true };
       const locationObjectIds = helperService.validateObjectIds(finalList.join(','));
@@ -178,21 +190,33 @@ class LocationService {
     }
   };
 
-  async getAllChildLocationsRecursive(parentIds: string[]): Promise<string[]> {
+  async getAllChildLocationsRecursive(
+    parentIds: string[],
+    account_id?: any,
+    visited: Set<string> = new Set<string>()
+  ): Promise<string[]> {
     try {
       let childIds: string[] = [];
       for (const parentId of parentIds) {
-        const parent = await LocationModel.findById(parentId);
+        const normalizedParentId = String(parentId);
+        if (visited.has(normalizedParentId)) continue;
+        visited.add(normalizedParentId);
+
+        const parentMatch: any = { _id: parentId, visible: true };
+        if (account_id) parentMatch.account_id = account_id;
+        const parent = await LocationModel.findOne(parentMatch);
         if (!parent) continue;
-        const children: ILocationMaster[] = await LocationModel.find({ parent_id: parent._id, visible: true });
+        const childMatch: any = { parent_id: parent._id, visible: true };
+        if (account_id) childMatch.account_id = account_id;
+        const children: ILocationMaster[] = await LocationModel.find(childMatch);
         if (children.length > 0) {
           const childrenIds = children.map(child => (child._id as mongoose.Types.ObjectId).toString());
           childIds = [...childIds, ...childrenIds];
-          const grandChildrenIds = await this.getAllChildLocationsRecursive(childrenIds);
+          const grandChildrenIds = await this.getAllChildLocationsRecursive(childrenIds, account_id, visited);
           childIds = [...childIds, ...grandChildrenIds];
         }
       }
-      return [...new Set([...parentIds, ...childIds])];
+      return [...new Set([...parentIds.map(String), ...childIds])];
     } catch (error) {
       console.error('Error in getAllChildLocationsRecursive:', error);
       return [];
@@ -203,25 +227,28 @@ class LocationService {
     await subscriptionLimitService.assertCanCreate(body.account_id, 'location');
     const newLocation: any = new LocationModel(body);
     newLocation.top_level_location_id = newLocation.top_level ? newLocation._id as mongoose.Types.ObjectId : body.top_level_location_id;
-    body.parent_id = body.top_level_location_id || newLocation._id as mongoose.Types.ObjectId;
     return await newLocation.save();
   };
 
-  async updateById(id: string, body: any) {
-    // await mapUserToLocationService.updateUserMapping(id, body.userIdList);
-    await updateLocationAssetMapping(id, body.userIdList);
-    await LocationModel.updateOne({ _id: id }, body);
-    return await LocationModel.findById(id);
+  async updateById(id: string, body: any, account_id: any) {
+    return await withTransaction(async (session) => {
+      await updateLocationAssetMapping(id, body.userIdList, [], [], session);
+      return await LocationModel.findOneAndUpdate(
+        { _id: id, account_id, visible: true },
+        body,
+        { returnDocument: 'after', session }
+      );
+    });
   };
 
-  async removeLocationById(id: any, user_id: any) {
+  async removeLocationById(id: any, user_id: any, account_id: any) {
     return await withTransaction(async (session) => {
       const totalIds = [id];
-      const childIds = await this.getAllChildLocationsRecursive([id]);
+      const childIds = await this.getAllChildLocationsRecursive([id], account_id);
       totalIds.push(...childIds);
       const objectIds = helperService.validateObjectIds(totalIds.join(','));
       await mapUserToLocationService.removeLocationListMapping(totalIds, session);
-      const getAssetsByLocationId = await AssetModel.find({ locationId: { $in: objectIds } }).session(session);
+      const getAssetsByLocationId = await AssetModel.find({ locationId: { $in: objectIds }, account_id }).session(session);
       if (getAssetsByLocationId?.length > 0) {
         const assetIds: any = getAssetsByLocationId.map(asset => asset._id);
         await mapUserToAssetService.removeAssetListMapping(assetIds, session);
@@ -244,34 +271,26 @@ class LocationService {
     return await LocationModel.updateOne({ _id: id, account_id }, { $set: { top_level_location_image, updatedBy: user_id } });
   };
 
+
   async getLocationSensor(account_id: any, user_id: any, userRole: string) {
-    try {
-      const match: any = { account_id, visible: true };
-      if (userRole !== 'admin') {
-        const mappedData = await mapUserToLocationService.getLocationsMappedData(`${user_id}`);
-        if (!mappedData || mappedData.length === 0) {
-          throw Object.assign(new Error('No records found'), { status: 404 });
-        }
-        match._id = { $in: mappedData.map(doc => doc.locationId) };
-      }
-      const data = await LocationModel.find(match).lean().populate([{ path: 'account_id', model: "Schema_Account", select: 'id account_name' }, { path: 'top_level_location_id', model: "Schema_Location", select: 'id location_name', match: { visible: true } }]);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error('No records found'), { status: 404 });
-      }
-      const result = data.map((doc: any) => {
-        return {
-          company_name: doc.account_id ? doc.account_id.account_name : "NA",
-          location_id: doc._id,
-          location_name: doc.location_name,
-          top_level_location_id: doc.top_level_location_id ? doc.top_level_location_id._id : "",
-          top_level_location_name: doc.top_level_location_id ? doc.top_level_location_id.location_name : "NA"
-        }
-      });
-      return result;
-    } catch (error) {
-      return null;
+    const match: any = { account_id, visible: true };
+    if (userRole !== 'admin') {
+      const mappedData = await mapUserToLocationService.getLocationsMappedData(`${user_id}`);
+      match._id = { $in: (mappedData || []).map(doc => doc.locationId).filter(Boolean) };
     }
+    const data = await LocationModel.find(match)
+      .select('_id location_name top_level_location_id account_id')
+      .populate([{ path: 'account_id', model: "Schema_Account", select: 'id account_name' }, { path: 'top_level_location_id', model: "Schema_Location", select: 'id location_name', match: { visible: true } }])
+      .lean();
+    return (data || []).map((doc: any) => ({
+      company_name: doc.account_id ? doc.account_id.account_name : "NA",
+      location_id: doc._id,
+      location_name: doc.location_name,
+      top_level_location_id: doc.top_level_location_id ? doc.top_level_location_id._id : "",
+      top_level_location_name: doc.top_level_location_id ? doc.top_level_location_id.location_name : "NA"
+    }));
   }
+
 
   getLocationById(id: any, account_id: any) {
     return LocationModel.findOne({ _id: id, account_id, visible: true });
@@ -308,10 +327,11 @@ class LocationService {
       delete cleanSource._id;
       delete cleanSource.id;
       const baseName = (source.location_name || "Location").replace(/\s-\s(copy|\(\d+\))$/i, "");
+      const escapedBaseName = baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const existingCount = await LocationModel.countDocuments({
         parent_id: newParentId || { $exists: false },
         account_id,
-        location_name: { $regex: `^${baseName} - copy`, $options: "i" },
+        location_name: { $regex: `^${escapedBaseName} - copy`, $options: "i" },
         visible: true,
       }).session(activeSession);
       const newName = existingCount > 0 ? `${baseName} - copy (${existingCount + 1})` : `${baseName} - copy`;

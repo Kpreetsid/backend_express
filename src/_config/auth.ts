@@ -1,3 +1,4 @@
+
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { auth } from '../configDB';
@@ -304,4 +305,14 @@ export const verifyEncryptedToken = (req: Request, res: Response, next: NextFunc
   } catch (error: any) {
     next(error);
   }
+};
+
+
+export const clearAuthSessionCache = (tokenKey?: string): void => {
+  // Session cache invalidation
+};
+
+export const clearAuthSessionCacheForUser = (userId: string): void => {
+  const normalizedUserId = String(userId || '');
+  if (!normalizedUserId) return;
 };

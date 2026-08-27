@@ -30,5 +30,5 @@ export const transferValidator = [
     .notEmpty().withMessage('A reason / note is required for stock transfers')
     .isString().withMessage('Note must be a string')
     .trim()
-    .isLength({ min: 3 }).withMessage('Note must be at least 3 characters')
+    .isLength({ min: 3, max: 500 }).withMessage('Note must be between 3 and 500 characters')
 ];

@@ -11,6 +11,8 @@ import { PartHistoryAction, PartHistoryModel } from "../../models/partHistory.mo
 import { LocationModel } from "../../models/location.model";
 import { UserModel } from "../../models/user.model";
 import { assertSyncVersion, createSyncConflict } from "../../utils/sync-concurrency";
+import { sanitizePartMetadataUpdatePayload, sanitizePartPayload } from "./part.policy";
+import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
 
 interface InventoryAdjustmentResult {
   warnings: {
@@ -158,13 +160,126 @@ class PartsService {
   }
 
   private normalizePartPayload(body: any): any {
+    const safeBody: any = sanitizePartPayload(body);
     return {
-      ...body,
-      barcode: String(body?.barcode || '').trim() || undefined,
-      reorder_point: Number.isFinite(Number(body?.reorder_point)) ? Number(body.reorder_point) : Number(body?.min_quantity || 0),
-      preferred_vendor: String(body?.preferred_vendor || '').trim() || '',
-      lead_time_days: Number.isFinite(Number(body?.lead_time_days)) ? Number(body.lead_time_days) : 0
+      ...safeBody,
+      part_name: String(safeBody.part_name || '').trim(),
+      part_number: String(safeBody.part_number || '').trim(),
+      barcode: String(safeBody.barcode || '').trim() || undefined,
+      unit: String(safeBody.unit || '').trim(),
+      description: String(safeBody.description || '').trim(),
+      quantity: Number(safeBody.quantity),
+      min_quantity: Number(safeBody.min_quantity),
+      reorder_point: Number.isFinite(Number(safeBody.reorder_point)) ? Number(safeBody.reorder_point) : Number(safeBody.min_quantity || 0),
+      cost: Number(safeBody.cost),
+      preferred_vendor: String(safeBody.preferred_vendor || '').trim(),
+      lead_time_days: Number.isFinite(Number(safeBody.lead_time_days)) ? Number(safeBody.lead_time_days) : 0,
+      currency: String(safeBody.currency || 'INR').trim().toUpperCase()
     };
+  }
+
+  private validatePartPayload(payload: any): void {
+    const requiredStrings: [string, string, number][] = [
+      ['part_name', 'Part name', 160],
+      ['part_number', 'Part number', 100],
+      ['unit', 'Unit', 80]
+    ];
+    requiredStrings.forEach(([field, label, maxLength]) => {
+      const value = String(payload?.[field] || '').trim();
+      if (!value) {
+        throw Object.assign(new Error(`${label} is required`), { status: 400 });
+      }
+      if (value.length > maxLength) {
+        throw Object.assign(new Error(`${label} must not exceed ${maxLength} characters`), { status: 400 });
+      }
+    });
+
+    const numericFields: [string, string][] = [
+      ['quantity', 'Quantity'],
+      ['min_quantity', 'Minimum quantity'],
+      ['reorder_point', 'Reorder point'],
+      ['cost', 'Cost'],
+      ['lead_time_days', 'Lead time days']
+    ];
+    numericFields.forEach(([field, label]) => {
+      const value = Number(payload?.[field]);
+      if (!Number.isFinite(value) || value < 0) {
+        throw Object.assign(new Error(`${label} must be a finite number greater than or equal to zero`), { status: 400 });
+      }
+    });
+
+    if (String(payload?.description || '').length > 5000) {
+      throw Object.assign(new Error('Description must not exceed 5000 characters'), { status: 400 });
+    }
+    if (String(payload?.barcode || '').length > 120) {
+      throw Object.assign(new Error('Barcode must not exceed 120 characters'), { status: 400 });
+    }
+    if (String(payload?.preferred_vendor || '').length > 160) {
+      throw Object.assign(new Error('Preferred vendor must not exceed 160 characters'), { status: 400 });
+    }
+    if (!/^[A-Z]{3}$/.test(String(payload?.currency || ''))) {
+      throw Object.assign(new Error('Currency must be a 3-letter code'), { status: 400 });
+    }
+  }
+
+  private async assertPartReferences(
+    payload: any,
+    account_id: any,
+    session?: any,
+    excludePartId?: string,
+    user?: any
+  ): Promise<void> {
+    if (payload.location_id) {
+      await this.assertUserCanAccessLocation(payload.location_id, user);
+      const locationQuery = LocationModel.exists({
+        _id: helperService.validateObjectId(String(payload.location_id)),
+        account_id,
+        visible: true
+      });
+      if (session) locationQuery.session(session);
+      if (!await locationQuery) {
+        throw Object.assign(new Error('Selected location is not available for this account'), { status: 400 });
+      }
+    }
+
+    if (payload.part_type) {
+      const typeQuery = PartsTypeModel.exists({
+        _id: helperService.validateObjectId(String(payload.part_type)),
+        account_id,
+        visible: true
+      });
+      if (session) typeQuery.session(session);
+      if (!await typeQuery) {
+        throw Object.assign(new Error('Selected part type is not available for this account'), { status: 400 });
+      }
+    }
+
+    if (payload.location_id && payload.part_number) {
+      const duplicateMatch: any = {
+        account_id,
+        visible: true,
+        part_number: String(payload.part_number).trim(),
+        location_id: helperService.validateObjectId(String(payload.location_id))
+      };
+      if (excludePartId) {
+        duplicateMatch._id = { $ne: helperService.validateObjectId(String(excludePartId)) };
+      }
+      const duplicateQuery = PartsModel.exists(duplicateMatch);
+      if (session) duplicateQuery.session(session);
+      if (await duplicateQuery) {
+        throw Object.assign(new Error('This part number already exists at the selected location'), { status: 409 });
+      }
+    }
+  }
+
+  private async assertUserCanAccessLocation(locationId: any, user: any): Promise<void> {
+    if (!locationId || !user || !['manager', 'employee', 'customer'].includes(String(user.user_role || ''))) {
+      return;
+    }
+    const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
+    if (!mappedLocations.some((mapping: any) => String(mapping.locationId) === String(locationId))) {
+      throw Object.assign(new Error('You do not have access to the selected location'), { status: 403 });
+    }
   }
 
   private async enrichPartNetwork(parts: any[]): Promise<any[]> {
@@ -380,8 +495,12 @@ class PartsService {
     newParts: any[] = [],
     previousStatus: string = 'Open',
     nextStatus: string = 'Open',
-    session?: any
+    session?: any,
+    account_id: any = null
   ): Promise<void> {
+    if (!account_id) {
+      throw Object.assign(new Error('Active account is required for inventory validation'), { status: 400 });
+    }
     const normalizedOldParts = this.normalizeWorkOrderParts(oldParts, previousStatus);
     const normalizedNewParts = this.normalizeWorkOrderParts(newParts, nextStatus);
     const oldMap = new Map<string, any>();
@@ -415,14 +534,18 @@ class PartsService {
         continue;
       }
 
-      const query = PartsModel.findById(partId);
+      const query = PartsModel.findOne({
+        _id: partId,
+        account_id,
+        visible: true
+      });
       if (session) {
         query.session(session);
       }
 
       const part = await query;
       if (!part) {
-        continue;
+        throw Object.assign(new Error('A selected part is unavailable for the active account'), { status: 400 });
       }
 
       const availableQuantity = Number(part.quantity || 0);
@@ -500,44 +623,39 @@ class PartsService {
   }
 
   async insert(body: IPart, account_id: any, user: any): Promise<IPart> {
-    const normalizedBody = this.normalizePartPayload(body);
-    const created = await new PartsModel({
-      account_id: account_id,
-      part_name: normalizedBody.part_name,
-      part_number: normalizedBody.part_number,
-      barcode: normalizedBody.barcode,
-      unit: normalizedBody.unit,
-      description: normalizedBody.description,
-      part_type: normalizedBody.part_type,
-      quantity: normalizedBody.quantity,
-      min_quantity: normalizedBody.min_quantity,
-      reorder_point: normalizedBody.reorder_point,
-      cost: normalizedBody.cost,
-      preferred_vendor: normalizedBody.preferred_vendor,
-      lead_time_days: normalizedBody.lead_time_days,
-      location_id: normalizedBody.location_id,
-      currency: normalizedBody.currency,
-      createdBy: user?._id || user
-    }).save();
+    return await withTransaction(async (session) => {
+      const normalizedBody = this.normalizePartPayload(body);
+      this.validatePartPayload(normalizedBody);
+      await this.assertPartReferences(normalizedBody, account_id, session, undefined, user);
 
-    await this.createPartHistoryEntry({
-      account_id,
-      part: created,
-      action_type: 'created',
-      user,
-      note: 'Part created.',
-      quantity: created.quantity,
-      stock_before: 0,
-      stock_after: created.quantity,
-      metadata: {
-        location_name: ''
-      }
+      const [created] = await PartsModel.create([{
+        account_id,
+        ...normalizedBody,
+        createdBy: user?._id || user,
+        visible: true
+      }], session ? { session } : undefined);
+
+      await this.createPartHistoryEntry({
+        account_id,
+        part: created,
+        action_type: 'created',
+        user,
+        note: 'Part created.',
+        quantity: created.quantity,
+        stock_before: 0,
+        stock_after: created.quantity,
+        metadata: { location_name: '' }
+      }, session);
+
+      return created;
     });
-
-    return created;
   };
 
-  async importParts(parts: any[], account_id: any, user_id: any): Promise<PartsImportResult> {
+  async importParts(parts: any[], account_id: any, user: any): Promise<PartsImportResult> {
+    if (parts.length > 500) {
+      throw Object.assign(new Error('A maximum of 500 parts can be imported at once'), { status: 400 });
+    }
+
     const result: PartsImportResult = {
       imported: 0,
       failed: 0,
@@ -551,25 +669,24 @@ class PartsService {
       const part = parts[index] || {};
 
       try {
-        const payload: any = {
-          account_id,
+        const payload: any = this.normalizePartPayload({
           part_name: String(part.part_name || '').trim(),
           part_number: String(part.part_number || '').trim(),
+          barcode: part.barcode,
           description: String(part.description || '').trim(),
           unit: String(part.unit || '').trim(),
           quantity: Number(part.quantity ?? 0),
           min_quantity: Number(part.min_quantity ?? 0),
+          reorder_point: Number(part.reorder_point ?? part.min_quantity ?? 0),
           cost: Number(part.cost ?? 0),
+          preferred_vendor: part.preferred_vendor,
+          lead_time_days: Number(part.lead_time_days ?? 0),
           currency: String(part.currency || 'INR').trim(),
-          createdBy: user_id
-        };
+          part_type: part.part_type,
+          location_id: part.location_id
+        });
 
-        if (!payload.part_name) throw new Error('Part name is required');
-        if (!payload.part_number) throw new Error('Part number is required');
-        if (!payload.unit) throw new Error('Unit is required');
-        if (!Number.isFinite(payload.quantity)) throw new Error('Quantity must be a number');
-        if (!Number.isFinite(payload.min_quantity)) throw new Error('Minimum quantity must be a number');
-        if (!Number.isFinite(payload.cost)) throw new Error('Cost must be a number');
+        this.validatePartPayload(payload);
 
         if (part.part_type) {
           payload.part_type = helperService.validateObjectId(String(part.part_type));
@@ -579,7 +696,8 @@ class PartsService {
           payload.location_id = helperService.validateObjectId(String(part.location_id));
         }
 
-        const created = await new PartsModel(payload).save();
+        await this.assertPartReferences(payload, account_id, undefined, undefined, user);
+        const created = await this.insert(payload as IPart, account_id, user);
         result.imported++;
         result.data.push(created);
       } catch (error: any) {
@@ -596,7 +714,6 @@ class PartsService {
 
   async updatePartById(id: string, body: IPart, user: any, account_id: any, expectedVersion?: number) {
     return await withTransaction(async (session) => {
-      const normalizedBody: any = this.normalizePartPayload(body);
       const existingPart = await PartsModel.findOne({
         _id: helperService.validateObjectId(String(id)),
         account_id,
@@ -608,13 +725,25 @@ class PartsService {
       }
       assertSyncVersion(existingPart, expectedVersion);
 
+      const normalizedBody: any = this.normalizePartPayload({
+        ...sanitizePartMetadataUpdatePayload(body),
+        quantity: Number(existingPart.quantity || 0)
+      });
+      this.validatePartPayload(normalizedBody);
+      await this.assertUserCanAccessLocation(existingPart.location_id, user);
+      await this.assertPartReferences(normalizedBody, account_id, session, id, user);
+
       const changedFields = this.getChangedPartFields(existingPart.toObject(), normalizedBody);
       normalizedBody.updatedBy = user?._id || user;
 
-      const updateFilter: any = { _id: id, account_id, visible: true };
+      const updateFilter: any = {
+        _id: helperService.validateObjectId(String(id)),
+        account_id,
+        visible: true
+      };
       if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
       delete normalizedBody.sync_version;
-      const updatedPart = await PartsModel.findOneAndUpdate(updateFilter, normalizedBody, { returnDocument: 'after', session });
+      const updatedPart = await PartsModel.findOneAndUpdate(updateFilter, { $set: normalizedBody }, { returnDocument: 'after', session });
       if (!updatedPart && expectedVersion !== undefined) {
         throw createSyncConflict(await PartsModel.findById(id).session(session));
       }
@@ -650,6 +779,8 @@ class PartsService {
       if (!part) {
         throw Object.assign(new Error('Part not found'), { status: 404 });
       }
+
+      await this.assertUserCanAccessLocation(part.location_id, user);
 
       const mode = String(body?.mode || 'add').trim();
       const rawQuantity = Number(body?.quantity);
@@ -690,6 +821,8 @@ class PartsService {
         if (!destinationPart) {
           throw Object.assign(new Error('Destination part record not found'), { status: 404 });
         }
+
+        await this.assertUserCanAccessLocation(destinationPart.location_id, user);
 
         if (String(destinationPart.part_number || '').trim() !== String(part.part_number || '').trim()) {
           throw Object.assign(new Error('Destination location must belong to the same part number'), { status: 400 });
@@ -839,8 +972,27 @@ class PartsService {
     });
   }
 
-  async removeById(id: string, user_id: any) {
-    return await PartsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
+  async removeById(id: string, user_id: any, account_id: any) {
+    const partId = helperService.validateObjectId(String(id));
+    const part = await PartsModel.findOne({ _id: partId, account_id, visible: true }).lean();
+    if (!part) return null;
+    if (Number(part.quantity || 0) > 0) {
+      throw Object.assign(new Error('Set the on-hand quantity to zero before deleting this part'), { status: 409 });
+    }
+    const activeOrder = await WorkOrderModel.exists({
+      account_id,
+      visible: true,
+      status: { $nin: ['Completed', 'Cancelled', 'Rejected'] },
+      'parts.part_id': String(partId)
+    });
+    if (activeOrder) {
+      throw Object.assign(new Error('This part is used by an active work order and cannot be deleted'), { status: 409 });
+    }
+    return await PartsModel.findOneAndUpdate({
+      _id: partId,
+      account_id,
+      visible: true
+    }, { $set: { visible: false, updatedBy: user_id } }, { returnDocument: 'after' });
   };
 
   async assignPartToWorkOrder(body: any, user: any) {
@@ -931,8 +1083,17 @@ class PartsService {
 
         if (reserveDelta === 0 && issueDelta === 0) continue;
 
-        const part = await PartsModel.findById(partId).session(s);
-        if (!part) continue;
+        if (!context.account_id) {
+          throw Object.assign(new Error('Account context is required for work-order inventory changes'), { status: 400 });
+        }
+        const part = await PartsModel.findOne({
+          _id: partId,
+          account_id: context.account_id,
+          visible: true
+        }).session(s);
+        if (!part) {
+          throw Object.assign(new Error('A selected part is unavailable for the active account'), { status: 400 });
+        }
 
         if (netStockDelta < 0 && part.quantity < Math.abs(netStockDelta)) {
           throw Object.assign(new Error(`Insufficient stock for ${part.part_name}`), { status: 400 });
@@ -1058,78 +1219,118 @@ class PartsService {
   }
 
   async createCycleCount(body: CycleCountPayload, account_id: any, user: any): Promise<any> {
-    const part = await PartsModel.findOne({
-      _id: helperService.validateObjectId(String(body.part_id)),
-      account_id,
-      visible: true
-    }).lean();
-
-    if (!part) {
-      throw Object.assign(new Error('Part not found'), { status: 404 });
+    const countedQuantity = Number(body.counted_quantity);
+    if (!Number.isFinite(countedQuantity) || countedQuantity < 0) {
+      throw Object.assign(new Error('Counted quantity must be a finite number greater than or equal to zero'), { status: 400 });
     }
 
-    const systemQuantity = Number(part.quantity || 0);
-    const countedQuantity = Number(body.counted_quantity || 0);
-    const discrepancyQuantity = countedQuantity - systemQuantity;
-    const discrepancyPercent = systemQuantity > 0 ? Number((((discrepancyQuantity) / systemQuantity) * 100).toFixed(2)) : (countedQuantity > 0 ? 100 : 0);
+    const count = await withTransaction(async (session) => {
+      const part = await PartsModel.findOne({
+        _id: helperService.validateObjectId(String(body.part_id)),
+        account_id,
+        visible: true
+      }).session(session);
 
-    const count = await CycleCountModel.create({
-      account_id,
-      part_id: part._id,
-      part_name: part.part_name,
-      part_number: part.part_number,
-      barcode: part.barcode || '',
-      location_id: part.location_id,
-      system_quantity: systemQuantity,
-      counted_quantity: countedQuantity,
-      discrepancy_quantity: discrepancyQuantity,
-      discrepancy_percent: discrepancyPercent,
-      status: discrepancyQuantity === 0 ? 'approved' : 'pending-approval',
-      reason: String(body.reason || '').trim(),
-      createdBy: user._id,
-      createdByName: this.formatMovementActor(user)
-    });
-
-    await this.createPartHistoryEntry({
-      account_id,
-      part,
-      action_type: 'cycle-count-submitted',
-      user,
-      note: String(body.reason || '').trim() || 'Cycle count submitted.',
-      quantity: countedQuantity,
-      stock_before: systemQuantity,
-      stock_after: countedQuantity,
-      metadata: {
-        discrepancy_quantity: discrepancyQuantity,
-        discrepancy_percent: discrepancyPercent
+      if (!part) {
+        throw Object.assign(new Error('Part not found'), { status: 404 });
       }
-    });
+      if (!part.location_id) {
+        throw Object.assign(new Error('A cycle count requires the part to have a valid location'), { status: 400 });
+      }
+      await this.assertUserCanAccessLocation(part.location_id, user);
 
-    if (discrepancyQuantity === 0) {
-      await PartsModel.findByIdAndUpdate(part._id, { last_counted_at: new Date(), updatedBy: user._id });
-    }
+      const pendingQuery = CycleCountModel.exists({
+        account_id,
+        part_id: part._id,
+        visible: true,
+        status: 'pending-approval'
+      });
+      if (session) pendingQuery.session(session);
+      if (await pendingQuery) {
+        throw Object.assign(new Error('This part already has a cycle count awaiting approval'), { status: 409 });
+      }
+
+      const systemQuantity = Number(part.quantity || 0);
+      const discrepancyQuantity = countedQuantity - systemQuantity;
+      const discrepancyPercent = systemQuantity > 0
+        ? Number(((discrepancyQuantity / systemQuantity) * 100).toFixed(2))
+        : (countedQuantity > 0 ? 100 : 0);
+
+      const [createdCount] = await CycleCountModel.create([{
+        account_id,
+        part_id: part._id,
+        part_name: part.part_name,
+        part_number: part.part_number,
+        barcode: part.barcode || '',
+        location_id: part.location_id,
+        system_quantity: systemQuantity,
+        counted_quantity: countedQuantity,
+        discrepancy_quantity: discrepancyQuantity,
+        discrepancy_percent: discrepancyPercent,
+        status: discrepancyQuantity === 0 ? 'approved' : 'pending-approval',
+        reason: String(body.reason || '').trim(),
+        createdBy: user._id,
+        createdByName: this.formatMovementActor(user)
+      }], session ? { session } : undefined);
+
+      await this.createPartHistoryEntry({
+        account_id,
+        part,
+        action_type: 'cycle-count-submitted',
+        user,
+        note: String(body.reason || '').trim() || 'Cycle count submitted.',
+        quantity: countedQuantity,
+        stock_before: systemQuantity,
+        stock_after: countedQuantity,
+        metadata: { discrepancy_quantity: discrepancyQuantity, discrepancy_percent: discrepancyPercent }
+      }, session);
+
+      if (discrepancyQuantity === 0) {
+        part.last_counted_at = new Date();
+        part.updatedBy = user._id;
+        await part.save({ session });
+      }
+
+      return createdCount;
+    });
 
     const [enriched] = await this.getCycleCounts({ _id: count._id, account_id });
     return enriched || count;
   }
 
   async approveCycleCount(id: string, decision: 'approved' | 'rejected', account_id: any, user: any, approvalNotes?: string): Promise<any> {
-    return await withTransaction(async (session) => {
-      const count = await CycleCountModel.findOne({
-        _id: helperService.validateObjectId(String(id)),
-        account_id,
-        visible: true
-      }).session(session);
+    if (!['approved', 'rejected'].includes(decision)) {
+      throw Object.assign(new Error('Decision must be approved or rejected'), { status: 400 });
+    }
 
-      if (!count) {
-        throw Object.assign(new Error('Cycle count not found'), { status: 404 });
+    const count = await withTransaction(async (session) => {
+      const objectId = helperService.validateObjectId(String(id));
+      const reviewedAt = new Date();
+      const claimedCount = await CycleCountModel.findOneAndUpdate({
+        _id: objectId,
+        account_id,
+        visible: true,
+        status: 'pending-approval'
+      }, {
+        $set: {
+          status: decision,
+          approval_notes: String(approvalNotes || '').trim(),
+          reviewedBy: user._id,
+          reviewedByName: this.formatMovementActor(user),
+          reviewedAt
+        }
+      }, { returnDocument: 'after', session });
+
+      if (!claimedCount) {
+        const existingQuery = CycleCountModel.exists({ _id: objectId, account_id, visible: true });
+        if (session) existingQuery.session(session);
+        if (!await existingQuery) {
+          throw Object.assign(new Error('Cycle count not found'), { status: 404 });
+        }
+        throw Object.assign(new Error('This cycle count has already been reviewed'), { status: 409 });
       }
 
-      count.status = decision;
-      count.approval_notes = String(approvalNotes || '').trim();
-      count.reviewedBy = user._id;
-      count.reviewedByName = this.formatMovementActor(user);
-      count.reviewedAt = new Date();
+      const count = claimedCount;
 
       if (decision === 'approved') {
         const part = await PartsModel.findOne({
@@ -1144,6 +1345,9 @@ class PartsService {
 
         const stockBefore = Number(part.quantity || 0);
         const stockAfter = Number(count.counted_quantity || 0);
+        if (stockBefore !== Number(count.system_quantity || 0)) {
+          throw Object.assign(new Error('Stock changed after this count was submitted. Reject it and create a new cycle count.'), { status: 409 });
+        }
         if (stockBefore !== stockAfter) {
           await InventoryMovementModel.create([{
             account_id,
@@ -1202,15 +1406,16 @@ class PartsService {
         }, session);
       }
 
-      await count.save({ session });
-      const [enriched] = await this.getCycleCounts({ _id: count._id, account_id });
-      return enriched || count.toObject();
+      return count;
     });
+
+    const [enriched] = await this.getCycleCounts({ _id: count._id, account_id });
+    return enriched || count.toObject();
   }
 
-  async getReplenishmentSuggestions(account_id: any): Promise<any[]> {
+  async getReplenishmentSuggestions(account_id: any, partsMatch: any = { account_id, visible: true }): Promise<any[]> {
     const [parts, openOrders, procedures] = await Promise.all([
-      this.getAllParts({ account_id, visible: true }),
+      this.getAllParts(partsMatch),
       WorkOrderModel.find({
         account_id,
         visible: true,

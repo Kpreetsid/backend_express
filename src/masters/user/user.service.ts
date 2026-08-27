@@ -10,6 +10,7 @@ import { RoleMenuModel } from "../../models/userRoleMenu.model";
 
 import { withTransaction } from "../../utils/transaction.helper";
 import { subscriptionLimitService } from "../company/subscriptionLimit.service";
+import { assertStrongPassword } from '../../utils/passwordPolicy';
 
 class UsersService {
 
@@ -37,7 +38,13 @@ class UsersService {
   };
 
   async verifyUserLogin({ id, companyID, username }: UserLoginPayload) {
-    return await UserModel.findOne({ _id: id, account_id: companyID, username: username }).select('-password');
+    return await UserModel.findOne({
+      _id: id,
+      account_id: companyID,
+      username,
+      user_status: 'active',
+      isVerified: true
+    }).select('-password');
   };
 
   async userVerified(id: string) {
@@ -47,10 +54,18 @@ class UsersService {
   async getLocationWiseUser(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { params: { locationID } } = req;
-      const locationId = helperService.validateObjectId(locationID);
+      const currentUser = (req as any).user as IUser;
+      if (!currentUser?.account_id) {
+        throw Object.assign(new Error('Unauthorized access'), { status: 401 });
+      }
+      const locationId = helperService.validateObjectId(String(locationID));
       const data = await MapUserAssetLocationModel.find({ locationId: locationId }).select('userId -_id');
       const userIDList = data.map((doc: any) => doc.userId);
-      const userData = await this.getAllUsers({ _id: { $in: userIDList } });
+      const userData = await this.getAllUsers({
+        _id: { $in: userIDList },
+        account_id: currentUser.account_id,
+        user_status: 'active'
+      });
       if (userData.length === 0) {
         throw Object.assign(new Error('No records found'), { status: 404 });
       }
@@ -62,32 +77,60 @@ class UsersService {
 
   async createNewUser(body: IUser, account_id: any, session?: any) {
     await subscriptionLimitService.assertCanCreate(account_id, 'user', 1, session);
+    assertStrongPassword(body.password);
     body.password = await passwordService.hashPassword(body.password);
-    
-    // Use the provided session (or explicitly use the fallback if session is undefined but provided in arguments)
-    const newUser = new UserModel({ ...body, account_id });
-    const userDetails = await newUser.save({ session });
-    const roleDetails = await rolesService.createUserRole(body.user_role, userDetails, session);
-    return { userDetails, roleDetails };
+
+    let userDetails: any;
+    try {
+      const newUser = new UserModel({ ...body, account_id });
+      userDetails = await newUser.save({ session });
+      const roleDetails = await rolesService.createUserRole(body.user_role, userDetails, session);
+      const safeUserDetails: any = userDetails.toObject();
+      delete safeUserDetails.password;
+      return { userDetails: safeUserDetails, roleDetails };
+    } catch (error) {
+      if (!session && userDetails?._id) {
+        await UserModel.deleteOne({ _id: userDetails._id, account_id });
+      }
+      throw error;
+    }
   };
 
-  async updateUserPassword(user_id: any, body: any) {
-    body.password = await passwordService.hashPassword(body.password);
-    const updatedUser = await UserModel.findByIdAndUpdate(user_id, body, { returnDocument: 'after' });
-    await this.mailerService.sendPasswordChangeConfirmation(updatedUser);
+  async updateUserPassword(user_id: any, password: string) {
+    const hashedPassword = await passwordService.hashPassword(password);
+    const updatedUser = await UserModel.findByIdAndUpdate(
+      user_id,
+      { $set: { password: hashedPassword, passwordExpiredAt: new Date() } },
+      { returnDocument: 'after', runValidators: true }
+    );
+    if (!updatedUser) {
+      throw Object.assign(new Error('User not found'), { status: 404 });
+    }
+    try {
+      await this.mailerService.sendPasswordChangeConfirmation(updatedUser);
+    } catch (error) {
+      console.error('Password change confirmation email failed', error);
+    }
     return updatedUser;
   };
 
-  async updateUserDetails(id: string, body: IUser) {
-    return await UserModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
+  async updateUserDetails(id: string, accountId: any, body: Partial<IUser>) {
+    return await UserModel.findOneAndUpdate(
+      { _id: id, account_id: accountId },
+      { $set: body },
+      { returnDocument: 'after', runValidators: true }
+    );
   }
 
-  async removeById(id: string) {
+  async removeById(id: string, accountId: any) {
     return await withTransaction(async (session) => {
       await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
-      return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { returnDocument: 'after', session });
+      return await UserModel.findOneAndUpdate(
+        { _id: id, account_id: accountId },
+        { $set: { user_status: 'inactive' } },
+        { returnDocument: 'after', session, runValidators: true }
+      );
     });
   };
 }
-
 export const usersService = new UsersService(new MailerService());

@@ -124,8 +124,12 @@ class CommentService {
     return createdComment;
   };
 
-  async updateComment(commentId: any, message: any, user: any): Promise<any> {
-    const updatedComment = await CommentsModel.findByIdAndUpdate(commentId, { comments: message, updatedBy: user?._id || user }, { returnDocument: 'after' });
+  async updateComment(match: any, message: any, user: any): Promise<any> {
+    const updatedComment = await CommentsModel.findOneAndUpdate(
+      { ...match, visible: true },
+      { comments: message, updatedBy: user?._id || user },
+      { returnDocument: 'after', runValidators: true }
+    );
     if (updatedComment) {
       await workOrderActivityService.logActivity({
         account_id: updatedComment.account_id,
@@ -142,8 +146,12 @@ class CommentService {
     return updatedComment;
   };
 
-  async removeComment(commentId: any, user: any): Promise<any> {
-    const deletedComment = await CommentsModel.findByIdAndUpdate(commentId, { visible: false, updatedBy: user?._id || user }, { returnDocument: 'after' });
+  async removeComment(match: any, user: any): Promise<any> {
+    const deletedComment = await CommentsModel.findOneAndUpdate(
+      { ...match, visible: true },
+      { visible: false, updatedBy: user?._id || user },
+      { returnDocument: 'after' }
+    );
     if (!deletedComment) {
       throw Object.assign(new Error('Comment not found'), { status: 404 });
     }
@@ -158,15 +166,24 @@ class CommentService {
       },
       actor: user
     });
-    await this.softDeleteChildComments(commentId, user?._id || user);
+    await this.softDeleteChildComments(
+      deletedComment._id,
+      deletedComment.account_id,
+      deletedComment.order_id,
+      user?._id || user
+    );
     return deletedComment;
   };
 
-  async softDeleteChildComments(parentId: any, user_id: any) {
-    const childComments = await CommentsModel.find({ parentCommentId: parentId, visible: true }).lean();
+  async softDeleteChildComments(parentId: any, account_id: any, order_id: any, user_id: any) {
+    const childComments = await CommentsModel.find({ parentCommentId: parentId, account_id, order_id, visible: true }).lean();
     for (const child of childComments) {
-      await CommentsModel.findByIdAndUpdate(child._id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
-      await this.softDeleteChildComments(child._id, user_id);
+      await CommentsModel.findOneAndUpdate(
+        { _id: child._id, account_id, order_id, visible: true },
+        { visible: false, updatedBy: user_id },
+        { returnDocument: 'after' }
+      );
+      await this.softDeleteChildComments(child._id, account_id, order_id, user_id);
     }
   };
 }

@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 export const OBSERVATION_COLLECTION_NAME = 'observation';
-
+import { OBSERVATION_STATUSES } from '../masters/observation/observation.policy';
 
 export interface IObservation extends Document {
   observation: string;
@@ -31,7 +31,7 @@ const ObservationSchema = new Schema<IObservation>({
   assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
   report_id: { type: mongoose.Schema.Types.ObjectId, ref: 'ReportAssetModel' },
   accountId: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
-  status: { type: String, trim: true, required: true },
+  status: { type: String, trim: true, enum: OBSERVATION_STATUSES, required: true },
   alarmId: { type: Number },
   locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
   top_level_asset_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AssetModel', required: true },
@@ -44,5 +44,8 @@ const ObservationSchema = new Schema<IObservation>({
   timestamps: true,
   versionKey: false
 });
+
+ObservationSchema.index({ accountId: 1, visible: 1, assetId: 1, _id: -1 });
+ObservationSchema.index({ accountId: 1, visible: 1, alarmId: 1, _id: -1 });
 
 export const ObservationModel = mongoose.model<IObservation>('Schema_Observation', ObservationSchema);

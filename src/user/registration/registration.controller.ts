@@ -2,19 +2,25 @@ import { NextFunction, Request, Response } from 'express';
 import { registrationService } from './registration.service';
 import { usersService } from '../../masters/user/user.service';
 import { companyService } from '../../masters/company/company.service';
+import { assertStrongPassword } from '../../utils/passwordPolicy';
 
 class RegistrationController {
     async userRegister (req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
-            const { email, username, firstName, account_name } = req.body;
-            if (!email || !username || !firstName) {
-                throw Object.assign(new Error('Email and Username are required'), { status: 400 });
+            const { email, username, firstName, account_name, password } = req.body;
+            if (!email || !username || !firstName || !account_name || !password) {
+                throw Object.assign(new Error('Email, username, first name, account name and password are required'), { status: 400 });
             }
-            const isEmailExists: any = await usersService.getAllUsers({ email: email });
+            assertStrongPassword(password);
+            const normalizedEmail = String(email).trim().toLowerCase();
+            const normalizedUsername = String(username).trim().toLowerCase();
+            req.body.email = normalizedEmail;
+            req.body.username = normalizedUsername;
+            const isEmailExists: any = await usersService.getAllUsers({ email: normalizedEmail });
             if (isEmailExists.length > 0) {
                 throw Object.assign(new Error('Email already exists'), { status: 403 });
             }
-            const isUserNameExists: any = await usersService.getAllUsers({ username: username });
+            const isUserNameExists: any = await usersService.getAllUsers({ username: normalizedUsername });
             if (isUserNameExists.length > 0) {
                 throw Object.assign(new Error('Username already exists'), { status: 403 });
             }
@@ -22,7 +28,7 @@ class RegistrationController {
             if (isAccountExists.length > 0) {
                 throw Object.assign(new Error('Account already exists'), { status: 403 });
             }
-            const match = { email: email, firstName: firstName };
+            const match = { email: normalizedEmail, firstName: firstName };
             const data = await registrationService.emailVerificationCode(match);
             if(!data) {
                 throw Object.assign(new Error('Failed to send verification email'), { status: 500 });
@@ -42,6 +48,7 @@ class RegistrationController {
             if (body.verificationCode.toString().length !== 6) {
                 throw Object.assign(new Error('Invalid OTP (One Time Password)'), { status: 400 });
             }
+            assertStrongPassword(body.password);
             const data = await registrationService.verifyOTPCode(body);
             if (!data) {
                 throw Object.assign(new Error('OTP verification failed'), { status: 403 });

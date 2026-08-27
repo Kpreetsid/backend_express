@@ -1,13 +1,95 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
 import { UserLogModel } from '../models/userLogs.model';
 import { get, merge, omit } from 'lodash';
+import fs from 'fs';
+import path from 'path';
+import morgan from 'morgan';
 import { UserLogProducer } from '../_cache/streams/userLogProducer';
 
 class AppLogger {
+  private logDir: string;
+  private accessLogStream?: fs.WriteStream;
+  private fileLogger?: RequestHandler;
+  private consoleLogger: RequestHandler;
+  private currentLogFile: string = '';
   private readonly sensitiveKeyPattern = /(password|passcode|token|authorization|auth|otp|secret|cookie|session|card|ssn|external_token|verificationCode|confirmNewPassword|newPassword|payloadCrypto|sessionKey|_encrypted|kid|iv|tag|ct|__cmms_crypto_fields)/i;
+
+  constructor() {
+    this.logDir = path.join(process.cwd(), 'logs');
+    try {
+      if (!fs.existsSync(this.logDir)) {
+        fs.mkdirSync(this.logDir, { recursive: true });
+      }
+    } catch (err) {
+      console.error('Failed to create log directory:', err);
+    }
+    this.registerMorganTokens();
+    this.refreshFileLogger();
+    const consoleFormat = ':date_ist | :status | :userId | :userName | :action | :method | :response-time ms | :url';
+    this.consoleLogger = morgan(consoleFormat);
+  }
+
+  private getMonthlyLogFileName(): string {
+    const now = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + istOffset);
+    const month = istDate.toLocaleString('en-US', { month: 'long' });
+    const year = istDate.getFullYear();
+    return `${month}_${year}.log`;
+  }
+
+  private refreshFileLogger(): void {
+    const currentMonthFile = this.getMonthlyLogFileName();
+    if (this.currentLogFile !== currentMonthFile) {
+      if (this.accessLogStream) {
+        this.accessLogStream.end();
+      }
+      this.currentLogFile = currentMonthFile;
+      try {
+        const logFilePath = path.join(this.logDir, this.currentLogFile);
+        this.accessLogStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+        const fileFormat = ':date_ist | :status | :userId | :userName | :action | :method | :response-time ms | :url | :device | :module';
+        this.fileLogger = morgan(fileFormat, { stream: this.accessLogStream });
+      } catch (err) {
+        console.error('Failed to initialize file logger:', err);
+      }
+    }
+  }
+
+  private registerMorganTokens(): void {
+    morgan.token('device', (req: Request) => (req.headers['user-agent'] as string) || 'unknown');
+    morgan.token('userName', (req: any) => req.user?.username || 'Anonymous');
+    morgan.token('userId', (req: any) => req.user?._id?.toString() || req.user?.id?.toString() || 'Anonymous');
+    morgan.token('action', (req: Request) => this.mapAction(req.method));
+    morgan.token('module', (req: Request) => this.extractModule(req.originalUrl || req.url));
+    morgan.token('date_ist', () => {
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const istDate = new Date(now.getTime() + istOffset);
+      return istDate.toISOString().replace('Z', '+05:30');
+    });
+  }
+
+  private mapAction(method: any): string {
+    switch (String(method).toUpperCase()) {
+      case 'GET': return 'READ';
+      case 'POST': return 'CREATE';
+      case 'PUT': return 'UPDATE';
+      case 'PATCH': return 'UPDATE';
+      case 'DELETE': return 'DELETE';
+      default: return String(method).toUpperCase();
+    }
+  }
 
   public logMiddleware(): RequestHandler {
     return (req: Request, res: Response, next: NextFunction) => {
+      this.refreshFileLogger();
+      if (typeof this.consoleLogger === 'function') {
+        this.consoleLogger(req, res, () => {});
+      }
+      if (typeof this.fileLogger === 'function') {
+        this.fileLogger(req, res, () => {});
+      }
       this.activityLogger(req, res, next);
     };
   }
@@ -148,12 +230,12 @@ class AppLogger {
     return 'Unknown';
   }
 
-   private extractBrowserVersion (userAgent: string | undefined): string {
+  private extractBrowserVersion (userAgent: string | undefined): string {
     const match = userAgent?.match(/Chrome\/([\d.]+)/);
     return match ? match[1] : 'Unknown';
   }
   
-   private extractEngine (userAgent: string | undefined): string {
+  private extractEngine (userAgent: string | undefined): string {
     if (!userAgent) return 'Unknown';
     if (userAgent.includes('AppleWebKit')) return 'WebKit (AppleWebKit/537.36)';
     if (userAgent.includes('Gecko')) return 'Gecko';
@@ -169,7 +251,7 @@ class AppLogger {
   }
 
   private extractModule(url: any): string {
-    const segments = url.split('/').filter(Boolean);
+    const segments = String(url || '').split('/').filter(Boolean);
     return segments[0] || 'general';
   }
 }

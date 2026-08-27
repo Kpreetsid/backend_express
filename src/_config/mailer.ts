@@ -1,8 +1,9 @@
 import nodemailer, { Transporter } from 'nodemailer';
 import { mailCredential } from '../configDB';
-import { generateExternalAccessToken } from './auth';
+import { generateExternalAccessToken } from './externalToken';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
 import { VerificationCodeModel, VERIFICATION_CODE_EXPIRY_SECONDS } from '../models/userVerification.model';
 import { normalizeExperienceProfile } from '../_role/experienceProfile';
@@ -138,7 +139,7 @@ export class MailerService {
 
   async sendVerificationCode(user: any): Promise<boolean> {
     try {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otp = crypto.randomInt(100000, 1000000).toString();
       const fileName = this.loadTemplate(`verificationCode.template.html`);
       const html = this.replace(fileName,
         {
@@ -153,7 +154,18 @@ export class MailerService {
       await this.send({to: user.email, subject: 'Verify your email address for Presage CMMS', html});
       await VerificationCodeModel.findOneAndUpdate(
         { email: user.email },
-        { firstName: user.firstName, code: otp, createdAt: new Date() },
+        {
+          $set: {
+            firstName: user.firstName,
+            lastName: user.lastName,
+            code: otp,
+            createdAt: new Date()
+          },
+          $unset: {
+            resetTokenHash: 1,
+            resetTokenExpiresAt: 1
+          }
+        },
         { upsert: true, new: true, setDefaultsOnInsert: true }
       );
       return true;

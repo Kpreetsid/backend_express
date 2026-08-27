@@ -1,3 +1,4 @@
+import { controllerCache } from '../../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { rolesService } from './roles.service';
 import { IUser } from '../../../models/user.model';
@@ -5,6 +6,9 @@ import { usersService } from '../user.service';
 import { get } from 'lodash';
 import { helperService } from '../../../utils/helper';
 import { RoleManager } from '../../../_role/newUserRoles';
+import { PlatformControlManager } from '../../../_role/userRoles';
+import { TokenModel } from '../../../models/userToken.model';
+import { clearAuthSessionCacheForUser } from '../../../_config/auth';
 import { companyService } from '../../company/company.service';
 import { accountAccessService } from '../../../_role/accountAccess.service';
 
@@ -22,20 +26,42 @@ const getConfigurableRoles = async (accountId: unknown, roles: any[]) => {
 };
 
 class RolesController {
+  constructor() {
+    this.getAll = this.getAll.bind(this);
+    this.myRoleData = this.myRoleData.bind(this);
+    this.getDataById = this.getDataById.bind(this);
+    this.createRole = this.createRole.bind(this);
+    this.updateRole = this.updateRole.bind(this);
+    this.removeRole = this.removeRole.bind(this);
+    this.assertAdminOrManager = this.assertAdminOrManager.bind(this);
+    this.getRoleRecord = this.getRoleRecord.bind(this);
+    this.getTargetUser = this.getTargetUser.bind(this);
+    this.revokeUserSessions = this.revokeUserSessions.bind(this);
+  }
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
-      const { query: { user_id: queryUserId } } = req;
-      const match: any = { account_id };
+      const user = get(req, 'user', {}) as IUser;
+      this.assertAdminOrManager(user);
+      const { user_id: queryUserId } = req.query;
+      const match: any = { account_id: user.account_id };
+
       if (queryUserId) {
         match.user_id = helperService.validateObjectId(String(queryUserId));
       }
-      const data = await rolesService.getRoles(match);
+      let data = await rolesService.getRoles(match);
+      if ((!data || data.length === 0) && queryUserId) {
+        const targetUsers = await usersService.getAllUsers({ _id: match.user_id, account_id: user.account_id });
+        if (targetUsers.length > 0) {
+          const bootstrapped = await rolesService.createUserRole(targetUsers[0].user_role, targetUsers[0]);
+          data = [bootstrapped];
+        }
+      }
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Role not found'), { status: 404 });
       }
-      const configurableRoles = await getConfigurableRoles(account_id, data);
-      res.status(200).json({ status: true, message: "Roles fetched successfully", data: configurableRoles });
+
+      const configurableRoles = await getConfigurableRoles(user.account_id, data);
+      res.status(200).json({ status: true, message: 'Roles fetched successfully', data: configurableRoles });
     } catch (error) {
       next(error);
     }
@@ -43,17 +69,13 @@ class RolesController {
 
   async myRoleData(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const match: any = { account_id, user_id };
-      const data = await rolesService.getRoles(match);
+      const { account_id, _id: user_id } = get(req, 'user', {}) as IUser;
+      const data = await rolesService.getRoles({ account_id, user_id });
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Role not found'), { status: 404 });
       }
-      res.status(200).json({
-        status: true,
-        message: "Role fetched successfully",
-        data: await getConfigurableRoles(account_id, data)
-      });
+      const configurableRoles = await getConfigurableRoles(account_id, data);
+      res.status(200).json({ status: true, message: 'Role fetched successfully', data: configurableRoles });
     } catch (error) {
       next(error);
     }
@@ -61,18 +83,11 @@ class RolesController {
 
   async getDataById(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
-      const { params: { id } } = req;
-      const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
-      const data = await rolesService.getRoles(match);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error('Role not found'), { status: 404 });
-      }
-      res.status(200).json({
-        status: true,
-        message: "Role fetched successfully",
-        data: await getConfigurableRoles(account_id, data)
-      });
+      const user = get(req, 'user', {}) as IUser;
+      this.assertAdminOrManager(user);
+      const data = await this.getRoleRecord(String(req.params.id), user.account_id);
+      const configurableRoles = await getConfigurableRoles(user.account_id, [data]);
+      res.status(200).json({ status: true, message: 'Role fetched successfully', data: configurableRoles });
     } catch (error) {
       next(error);
     }
@@ -80,21 +95,29 @@ class RolesController {
 
   async createRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const userData: any = await usersService.getAllUsers({ _id: helperService.validateObjectId(String(user_id)) });
-      if (!userData || userData.length === 0) {
-        throw Object.assign(new Error('User not found'), { status: 404 });
+      const actor = get(req, 'user', {}) as IUser;
+      this.assertAdminOrManager(actor);
+      const targetUserId = helperService.validateObjectId(String(req.body.user_id));
+      const targetUser = await this.getTargetUser(targetUserId, actor.account_id);
+      const existingRole = await rolesService.getRoles({ account_id: actor.account_id, user_id: targetUserId });
+      if (existingRole.length) {
+        throw Object.assign(new Error('A role configuration already exists for this user'), { status: 409 });
       }
-      const newRoleMenu = await RoleManager.getRoleMenuData(userData[0].user_role);
-      if (!newRoleMenu) {
-        throw Object.assign(new Error('User role not found'), { status: 404 });
+
+      const [data, roleMenu] = await Promise.all([
+        PlatformControlManager.getRoleMenuData(targetUser.user_role),
+        RoleManager.getRoleMenuData(targetUser.user_role)
+      ]);
+      const createdRole = await rolesService.insertRole(
+        { data, roleMenu },
+        actor.account_id,
+        targetUserId,
+        actor._id
+      );
+      if (!createdRole) {
+        throw Object.assign(new Error('Role not created'), { status: 500 });
       }
-      req.body.roleMenu = newRoleMenu;
-      const data = await rolesService.insertRole(req.body, account_id, user_id);
-      if (!data) {
-        throw Object.assign(new Error('Role not created'), { status: 404 });
-      }
-      res.status(200).json({ status: true, message: "Role created successfully", data });
+      res.status(200).json({ status: true, message: 'Role created successfully', data: createdRole });
     } catch (error) {
       next(error);
     }
@@ -102,25 +125,31 @@ class RolesController {
 
   async updateRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const { params: { id } } = req;
-      const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
-      const existingData = await rolesService.getRoles(match);
-      if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('Role not found'), { status: 404 });
+      const actor = get(req, 'user', {}) as IUser;
+      this.assertAdminOrManager(actor);
+      const existingRole: any = await this.getRoleRecord(String(req.params.id), actor.account_id);
+      const targetUser = await this.getTargetUser(existingRole.user_id, actor.account_id);
+      if (targetUser.isFirstUser) {
+        throw Object.assign(new Error('The primary account administrator permissions cannot be changed'), { status: 400 });
       }
-      const accountRoleMenu = await getAccountRoleMenuOrThrow(account_id);
-      const data = await rolesService.updateById(id, {
-        data: accountAccessService.mergeConfigurablePlatformControl(
-          existingData[0].data,
-          req.body.data,
-          accountRoleMenu
-        )
-      }, user_id);
-      if (!data) {
+
+      const accountRoleMenu = await getAccountRoleMenuOrThrow(actor.account_id);
+      const data = accountAccessService.mergeConfigurablePlatformControl(
+        existingRole.data,
+        req.body.data,
+        accountRoleMenu
+      );
+      const updatedRole = await rolesService.updateById(
+        existingRole._id,
+        actor.account_id,
+        data,
+        actor._id
+      );
+      if (!updatedRole) {
         throw Object.assign(new Error('Role not updated'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Role updated successfully", data });
+      await this.revokeUserSessions(existingRole.user_id);
+      res.status(200).json({ status: true, message: 'Role updated successfully. The user must sign in again.', data: updatedRole });
     } catch (error) {
       next(error);
     }
@@ -128,22 +157,59 @@ class RolesController {
 
   async removeRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const { params: { id } } = req;
-      const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
-      const existingData = await rolesService.getRoles(match);
-      if (!existingData || existingData.length === 0) {
-        throw Object.assign(new Error('Role not found'), { status: 404 });
+      const actor = get(req, 'user', {}) as IUser;
+      this.assertAdminOrManager(actor);
+      const existingRole: any = await this.getRoleRecord(String(req.params.id), actor.account_id);
+      const targetUser = await this.getTargetUser(existingRole.user_id, actor.account_id);
+      if (targetUser.isFirstUser) {
+        throw Object.assign(new Error('The primary account administrator role cannot be removed'), { status: 400 });
       }
-      const data = await rolesService.removeById(id, user_id);
-      if (!data) {
+
+      const removedRole = await rolesService.removeById(existingRole._id, actor.account_id);
+      if (!removedRole) {
         throw Object.assign(new Error('Role not deleted'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Role deleted successfully" });
+      await this.revokeUserSessions(existingRole.user_id);
+      res.status(200).json({ status: true, message: 'Role deleted successfully' });
     } catch (error) {
       next(error);
     }
   }
+
+  private assertAdminOrManager(user: IUser): void {
+    const role = String(user?.user_role || '').trim().toLowerCase();
+    if (!user?._id || !['admin', 'super_admin', 'manager'].includes(role)) {
+      throw Object.assign(new Error('Account administrator access is required'), { status: 403 });
+    }
+  }
+
+  private async getRoleRecord(id: string, accountId: any): Promise<any> {
+    const objectId = helperService.validateObjectId(String(id));
+    const data = await rolesService.getRoles({
+      account_id: accountId,
+      $or: [{ _id: objectId }, { user_id: objectId }]
+    });
+    if (!data || data.length === 0) {
+      throw Object.assign(new Error('Role not found'), { status: 404 });
+    }
+    return data[0];
+  }
+
+  private async getTargetUser(userId: any, accountId: any): Promise<any> {
+    const users = await usersService.getAllUsers({
+      _id: helperService.validateObjectId(String(userId)),
+      account_id: accountId
+    });
+    if (!users.length) {
+      throw Object.assign(new Error('User not found in this account'), { status: 404 });
+    }
+    return users[0];
+  }
+
+  private async revokeUserSessions(userId: any): Promise<void> {
+    await TokenModel.deleteMany({ userId });
+    clearAuthSessionCacheForUser(String(userId));
+  }
 }
 
-export const rolesController = new RolesController();
+export const rolesController = controllerCache.withCache(new RolesController(), { namespace: 'roles', ttlSeconds: 300, tags: ['roles', 'users'] });

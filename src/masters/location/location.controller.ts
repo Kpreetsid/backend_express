@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { locationService } from './location.service';
 import { assetService } from '../asset/asset.service';
 import { get } from "lodash";
-import { IUser } from "../../models/user.model";
+import { IUser, UserModel } from "../../models/user.model";
 import { mapUserToLocationService } from '../../transaction/mapUserLocation/userLocation.service';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
@@ -82,7 +82,7 @@ class LocationController {
       if (!isDataExists?.length) {
         throw Object.assign(new Error('Location not found'), { status: 404 });
       }
-      const childIds = await this.getChildLocationByRecursive(String(id));
+      const childIds = await this.getChildLocationByRecursive(String(id), account_id);
       const data = await locationService.getAllLocations({ _id: { $in: childIds }, account_id, visible: true });
       if (!data?.length) {
         throw Object.assign(new Error('Child location not found'), { status: 404 });
@@ -93,11 +93,13 @@ class LocationController {
     }
   };
 
-  getChildLocationByRecursive = async (id: string): Promise<string[]> => {
+  getChildLocationByRecursive = async (id: string, account_id?: any): Promise<string[]> => {
     const locationIdList: string[] = [id];
-    const children = await locationService.getAllLocations({ parent_id: helperService.validateObjectId(String(id)), visible: true });
+    const match: any = { parent_id: helperService.validateObjectId(String(id)), visible: true };
+    if (account_id) match.account_id = account_id;
+    const children = await locationService.getAllLocations(match);
     for (const child of children || []) {
-      const childIds = await this.getChildLocationByRecursive(child.id.toString());
+      const childIds = await this.getChildLocationByRecursive(child.id.toString(), account_id);
       locationIdList.push(...childIds);
     }
     return locationIdList;
@@ -173,9 +175,33 @@ class LocationController {
   createLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const body = req.body;
-      if (!body.userIdList || body.userIdList.length === 0) {
-        throw Object.assign(new Error('User list is required for location mapping'), { status: 400 });
+      const body = { ...(req.body || {}) };
+      body.userIdList = await this.assertAccountUsers(body.userIdList, account_id);
+      delete body.account_id;
+      delete body.createdBy;
+      delete body.updatedBy;
+      delete body.visible;
+
+      if (body.parent_id) {
+        const parent: any = await LocationModel.findOne({
+          _id: helperService.validateObjectId(String(body.parent_id)),
+          account_id,
+          visible: true,
+        }).select('_id location_name top_level top_level_location_id');
+        if (!parent) {
+          throw Object.assign(new Error('Parent location not found'), { status: 400 });
+        }
+        body.parent_id = parent._id;
+        body.parent_name = parent.location_name;
+        body.top_level = false;
+        body.top_level_location_id = parent.top_level
+          ? parent._id
+          : (parent.top_level_location_id || parent._id);
+      } else {
+        body.top_level = true;
+        delete body.parent_id;
+        delete body.parent_name;
+        delete body.top_level_location_id;
       }
       body.account_id = account_id;
       body.createdBy = user_id;
@@ -201,16 +227,23 @@ class LocationController {
   updateLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const { params: { id }, body } = req;
-      if (!body.userIdList || body.userIdList.length === 0 || body.userIdList.filter((doc: any) => doc).length === 0) {
-        throw Object.assign(new Error('User selection is required for location mapping'), { status: 400 });
-      }
+      const { params: { id } } = req;
+      const body = { ...(req.body || {}) };
+      body.userIdList = await this.assertAccountUsers(body.userIdList, account_id);
+      delete body.account_id;
+      delete body.createdBy;
+      delete body.updatedBy;
+      delete body.visible;
+      delete body.top_level;
+      delete body.parent_id;
+      delete body.parent_name;
+      delete body.top_level_location_id;
       const location = await locationService.getAllLocations({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!location || location.length === 0) {
         throw Object.assign(new Error('Location not found'), { status: 404 });
       }
       body.updatedBy = user_id;
-      const data: any = await locationService.updateById(String(id), body);
+      const data: any = await locationService.updateById(String(id), body, account_id);
       if (!data || !data.visible) {
         throw Object.assign(new Error('Failed to update location'), { status: 500 });
       }
@@ -243,7 +276,7 @@ class LocationController {
       if (!location || location.length === 0 || !location[0].visible) {
         throw Object.assign(new Error('Location not found'), { status: 404 });
       }
-      await locationService.removeLocationById(helperService.validateObjectId(String(id)), user_id);
+      await locationService.removeLocationById(helperService.validateObjectId(String(id)), user_id, account_id);
       res.status(200).json({ status: true, message: "Location deleted successfully" });
     } catch (error) {
       next(error);
@@ -268,10 +301,7 @@ class LocationController {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
       const data = await locationService.getLocationSensor(account_id, user_id, userRole);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error('Location sensor list not found'), { status: 404 });
-      }
-      res.status(200).json({ status: true, message: "Location sensor list fetched successfully", data });
+      res.status(200).json({ status: true, message: "Location sensor list fetched successfully", data: data || [] });
     } catch (error) {
       next(error);
     }
@@ -287,6 +317,9 @@ class LocationController {
         if (!sourceLocation) {
           throw Object.assign(new Error("Location not found"), { status: 404 });
         }
+        this.assertRolePermission(req, 'location', sourceLocation.top_level || !sourceLocation.parent_id
+          ? 'add_location'
+          : 'add_child_location');
         sourceLocation = sourceLocation.toObject();
 
         const allChildren: any[] = await locationService.getAllChildHierarchy(helperService.validateObjectId(String(id)), account_id);
@@ -324,6 +357,26 @@ class LocationController {
       next(error);
     }
   };
+
+  private assertRolePermission(req: Request, moduleName: string, action: string): void {
+    const roleMenu: any = get(req, 'role', {});
+    if (roleMenu?.[moduleName]?.[action] !== true) {
+      throw Object.assign(new Error('You do not have permission to access.'), { status: 403 });
+    }
+  }
+
+  private async assertAccountUsers(userIdList: unknown, accountId: any): Promise<string[]> {
+    if (!Array.isArray(userIdList) || userIdList.length === 0) {
+      throw Object.assign(new Error('User selection is required for location mapping'), { status: 400 });
+    }
+    const uniqueIds = Array.from(new Set(userIdList.map(String).map(id => id.trim()).filter(Boolean)));
+    const objectIds = helperService.validateObjectIds(uniqueIds, 500);
+    const count = await UserModel.countDocuments({ _id: { $in: objectIds }, account_id: accountId });
+    if (count !== objectIds.length) {
+      throw Object.assign(new Error('Every selected user must belong to the active account'), { status: 400 });
+    }
+    return objectIds.map(id => String(id));
+  }
 }
 
 export const locationController = controllerCache.withCache(new LocationController(), { namespace: 'locations', ttlSeconds: 300, tags: ['locations', 'assets', 'equipment', 'work'], skipMethods: ['getChildLocationByRecursive'] });

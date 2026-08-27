@@ -1,10 +1,12 @@
 import { controllerCache } from '../../_cache/controllerCache.service';
+
 import { Request, Response, NextFunction } from 'express';
 import { scheduleService } from './schedule.service';
 import { IUser } from '../../models/user.model';
 import { get } from 'lodash';
 import { helperService } from '../../utils/helper';
 import { applyRoleFilter } from '../../utils/roleFilter';
+import { sanitizeSchedulePayload } from './schedule.policy';
 
 class ScheduleController {
 
@@ -28,9 +30,6 @@ class ScheduleController {
       });
 
       const data = await scheduleService.getSchedules(filter);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error('Schedule not found'), { status: 404 });
-      }
       res.status(200).json({ status: true, message: "Schedules fetched successfully", data });
     } catch (error) {
       next(error);
@@ -67,7 +66,8 @@ class ScheduleController {
   async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const body = req.body;
+      const body = sanitizeSchedulePayload(req.body, true);
+      await scheduleService.assertScheduleReferences(body, account_id);
       const data = await scheduleService.createSchedules(body, account_id, user_id);
       res.status(201).json({ status: true, message: "Schedule created successfully", data });
     } catch (error) {
@@ -78,12 +78,14 @@ class ScheduleController {
   async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const { params: { id }, body } = req;
+      const { params: { id } } = req;
+      const body = sanitizeSchedulePayload(req.body);
       const existingData = await scheduleService.getSchedules({ _id: helperService.validateObjectId(String(id)), account_id: account_id, visible: true });
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('Schedule not found'), { status: 404 });
       }
-      const data = await scheduleService.updateSchedules(id, body, user_id);
+      await scheduleService.assertScheduleReferences(body, account_id);
+      const data = await scheduleService.updateSchedules(id, body, account_id, user_id);
       res.status(200).json({ status: true, message: "Schedule updated successfully", data });
     } catch (error) {
       next(error);
@@ -99,7 +101,10 @@ class ScheduleController {
         throw Object.assign(new Error('Schedule not found'), { status: 404 });
       }
       const enabledStatus = body.rescheduleEnabled ?? body.enabled ?? body.schedule?.enabled;
-      const data = await scheduleService.updateStatus(id, Boolean(enabledStatus), user_id);
+      if (typeof enabledStatus !== 'boolean') {
+        throw Object.assign(new Error('A boolean schedule status is required'), { status: 400 });
+      }
+      const data = await scheduleService.updateStatus(id, enabledStatus, account_id, user_id);
       res.status(200).json({ status: true, message: "Status updated successfully", data });
     } catch (error) {
       next(error);
@@ -114,7 +119,7 @@ class ScheduleController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('Schedule not found'), { status: 404 });
       }
-      const data = await scheduleService.removeSchedules(id, user_id);
+      const data = await scheduleService.removeSchedules(id, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('Schedule not deleted'), { status: 404 });
       }
@@ -126,3 +131,4 @@ class ScheduleController {
 }
 
 export const scheduleController = controllerCache.withCache(new ScheduleController(), { namespace: 'schedules', ttlSeconds: 300, tags: ['schedules', 'work'] });
+

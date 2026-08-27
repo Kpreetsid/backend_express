@@ -85,3 +85,21 @@ export const hasAccountFeatures = (menuKeys: string[], action: AccountAction = "
     return denyAccountFeature(req, res, deniedFeature, action);
   };
 };
+
+export const hasAnyRolePermission = (moduleName: string, actions: string[]) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const roleMenu: any = get(req, "role", {}) as IUserRoleMenu;
+      if (!user?.user_role || !USER_ROLES.includes(user.user_role)) {
+        throw Object.assign(new Error("Invalid or missing user role"), { status: 403 });
+      }
+      if (!actions.some(action => roleMenu?.[moduleName]?.[action] === true)) {
+        throw Object.assign(new Error("You do not have permission to access."), { status: 403 });
+      }
+      next();
+    } catch (err) {
+      next(err);
+    }
+  };
+};

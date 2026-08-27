@@ -1,6 +1,28 @@
 import { body } from 'express-validator';
+import { WORK_ORDER_STATUSES } from '../../models/workOrder.model';
+
+export const workOrderStatusValidator = [
+  body('status')
+    .notEmpty().withMessage('Status is required')
+    .isIn(WORK_ORDER_STATUSES).withMessage('Invalid status'),
+  body('block_reason')
+    .optional({ nullable: true, checkFalsy: true })
+    .isString().withMessage('Block reason must be a string')
+    .isLength({ max: 2000 }).withMessage('Block reason cannot exceed 2000 characters')
+    .trim()
+];
 
 const commonWorkOrderFields = [
+  body('description')
+    .optional({ nullable: true })
+    .isString().withMessage('Description must be a string')
+    .isLength({ max: 10000 }).withMessage('Description cannot exceed 10000 characters')
+    .trim(),
+
+  body('work_request_id')
+    .optional({ nullable: true, checkFalsy: true })
+    .isMongoId().withMessage('Invalid work request ID format'),
+
   body('estimated_time')
     .optional({ nullable: true, checkFalsy: true })
     .isNumeric().withMessage('Estimated time must be a number'),
@@ -50,7 +72,7 @@ const commonWorkOrderFields = [
 
   body('tasks')
     .optional({ nullable: true })
-    .isArray().withMessage('Tasks must be an array'),
+    .isArray({ max: 200 }).withMessage('Tasks must be an array with at most 200 entries'),
 
   body('tasks.*.title')
     .if(body('tasks').exists())
@@ -58,7 +80,7 @@ const commonWorkOrderFields = [
 
   body('parts')
     .optional({ nullable: true })
-    .isArray().withMessage('Parts must be an array'),
+    .isArray({ max: 200 }).withMessage('Parts must be an array with at most 200 entries'),
 
   body('parts.*.part_id')
     .if(body('parts').exists())
@@ -67,7 +89,7 @@ const commonWorkOrderFields = [
 
   body('labor_entries')
     .optional({ nullable: true })
-    .isArray().withMessage('Labor entries must be an array'),
+    .isArray({ max: 200 }).withMessage('Labor entries must be an array with at most 200 entries'),
 
   body('labor_entries.*.user_id')
     .optional({ nullable: true, checkFalsy: true })
@@ -96,8 +118,9 @@ export const workOrderValidator = [
   body('title')
     .notEmpty().withMessage('Title is required')
     .isString().withMessage('Title must be a string')
+    .isLength({ max: 200 }).withMessage('Title cannot exceed 200 characters')
     .trim(),
-  
+
   body('priority')
     .notEmpty().withMessage('Priority is required')
     .isIn(['None', 'Low', 'Medium', 'High', 'Urgent'])
@@ -123,6 +146,7 @@ export const updateWorkOrderValidator = [
   body('title')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Title must be a string')
+    .isLength({ max: 200 }).withMessage('Title cannot exceed 200 characters')
     .trim(),
 
   body('priority')

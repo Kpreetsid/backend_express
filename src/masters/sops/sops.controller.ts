@@ -1,4 +1,5 @@
 import { controllerCache } from '../../_cache/controllerCache.service';
+
 import { Request, Response, NextFunction } from 'express';
 import { sopsService } from './sops.service';
 import { IUser } from '../../models/user.model';
@@ -13,16 +14,13 @@ class SOPsController {
       const baseFilter: any = {};
       const { query: { category, location } } = req;
       if (category) {
-        baseFilter.categoryId = { $in: helperService.validateObjectIds(category.toString()) };
+        baseFilter.categoryId = { $in: helperService.validateObjectIds(category, 100) };
       }
       if (location) {
-        baseFilter.locationId = { $in: helperService.validateObjectIds(location.toString()) };
+        baseFilter.locationId = { $in: helperService.validateObjectIds(location, 100) };
       }
       const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location', idField: "locationId" });
       let data = await sopsService.getSOPs(filter);
-      if (!data || data.length === 0) {
-        throw Object.assign(new Error('SOPs not found'), { status: 404 });
-      }
       res.status(200).json({ status: true, message: "SOPs fetched successfully", data });
     } catch (error) {
       next(error);
@@ -34,10 +32,10 @@ class SOPsController {
       const { query: { category, location }, params: { id } } = req;
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)) };
       if (category) {
-        baseFilter.categoryId = { $in: helperService.validateObjectIds(category.toString()) };
+        baseFilter.categoryId = { $in: helperService.validateObjectIds(category, 100) };
       }
       if (location) {
-        baseFilter.locationId = { $in: helperService.validateObjectIds(location.toString()) };
+        baseFilter.locationId = { $in: helperService.validateObjectIds(location, 100) };
       }
       const filter = await applyRoleFilter({ user: get(req, "user", {}) as IUser, baseFilter, mapping: 'location', idField: "locationId" });
       let data = await sopsService.getSOPs(filter);
@@ -52,8 +50,7 @@ class SOPsController {
 
   async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      console.log({ account_id, user_id, userRole });
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const data = await sopsService.createSOPs(req.body, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('SOP not created'), { status: 404 });
@@ -72,7 +69,7 @@ class SOPsController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('SOP not found'), { status: 404 });
       }
-      const data = await sopsService.updateSOPs(id, body, user_id);
+      const data = await sopsService.updateSOPs(id, body, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('SOP not updated'), { status: 404 });
       }
@@ -90,7 +87,7 @@ class SOPsController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('SOP not found'), { status: 404 });
       }
-      const data = await sopsService.removeSOPs(id, user_id);
+      const data = await sopsService.removeSOPs(id, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('SOP not deleted'), { status: 404 });
       }
@@ -102,3 +99,4 @@ class SOPsController {
 }
 
 export const sopsController = controllerCache.withCache(new SOPsController(), { namespace: 'sops', ttlSeconds: 300, tags: ['sops', 'inspections', 'procedures'] });
+

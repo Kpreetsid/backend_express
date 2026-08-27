@@ -3,45 +3,45 @@ import { IUser } from '../../models/user.model';
 import { get } from "lodash";
 import { analysisFeatureService } from './analysisFeature.service';
 
-
 class AnalysisFeatureController {
-
-    async getFeatureData(req: Request, res: Response, next: NextFunction): Promise<any> {
+    getFeatureData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
         try {
-            const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
-            if (userRole !== "admin") {
-                throw Object.assign(new Error("Unauthorized"), { status: 401 });
-            } else {
-                const match = { account_id: account_id };
-                const featureData = await analysisFeatureService.getFeatureData(match);
-                if (!featureData) {
-                    throw Object.assign(new Error("No feature data found"), { status: 404 });
-                }
-                res.status(200).json({ status: true, message: "Feature data retrieved successfully", data: featureData });
-            }
+            const user = get(req, "user", {}) as IUser;
+            this.assertAccountAdmin(user);
+            const featureData = await analysisFeatureService.getOrCreateFeatureData(user.account_id, user._id);
+            res.status(200).json({ status: true, message: "Feature data retrieved successfully", data: featureData });
         } catch (error) {
             next(error);
         }
-    }
+    };
 
-    async updateFeatureData(req: Request, res: Response, next: NextFunction): Promise<any> {
+    updateFeatureData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
         try {
-            const { user_role: userRole, _id: user_id } = get(req, "user", {}) as IUser;
-            if (userRole !== "admin") {
-                throw Object.assign(new Error("Unauthorized"), { status: 401 });
-            } else {
-                const { params: { id }, body } = req;
-                const featureId = Array.isArray(id) ? id[0] : id;
-                const updatedFeatureData = await analysisFeatureService.updateFeatureData(featureId, body, user_id);
-                if (!updatedFeatureData) {
-                    throw Object.assign(new Error("No feature data found"), { status: 404 });
-                }
-                res.status(200).json({ status: true, message: "Feature data updated successfully" });
+            const user = get(req, "user", {}) as IUser;
+            this.assertAccountAdmin(user);
+            const { params: { id }, body } = req;
+            const featureId = Array.isArray(id) ? id[0] : id;
+            const updatedFeatureData = await analysisFeatureService.updateFeatureData(
+                featureId,
+                user.account_id,
+                body.featuresJson,
+                user._id
+            );
+            if (!updatedFeatureData) {
+                throw Object.assign(new Error("No feature data found for this account"), { status: 404 });
             }
+            res.status(200).json({ status: true, message: "Feature data updated successfully", data: updatedFeatureData });
         } catch (error) {
             next(error);
         }
-    }
+    };
+
+    private assertAccountAdmin = (user: IUser): void => {
+        const role = String(user?.user_role || '').trim().toLowerCase();
+        if (!user?._id || !['admin', 'super_admin', 'manager'].includes(role)) {
+            throw Object.assign(new Error('Account administrator access is required'), { status: 403 });
+        }
+    };
 }
 
-export const analysisFeatureController = new AnalysisFeatureController()
+export const analysisFeatureController = new AnalysisFeatureController();

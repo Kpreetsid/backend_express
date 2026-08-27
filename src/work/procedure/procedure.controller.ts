@@ -17,24 +17,28 @@ class ProcedureController {
       const assetId = req.query.asset_id;
       const includeHistory = String(req.query.include_history || '').trim() === 'true';
       if (search && search !== 'undefined' && search !== 'null') {
+        if (search.length > 120) throw Object.assign(new Error('Search text is too long'), { status: 400 });
+        const escapedSearch = escapeRegExp(search);
         match.$or = [
-          { name: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
-          { category: { $regex: search, $options: 'i' } },
-          { tags: { $regex: search, $options: 'i' } }
+          { name: { $regex: escapedSearch, $options: 'i' } },
+          { description: { $regex: escapedSearch, $options: 'i' } },
+          { category: { $regex: escapedSearch, $options: 'i' } },
+          { tags: { $regex: escapedSearch, $options: 'i' } }
         ];
       }
       if (category && category !== 'undefined' && category !== 'null') {
+        if (category.length > 120) throw Object.assign(new Error('Category filter is too long'), { status: 400 });
         match.category = category;
       }
       if (tag && tag !== 'undefined' && tag !== 'null') {
+        if (tag.length > 120) throw Object.assign(new Error('Tag filter is too long'), { status: 400 });
         match.tags = tag;
       }
       if (locationId && String(locationId).trim() && String(locationId).trim() !== 'undefined' && String(locationId).trim() !== 'null') {
-        match.location_ids = { $in: helperService.validateObjectIds(locationId) };
+        match.location_ids = { $in: helperService.validateObjectIds(locationId, 100) };
       }
       if (assetId && String(assetId).trim() && String(assetId).trim() !== 'undefined' && String(assetId).trim() !== 'null') {
-        match.asset_ids = { $in: helperService.validateObjectIds(assetId) };
+        match.asset_ids = { $in: helperService.validateObjectIds(assetId, 100) };
       }
       const data = await procedureService.getAllProcedures(match, { includeHistory });
       res.status(200).json({ status: true, message: 'Procedures fetched successfully.', data });
@@ -94,4 +98,9 @@ class ProcedureController {
   }
 }
 
+
 export const procedureController = controllerCache.withCache(new ProcedureController(), { namespace: 'procedures', ttlSeconds: 300, tags: ['procedures', 'work-orders', 'inspections'] });
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

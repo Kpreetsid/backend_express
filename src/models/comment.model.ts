@@ -19,7 +19,7 @@ const CommentsSchema: Schema<IComments> = new Schema(
     account_id: { type: Schema.Types.ObjectId, ref: "AccountModel", required: true },
     order_id: { type: Schema.Types.ObjectId, ref: "WorkOrderModel" },
     post_id: { type: Schema.Types.ObjectId, ref: "Schema_Post" },
-    comments: { type: String, required: true, trim: true },
+    comments: { type: String, required: true, trim: true, maxlength: 5000 },
     parentCommentId: { type: Schema.Types.ObjectId, ref: "Schema_Comments", default: null },
     visible: { type: Boolean, default: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "UserModel", required: true },
@@ -34,5 +34,7 @@ const CommentsSchema: Schema<IComments> = new Schema(
 
 CommentsSchema.index({ order_id: 1, visible: 1 });
 CommentsSchema.index({ parentCommentId: 1, visible: 1 });
+CommentsSchema.index({ account_id: 1, post_id: 1, visible: 1, createdAt: 1 });
+CommentsSchema.index({ account_id: 1, post_id: 1, parentCommentId: 1, visible: 1 });
 
 export const CommentsModel = mongoose.model<IComments>("Schema_Comments", CommentsSchema);

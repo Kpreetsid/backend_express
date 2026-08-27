@@ -1,12 +1,22 @@
 import { body } from 'express-validator';
 import { PROCEDURE_FIELD_TYPES, PROCEDURE_ITEM_TYPES } from '../../models/procedure.model';
 
-function validateProcedureItems(items: any[], path: string = 'steps'): true {
+function validateProcedureItems(items: any[], path: string = 'steps', depth: number = 0, state = { nodes: 0 }): true {
   if (!Array.isArray(items)) {
     throw new Error(`${path} must be an array`);
   }
+  if (depth > 8) {
+    throw new Error('Procedure steps exceed the maximum nesting depth');
+  }
+  if (items.length > 100) {
+    throw new Error(`${path} must not contain more than 100 items`);
+  }
 
   items.forEach((item, index) => {
+    state.nodes += 1;
+    if (state.nodes > 500) {
+      throw new Error('Procedure must not contain more than 500 total items');
+    }
     const itemPath = `${path}[${index}]`;
     if (!item || typeof item !== 'object') {
       throw new Error(`${itemPath} must be an object`);
@@ -15,6 +25,7 @@ function validateProcedureItems(items: any[], path: string = 'steps'): true {
     if (!item.id || typeof item.id !== 'string') {
       throw new Error(`${itemPath}.id is required`);
     }
+    if (item.id.length > 120) throw new Error(`${itemPath}.id is too long`);
 
     if (!PROCEDURE_ITEM_TYPES.includes(item.type)) {
       throw new Error(`${itemPath}.type is invalid`);
@@ -23,10 +34,12 @@ function validateProcedureItems(items: any[], path: string = 'steps'): true {
     if (!item.title || typeof item.title !== 'string') {
       throw new Error(`${itemPath}.title is required`);
     }
+    if (item.title.length > 300) throw new Error(`${itemPath}.title is too long`);
 
     if (item.description != null && typeof item.description !== 'string') {
       throw new Error(`${itemPath}.description must be a string`);
     }
+    if (item.description?.length > 4000) throw new Error(`${itemPath}.description is too long`);
 
     if (item.visibility_condition != null) {
       if (typeof item.visibility_condition !== 'object') {
@@ -61,6 +74,9 @@ function validateProcedureItems(items: any[], path: string = 'steps'): true {
         if (!Array.isArray(item.options) || item.options.some((option: any) => typeof option !== 'string')) {
           throw new Error(`${itemPath}.options must be an array of strings`);
         }
+        if (item.options.length > 100 || item.options.some((option: string) => option.length > 500)) {
+          throw new Error(`${itemPath}.options exceeds the allowed size`);
+        }
       }
 
       if (item.scoring_enabled != null && typeof item.scoring_enabled !== 'boolean') {
@@ -77,6 +93,7 @@ function validateProcedureItems(items: any[], path: string = 'steps'): true {
         if (!Array.isArray(item.corrective_actions)) {
           throw new Error(`${itemPath}.corrective_actions must be an array`);
         }
+        if (item.corrective_actions.length > 50) throw new Error(`${itemPath}.corrective_actions exceeds 50 items`);
 
         item.corrective_actions.forEach((action: any, actionIndex: number) => {
           const actionPath = `${itemPath}.corrective_actions[${actionIndex}]`;
@@ -110,7 +127,7 @@ function validateProcedureItems(items: any[], path: string = 'steps'): true {
     }
 
     if (item.type === 'section') {
-      validateProcedureItems(item.items || [], `${itemPath}.items`);
+      validateProcedureItems(item.items || [], `${itemPath}.items`, depth + 1, state);
     }
   });
 
@@ -121,25 +138,28 @@ export const procedureValidator = [
   body('name')
     .notEmpty().withMessage('Procedure name is required')
     .isString().withMessage('Procedure name must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 180 }).withMessage('Procedure name must not exceed 180 characters'),
 
   body('category')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Category must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 120 }).withMessage('Category must not exceed 120 characters'),
 
   body('tags')
     .optional({ nullable: true })
-    .isArray().withMessage('Tags must be an array'),
+    .isArray({ max: 30 }).withMessage('Tags must be an array with at most 30 entries'),
 
   body('tags.*')
     .if(body('tags').exists())
     .isString().withMessage('Each tag must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 80 }).withMessage('Each tag must not exceed 80 characters'),
 
   body('location_ids')
     .optional({ nullable: true })
-    .isArray().withMessage('Location tags must be an array'),
+    .isArray({ max: 100 }).withMessage('Location tags must be an array with at most 100 entries'),
 
   body('location_ids.*')
     .if(body('location_ids').exists())
@@ -147,7 +167,7 @@ export const procedureValidator = [
 
   body('asset_ids')
     .optional({ nullable: true })
-    .isArray().withMessage('Asset tags must be an array'),
+    .isArray({ max: 100 }).withMessage('Asset tags must be an array with at most 100 entries'),
 
   body('asset_ids.*')
     .if(body('asset_ids').exists())
@@ -156,11 +176,12 @@ export const procedureValidator = [
   body('description')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Description must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 4000 }).withMessage('Description must not exceed 4000 characters'),
 
   body('required_parts')
     .optional({ nullable: true })
-    .isArray().withMessage('Required parts must be an array'),
+    .isArray({ max: 100 }).withMessage('Required parts must be an array with at most 100 entries'),
 
   body('required_parts.*.part_id')
     .optional({ nullable: true, checkFalsy: true })
@@ -169,7 +190,8 @@ export const procedureValidator = [
   body('required_parts.*.part_name')
     .if(body('required_parts').exists())
     .isString().withMessage('Each required part name must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 180 }).withMessage('Each required part name must not exceed 180 characters'),
 
   body('required_parts.*.part_number')
     .optional({ nullable: true, checkFalsy: true })
@@ -183,7 +205,7 @@ export const procedureValidator = [
 
   body('required_parts.*.quantity')
     .if(body('required_parts').exists())
-    .isNumeric().withMessage('Each required part quantity must be numeric'),
+    .isFloat({ gt: 0, max: 1000000 }).withMessage('Each required part quantity must be greater than zero'),
 
   body('required_parts.*.unit')
     .optional({ nullable: true, checkFalsy: true })
@@ -198,7 +220,8 @@ export const procedureValidator = [
   body('version_notes')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Version notes must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 2000 }).withMessage('Version notes must not exceed 2000 characters'),
 
   body('steps')
     .optional({ nullable: true })
@@ -210,25 +233,28 @@ export const updateProcedureValidator = [
   body('name')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Procedure name must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 180 }).withMessage('Procedure name must not exceed 180 characters'),
 
   body('category')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Category must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 120 }).withMessage('Category must not exceed 120 characters'),
 
   body('tags')
     .optional({ nullable: true })
-    .isArray().withMessage('Tags must be an array'),
+    .isArray({ max: 30 }).withMessage('Tags must be an array with at most 30 entries'),
 
   body('tags.*')
     .if(body('tags').exists())
     .isString().withMessage('Each tag must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 80 }).withMessage('Each tag must not exceed 80 characters'),
 
   body('location_ids')
     .optional({ nullable: true })
-    .isArray().withMessage('Location tags must be an array'),
+    .isArray({ max: 100 }).withMessage('Location tags must be an array with at most 100 entries'),
 
   body('location_ids.*')
     .if(body('location_ids').exists())
@@ -236,7 +262,7 @@ export const updateProcedureValidator = [
 
   body('asset_ids')
     .optional({ nullable: true })
-    .isArray().withMessage('Asset tags must be an array'),
+    .isArray({ max: 100 }).withMessage('Asset tags must be an array with at most 100 entries'),
 
   body('asset_ids.*')
     .if(body('asset_ids').exists())
@@ -245,11 +271,12 @@ export const updateProcedureValidator = [
   body('description')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Description must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 4000 }).withMessage('Description must not exceed 4000 characters'),
 
   body('required_parts')
     .optional({ nullable: true })
-    .isArray().withMessage('Required parts must be an array'),
+    .isArray({ max: 100 }).withMessage('Required parts must be an array with at most 100 entries'),
 
   body('required_parts.*.part_id')
     .optional({ nullable: true, checkFalsy: true })
@@ -258,7 +285,8 @@ export const updateProcedureValidator = [
   body('required_parts.*.part_name')
     .if(body('required_parts').exists())
     .isString().withMessage('Each required part name must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 180 }).withMessage('Each required part name must not exceed 180 characters'),
 
   body('required_parts.*.part_number')
     .optional({ nullable: true, checkFalsy: true })
@@ -272,7 +300,7 @@ export const updateProcedureValidator = [
 
   body('required_parts.*.quantity')
     .if(body('required_parts').exists())
-    .isNumeric().withMessage('Each required part quantity must be numeric'),
+    .isFloat({ gt: 0, max: 1000000 }).withMessage('Each required part quantity must be greater than zero'),
 
   body('required_parts.*.unit')
     .optional({ nullable: true, checkFalsy: true })
@@ -287,7 +315,8 @@ export const updateProcedureValidator = [
   body('version_notes')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Version notes must be a string')
-    .trim(),
+    .trim()
+    .isLength({ max: 2000 }).withMessage('Version notes must not exceed 2000 characters'),
 
   body('steps')
     .optional({ nullable: true })

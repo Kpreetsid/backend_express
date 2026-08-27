@@ -26,7 +26,7 @@ export class NotificationRepository {
     return await Notification.insertMany(notifications);
   }
 
-  async updateStatus(id: string, status: Exclude<NotificationStatus, 'Sent'>, userId?: string) {
+  async updateStatus(id: string, status: Exclude<NotificationStatus, 'Sent'>, userId?: any) {
     if (!Types.ObjectId.isValid(id) || (userId && !Types.ObjectId.isValid(userId))) {
       return null;
     }
@@ -50,7 +50,10 @@ export class NotificationRepository {
     return updated || await Notification.findOne(match);
   }
 
-  async getUserNotifications(userId: string, limit: number = 25, skip: number = 0) {
+  async getUserNotifications(userId: any, limit: number = 25, skip: number = 0) {
+    if (!userId || !Types.ObjectId.isValid(userId)) {
+      return { notifications: [], total: 0, unreadCount: 0 };
+    }
     const match = { targetUser: new Types.ObjectId(userId) };
     const [notifications, total, unreadCount] = await Promise.all([
       Notification.find(match)
@@ -77,9 +80,12 @@ export class NotificationRepository {
     );
   }
 
-  async markAllAsOpened(userId: string) {
+  async markAllAsOpened(userId: any) {
+    if (!userId || !Types.ObjectId.isValid(userId)) {
+      return null;
+    }
     return await Notification.updateMany(
-      { targetUser: userId, status: { $ne: 'Opened' } },
+      { targetUser: new Types.ObjectId(userId), status: { $ne: 'Opened' } },
       {
         $set: { status: 'Opened' },
         $push: { statusHistory: { status: 'Opened', timestamp: new Date(), userId: new Types.ObjectId(userId) } }

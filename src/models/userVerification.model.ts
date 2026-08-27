@@ -9,7 +9,9 @@ export interface IVerificationCode {
   firstName: string;
   lastName?: string;
   code: string;
-  createdAt: Date
+  createdAt: Date;
+  resetTokenHash?: string;
+  resetTokenExpiresAt?: Date;
 }
 
 const verificationCodeSchema = new Schema<IVerificationCode>({
@@ -17,7 +19,9 @@ const verificationCodeSchema = new Schema<IVerificationCode>({
   firstName: { type: String, trim: true, required: true },
   lastName: { type: String, trim: true },
   code: { type: String, trim: true, required: true },
-  createdAt: { type: Date, default: Date.now, expires: VERIFICATION_CODE_EXPIRY_SECONDS }
+  createdAt: { type: Date, default: Date.now, expires: VERIFICATION_CODE_EXPIRY_SECONDS },
+  resetTokenHash: { type: String, select: false },
+  resetTokenExpiresAt: { type: Date, select: false }
 }, {
   collection: USER_VERIFICATION_COLLECTION_NAME,
   timestamps: true,

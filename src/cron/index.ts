@@ -1,10 +1,13 @@
 import cron from "node-cron";
 import { schedulerService } from "./scheduler.service";
 import { snoozeAlarmService } from "./assetAlarmSnooze.service";
+import { resolveSchedulerTimeZone } from './scheduleCadence';
+import { postPublishingService } from './postPublishing.service';
 
 export async function initJobScheduler() {
     console.log("----> Initializing unified job scheduler...");
     try {
+        const timeZone = resolveSchedulerTimeZone();
         // Run every day at 00:15 AM
         cron.schedule("15 0 * * *", async () => {
             console.log(`${new Date().toISOString()} → Running daily cron jobs...`);
@@ -22,8 +25,15 @@ export async function initJobScheduler() {
             } catch (jobError) {
                 console.error("❌ Snooze Alarm job failed:", jobError);
             }
-        });
-        console.log("✅ Unified Scheduler initialized (daily at 00:15 AM).");
+        }, { timezone: timeZone });
+        cron.schedule("* * * * *", async () => {
+            try {
+                await postPublishingService.publishDuePosts();
+            } catch (jobError) {
+                console.error("❌ Scheduled post publishing failed:", jobError);
+            }
+        }, { timezone: timeZone });
+        console.log(`✅ Unified Scheduler initialized (daily at 00:15 AM, ${timeZone}).`);
     } catch (error) {
         console.error("❌ Failed to initialize job scheduler:", error);
         throw error;

@@ -28,14 +28,27 @@ export const applyRoleFilter = async ({
     case "manager":
     case "employee":
     case "customer": {
-      if (!finalFilter[idField]) {
-        if (mapping === "location") {
-          const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
-          finalFilter[idField] = { $in: mappedLocations.map((doc: any) => doc.locationId) };
-        }
-        if (mapping === "asset") {
-          const mappedAssets = await mapUserToAssetService.getAssetsMappedData(user._id);
-          finalFilter[idField] = { $in: mappedAssets.map((doc: any) => doc.assetId) };
+      let mappedIds: any[] | null = null;
+      if (mapping === "location") {
+        const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
+        mappedIds = mappedLocations.map((doc: any) => doc.locationId);
+      }
+      if (mapping === "asset") {
+        const mappedAssets = await mapUserToAssetService.getAssetsMappedData(user._id);
+        mappedIds = mappedAssets.map((doc: any) => doc.assetId);
+      }
+
+      if (mappedIds) {
+        const requestedScope = finalFilter[idField];
+        if (requestedScope) {
+          finalFilter.$and = [
+            ...(Array.isArray(finalFilter.$and) ? finalFilter.$and : []),
+            { [idField]: requestedScope },
+            { [idField]: { $in: mappedIds } }
+          ];
+          delete finalFilter[idField];
+        } else {
+          finalFilter[idField] = { $in: mappedIds };
         }
       }
       finalFilter[accountField] = user.account_id;

@@ -24,9 +24,21 @@ export const userAssetValidator = [
 
 export const userAssetUpdateValidator = [
   body('userIdList')
-    .notEmpty().withMessage('User ID list is required')
     .isArray().withMessage('User ID list must be an array'),
 
   body('userIdList.*')
     .isMongoId().withMessage('Invalid User ID format in list')
+];
+
+export const userAssetMailFlagsValidator = [
+  body()
+    .isArray({ min: 1, max: 500 }).withMessage('Request body must contain between 1 and 500 mappings'),
+  body('*._id')
+    .isMongoId().withMessage('Every mapping must have a valid ID'),
+  body('*.alert')
+    .isBoolean().withMessage('Alert must be a boolean'),
+  body('*.danger')
+    .isBoolean().withMessage('Danger must be a boolean'),
+  body('*.critical')
+    .isBoolean().withMessage('Critical must be a boolean')
 ];

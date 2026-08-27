@@ -30,6 +30,26 @@ class MapUserToAssetService {
     return await MapUserAssetLocationModel.insertMany(data, { session });
   };
 
+  assertMappingsBelongToAccount = async (mappings: any[], accountId: any): Promise<void> => {
+    const assetIds = [...new Set(mappings.map(mapping => String(mapping.assetId)))];
+    const userIds = [...new Set(mappings.map(mapping => String(mapping.userId)))];
+    await this.assertAssetAndUsersBelongToAccount(assetIds, userIds, accountId);
+  };
+
+  assertAssetAndUsersBelongToAccount = async (assetIds: any | any[], userIds: any[], accountId: any): Promise<void> => {
+    const normalizedAssetIds = (Array.isArray(assetIds) ? assetIds : [assetIds])
+      .map(assetId => helperService.validateObjectId(String(assetId)));
+    const normalizedUserIds = userIds.map(userId => helperService.validateObjectId(String(userId)));
+    const [assetCount, userCount] = await Promise.all([
+      AssetModel.countDocuments({ _id: { $in: normalizedAssetIds }, account_id: accountId, visible: true }),
+      UserModel.countDocuments({ _id: { $in: normalizedUserIds }, account_id: accountId })
+    ]);
+    if (assetCount !== new Set(normalizedAssetIds.map(String)).size
+      || userCount !== new Set(normalizedUserIds.map(String)).size) {
+      throw Object.assign(new Error('One or more assets or users do not belong to this account'), { status: 404 });
+    }
+  };
+
   userAssets = async (match: any, populate: any): Promise<any> => {
     const pipeline: any[] = [{ $match: match }];
     if (populate === "assetId") {
@@ -64,7 +84,31 @@ class MapUserToAssetService {
     return await MapUserAssetLocationModel.aggregate(pipeline);
   };
 
-  updateMappedUserFlags = async (body: any): Promise<any> => {
+  updateMappedUserFlags = async (body: any, accountId: any): Promise<any> => {
+    const mappingIds = body.map((doc: any) => helperService.validateObjectId(String(doc._id)));
+    if (new Set(mappingIds.map(String)).size !== mappingIds.length) {
+      throw Object.assign(new Error('Duplicate asset mapping IDs are not allowed'), { status: 400 });
+    }
+    const requestedMappings: any[] = await MapUserAssetLocationModel.find({
+      _id: { $in: mappingIds },
+      assetId: { $exists: true },
+      userId: { $exists: true }
+    }).select('_id assetId userId').lean();
+    if (requestedMappings.length !== mappingIds.length) {
+      throw Object.assign(new Error('One or more asset mappings were not found in this account'), { status: 404 });
+    }
+    const assetIds = [...new Set(requestedMappings.map(mapping => String(mapping.assetId)))]
+      .map(assetId => helperService.validateObjectId(assetId));
+    const userIds = [...new Set(requestedMappings.map(mapping => String(mapping.userId)))]
+      .map(userId => helperService.validateObjectId(userId));
+    const [assetCount, userCount] = await Promise.all([
+      AssetModel.countDocuments({ _id: { $in: assetIds }, account_id: accountId, visible: true }),
+      UserModel.countDocuments({ _id: { $in: userIds }, account_id: accountId })
+    ]);
+    if (assetCount !== assetIds.length || userCount !== userIds.length) {
+      throw Object.assign(new Error('One or more asset mappings were not found in this account'), { status: 404 });
+    }
+    const mappingsById = new Map(requestedMappings.map(mapping => [String(mapping._id), mapping]));
     const bulkOps = body.map((doc: any) => {
       if (
         !doc._id ||
@@ -74,13 +118,18 @@ class MapUserToAssetService {
         typeof doc.critical !== "boolean"
       ) {
         throw Object.assign(
-          new Error("Each item must have _id and sendMail (boolean)"),
+          new Error("Each item must have an ID and boolean mail flags"),
           { status: 400 },
         );
       }
+      const mapping = mappingsById.get(String(doc._id));
       return {
         updateOne: {
-          filter: { _id: helperService.validateObjectId(String(doc._id)) },
+          filter: {
+            _id: helperService.validateObjectId(String(doc._id)),
+            assetId: mapping.assetId,
+            userId: mapping.userId
+          },
           update: {
             $set: {
               sendMail: doc.sendMail,
@@ -245,4 +294,4 @@ export const updateLocationAssetMapping = async (locationId: string, userIdList:
     const childUsers = childMappings.map(d => String(d.userId));
     await updateLocationAssetMapping(String(child._id), childUsers, effectiveAdded, effectiveRemoved, session);
   }
-};
+};

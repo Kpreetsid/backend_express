@@ -1,4 +1,5 @@
 import { controllerCache } from '../../_cache/controllerCache.service';
+
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { formCategoryService } from './formCategory.service';
@@ -18,9 +19,6 @@ class FormCategoryController {
         accountField: "account_id"
       });
       const data = await formCategoryService.getFormCategories(filter);
-      if (data.length === 0) {
-        throw Object.assign(new Error('Category not found'), { status: 404 });
-      }
       res.status(200).json({ status: true, message: "Categories fetched successfully", data });
     } catch (error) {
       next(error);
@@ -73,11 +71,15 @@ class FormCategoryController {
       if (!category) {
         throw Object.assign(new Error('Category not found'), { status: 404 });
       }
-      const nameExists = await formCategoryService.categoryExists(user.account_id, body.name, String(id));
+      const nextName = body.name !== undefined ? body.name : category.name;
+      const nameExists = await formCategoryService.categoryExists(user.account_id, nextName, String(id));
       if (nameExists) {
         throw Object.assign(new Error(`Category name already exists`), { status: 400 });
       }
-      const data = await formCategoryService.updateById(String(id), body, user);
+      const data = await formCategoryService.updateById(String(id), {
+        name: nextName,
+        description: body.description !== undefined ? body.description : category.description
+      }, user);
       res.status(200).json({ status: true, message: "Category updated successfully", data });
     } catch (error) {
       next(error);
@@ -86,13 +88,14 @@ class FormCategoryController {
 
   remove = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { account_id } = get(req, "user", {}) as IUser;
+      const user = get(req, "user", {}) as IUser;
+      const { account_id } = user;
       const { id } = req.params;
       const category = await formCategoryService.getCategoryById(helperService.validateObjectId(String(id)), account_id);
       if (!category) {
         throw Object.assign(new Error('Category not found'), { status: 404 });
       }
-      await formCategoryService.removeById(String(id));
+      await formCategoryService.removeById(String(id), user);
       res.status(200).json({ status: true, message: "Category deleted successfully" });
     } catch (error) {
       next(error);
@@ -101,3 +104,4 @@ class FormCategoryController {
 }
 
 export const formCategoryController = controllerCache.withCache(new FormCategoryController(), { namespace: 'form-categories', ttlSeconds: 600, tags: ['form-categories'] });
+

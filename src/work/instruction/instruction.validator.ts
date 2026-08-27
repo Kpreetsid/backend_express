@@ -1,20 +1,19 @@
-import { body } from 'express-validator';
+import { body, query } from 'express-validator';
+import { sanitizeInstructionPayload } from '../../utils/guidePayload';
+import { getGuideContext } from '../../utils/guideScope';
+
+export const instructionQueryValidator = [
+  query('assetId').optional().isMongoId().withMessage('Invalid asset ID'),
+  query('locationId').optional().isMongoId().withMessage('Invalid location ID'),
+  query().custom((value) => {
+    getGuideContext(value);
+    return true;
+  })
+];
 
 export const instructionValidator = [
-  body('title')
-    .notEmpty().withMessage('Title is required')
-    .isString().withMessage('Title must be a string')
-    .trim(),
-  
-  body('WI_steps')
-    .optional()
-    .isArray().withMessage('Work instruction steps must be an array'),
-
-  body('WI_steps.*.title')
-    .if(body('WI_steps').exists())
-    .notEmpty().withMessage('Step title is required'),
-
-  body('WI_steps.*.description')
-    .if(body('WI_steps').exists())
-    .notEmpty().withMessage('Step description is required')
+  body().custom((value) => {
+    sanitizeInstructionPayload(value);
+    return true;
+  })
 ];
