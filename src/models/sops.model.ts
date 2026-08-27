@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 import { ObjectId } from 'mongodb';
+export const SOPS_COLLECTION_NAME = 'sops';
+
 
 export interface ISopsMaster extends Document {
     name: string;
@@ -26,7 +28,7 @@ const SopsMasterSchema = new Schema<ISopsMaster>(
         updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
     },
     {
-        collection: "sops",
+        collection: SOPS_COLLECTION_NAME,
         timestamps: true,
         versionKey: false
     }

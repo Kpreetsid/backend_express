@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const FLOOR_MAP_COLLECTION_NAME = 'floor_map';
+
 
 export const FLOOR_MAP_DATA_TYPES = ['location', 'asset', 'kpi'];
 
@@ -72,7 +74,7 @@ const endpointLocationSchema = new Schema<IEndpointLocation>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'floor_map',
+  collection: FLOOR_MAP_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

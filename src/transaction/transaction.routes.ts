@@ -5,8 +5,17 @@ import userAssetRoutes from './mapUserAsset/userAsset.routes';
 const router = express.Router();
 
 export default (): express.Router => {
-    userAssetRoutes(router);
-    userLocationRoutes(router);
-    userWorkOrderRoutes(router);
+    const assetRouter = express.Router();
+    userAssetRoutes(assetRouter);
+    router.use(assetRouter);
+
+    const locationRouter = express.Router();
+    userLocationRoutes(locationRouter);
+    router.use(locationRouter);
+
+    const workOrderRouter = express.Router();
+    userWorkOrderRoutes(workOrderRouter);
+    router.use(workOrderRouter);
     return router;
 }
+

@@ -15,3 +15,4 @@ export default (router: express.Router) => {
     scheduleRouter.delete('/:id', validateParamId, scheduleController.remove);
     router.use('/schedulers', scheduleRouter);
 }
+

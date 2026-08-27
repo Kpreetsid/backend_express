@@ -5,6 +5,21 @@ import { usersService } from '../user.service';
 import { get } from 'lodash';
 import { helperService } from '../../../utils/helper';
 import { RoleManager } from '../../../_role/newUserRoles';
+import { companyService } from '../../company/company.service';
+import { accountAccessService } from '../../../_role/accountAccess.service';
+
+const getAccountRoleMenuOrThrow = async (accountId: unknown) => {
+  const account = await companyService.verifyCompany(String(accountId));
+  if (!account) {
+    throw Object.assign(new Error('Account not found'), { status: 404 });
+  }
+  return accountAccessService.getAccountRoleMenu(account);
+};
+
+const getConfigurableRoles = async (accountId: unknown, roles: any[]) => {
+  const accountRoleMenu = await getAccountRoleMenuOrThrow(accountId);
+  return roles.map((role: any) => accountAccessService.toConfigurableRole(role, accountRoleMenu));
+};
 
 class RolesController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -19,7 +34,8 @@ class RolesController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Role not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Roles fetched successfully", data });
+      const configurableRoles = await getConfigurableRoles(account_id, data);
+      res.status(200).json({ status: true, message: "Roles fetched successfully", data: configurableRoles });
     } catch (error) {
       next(error);
     }
@@ -33,7 +49,11 @@ class RolesController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Role not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Role fetched successfully", data });
+      res.status(200).json({
+        status: true,
+        message: "Role fetched successfully",
+        data: await getConfigurableRoles(account_id, data)
+      });
     } catch (error) {
       next(error);
     }
@@ -48,7 +68,11 @@ class RolesController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Role not found'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Role fetched successfully", data });
+      res.status(200).json({
+        status: true,
+        message: "Role fetched successfully",
+        data: await getConfigurableRoles(account_id, data)
+      });
     } catch (error) {
       next(error);
     }
@@ -85,7 +109,14 @@ class RolesController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('Role not found'), { status: 404 });
       }
-      const data = await rolesService.updateById(id, req.body, user_id);
+      const accountRoleMenu = await getAccountRoleMenuOrThrow(account_id);
+      const data = await rolesService.updateById(id, {
+        data: accountAccessService.mergeConfigurablePlatformControl(
+          existingData[0].data,
+          req.body.data,
+          accountRoleMenu
+        )
+      }, user_id);
       if (!data) {
         throw Object.assign(new Error('Role not updated'), { status: 404 });
       }

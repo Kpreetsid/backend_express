@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
@@ -119,4 +120,4 @@ class InspectionController {
 };
 }
 
-export const inspectionController = new InspectionController();
+export const inspectionController = controllerCache.withCache(new InspectionController(), { namespace: 'inspections', ttlSeconds: 300, tags: ['inspections', 'assets', 'locations'] });

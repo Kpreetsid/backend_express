@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { equipmentService } from './equipment.service';
@@ -623,4 +624,4 @@ class EquipmentController {
   };
 }
 
-export const equipmentController = new EquipmentController();
+export const equipmentController = controllerCache.withCache(new EquipmentController(), { namespace: 'equipment', ttlSeconds: 300, tags: ['equipment', 'locations', 'work'] });

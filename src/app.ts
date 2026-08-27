@@ -1,5 +1,6 @@
 import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -14,17 +15,21 @@ import masterRoutes from './masters/master.routes';
 import notificationRoutes from './notification/notification.routes';
 import { logger, errorMiddleware } from './middlewares';
 import { healthRouter, metricsRouter } from './routes/health.routes';
+import { accountPermissionEventRoutes } from './routes/accountPermissionEvent.routes';
 import { requestContextMiddleware } from './middlewares/requestContext';
 import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
 import { cryptoRouter } from './routes/crypto.routes';
 import { corsOptions } from './_config/cors';
 import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
+import { csrfProtection } from './middlewares/csrf.middleware';
 
 const app: Express = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
-app.use(cors(corsOptions));
+app.use(cors({ ...corsOptions, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce', 'X-Account-Permission-Version', 'ETag', 'Retry-After', 'Idempotency-Replayed'] }));
+app.use(cookieParser());
+app.use(csrfProtection);
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));
 app.use(express.urlencoded({ limit: process.env.URLENCODED_BODY_LIMIT || '5mb', extended: true }));
 app.use(payloadCryptoResponseMiddleware());
@@ -73,6 +78,7 @@ app.use('/metrics', metricsRouter);
 
 const apiRouter: Router = Router();
 apiRouter.use('/crypto', cryptoRouter);
+apiRouter.use('/internal/account-permissions', accountPermissionEventRoutes());
 apiRouter.use('/', routerIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
 apiRouter.use('/master', isAuthenticated, masterRoutes());

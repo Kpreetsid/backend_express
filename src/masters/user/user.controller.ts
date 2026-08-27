@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { usersService } from './user.service';
@@ -8,6 +9,7 @@ import { applyRoleFilter } from '../../utils/roleFilter';
 import { mailerService } from '../../_config/mailer';
 import { helperService } from '../../utils/helper';
 import { notificationService } from '../../utils/notification.service';
+import { subscriptionLimitService } from '../company/subscriptionLimit.service';
 
 class UserController {
 
@@ -110,6 +112,9 @@ class UserController {
       if (!userData.length) {
         throw Object.assign(new Error("User not found"), { status: 404 });
       }
+      if (userData[0].user_status !== 'active' && body.user_status === 'active') {
+        await subscriptionLimitService.assertCanCreate(user.account_id, 'user');
+      }
       const data = await usersService.updateUserDetails(String(id), { ...userData[0].toObject(), ...body, updatedBy: user._id });
       if (!data) {
         throw Object.assign(new Error("Failed to update user"), { status: 500 });
@@ -193,4 +198,4 @@ class UserController {
   };
 }
 
-export const userController = new UserController();
+export const userController = controllerCache.withCache(new UserController(), { namespace: 'users', ttlSeconds: 300, tags: ['users', 'roles', 'mappings'] });

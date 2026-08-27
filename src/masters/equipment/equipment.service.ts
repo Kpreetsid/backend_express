@@ -8,8 +8,13 @@ import { withTransaction } from "../../utils/transaction.helper";
 import mongoose from 'mongoose';
 import { LocationModel } from '../../models/location.model';
 import { UserModel } from '../../models/user.model';
+import { subscriptionLimitService } from '../company/subscriptionLimit.service';
 
 class EquipmentService {
+  private async assertAssetCapacity(accountId: any, session?: any): Promise<void> {
+    await subscriptionLimitService.assertCanCreate(accountId, 'asset', 1, session);
+  }
+
   async getAllEquipment(match: any) {
     const assetsData = await AssetModel.find(match).populate([
       { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible assigned_to', match: { visible: true } },
@@ -213,6 +218,7 @@ class EquipmentService {
   }
 
   async createEquipment(equipment: any, account_id: any, user_id: any) {
+    await this.assertAssetCapacity(account_id);
     equipment = this.removeExtraFields(equipment);
     const newEquipment: any = new AssetModel({
       asset_name: equipment.asset_name,
@@ -243,6 +249,7 @@ class EquipmentService {
   }
 
   async createMotor(motor: any, equipment: any, account_id: any, user_id: any) {
+    await this.assertAssetCapacity(account_id);
     motor = this.removeExtraFields(motor);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -280,6 +287,7 @@ class EquipmentService {
   }
 
   async createFlexible(flexible: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+    await this.assertAssetCapacity(account_id);
     flexible = this.removeExtraFields(flexible);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -305,6 +313,7 @@ class EquipmentService {
   }
 
   async createRigid(rigid: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+    await this.assertAssetCapacity(account_id);
     rigid = this.removeExtraFields(rigid);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -331,6 +340,7 @@ class EquipmentService {
   }
 
   async createBeltPulley(beltPulley: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+    await this.assertAssetCapacity(account_id);
     beltPulley = this.removeExtraFields(beltPulley);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -361,6 +371,7 @@ class EquipmentService {
   }
 
   async createGearbox(gearbox: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+    await this.assertAssetCapacity(account_id);
     gearbox = this.removeExtraFields(gearbox);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -401,6 +412,7 @@ class EquipmentService {
   }
 
   async createFanBlower(fanBlower: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+    await this.assertAssetCapacity(account_id);
     fanBlower = this.removeExtraFields(fanBlower);
     const parentId = equipment._id ? String(equipment._id) : String(equipment.id);
     return new AssetModel({
@@ -435,6 +447,7 @@ class EquipmentService {
   }
 
   async createPumps(pumps: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+    await this.assertAssetCapacity(account_id);
     pumps = this.removeExtraFields(pumps);
     return new AssetModel({
       parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
@@ -474,6 +487,7 @@ class EquipmentService {
   }
 
   async createCompressor(compressor: any, equipment: any, account_id: any, user_id: any): Promise<any> {
+    await this.assertAssetCapacity(account_id);
     compressor = this.removeExtraFields(compressor);
     return new AssetModel({
       parent_id: equipment._id ? new mongoose.Types.ObjectId(equipment._id) : new mongoose.Types.ObjectId(equipment.id),
@@ -918,6 +932,7 @@ class EquipmentService {
   async makeAssetCopyByIdWithChildren(sourceAsset: any, user_id: any, token: string, account_id: any, newParentId?: any, idMap?: any, newTopLevelId?: any, session?: any, newLocationId?: any): Promise<any> {
     return await withTransaction(async (innerSession) => {
       const activeSession = session || innerSession;
+      await this.assertAssetCapacity(account_id, activeSession);
       const { createdAt, updatedAt, _id, id, ...rest } = sourceAsset;
       const cleanAsset = JSON.parse(JSON.stringify(rest));
       delete cleanAsset._id;
@@ -1011,6 +1026,3 @@ class EquipmentService {
 }
 
 export const equipmentService = new EquipmentService();
-
-
-

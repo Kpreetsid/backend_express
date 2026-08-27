@@ -14,3 +14,4 @@ export default (router: express.Router) => {
     sopRouter.delete('/:id', validateParamId, sopsController.remove);
     router.use('/sops', sopRouter);
 }
+

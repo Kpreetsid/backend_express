@@ -1,4 +1,6 @@
 import { Schema, model, Document, Types } from 'mongoose';
+export const NOTIFICATION_COLLECTION_NAME = 'notification';
+
 
 export type NotificationStatus = 'Sent' | 'Delivered' | 'Reached' | 'Opened';
 
@@ -46,7 +48,7 @@ const NotificationSchema = new Schema({
     userId: { type: Schema.Types.ObjectId, ref: 'User' }
   }, {versionKey: false}]
 }, { 
-  collection: 'notification',
+  collection: NOTIFICATION_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
  });

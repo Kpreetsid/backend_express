@@ -15,3 +15,4 @@ export default (router: express.Router) => {
     observationRouter.delete('/:id', validateParamId, observationController.removeObservation);
     router.use('/observations', observationRouter);
 }
+

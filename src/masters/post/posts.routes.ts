@@ -15,8 +15,8 @@ export default (router: express.Router) => {
     postRouter.delete('/:id', validateParamId, postController.removePost);
     postRouter.put('/:id/like', validateParamId, postController.likePost);
     postRouter.put('/:id/dislike', validateParamId, postController.dislikePost);
-    
     const commentRouter = express.Router({ mergeParams: true });
     postRouter.use("/:postId/comments", commentsRoutes(commentRouter));
     router.use('/posts', postRouter);
-}
+}
+

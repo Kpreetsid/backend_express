@@ -1,3 +1,4 @@
+import { controllerCache } from '../../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { userLogsService } from './logs.service';
 import { get } from 'lodash';
@@ -39,4 +40,4 @@ class UserLogsController {
   };
 }
 
-export const userLogsController = new UserLogsController();
+export const userLogsController = controllerCache.withCache(new UserLogsController(), { namespace: 'user-logs', ttlSeconds: 30, tags: ['user-logs'], readMethods: ['userLogs'] });

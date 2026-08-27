@@ -6,3 +6,4 @@ export default (router: express.Router) => {
     userLogRouter.get('/', userLogsController.userLogs);
     router.use('/logs', userLogRouter);
 }
+

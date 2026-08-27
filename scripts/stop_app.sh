@@ -9,7 +9,7 @@ if ! command -v pm2 &> /dev/null; then
     exit 0
 fi
 
-# Stop the application if it's running
+# Stop the application if it's running-------------
 if pm2 list | grep -q "cmms_express"; then
     echo "Stopping cmms_express..."
     pm2 stop cmms_express || true

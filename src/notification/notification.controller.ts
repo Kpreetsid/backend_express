@@ -1,3 +1,4 @@
+import { controllerCache } from '../_cache/controllerCache.service';
 import { Request, Response } from 'express';
 import { notificationRepository } from './notification.service';
 import { IUser } from '../models/user.model';
@@ -84,7 +85,7 @@ export class NotificationController {
       const user = get(req, "user", {}) as IUser;
       const { type, message } = req.body;
       const { notificationService } = require('../utils/notification.service');
-      
+
       await notificationService.notifyUser(
         user._id,
         type || 'TEST_NOTIFICATION',
@@ -100,4 +101,4 @@ export class NotificationController {
   }
 }
 
-export const notificationController = new NotificationController();
+export const notificationController = controllerCache.withCache(new NotificationController(), { namespace: 'notifications', ttlSeconds: 15, tags: ['notifications'] });

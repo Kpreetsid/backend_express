@@ -1,12 +1,11 @@
 import { Server, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
-import jwt from 'jsonwebtoken';
-import { auth } from '../configDB';
+import { cookieAuth } from '../configDB';
 import { notificationService } from '../utils/notification.service';
 import { isOriginAllowed } from './cors';
-import { TokenModel } from '../models/userToken.model';
-import { UserModel } from '../models/user.model';
-import { Types } from 'mongoose';
+import { authenticateTokenContext } from './auth';
+import { LEGACY_ACCESS_COOKIE_NAME, LEGACY_ACCOUNT_COOKIE_NAME } from '../user/authentication/authCookie.service';
+import { cookieService } from '../utils/cookie';
 
 export const notificationSocketMetrics = {
   activeConnections: 0,
@@ -16,6 +15,22 @@ export const notificationSocketMetrics = {
   totalConnectionErrors: 0
 };
 
+let socketServer: Server | null = null;
+
+const accountRoom = (accountId: string): string => `account:${accountId}`;
+
+export const emitAccountPermissionsChanged = (accountId: string, accountPermissionVersion: number): boolean => {
+  if (!socketServer) {
+    return false;
+  }
+  socketServer.to(accountRoom(accountId)).emit('account_permissions_changed', { accountPermissionVersion });
+  return true;
+};
+
+/**
+ * Initialize Socket.io server
+ * @param httpServer The HTTP server instance
+ */
 export const initSocket = (httpServer: HttpServer) => {
   const io = new Server(httpServer, {
     serveClient: false,
@@ -32,60 +47,59 @@ export const initSocket = (httpServer: HttpServer) => {
       credentials: true
     }
   });
+  socketServer = io;
 
+  // Authentication Middleware
   io.use(async (socket: Socket, next) => {
-    const token = socket.handshake.auth.token || socket.handshake.headers['authorization']?.split(' ')[1];
-    const accountId = socket.handshake.auth.accountId || socket.handshake.headers['accountid'];
+    const cookies = cookieService.parseHeader(socket.handshake.headers.cookie);
+    const authHeader = String(socket.handshake.headers.authorization || '');
+    const token = socket.handshake.auth.token
+      || (authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : '')
+      || cookieService.getFromRecord(cookies, [cookieAuth.accessCookieName, LEGACY_ACCESS_COOKIE_NAME]);
+    const accountId = socket.handshake.auth.accountId
+      || socket.handshake.headers['accountid']
+      || cookieService.getFromRecord(cookies, [cookieAuth.accountCookieName, LEGACY_ACCOUNT_COOKIE_NAME]);
+
     if (!token || !accountId) {
       return next(new Error('Authentication error: Token and Account ID required'));
     }
+
     try {
-      const decoded: any = jwt.verify(token, auth.secret, {
-        algorithms: [auth.algorithm as jwt.Algorithm],
-        issuer: auth.issuer,
-        audience: auth.audience
-      });
-      const userId = decoded?.id;
-      const tokenAccountId = decoded?.companyID;
-      if (!userId || !tokenAccountId || String(tokenAccountId) !== String(accountId)
-        || !Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(tokenAccountId)) {
-        return next(new Error('Authentication error: Invalid token context'));
-      }
+      const context = await authenticateTokenContext(String(token), String(accountId));
 
-      const [tokenRecord, user] = await Promise.all([
-        TokenModel.findOne({ _id: token, userId, expiresAt: { $gt: new Date() } }).select('_id userId'),
-        UserModel.findOne({ _id: userId, account_id: tokenAccountId, user_status: 'active' }).select('_id username account_id')
-      ]);
-      if (!tokenRecord || !user) {
-        return next(new Error('Authentication error: Session is no longer active'));
-      }
-
-      socket.data.user = { ...decoded, username: user.username };
-      socket.data.accountId = String(tokenAccountId);
+      // Attach user info to socket
+      socket.data.user = { ...context.decoded, username: context.userData.username || context.decoded.username };
+      socket.data.accountId = context.accountId;
       next();
     } catch (err) {
       return next(new Error('Authentication error: Invalid token'));
     }
   });
 
-  io.engine.on('connection_error', (error) => {
+  io.engine.on('connection_error', (error: any) => {
     notificationSocketMetrics.totalConnectionErrors += 1;
     console.error('Notification socket transport error:', error.code, error.message);
   });
 
   io.on('connection', (socket: Socket) => {
     const userId = socket.data.user.id;
-    const userName = socket.data.user.username;
-    const dateIst = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-    const url = socket.handshake.url;
+    const accountId = socket.data.accountId;
+    const userName = socket.data.user.username || socket.data.user.email || userId;
+    const connectionUrl = socket.handshake.url;
     let transportName = socket.conn.transport.name;
     notificationSocketMetrics.activeConnections += 1;
     notificationSocketMetrics.totalConnections += 1;
     notificationSocketMetrics[transportName === 'websocket' ? 'websocketConnections' : 'pollingConnections'] += 1;
-    const customLog = `${dateIst} | CONNECTED | ${userId} | ${userName} | SOCKET_CONNECT | WS | - ms | ${url}`;
-    console.log(`Notification socket connected: ${userName}`);
-    console.log(customLog);
+
+    const connectedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    console.log(`Notification socket connected: ${userName} (Account: ${accountId})`);
+    console.log(`${connectedAt} | CONNECTED | ${userId} | ${userName} | SOCKET_CONNECT | WS | - ms | ${connectionUrl}`);
+
+    // Notification delivery is user-scoped. Account-wide events are expanded to user rooms
+    // by NotificationService when a server-side API action creates notifications.
     socket.join(userId.toString());
+    socket.join(accountRoom(String(accountId)));
+
     socket.conn.once('upgrade', () => {
       if (transportName === 'polling') {
         notificationSocketMetrics.pollingConnections = Math.max(0, notificationSocketMetrics.pollingConnections - 1);
@@ -96,13 +110,14 @@ export const initSocket = (httpServer: HttpServer) => {
       }
     });
 
+    // Handle "Notification Reached" acknowledgment from client
     socket.on('notification_reached', async (
       payload: { notificationId?: string },
       acknowledge?: (result: { success: boolean; message?: string }) => void
     ) => {
       try {
         const notificationId = payload?.notificationId;
-        if (!notificationId || !Types.ObjectId.isValid(notificationId)) {
+        if (!notificationId) {
           acknowledge?.({ success: false, message: 'Invalid notification ID' });
           return;
         }
@@ -111,22 +126,27 @@ export const initSocket = (httpServer: HttpServer) => {
           acknowledge?.({ success: false, message: 'Notification not found' });
           return;
         }
-        const actionDate = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-        console.log(`${actionDate} | ACKNOWLEDGED | ${userId} | ${userName} | NOTIFICATION_REACHED | WS | - ms | payload: ${notificationId}`);
+        const acknowledgedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        console.log(`${acknowledgedAt} | ACKNOWLEDGED | ${userId} | ${userName} | NOTIFICATION_REACHED | WS | - ms | payload: ${notificationId}`);
         acknowledge?.({ success: true });
       } catch (err) {
         console.error('Error marking notification as reached:', err);
         acknowledge?.({ success: false, message: 'Unable to acknowledge notification' });
       }
     });
+
     socket.on('disconnect', (reason) => {
       notificationSocketMetrics.activeConnections = Math.max(0, notificationSocketMetrics.activeConnections - 1);
       const metricKey = transportName === 'websocket' ? 'websocketConnections' : 'pollingConnections';
       notificationSocketMetrics[metricKey] = Math.max(0, notificationSocketMetrics[metricKey] - 1);
-      const disconnectDate = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-      console.log(`${disconnectDate} | DISCONNECTED | ${userId} | ${userName} | SOCKET_DISCONNECT | ${transportName} | - ms | ${url} | reason: ${reason}`);
+
+      const disconnectedAt = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+      console.log(`${disconnectedAt} | DISCONNECTED | ${userId} | ${userName} | SOCKET_DISCONNECT | ${transportName} | - ms | ${connectionUrl} | reason: ${reason}`);
     });
   });
+
+  // Initialize the singleton service with this io instance
   notificationService.init(io);
+
   return io;
 };

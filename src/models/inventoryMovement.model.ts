@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const INVENTORY_MOVEMENT_COLLECTION_NAME = 'inventory_movements';
+
 
 export const INVENTORY_MOVEMENT_TYPES = ['reserve', 'release', 'issue', 'return', 'short', 'adjust', 'count-adjustment', 'transfer-out', 'transfer-in'] as const;
 export type InventoryMovementType = typeof INVENTORY_MOVEMENT_TYPES[number];
@@ -37,7 +39,7 @@ const inventoryMovementSchema = new Schema<IInventoryMovement>({
   createdByName: { type: String, trim: true },
   visible: { type: Boolean, default: true }
 }, {
-  collection: 'inventory_movements',
+  collection: INVENTORY_MOVEMENT_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

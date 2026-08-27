@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { postService } from './posts.service';
@@ -169,4 +170,4 @@ class PostController {
   }
 }
 
-export const postController = new PostController();
+export const postController = controllerCache.withCache(new PostController(), { namespace: 'posts', ttlSeconds: 300, tags: ['posts', 'users'] });

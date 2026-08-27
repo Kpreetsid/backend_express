@@ -20,3 +20,4 @@ export default (router: express.Router) => {
     userRouter.delete('/:id', validateParamId, userController.removeUser);
     router.use('/users', userRouter);
 }
+

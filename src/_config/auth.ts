@@ -9,88 +9,163 @@ import { IUser, UserLoginPayload } from '../models/user.model';
 import { rolesService } from '../masters/user/role/roles.service';
 import { companyService } from '../masters/company/company.service';
 import { TokenModel } from '../models/userToken.model';
+import { TokenBlacklist } from '../_cache/auth/tokenBlacklist';
+import { tokenSessionStore, TokenSessionRecord } from '../_cache/session/tokenSessionStore';
+import { getAccessTokenFromCookies, getAccountIdFromCookies } from '../user/authentication/authCookie.service';
+import { accountAccessService } from '../_role/accountAccess.service';
+import { analysisFeatureService } from '../masters/analysisFeature/analysisFeature.service';
 
-interface CachedAuthSession {
-  user: any;
+const invalidTokenError = (): Error => Object.assign(new Error('Invalid token'), { status: 401 });
+
+const remainingTtlSeconds = (expiresAt: unknown): number => {
+  const expiresAtMs = new Date(expiresAt as any).getTime();
+  if (!Number.isFinite(expiresAtMs)) {
+    return 0;
+  }
+  return Math.max(0, Math.floor((expiresAtMs - Date.now()) / 1000));
+};
+
+const getAccessSession = async (token: string, decoded: JwtPayload): Promise<TokenSessionRecord | null> => {
+  const cachedSession = await tokenSessionStore.getAccessSession(token);
+  if (cachedSession) {
+    return cachedSession;
+  }
+
+  const tokenDocument: any = await TokenModel
+    .findOne({ _id: token, principalType: 'user' })
+    .lean();
+  if (!tokenDocument) {
+    return null;
+  }
+
+  const ttlSeconds = remainingTtlSeconds(tokenDocument.expiresAt);
+  if (ttlSeconds <= 0) {
+    return null;
+  }
+
+  const record: TokenSessionRecord = {
+    tokenId: String(tokenDocument.token_id || decoded.jti || ''),
+    userId: String(tokenDocument.userId || decoded.id || ''),
+    accountId: String(tokenDocument.account_id || decoded.companyID || ''),
+    principalType: 'user',
+    expiresAt: new Date(tokenDocument.expiresAt).toISOString(),
+    isExternal: !!tokenDocument.isExternal,
+    isInternal: !!tokenDocument.isInternal
+  };
+
+  await tokenSessionStore.setAccessSession({
+    ...record,
+    token,
+    ttlSeconds
+  });
+  return record;
+};
+
+interface AuthenticatedTokenContext {
+  token: string;
+  accountId: string;
   companyID: string;
+  decoded: JwtPayload;
+  userData: IUser;
+  roleData: IUserRoleMenu;
   role: any;
-  userToken: string;
-  expiresAt: number;
+  roleMenu: any;
+  accountPermissionVersion: number;
+  analysisFeature: any;
+  isExternal: boolean;
+  isInternal: boolean;
 }
 
-const authSessionCache = new Map<string, CachedAuthSession>();
-const AUTH_CACHE_TTL_MS = 60 * 1000; // 60s TTL for high-frequency dashboard requests
-
-export const clearAuthSessionCache = (tokenKey?: string) => {
-  if (tokenKey) {
-    authSessionCache.delete(tokenKey);
-  } else {
-    authSessionCache.clear();
+export const authenticateTokenContext = async (token: string, accountId: string): Promise<AuthenticatedTokenContext> => {
+  if (!token || !accountId) {
+    throw Object.assign(new Error('Unauthorized access'), { status: 401 });
   }
+
+  const decoded = verifyAccessToken(token);
+  const { id, username, companyID, isDownloadData } = decoded;
+  const normalizedAccountId = String(accountId);
+  if(true === !!isDownloadData) {
+    throw Object.assign(new Error('User does not belong to the application'), { status: 403 });
+  }
+
+  if (!id || !username || !companyID || normalizedAccountId !== String(companyID)) {
+    throw invalidTokenError();
+  }
+  if (await TokenBlacklist.isBlacklisted(token)) {
+    throw invalidTokenError();
+  }
+
+  const accessSession = await getAccessSession(token, decoded);
+  if (!accessSession) {
+    throw invalidTokenError();
+  }
+  if (accessSession.userId !== String(id) || (accessSession.accountId && accessSession.accountId !== String(companyID))) {
+    throw invalidTokenError();
+  }
+
+  const companyData = await companyService.verifyCompany(normalizedAccountId);
+  if (!companyData) {
+    throw Object.assign(new Error('Account ID is invalid'), { status: 401 });
+  }
+
+  const userData: IUser | null = await usersService.verifyUserLogin({ id, companyID, username });
+  if (!userData) {
+    throw Object.assign(new Error('User not found'), { status: 404 });
+  }
+
+  const userRole: IUserRoleMenu | null = await rolesService.verifyUserRole(id, companyID);
+  if (!userRole) {
+    throw Object.assign(new Error('User role not found'), { status: 401 });
+  }
+  if (userRole.account_id.toString() !== companyID) {
+    throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
+  }
+
+  const effectivePermissions = accountAccessService.getEffectivePermissions(userRole, companyData);
+  const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: companyID })
+
+  return {
+    token,
+    accountId: normalizedAccountId,
+    companyID: String(companyID),
+    decoded,
+    userData,
+    roleData: userRole,
+    role: effectivePermissions.platformControl,
+    roleMenu: effectivePermissions.roleMenu,
+    accountPermissionVersion: Number(companyData.account_permission_version || 1),
+    analysisFeature: analysisFeature,
+    isExternal: !!accessSession.isExternal,
+    isInternal: !!accessSession.isInternal
+  };
 };
 
 export const isAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const headerToken = req.headers.authorization?.split(' ')[1];
-    const headerAccountID = req.headers.accountid as string;
-    if (!headerToken || !headerAccountID) {
-      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
+    let headerToken = req.headers.authorization?.split(' ')[1];
+    let headerAccountID = req.headers.accountid as string;
+
+    if (!headerToken) {
+      headerToken = getAccessTokenFromCookies(req);
+    }
+    if (!headerAccountID) {
+      headerAccountID = getAccountIdFromCookies(req);
     }
 
-    const cacheKey = `${headerToken}:${headerAccountID}`;
-    const now = Date.now();
-    const cached = authSessionCache.get(cacheKey);
-    if (cached && cached.expiresAt > now) {
-      merge(req, { user: cached.user, companyID: cached.companyID, role: cached.role, userToken: cached.userToken });
-      return next();
-    }
-
-    const isTokenExist: any = await TokenModel.findOne({ _id: headerToken });
-    if (!isTokenExist) {
-      authSessionCache.delete(cacheKey);
-      throw Object.assign(new Error('Invalid token'), { status: 401 });
-    }
-    const decoded = verifyAccessToken(headerToken);
-    const { id, username, companyID } = decoded;
-
-    if (!id || !username || !companyID || headerAccountID !== companyID) {
-      authSessionCache.delete(cacheKey);
-      throw Object.assign(new Error('Invalid token'), { status: 401 });
-    }
-    const companyData = await companyService.verifyCompany(headerAccountID);
-    if (!companyData) {
-      throw Object.assign(new Error('Account ID is invalid'), { status: 401 });
-    }
-    const userData: IUser | null = await usersService.verifyUserLogin({ id, companyID, username });
-    if (!userData) {
-      throw Object.assign(new Error('User not found'), { status: 404 });
-    }
-    const userRole: IUserRoleMenu | null = await rolesService.verifyUserRole(id, companyID);
-    if (!userRole) {
-      throw Object.assign(new Error('User role not found'), { status: 401 });
-    }
-    if (userRole.account_id.toString() !== companyID) {
-      throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
-    }
-
-    const userObj = userData.toObject();
-    const roleData = userRole.toObject().data;
-
-    // Prune stale cache entries if growing
-    if (authSessionCache.size > 5000) {
-      for (const [key, value] of authSessionCache.entries()) {
-        if (value.expiresAt <= now) authSessionCache.delete(key);
+    const context = await authenticateTokenContext(headerToken || '', String(headerAccountID || ''));
+    merge(req, {
+      user: context.userData.toObject(),
+      companyID: context.companyID,
+      role: context.role,
+      roleMenu: context.roleMenu,
+      accountPermissionVersion: context.accountPermissionVersion,
+      userToken: context.token,
+      authFlags: {
+        isExternal: context.isExternal,
+        isInternal: context.isInternal
       }
-    }
-    authSessionCache.set(cacheKey, {
-      user: userObj,
-      companyID,
-      role: roleData,
-      userToken: headerToken,
-      expiresAt: now + AUTH_CACHE_TTL_MS
     });
-
-    merge(req, { user: userObj, companyID, role: roleData, userToken: headerToken });
+    res.setHeader('X-Account-Permission-Version', String(context.accountPermissionVersion));
     next();
   } catch (error) {
     next(error)
@@ -99,16 +174,22 @@ export const isAuthenticated = async (req: Request, res: Response, next: NextFun
 
 export const isLogOutAuthenticated = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const headerToken = req.headers.authorization?.split(' ')[1];
-    const headerAccountID = req.headers.accountid;
+    let headerToken = req.headers.authorization?.split(' ')[1];
+    let headerAccountID = req.headers.accountid as string;
+
+    if (!headerToken) {
+      headerToken = getAccessTokenFromCookies(req);
+    }
+    if (!headerAccountID) {
+      headerAccountID = getAccountIdFromCookies(req);
+    }
+
     if (!headerToken || !headerAccountID) {
       throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
-    clearAuthSessionCache(`${headerToken}:${headerAccountID}`);
     const decoded = verifyAccessToken(headerToken);
     const { id, username, companyID } = decoded;
-    const accountID = req.headers.accountid as string;
-    if (!id || !username || !companyID || headerAccountID !== accountID) {
+    if (!id || !username || !companyID || String(headerAccountID) !== String(companyID)) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
     }
     merge(req, { user_id: id, userToken: headerToken });
@@ -123,12 +204,17 @@ export const decodedAccessToken = (token: string): JwtPayload => {
 };
 
 export const generateAccessToken = (payload: UserLoginPayload): string => {
-  return jwt.sign(payload, auth.secret, {
+  const { jti, ...claims } = payload;
+
+  return jwt.sign(claims, auth.secret, {
     expiresIn: auth.expiresIn,
     algorithm: auth.algorithm as jwt.Algorithm,
     issuer: auth.issuer,
-    audience: auth.audience
-  } as jwt.SignOptions); 
+    audience: auth.audience,
+    // Use the caller's database session ID when available. Otherwise generate
+    // one so tokens created in the same second are still unique.
+    jwtid: jti?.trim() || crypto.randomUUID()
+  } as jwt.SignOptions);
 };
 
 export const generateExternalAccessToken = (body: any, ttlSeconds: number = 300): string => {
@@ -218,4 +304,4 @@ export const verifyEncryptedToken = (req: Request, res: Response, next: NextFunc
   } catch (error: any) {
     next(error);
   }
-}
+};

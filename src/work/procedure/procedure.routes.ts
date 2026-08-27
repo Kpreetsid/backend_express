@@ -14,3 +14,4 @@ export default (router: express.Router) => {
   procedureRouter.delete('/:id', validateParamId, procedureController.remove);
   router.use('/procedures', procedureRouter);
 };
+

@@ -16,6 +16,9 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
 
   const getHistoryActor = (doc: any, updatedBy: any) => updatedBy || doc.updatedBy || doc.createdBy;
 
+  const readPrimaryLean = (query: any, session?: mongoose.ClientSession | null) =>
+    query.session(session || null).read('primary').lean().exec();
+
   const normalizeHistorySnapshot = (model: mongoose.Model<any>, doc: any, updatedBy: any) => {
     if (model.modelName !== 'Schema_WorkOrder') {
       return { ...doc };
@@ -88,7 +91,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     if (model.modelName === 'Schema_WorkOrder') {
       try {
         const MappingsModel = mongoose.model('Schema_WorkOrderAssignee');
-        mappings = await MappingsModel.find({ woId: { $in: docs.map(d => d._id) } }).session(session || null).lean().exec();
+        mappings = await readPrimaryLean(MappingsModel.find({ woId: { $in: docs.map(d => d._id) } }), session);
       } catch (err) {
         // Silently fail if model not registered or query fails to avoid breaking main update
       }
@@ -119,7 +122,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     const options = this.getOptions();
     
     try {
-      const doc = await this.model.findOne(query).session(options.session || null).lean().exec();
+      const doc = await readPrimaryLean(this.model.findOne(query), options.session);
       if (doc) {
         await logHistory(this.model, [doc], update, 'UPDATE', options.session);
       }
@@ -134,7 +137,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     const options = this.getOptions();
     
     try {
-      const doc = await this.model.findOne(query).session(options.session || null).lean().exec();
+      const doc = await readPrimaryLean(this.model.findOne(query), options.session);
       if (doc) {
         await logHistory(this.model, [doc], update, 'UPDATE', options.session);
       }
@@ -151,7 +154,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
     try {
       // For large datasets, this might consume memory, but .lean() helps. 
       // A more robust solution for huge datasets would involve streams.
-      const docs = await this.model.find(query).session(options.session || null).lean().exec();
+      const docs = await readPrimaryLean(this.model.find(query), options.session);
       if (docs && docs.length > 0) {
         await logHistory(this.model, docs, update, 'UPDATE', options.session);
       }
@@ -168,7 +171,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
         // We only have the session if it's explicitly passed, we'll try to retrieve it if possible
         const session = this.$session();
         
-        const doc = await model.findById(this._id).session(session || null).lean().exec();
+        const doc = await readPrimaryLean(model.findById(this._id), session);
         if (doc) {
           const update = this.modifiedPaths().reduce((acc, path) => {
             acc[path] = this.get(path);

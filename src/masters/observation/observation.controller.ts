@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { observationService } from './observation.service';
 import { get } from 'lodash';
@@ -153,4 +154,4 @@ class ObservationController {
     }
   }
 }
-export const observationController = new ObservationController();
+export const observationController = controllerCache.withCache(new ObservationController(), { namespace: 'observations', ttlSeconds: 300, tags: ['observations', 'assets', 'locations'] });

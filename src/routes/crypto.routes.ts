@@ -14,11 +14,16 @@ cryptoRouter.get('/bootstrap', (req: Request, res: Response, next: NextFunction)
       return;
     }
 
-    const clientPublicKey = String(req.query.clientPublicKey || req.headers['x-cmms-client-public-key'] || '');
-    const clientNonce = String(req.query.clientNonce || req.headers['x-cmms-client-nonce'] || '');
+    const clientPublicKey = readCryptoParam(req.query.clientPublicKey || req.headers['x-cmms-client-public-key']);
+    const clientNonce = readCryptoParam(req.query.clientNonce || req.headers['x-cmms-client-nonce']);
     const data = payloadCryptoService.createBootstrapSession(clientPublicKey, clientNonce);
     res.status(200).json({ status: true, message: 'Payload crypto bootstrap created', data });
   } catch (error) {
     next(error);
   }
 });
+
+function readCryptoParam(value: unknown): string {
+  const rawValue = Array.isArray(value) ? value[0] : value;
+  return String(rawValue || '').trim().replace(/ /g, '+');
+}

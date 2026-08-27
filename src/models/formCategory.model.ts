@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const FORM_CATEGORY_COLLECTION_NAME = 'form_category';
+
 
 export interface ICategory extends Document {
   name: string;
@@ -18,7 +20,7 @@ const categorySchema = new Schema<ICategory>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'form_category',
+  collection: FORM_CATEGORY_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

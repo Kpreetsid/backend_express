@@ -16,3 +16,4 @@ export default (router: express.Router) => {
 
   router.use('/order-templates', orderTemplateRouter);
 };
+

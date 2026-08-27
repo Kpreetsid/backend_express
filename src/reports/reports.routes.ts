@@ -6,7 +6,13 @@ const router = express.Router();
 
 export default (): express.Router => {
     router.use(rateLimiter.reportLimiter);
-    assetRoutes(router);
-    locationRoutes(router);
+    const assetReportRouter = express.Router();
+    assetRoutes(assetReportRouter);
+    router.use(assetReportRouter);
+
+    const locationReportRouter = express.Router();
+    locationRoutes(locationReportRouter);
+    router.use(locationReportRouter);
     return router;
 }
+

@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 import { IUpload } from './upload.model';
+export const TROUBLESHOOT_GUIDE_COLLECTION_NAME = 'troubleshoot_guide';
+
 
 interface ITroubleshootingSteps {
   title: string;
@@ -47,7 +49,7 @@ const troubleshootGuideSchema = new Schema<ITroubleshootGuide>(
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
   },
   {
-    collection: 'troubleshoot_guide',
+    collection: TROUBLESHOOT_GUIDE_COLLECTION_NAME,
     timestamps: true,
     versionKey: false
   }

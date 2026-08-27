@@ -1,7 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const PART_COLLECTION_NAME = 'parts';
+
+import { syncVersionPlugin } from './plugins/sync-version.plugin';
 
 export interface IPart extends Document {
+  sync_version: number;
   account_id: ObjectId;
   part_name: string;
   part_number: string;
@@ -44,11 +48,12 @@ const partSchema = new Schema<IPart>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'parts',
+  collection: PART_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });
 
+partSchema.plugin(syncVersionPlugin);
 partSchema.index({ account_id: 1, visible: 1 });
 partSchema.index({ account_id: 1, part_number: 1 });
 partSchema.index({ account_id: 1, location_id: 1 });

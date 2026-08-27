@@ -12,3 +12,4 @@ export default (router: express.Router) => {
     locationReportRouter.delete('/:id', validateParamId, hasRolePermission('location', 'delete_report'), locationReportController.deleteReport);
     router.use('/locations', locationReportRouter);
 }
+

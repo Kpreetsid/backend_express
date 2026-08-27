@@ -1,5 +1,7 @@
 import mongoose, { Document, Schema } from "mongoose";
 import { ObjectId } from 'mongodb';
+export const SCHEDULE_MASTER_COLLECTION_NAME = 'schedule_master';
+
 
 interface IPart {
   part_id: string;
@@ -146,7 +148,7 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
     updatedBy: { type: mongoose.Types.ObjectId, ref: "UserModel" }
   },
   {
-    collection: "schedule_master",
+    collection: SCHEDULE_MASTER_COLLECTION_NAME,
     timestamps: true,
     versionKey: false
   }
@@ -155,5 +157,4 @@ const ScheduleMasterSchema = new Schema<IScheduleMaster>(
 ScheduleMasterSchema.index({ account_id: 1, visible: 1 });
 ScheduleMasterSchema.index({ account_id: 1, "work_order.wo_location_id": 1 });
 ScheduleMasterSchema.index({ "schedule.enabled": 1, visible: 1 });
-
 export const SchedulerModel = mongoose.model<IScheduleMaster>("Schema_Schedule", ScheduleMasterSchema);

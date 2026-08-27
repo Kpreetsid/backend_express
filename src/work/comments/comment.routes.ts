@@ -13,4 +13,5 @@ export default (router: Router) => {
   router.patch("/:commentId", validateParam("commentId"), commentValidator, validate, commentController.update);
   router.delete("/:commentId", validateParam("commentId"), commentController.remove);
   return router;
-};
+};
+

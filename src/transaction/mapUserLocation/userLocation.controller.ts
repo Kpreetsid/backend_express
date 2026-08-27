@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from 'express';
 import { mapUserToLocationService } from './userLocation.service';
 import { get } from 'lodash';
@@ -79,4 +80,4 @@ class MapUserLocationController {
   };
 }
 
-export const userLocationController = new MapUserLocationController();
+export const userLocationController = controllerCache.withCache(new MapUserLocationController(), { namespace: 'mappings', ttlSeconds: 120, tags: ['mappings', 'assets', 'locations', 'work-orders', 'users'] });

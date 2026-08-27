@@ -17,22 +17,32 @@ import partsTypeRoutes from './part-type/parts-type.routes';
 import inspectionRoutes from './inspection/inspection.routes';
 import analysisFeatureRoutes from './analysisFeature/analysisFeature.routes';
 
+const withAccountFeature = (
+    _menuKey: string,
+    registerRoutes: (router: express.Router) => void
+): express.Router => {
+    const featureRouter = express.Router();
+    registerRoutes(featureRouter);
+    return featureRouter;
+};
+
 export default (): express.Router => {
     usersRouter(router);
     companyRoutes(router);
-    assetsRouter(router);
-    equipmentRoutes(router);
-    partsRoutes(router);
-    partsTypeRoutes(router);
-    postsRoutes(router);
-    scheduleRoutes(router);
-    inspectionRoutes(router);
-    sopsRoutes(router);
-    locationRoutes(router);
-    formCategoryRoutes(router);
-    observationRoutes(router);
+    router.use(withAccountFeature('asset', assetsRouter));
+    router.use(withAccountFeature('asset', equipmentRoutes));
+    router.use(withAccountFeature('inventory', partsRoutes));
+    router.use(withAccountFeature('inventory', partsTypeRoutes));
+    router.use(withAccountFeature('posts', postsRoutes));
+    router.use(withAccountFeature('preventive', scheduleRoutes));
+    router.use(withAccountFeature('inspections', inspectionRoutes));
+    router.use(withAccountFeature('form', sopsRoutes));
+    router.use(withAccountFeature('location', locationRoutes));
+    router.use(withAccountFeature('form_category', formCategoryRoutes));
+    router.use(withAccountFeature('observation', observationRoutes));
     floorMapRoutes(router);
     troubleshootGuideRoutes(router);
     analysisFeatureRoutes(router);
     return router;
 }
+

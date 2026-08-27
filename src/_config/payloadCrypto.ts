@@ -42,7 +42,7 @@ class PayloadCryptoService {
   private readonly sessionKeys = new Map<string, PayloadCryptoKeyRecord>();
 
   isEnabled(): boolean {
-    return payloadCrypto.enabled;
+    return payloadCrypto.enabled && payloadCrypto.requestDecryptEnabled;
   }
 
   isStrictMode(): boolean {

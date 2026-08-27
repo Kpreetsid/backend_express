@@ -1,6 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 import { IUpload } from './upload.model';
+export const WORK_INSTRUCTIONS_COLLECTION_NAME = 'work_instructions';
+
 
 export interface IWorkInstructionsSteps extends Document {
   title: string;
@@ -39,7 +41,7 @@ const WorkInstructionsSchema = new Schema<IWorkInstructions>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'work_instructions',
+  collection: WORK_INSTRUCTIONS_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

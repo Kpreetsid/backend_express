@@ -1,5 +1,6 @@
 import { helperService } from "../../utils/helper";
 import { AccountModel, IAccount } from "../../models/account.model";
+import { RoleManager } from "../../_role/accountRoleMenu";
 
 class CompanyService {
 
@@ -17,7 +18,12 @@ class CompanyService {
       account_name: body.account_name,
       type: body.type,
       experience_profile: body.experience_profile || 'standard_account',
-      description: body.description
+      description: body.description,
+      cookie_status: body.cookie_status,
+      encrypt_payload: body.encrypt_payload,
+      encrypt_response: body.encrypt_response,
+      account_role_menu: body.account_role_menu || RoleManager.getRoleMenu(body.experience_profile || 'standard_account'),
+      account_permission_version: 1
     });
     return await newCompany.save({ session });
   };

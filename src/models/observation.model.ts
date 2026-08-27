@@ -1,5 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+export const OBSERVATION_COLLECTION_NAME = 'observation';
+
 
 export interface IObservation extends Document {
   observation: string;
@@ -38,7 +40,7 @@ const ObservationSchema = new Schema<IObservation>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
 }, {
-  collection: 'observation',
+  collection: OBSERVATION_COLLECTION_NAME,
   timestamps: true,
   versionKey: false
 });

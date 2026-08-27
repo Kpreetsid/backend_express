@@ -1,3 +1,4 @@
+import { controllerCache } from '../../_cache/controllerCache.service';
 import { Request, Response, NextFunction } from "express";
 import { get } from "lodash";
 import { floorMapService } from './floorMap.service';
@@ -235,4 +236,4 @@ class FloorMapController {
   }
 }
 
-export const floorMapController = new FloorMapController();
+export const floorMapController = controllerCache.withCache(new FloorMapController(), { namespace: 'floor-maps', ttlSeconds: 300, tags: ['floor-maps', 'locations', 'assets'] });
