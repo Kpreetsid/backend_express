@@ -134,7 +134,7 @@ class EquipmentService {
     return roots.map((asset) => buildTree(asset));
   };
 
-  getEquipmentTreeDataById = async (match: any, token: string, user_id: any) => {
+  getEquipmentTreeDataById = async (match: any, _token: string, _user_id: any) => {
     const assets = await AssetModel.aggregate([
       { $match: match },
       {
@@ -161,23 +161,7 @@ class EquipmentService {
       { $project: { assetId: 1, user: { id: '$user._id', firstName: '$user.firstName', lastName: '$user.lastName', user_role: '$user.user_role', email: '$user.email', user_status: '$user.user_status' } } }
     ]);
 
-    let mergedAssets = assets;
-    const childAssetIds = assets.filter(a => !a.top_level && a.parent_id).map(a => String(a._id));
-    if (childAssetIds.length) {
-      const childEquipmentDetail: any = await processorAPIService.getEquipmentDetails({ asset_ids: childAssetIds }, token, user_id);
-      const childEquipmentById = new Map(
-        (childEquipmentDetail.data || []).map((a: any) => [String(a.asset_id || a.id), a])
-      );
-
-      mergedAssets = assets.map((asset: any) => {
-        const matchedAsset = childEquipmentById.get(String(asset._id));
-
-        return matchedAsset
-          ? { ...asset, ...matchedAsset }
-          : asset;
-      });
-    }
-    return this.buildEquipmentTree(mergedAssets, assetUsers);
+    return this.buildEquipmentTree(assets, assetUsers);
   };
 
   buildEquipmentTree = async (assets: any[], assetUsers: any[]) => {
