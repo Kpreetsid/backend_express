@@ -14,6 +14,9 @@ export interface PayloadCryptoEnvelope {
 
 export interface PayloadCryptoSessionMetadata {
   enabled: true;
+  encryptRequests: boolean;
+  decryptResponses: boolean;
+  strictMode: boolean;
   keyId: string;
   sessionId: string;
   sessionKey: string;
@@ -42,7 +45,8 @@ class PayloadCryptoService {
   private readonly sessionKeys = new Map<string, PayloadCryptoKeyRecord>();
 
   isEnabled(): boolean {
-    return payloadCrypto.enabled && payloadCrypto.requestDecryptEnabled;
+    return payloadCrypto.enabled
+      && (payloadCrypto.requestDecryptEnabled || payloadCrypto.responseEncryptEnabled);
   }
 
   isStrictMode(): boolean {
@@ -57,8 +61,22 @@ class PayloadCryptoService {
     return payloadCrypto.enabled && payloadCrypto.responseEncryptEnabled;
   }
 
+  getCapabilities(): {
+    enabled: boolean;
+    encryptRequests: boolean;
+    decryptResponses: boolean;
+    strictMode: boolean;
+  } {
+    return {
+      enabled: this.isEnabled(),
+      encryptRequests: this.canDecryptRequests(),
+      decryptResponses: this.canEncryptResponses(),
+      strictMode: this.isStrictMode() && this.canDecryptRequests()
+    };
+  }
+
   createBootstrapSession(clientPublicKey: string, clientNonce: string) {
-    if (!payloadCrypto.enabled) {
+    if (!this.isEnabled()) {
       throw Object.assign(new Error('Payload crypto is disabled'), { status: 404 });
     }
 
@@ -92,7 +110,7 @@ class PayloadCryptoService {
     this.cleanupExpired();
 
     return {
-      enabled: true,
+      ...this.getCapabilities(),
       keyId: record.keyId,
       sessionId: record.sessionId,
       serverPublicKey: serverPublicKey.toString('base64'),
@@ -127,7 +145,8 @@ class PayloadCryptoService {
     this.cleanupExpired();
 
     return {
-      enabled: true,
+      ...this.getCapabilities(),
+      enabled: true as const,
       keyId: record.keyId,
       sessionId: record.sessionId,
       sessionKey: key.toString('base64'),

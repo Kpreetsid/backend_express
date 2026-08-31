@@ -101,17 +101,17 @@ export const cookieAuth = {
 };
 
 export const payloadCrypto = {
-  enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, true),
+  enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, false),
   strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),
-  requestDecryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_REQUEST_DECRYPT_ENABLED, true),
-  responseEncryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_RESPONSE_ENCRYPT_ENABLED, true),
+  requestDecryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_REQUEST_DECRYPT_ENABLED, false),
+  responseEncryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_RESPONSE_ENCRYPT_ENABLED, false),
   masterSecret: process.env.PAYLOAD_CRYPTO_MASTER_SECRET,
   bootstrapTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_BOOTSTRAP_TTL_SECONDS || '300', 10),
   replayTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_REPLAY_TTL_SECONDS || '300', 10)
 };
 
 export const redisConfig = {
-  enabled: envBoolean(process.env.REDIS_ENABLED, true),
+  enabled: envBoolean(process.env.REDIS_ENABLED, false),
   host: process.env.REDIS_HOST || '127.0.0.1',
   port: parseInt(process.env.REDIS_PORT || '6379', 10),
   password: process.env.REDIS_PASSWORD || undefined,
