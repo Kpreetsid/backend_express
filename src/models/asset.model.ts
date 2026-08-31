@@ -88,7 +88,8 @@ export interface IAsset extends Document {
   bepHeadM?: number;
   bepEfficiencyPercent?: number;
   minimumContinuousStableFlowM3h?: number;
-  motorToPumpSpeedRatio?: number
+  motorToPumpSpeedRatio?: number;
+  images: Object[];
 }
 
 const assetSchema = new Schema<IAsset>(
@@ -192,7 +193,8 @@ const assetSchema = new Schema<IAsset>(
     bepHeadM: { type: Number },
     bepEfficiencyPercent: { type: Number },
     minimumContinuousStableFlowM3h: { type: Number },
-    motorToPumpSpeedRatio: { type: Number }
+    motorToPumpSpeedRatio: { type: Number },
+    images: { type: [Object], default: [] }
   },
   {
     collection: ASSET_COLLECTION_NAME,
