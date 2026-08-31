@@ -37,8 +37,12 @@ export const payloadCryptoRequestMiddleware = async (req: Request, _res: Respons
     const accountPolicy = await resolveRequestPayloadCryptoPolicy(req);
     const requestBodyEncryptionRequested = readBooleanHeader(req, ENCRYPT_REQUEST_HEADER, true);
     const responseEncryptionRequested = readBooleanHeader(req, ENCRYPT_RESPONSE_HEADER, true);
-    const requestBodyEncryptionEnabled = requestBodyEncryptionRequested && accountPolicy.encryptPayload;
-    const responseEncryptionEnabled = responseEncryptionRequested && accountPolicy.encryptResponse;
+    const requestBodyEncryptionExpected = payloadCryptoService.canDecryptRequests()
+      && requestBodyEncryptionRequested
+      && accountPolicy.encryptPayload;
+    const responseEncryptionEnabled = payloadCryptoService.canEncryptResponses()
+      && responseEncryptionRequested
+      && accountPolicy.encryptResponse;
     const hasCryptoHeaders = !!req.headers[KEY_ID_HEADER] && !!req.headers[TIMESTAMP_HEADER] && !!req.headers[NONCE_HEADER];
     const encryptedPayloadHeaderPresent = encryptedHeader === 'v1';
     const hasEncryptedRequestBody = !!bodyEnvelope || (encryptedPayloadHeaderPresent && canRequestCarryEncryptedPayload(req));
@@ -48,20 +52,20 @@ export const payloadCryptoRequestMiddleware = async (req: Request, _res: Respons
       throw Object.assign(new Error('Payload encryption is disabled for this account'), { status: 400, name: 'BadRequestError' });
     }
 
+    if (hasEncryptedRequestBody && !payloadCryptoService.canDecryptRequests()) {
+      throw Object.assign(new Error('Encrypted payload support is disabled on this server'), { status: 400, name: 'BadRequestError' });
+    }
+
     if (!hasCryptoContext) {
-      if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && accountPolicy.encryptPayload) {
+      if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && requestBodyEncryptionExpected) {
         throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
       }
       next();
       return;
     }
 
-    if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && requestBodyEncryptionEnabled && !hasEncryptedRequestBody) {
+    if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && requestBodyEncryptionExpected && !hasEncryptedRequestBody) {
       throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
-    }
-
-    if (!payloadCryptoService.canDecryptRequests() && requestBodyEncryptionEnabled && hasEncryptedRequestBody) {
-      throw Object.assign(new Error('Encrypted payload support is disabled on this server'), { status: 400, name: 'BadRequestError' });
     }
 
     const keyId = String(req.headers[KEY_ID_HEADER] || bodyEnvelope?.kid || '');
@@ -73,7 +77,7 @@ export const payloadCryptoRequestMiddleware = async (req: Request, _res: Respons
     );
     const context: PayloadCryptoContext = {
       encryptedRequest: hasCryptoContext,
-      requestBodyEncrypted: requestBodyEncryptionEnabled && hasEncryptedRequestBody,
+      requestBodyEncrypted: hasEncryptedRequestBody,
       responseEncryptionEnabled,
       keyRecord,
       timestamp: replay.timestamp,
@@ -169,10 +173,10 @@ export const payloadCryptoResponseMiddleware = () => {
 
 function prepareResponseBody(req: Request, res: Response, body: any): any {
   const context = (req as any).payloadCrypto as PayloadCryptoContext | undefined;
-  if (!shouldEncryptResponse(req, res, context, body)) {
-    return body;
-  }
   const withSession = attachPayloadCryptoSessionIfNeeded(req, body);
+  if (!shouldEncryptResponse(req, res, context, withSession)) {
+    return withSession;
+  }
   return encryptResponseValue(req, res, withSession, context!);
 }
 
@@ -255,8 +259,10 @@ function getRequestAccountId(req: Request): string {
 }
 
 function shouldAttachPayloadCryptoSession(body: any): boolean {
-  return readPayloadCryptoFlagFromBody(body, 'encrypt_payload', true)
-    || readPayloadCryptoFlagFromBody(body, 'encrypt_response', true);
+  return (payloadCryptoService.canDecryptRequests()
+      && readPayloadCryptoFlagFromBody(body, 'encrypt_payload', true))
+    || (payloadCryptoService.canEncryptResponses()
+      && readPayloadCryptoFlagFromBody(body, 'encrypt_response', true));
 }
 
 function isResponseEncryptionEnabledForBody(body: any, fallback: boolean): boolean {

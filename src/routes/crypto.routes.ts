@@ -9,7 +9,7 @@ cryptoRouter.get('/bootstrap', (req: Request, res: Response, next: NextFunction)
       res.status(200).json({
         status: false,
         message: 'Payload crypto is disabled',
-        data: { enabled: false }
+        data: payloadCryptoService.getCapabilities()
       });
       return;
     }
