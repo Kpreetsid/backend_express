@@ -48,7 +48,7 @@ export const userSchema = new Schema<IUser>({
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
   passwordExpiredAt: { type: Date },
-  isTourCompleted: { type: Boolean, default: false }
+  isTourCompleted: { type: Boolean, default: true }
 }, {
   collection: USER_COLLECTION_NAME,
   timestamps: true,
