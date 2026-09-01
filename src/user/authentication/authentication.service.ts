@@ -245,6 +245,7 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
       };
       await TokenModel.deleteMany({ account_id: account._id, principalType: 'download_data' });
       const external_token = generateExternalAccessToken(match);
+      const downloadDataTtlSeconds = parseTtlSeconds(auth.expiresIn, 365 * 24 * 60 * 60);
       const tokenData = new TokenModel({
         _id: external_token,
         tokenType: 'access',
@@ -253,8 +254,8 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
         principalType: 'download_data',
         isExternal: true,
         isInternal: false,
-        ttl: ttlSeconds,
-        expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+        ttl: downloadDataTtlSeconds,
+        expiresAt: new Date(Date.now() + downloadDataTtlSeconds * 1000)
       });
       await tokenData.save();
 
