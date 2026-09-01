@@ -8,7 +8,11 @@ const MIME_BY_EXTENSION: Readonly<Record<string, string>> = Object.freeze({
   '.jpeg': 'image/jpeg',
   '.jpg': 'image/jpeg',
   '.pdf': 'application/pdf',
-  '.png': 'image/png'
+  '.png': 'image/png',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 });
 
 const ALLOWED_FOLDERS = new Set([
@@ -68,7 +72,7 @@ class UploadFilesService {
     const cleanFolder = this.normalizeFolderName(folderName);
 
     if (!expectedMimeType || normalizedMimeType !== expectedMimeType) {
-      throw Object.assign(new Error('Only PNG, JPEG, and PDF files with matching content types are allowed'), { status: 415 });
+      throw Object.assign(new Error('Invalid file type. Only PNG, JPEG, PDF, Excel, and Word files are allowed.'), { status: 415 });
     }
     if (cleanFolder === 'user_profile_img' && expectedMimeType === 'application/pdf') {
       throw Object.assign(new Error('Profile images must be PNG or JPEG files'), { status: 415 });
@@ -76,7 +80,7 @@ class UploadFilesService {
     return expectedMimeType;
   }
 
-  detectFileMimeType(buffer: Buffer): string | undefined {
+  detectFileMimeType(buffer: Buffer, expectedMimeType?: string): string | undefined {
     if (buffer.length >= 8
       && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
       return 'image/png';
@@ -87,6 +91,20 @@ class UploadFilesService {
     if (buffer.length >= 5 && buffer.subarray(0, 5).toString('ascii') === '%PDF-') {
       return 'application/pdf';
     }
+    // ZIP (docx, xlsx)
+    if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4b && buffer[2] === 0x03 && buffer[3] === 0x04) {
+      if (expectedMimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+          expectedMimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
+        return expectedMimeType;
+      }
+    }
+    // OLE (doc, xls)
+    if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]))) {
+      if (expectedMimeType === 'application/msword' || 
+          expectedMimeType === 'application/vnd.ms-excel') {
+        return expectedMimeType;
+      }
+    }
     return undefined;
   }
 
@@ -94,7 +112,7 @@ class UploadFilesService {
     if (!buffer.length || buffer.length > MAX_UPLOAD_BYTES) {
       throw Object.assign(new Error('File must be non-empty and no larger than 5MB'), { status: 400 });
     }
-    if (this.detectFileMimeType(buffer) !== expectedMimeType) {
+    if (this.detectFileMimeType(buffer, expectedMimeType) !== expectedMimeType) {
       throw Object.assign(new Error('File content does not match its declared type'), { status: 415 });
     }
   }
