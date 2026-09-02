@@ -33,7 +33,12 @@ const getAccessSession = async (token: string, decoded: JwtPayload): Promise<Tok
   }
 
   const tokenDocument: any = await TokenModel
-    .findOne({ _id: token, principalType: 'user' })
+    .findOne({
+      _id: token,
+      principalType: 'user',
+      revokedAt: { $exists: false },
+      expiresAt: { $gt: new Date() }
+    })
     .lean();
   if (!tokenDocument) {
     return null;

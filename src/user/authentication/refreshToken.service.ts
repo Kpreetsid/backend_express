@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 import { CookieOptions, Request, Response } from 'express';
 import { auth, refreshToken as refreshTokenConfig } from '../../configDB';
 import { generateAccessToken } from '../../_config/auth';
-import { IUserToken, TokenModel } from '../../models/userToken.model';
+import { getAccessTokenTypeFilter, IUserToken, TokenModel } from '../../models/userToken.model';
 import { IUser, UserLoginPayload, UserModel } from '../../models/user.model';
 import { companyService } from '../../masters/company/company.service';
 import { accountFeatureService } from '../../masters/company/accountFeature.service';
@@ -28,7 +28,14 @@ type StoredRefreshToken = IUserToken & {
   account_id: mongoose.Types.ObjectId;
   revokedAt?: Date;
   replacedByTokenHash?: string;
+  refreshFamilyId?: string;
+  parentTokenHash?: string;
 };
+
+interface RefreshRotationMetadata {
+  refreshFamilyId?: string;
+  parentTokenHash?: string;
+}
 
 interface RefreshIssueResult {
   issued: boolean;
@@ -121,7 +128,13 @@ class RefreshTokenService {
     return { token, token_id: tokenId, ttlSeconds };
   }
 
-  async issueForUser(req: Request, res: Response, user: IUser, accessTokenId?: mongoose.Types.ObjectId): Promise<RefreshIssueResult> {
+  async issueForUser(
+    req: Request,
+    res: Response,
+    user: IUser,
+    accessTokenId?: mongoose.Types.ObjectId,
+    rotation: RefreshRotationMetadata = {}
+  ): Promise<RefreshIssueResult> {
     const accountId = String(user.account_id || '');
     const cookieEnabled = await accountFeatureService.isCookieEnabledForAccount(accountId);
 
@@ -140,6 +153,8 @@ class RefreshTokenService {
       principalType: REFRESH_PRINCIPAL_TYPE,
       ttl: ttlSeconds,
       expiresAt,
+      refreshFamilyId: rotation.refreshFamilyId || crypto.randomUUID(),
+      parentTokenHash: rotation.parentTokenHash,
       userAgent,
       ipAddress
     }).save();
@@ -212,12 +227,26 @@ class RefreshTokenService {
     const storedRefreshToken = (refreshTokenConfig.rotate
       ? await TokenModel.findOneAndUpdate(
         refreshTokenQuery,
-        { $set: { revokedAt: new Date() } },
+        { $set: { revokedAt: new Date(), replacedByTokenHash: 'rotation-pending' } },
         { returnDocument: 'after' }
       ).exec()
       : await TokenModel.findOne(refreshTokenQuery).exec()) as StoredRefreshToken | null;
     if (!storedRefreshToken) {
+      const knownRefreshToken = await TokenModel
+        .findOne({ _id: tokenHash, tokenType: 'refresh', principalType: REFRESH_PRINCIPAL_TYPE })
+        .exec() as StoredRefreshToken | null;
       await tokenSessionStore.deleteRefreshSession(tokenHash);
+      if (knownRefreshToken?.revokedAt && knownRefreshToken.replacedByTokenHash
+        && this.isRecentRotation(knownRefreshToken.revokedAt)) {
+        throw Object.assign(new Error('Refresh token was already rotated'), {
+          status: 409,
+          name: 'ConflictError',
+          code: 'REFRESH_TOKEN_ROTATED'
+        });
+      }
+      if (knownRefreshToken?.revokedAt) {
+        await this.revokeCompromisedFamily(knownRefreshToken);
+      }
       this.clearCookie(res);
       clearAuthCookies(res);
       throw Object.assign(new Error('Refresh token invalid or revoked'), { status: 401, name: 'InvalidTokenError' });
@@ -284,8 +313,21 @@ class RefreshTokenService {
     }
     let replacementRefreshToken: string | undefined;
     if (refreshTokenConfig.rotate) {
-      const newRefresh = await this.issueForUser(req, res, user, accessSession.token_id);
+      let newRefresh: RefreshIssueResult;
+      try {
+        newRefresh = await this.issueForUser(req, res, user, accessSession.token_id, {
+          refreshFamilyId: storedRefreshToken.refreshFamilyId || String(storedRefreshToken._id),
+          parentTokenHash: String(storedRefreshToken._id)
+        });
+      } catch (error) {
+        await this.revokeAccessSession(accessSession.token);
+        await this.revokeStored(storedRefreshToken);
+        this.clearCookie(res);
+        clearAuthCookies(res);
+        throw error;
+      }
       if (!newRefresh.issued || !newRefresh.tokenHash || !newRefresh.rawToken) {
+        await this.revokeAccessSession(accessSession.token);
         await this.revokeStored(storedRefreshToken);
         this.clearCookie(res);
         clearAuthCookies(res);
@@ -321,6 +363,54 @@ class RefreshTokenService {
     storedRefreshToken.revokedAt = new Date();
     await storedRefreshToken.save();
     await tokenSessionStore.deleteRefreshSession(String(storedRefreshToken._id));
+  }
+
+  private isRecentRotation(revokedAt: Date): boolean {
+    const graceMs = refreshTokenConfig.reuseGraceSeconds * 1000;
+    return graceMs > 0 && Date.now() - revokedAt.getTime() <= graceMs;
+  }
+
+  private async revokeCompromisedFamily(storedRefreshToken: StoredRefreshToken): Promise<void> {
+    const revokedAt = new Date();
+    const refreshFamilyFilter = storedRefreshToken.refreshFamilyId
+      ? { refreshFamilyId: storedRefreshToken.refreshFamilyId }
+      : { userId: storedRefreshToken.userId, account_id: storedRefreshToken.account_id };
+
+    await TokenModel.updateMany(
+      {
+        tokenType: 'refresh',
+        principalType: REFRESH_PRINCIPAL_TYPE,
+        ...refreshFamilyFilter,
+        revokedAt: { $exists: false }
+      },
+      { $set: { revokedAt } }
+    );
+    await TokenModel.updateMany(
+      {
+        ...getAccessTokenTypeFilter(),
+        principalType: 'user',
+        userId: storedRefreshToken.userId,
+        revokedAt: { $exists: false }
+      },
+      { $set: { revokedAt } }
+    );
+    await tokenSessionStore.deleteUserSessions(
+      String(storedRefreshToken.account_id || ''),
+      String(storedRefreshToken.userId || '')
+    );
+  }
+
+  private async revokeAccessSession(token: string): Promise<void> {
+    await TokenModel.updateOne(
+      {
+        _id: token,
+        ...getAccessTokenTypeFilter(),
+        principalType: 'user',
+        revokedAt: { $exists: false }
+      },
+      { $set: { revokedAt: new Date() } }
+    );
+    await tokenSessionStore.deleteAccessSession(token);
   }
 
   private async cacheStoredRefreshToken(storedRefreshToken: StoredRefreshToken): Promise<void> {

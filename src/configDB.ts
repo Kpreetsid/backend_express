@@ -86,7 +86,8 @@ export const refreshToken = {
   cookiePath: envString(process.env.REFRESH_TOKEN_COOKIE_PATH, '/'),
   cookieSecure: envBoolean(process.env.REFRESH_TOKEN_COOKIE_SECURE, environment.type === 'production'),
   cookieSameSite: envSameSite(process.env.REFRESH_TOKEN_COOKIE_SAMESITE, 'lax'),
-  rotate: envBoolean(process.env.REFRESH_TOKEN_ROTATE, true)
+  rotate: envBoolean(process.env.REFRESH_TOKEN_ROTATE, true),
+  reuseGraceSeconds: Math.max(0, envNumber(process.env.REFRESH_TOKEN_REUSE_GRACE_SECONDS, 5))
 };
 
 export const cookieAuth = {

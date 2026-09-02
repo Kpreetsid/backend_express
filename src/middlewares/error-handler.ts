@@ -69,7 +69,7 @@ export const errorMiddleware = (err: any, req: Request, res: Response, next: Nex
       return res.status(408).json({ status: false, message: 'Request Timeout', error: err.message }).end();
 
     case 'ConflictError':
-      return res.status(409).json({ status: false, message: 'Conflict', error: err.message }).end();
+      return res.status(409).json({ ...response, message: 'Conflict' }).end();
 
     case 'LengthRequiredError':
       return res.status(411).json({ status: false, message: 'Length Required', error: err.message }).end();

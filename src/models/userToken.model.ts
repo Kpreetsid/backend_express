@@ -17,6 +17,8 @@ export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
   expiresAt: Date;
   revokedAt?: Date;
   replacedByTokenHash?: string;
+  refreshFamilyId?: string;
+  parentTokenHash?: string;
   userAgent?: string;
   ipAddress?: string;
 }
@@ -63,6 +65,8 @@ const userTokenSchema = new Schema<IUserToken>({
   expiresAt: { type: Date, required: true },
   revokedAt: { type: Date },
   replacedByTokenHash: { type: String },
+  refreshFamilyId: { type: String },
+  parentTokenHash: { type: String },
   userAgent: { type: String },
   ipAddress: { type: String }
 }, {
@@ -73,6 +77,7 @@ const userTokenSchema = new Schema<IUserToken>({
 userTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 userTokenSchema.index({ tokenType: 1, userId: 1, account_id: 1, revokedAt: 1 });
 userTokenSchema.index({ principalType: 1, userId: 1, account_id: 1, revokedAt: 1 });
+userTokenSchema.index({ tokenType: 1, refreshFamilyId: 1, revokedAt: 1 });
 
 export const TokenModel = mongoose.model<IUserToken>('Schema_UserToken', userTokenSchema);
 
