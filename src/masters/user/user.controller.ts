@@ -99,13 +99,13 @@ class UserController {
       const sideEffects = await Promise.allSettled([
         mailerService.sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email }),
         notificationService.notifyAccountUsers({
-        accountId: String(account_id),
-        module: 'User',
-        event: 'created',
-        entityId: String(data.userDetails._id || data.userDetails.id),
-        entityName: `${data.userDetails.firstName || ''} ${data.userDetails.lastName || ''}`.trim() || data.userDetails.username || 'User',
-        actionUrl: `/admin-panel/users/${data.userDetails._id || data.userDetails.id}`,
-        sourceUserId: String(user_id),
+          accountId: String(account_id),
+          module: 'User',
+          event: 'created',
+          entityId: String(data.userDetails._id || data.userDetails.id),
+          entityName: `${data.userDetails.firstName || ''} ${data.userDetails.lastName || ''}`.trim() || data.userDetails.username || 'User',
+          actionUrl: `/admin-panel/users/${data.userDetails._id || data.userDetails.id}`,
+          sourceUserId: String(user_id),
           recipientRoles: ['admin']
         })
       ]);
@@ -142,8 +142,8 @@ class UserController {
         throw Object.assign(new Error("User not found"), { status: 404 });
       }
       const allowedFields = isAdmin
-        ? ['firstName', 'lastName', 'username', 'email', 'phone_no', 'user_profile_img', 'user_status', 'user_role', 'isVerified']
-        : ['firstName', 'lastName', 'phone_no', 'user_profile_img'];
+        ? ['firstName', 'lastName', 'username', 'email', 'phone_no', 'user_profile_img', 'user_status', 'user_role', 'isVerified', 'isTourCompleted']
+        : ['firstName', 'lastName', 'phone_no', 'user_profile_img', 'isTourCompleted'];
       const safeUpdates = this.pickAllowedFields(body, allowedFields);
       if (!Object.keys(safeUpdates).length) {
         throw Object.assign(new Error('No permitted user fields were provided'), { status: 400 });
