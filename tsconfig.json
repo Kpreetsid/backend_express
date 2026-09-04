@@ -4,6 +4,15 @@
     "module": "NodeNext",
     "lib": ["ES2024"],
     "rootDir": "./src",
+    "paths": {
+      "@core/*": ["./src/core/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@features/*": ["./src/features/*"],
+      "@middleware/*": ["./src/middlewares/*"],
+      "@common/*": ["./src/common/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@schema/*": ["./src/models/*"]
+    },
     "outDir": "./dist",
     "types": ["node"],
     "strict": true,

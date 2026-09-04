@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import { Router } from 'express';
-import { permissionSync } from '../configDB';
-import { emitAccountPermissionsChanged } from '../_config/socket';
-import { accountFeatureService } from '../masters/company/accountFeature.service';
+import { permissionSync } from '../core/config/env.config';
+import { emitAccountPermissionsChanged } from '../core/socket/socket.server';
+import { accountFeatureService } from '../modules/company/services/accountFeature.service';
 
 const isAuthorizedService = (providedKey: string): boolean => {
   const expectedKey = permissionSync.serviceKey;

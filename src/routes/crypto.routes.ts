@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { payloadCryptoService } from '../_config/payloadCrypto';
+import { payloadCryptoService } from '../common/utils/crypto.helper';
 
 export const cryptoRouter = Router();
 

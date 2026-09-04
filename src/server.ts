@@ -1,15 +1,15 @@
 import mongoose from "mongoose";
-import { idStandardizationPlugin } from "./_db/mongoosePlugins";
+import { idStandardizationPlugin } from "./core/database/mongoose.plugins";
 mongoose.plugin(idStandardizationPlugin);
 
 import app from "./app";
-import { server as hostDetails } from './configDB';
-import { connectDB, disconnectDB } from "./_db";
-import { initJobScheduler } from "./cron";
-import { initSocket } from "./_config/socket";
-import { connectRedis, disconnectRedis } from "./_config/redis";
-import { initChangeStreams } from "./_cache/changeStream";
-import { UserLogConsumer } from "./_cache/streams/userLogConsumer";
+import { server as hostDetails } from './core/config/env.config';
+import { connectDB, disconnectDB } from "./core/database";
+import { initJobScheduler } from "./core/scheduler";
+import { initSocket } from "./core/socket";
+import { connectRedis, disconnectRedis } from "./core/cache/redis.client";
+import { initChangeStreams } from "./core/cache/change-stream/index";
+import { UserLogConsumer } from "./core/messaging";
 
 const server = app.listen(hostDetails.port, async () => {
   await connectDB();

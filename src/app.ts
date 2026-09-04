@@ -1,33 +1,42 @@
-import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
+import express, { Express, Request, Response, NextFunction, ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import helmet from 'helmet';
 import compression from 'compression';
-import { rateLimiter } from './middlewares/rateLimits';
-import { isAuthenticated } from './_config/auth';
-import routerIndex from './nonAuthRoutes';
-import workRoutes from './work/work.routes';
-import uploadRoutes from './upload/upload.routes';
-import reportsRoutes from './reports/reports.routes';
-import transactionRoutes from './transaction/transaction.routes';
-import masterRoutes from './masters/master.routes';
-import notificationRoutes from './notification/notification.routes';
-import { logger, errorMiddleware } from './middlewares';
-import { healthRouter, metricsRouter } from './routes/health.routes';
-import { accountPermissionEventRoutes } from './routes/accountPermissionEvent.routes';
-import { requestContextMiddleware } from './middlewares/requestContext';
-import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
-import { cryptoRouter } from './routes/crypto.routes';
-import { corsOptions } from './_config/cors';
-import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
-import { csrfProtection } from './middlewares/csrf.middleware';
+
+import { corsOptions } from './core/config/cors.config';
+import {
+  requestContextMiddleware,
+  csrfProtection,
+  payloadCryptoRequestMiddleware,
+  payloadCryptoResponseMiddleware,
+  mongoSanitizeMiddleware,
+  logger,
+  rateLimiter,
+  errorMiddleware
+} from './common/middlewares';
+import { registerAppRoutes } from './routes';
 
 const app: Express = express();
 app.set('trust proxy', 1);
+
+// Security & Context Middlewares
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
-app.use(cors({ ...corsOptions, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce', 'X-Account-Permission-Version', 'ETag', 'Retry-After', 'Idempotency-Replayed'] }));
+app.use(cors({
+  ...corsOptions,
+  exposedHeaders: [
+    'X-CMMS-Payload-Encrypted',
+    'X-CMMS-Crypto-Key-Id',
+    'X-CMMS-Crypto-Timestamp',
+    'X-CMMS-Crypto-Nonce',
+    'X-Account-Permission-Version',
+    'ETag',
+    'Retry-After',
+    'Idempotency-Replayed'
+  ]
+}));
 app.use(cookieParser());
 app.use(csrfProtection);
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));
@@ -37,6 +46,8 @@ app.use(payloadCryptoRequestMiddleware);
 app.use(mongoSanitizeMiddleware());
 app.use(logger.logMiddleware());
 app.use(rateLimiter.globalLimiter);
+
+// Compression
 app.use(compression({
   level: 6,
   threshold: 1024,
@@ -44,6 +55,8 @@ app.use(compression({
     return !req.headers['x-no-compression'];
   }
 }));
+
+// Static File Directories
 const uploadDirs = [
   'assets',
   'asset_report',
@@ -69,33 +82,17 @@ uploadDirs.forEach((dir) => {
   app.use(`${apiBasePath}/${dir}`, express.static(dirPath));
 });
 
-app.get('/', (req: Request, res: Response) => {
-  res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });
-});
+// Register Modular Enterprise Routes
+registerAppRoutes(app);
 
-app.use('/health', healthRouter);
-app.use('/metrics', metricsRouter);
-
-const apiRouter: Router = Router();
-apiRouter.use('/crypto', cryptoRouter);
-apiRouter.use('/internal/account-permissions', accountPermissionEventRoutes());
-apiRouter.use('/', routerIndex());
-apiRouter.use('/upload', isAuthenticated, uploadRoutes());
-apiRouter.use('/master', isAuthenticated, masterRoutes());
-apiRouter.use('/work', isAuthenticated, workRoutes());
-apiRouter.use('/reports', isAuthenticated, reportsRoutes());
-apiRouter.use('/map', isAuthenticated, transactionRoutes());
-apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
-
-const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
-app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], apiRouter);
-
+// 404 Catch-all Handler
 app.use((req: Request, res: Response, next: NextFunction) => {
   const err = new Error('Requested resource not found.');
   (err as any).status = 404;
   next(err);
 });
 
+// Centralized Error Handling Middleware
 app.use(errorMiddleware as ErrorRequestHandler);
 
 export default app;

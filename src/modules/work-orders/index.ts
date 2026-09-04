@@ -1,0 +1,11 @@
+export * from './models/workOrder.model';
+export * from './models/workOrderActivity.model';
+export { HistoryWorkOrderModel } from './models/history-work-order.model';
+export type { IHistoryWorkOrder } from './models/history-work-order.model';
+export * from './models/workRequest.model';
+export * from './models/procedure.model';
+export * from './models/workInstructions.model';
+export * from './models/comment.model';
+export * as WorkOrdersServices from './services';
+export * as WorkOrdersControllers from './controllers';
+export * as WorkOrdersRoutes from './routes';
