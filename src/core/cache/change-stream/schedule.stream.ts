@@ -18,6 +18,8 @@ export class ScheduleChangeStream extends BaseChangeStream {
   }
 }
 
-export const watchSchedules = (connection: mongoose.Connection): void => {
-  new ScheduleChangeStream(connection).start();
+export const watchSchedules = (connection: mongoose.Connection): BaseChangeStream[] => {
+  const stream = new ScheduleChangeStream(connection);
+  void stream.start();
+  return [stream];
 };

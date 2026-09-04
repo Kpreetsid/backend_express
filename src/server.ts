@@ -3,34 +3,61 @@ import { idStandardizationPlugin } from "./core/database/mongoose.plugins";
 mongoose.plugin(idStandardizationPlugin);
 
 import app from "./app";
-import { server as hostDetails } from './core/config/env.config';
+import { server as hostDetails, validateEnvConfig } from './core/config/env.config';
 import { connectDB, disconnectDB } from "./core/database";
-import { initJobScheduler } from "./core/scheduler";
-import { initSocket } from "./core/socket";
+import { initJobScheduler, stopJobScheduler } from "./core/scheduler";
+import { initSocket, stopSocket } from "./core/socket";
 import { connectRedis, disconnectRedis } from "./core/cache/redis.client";
-import { initChangeStreams } from "./core/cache/change-stream/index";
+import { initChangeStreams, stopChangeStreams } from "./core/cache/change-stream/index";
 import { UserLogConsumer } from "./core/messaging";
+import { startRuntime, type RuntimeServices } from './core/bootstrap';
 
-const server = app.listen(hostDetails.port, async () => {
-  await connectDB();
-  await connectRedis();
-  await initChangeStreams(mongoose.connection); // CDC: auto-invalidates Redis on any MongoDB write
-  initSocket(server);
-  await initJobScheduler();
-  await UserLogConsumer.initialize(); // Start Redis Stream consumer loop for User Logs
-  console.log(`Server running on port http://${hostDetails.host}:${hostDetails.port}`);
-});
 
-const shutdown = async () => {
-  console.log("\nGracefully shutting down...");
-  UserLogConsumer.stop();
-  await disconnectRedis();
-  await disconnectDB();
-  server.close(() => {
-    console.log("Server closed");
-    process.exit(0);
-  });
+const runtimeServices: RuntimeServices = {
+  connectDatabase: async () => { await connectDB(); },
+  connectCache: connectRedis,
+  initializeChangeStreams: async () => initChangeStreams(mongoose.connection),
+  initializeSocket: (server) => { initSocket(server); },
+  initializeScheduler: initJobScheduler,
+  initializeConsumers: async () => { await UserLogConsumer.initialize(); },
+  stopConsumers: async () => { await UserLogConsumer.stop(); },
+  stopScheduler: stopJobScheduler,
+  stopChangeStreams,
+  stopSocket,
+  disconnectCache: disconnectRedis,
+  disconnectDatabase: disconnectDB,
 };
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+const main = async (): Promise<void> => {
+  const validation = validateEnvConfig();
+  if (!validation.valid) {
+    console.error('Fatal: Environment configuration invalid:');
+    for (const err of validation.errors) {
+      console.error(` - ${err}`);
+    }
+    process.exit(1);
+  }
+
+  const runtime = await startRuntime(app, hostDetails.port, hostDetails.host, runtimeServices);
+  console.log(`Server running on http://${hostDetails.host}:${hostDetails.port}`);
+
+  let terminating = false;
+  const terminate = (signal: string) => {
+    if (terminating) return;
+    terminating = true;
+    void runtime.shutdown(signal)
+      .then(() => { process.exitCode = 0; })
+      .catch((error) => {
+        console.error('Graceful shutdown failed:', error);
+        process.exitCode = 1;
+      });
+  };
+
+  process.once('SIGINT', () => terminate('SIGINT'));
+  process.once('SIGTERM', () => terminate('SIGTERM'));
+};
+
+void main().catch((error) => {
+  console.error('Application startup failed:', error);
+  process.exitCode = 1;
+});

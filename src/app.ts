@@ -18,6 +18,7 @@ import {
 } from './common/middlewares';
 import { registerAppRoutes } from './routes';
 
+export const createApp = (): Express => {
 const app: Express = express();
 app.set('trust proxy', 1);
 
@@ -95,4 +96,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Centralized Error Handling Middleware
 app.use(errorMiddleware as ErrorRequestHandler);
 
+return app;
+};
+
+const app = createApp();
 export default app;

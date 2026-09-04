@@ -1,4 +1,4 @@
-import { ExperienceProfile, normalizeExperienceProfile } from "./experience-profile.constant";
+import { ExperienceProfile, normalizeExperienceProfile } from "../../../common/constants/experience-profile.constant";
 
 export type Permission = {
   level: number;

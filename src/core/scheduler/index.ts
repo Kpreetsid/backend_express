@@ -3,13 +3,17 @@ import { schedulerService } from "./scheduler.service";
 import { snoozeAlarmService } from "./asset-alarm-snooze.service";
 import { resolveSchedulerTimeZone } from './schedule-cadence';
 import { postPublishingService } from './post-publishing.service';
+import type { ScheduledTask } from 'node-cron';
+
+let scheduledTasks: ScheduledTask[] = [];
 
 export async function initJobScheduler() {
+    if (scheduledTasks.length > 0) return;
     console.log("----> Initializing unified job scheduler...");
     try {
         const timeZone = resolveSchedulerTimeZone();
         // Run every day at 00:15 AM
-        cron.schedule("15 0 * * *", async () => {
+        const dailyTask = cron.schedule("15 0 * * *", async () => {
             console.log(`${new Date().toISOString()} → Running daily cron jobs...`);
             
             // 🟡 Job 1: Unified Scheduler
@@ -26,19 +30,25 @@ export async function initJobScheduler() {
                 console.error("❌ Snooze Alarm job failed:", jobError);
             }
         }, { timezone: timeZone });
-        cron.schedule("* * * * *", async () => {
+        const publishingTask = cron.schedule("* * * * *", async () => {
             try {
                 await postPublishingService.publishDuePosts();
             } catch (jobError) {
                 console.error("❌ Scheduled post publishing failed:", jobError);
             }
         }, { timezone: timeZone });
+        scheduledTasks = [dailyTask, publishingTask];
         console.log(`✅ Unified Scheduler initialized (daily at 00:15 AM, ${timeZone}).`);
     } catch (error) {
         console.error("❌ Failed to initialize job scheduler:", error);
         throw error;
     }
 }
+
+export const stopJobScheduler = (): void => {
+    for (const task of scheduledTasks) task.stop();
+    scheduledTasks = [];
+};
 
 export * from './scheduler.service';
 export * from './schedule-cadence';

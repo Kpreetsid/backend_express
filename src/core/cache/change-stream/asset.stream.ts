@@ -47,8 +47,9 @@ export class AssetChangeStream extends BaseChangeStream {
   }
 }
 
-export const watchAssets = (connection: mongoose.Connection): void => {
+export const watchAssets = (connection: mongoose.Connection): BaseChangeStream[] => {
   const stream = new AssetChangeStream(connection);
-  stream.start();
+  void stream.start();
+  return [stream];
 };
 

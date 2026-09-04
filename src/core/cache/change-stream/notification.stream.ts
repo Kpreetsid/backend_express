@@ -18,6 +18,8 @@ export class NotificationChangeStream extends BaseChangeStream {
   }
 }
 
-export const watchNotifications = (connection: mongoose.Connection): void => {
-  new NotificationChangeStream(connection).start();
+export const watchNotifications = (connection: mongoose.Connection): BaseChangeStream[] => {
+  const stream = new NotificationChangeStream(connection);
+  void stream.start();
+  return [stream];
 };

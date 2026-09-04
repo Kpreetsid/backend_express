@@ -21,6 +21,8 @@ export class UserChangeStream extends BaseChangeStream {
   }
 }
 
-export const watchUsers = (connection: mongoose.Connection): void => {
-  new UserChangeStream(connection).start();
+export const watchUsers = (connection: mongoose.Connection): BaseChangeStream[] => {
+  const stream = new UserChangeStream(connection);
+  void stream.start();
+  return [stream];
 };

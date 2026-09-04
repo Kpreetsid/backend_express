@@ -6,7 +6,7 @@ import { VerificationCodeModel } from "../models/userVerification.model";
 import { withTransaction } from "../../../common/utils/transaction.helper";
 import { analysisFeatureService } from "../../settings/services/analysisFeature.service";
 import { DEFAULT_ANALYSIS_FEATURES } from "../../settings/constants/default-analysis-features.constant";
-import { normalizeExperienceProfile } from "../../users/constants/experience-profile.constant";
+import { normalizeExperienceProfile } from "../../../common/constants/experience-profile.constant";
 
 class RegistrationService {
   private mailerService: MailerService;

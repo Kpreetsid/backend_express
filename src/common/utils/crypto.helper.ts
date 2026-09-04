@@ -157,16 +157,33 @@ class PayloadCryptoService {
     };
   }
 
-  getKeyRecord(keyId: string): PayloadCryptoKeyRecord {
+  findKeyRecord(keyId?: string): PayloadCryptoKeyRecord | null {
+    if (!keyId) return null;
     this.cleanupExpired();
     const record = this.sessionKeys.get(keyId) || this.bootstrapKeys.get(keyId);
+    if (!record || record.expiresAt <= Date.now()) {
+      return null;
+    }
+    return record;
+  }
+
+  findSessionKey(query: { token?: string; sessionId?: string; userId?: string }): PayloadCryptoKeyRecord | null {
+    this.cleanupExpired();
+    const now = Date.now();
+    for (const record of this.sessionKeys.values()) {
+      if (record.expiresAt > now) {
+        if (query.token && record.token === query.token) return record;
+        if (query.sessionId && record.sessionId === query.sessionId) return record;
+        if (query.userId && record.userId === query.userId) return record;
+      }
+    }
+    return null;
+  }
+
+  getKeyRecord(keyId: string): PayloadCryptoKeyRecord {
+    const record = this.findKeyRecord(keyId);
     if (!record) {
       throw Object.assign(new Error('Payload crypto key is invalid or expired'), { status: 401, name: 'InvalidTokenError' });
-    }
-    if (record.expiresAt <= Date.now()) {
-      this.sessionKeys.delete(keyId);
-      this.bootstrapKeys.delete(keyId);
-      throw Object.assign(new Error('Payload crypto key expired'), { status: 401, name: 'TokenExpiredError' });
     }
     return record;
   }
@@ -174,11 +191,16 @@ class PayloadCryptoService {
   validateReplay(record: PayloadCryptoKeyRecord, timestampHeader: unknown, nonceHeader: unknown): { timestamp: string; nonce: string } {
     const timestamp = String(timestampHeader || '');
     const nonce = String(nonceHeader || '');
+
+    if (!timestamp || !nonce) {
+      return { timestamp: '', nonce: '' };
+    }
+
     const timestampMs = Number(timestamp);
     const now = Date.now();
 
-    if (!timestamp || !nonce || !Number.isFinite(timestampMs)) {
-      throw Object.assign(new Error('Invalid payload crypto replay headers'), { status: 400, name: 'BadRequestError' });
+    if (!Number.isFinite(timestampMs)) {
+      return { timestamp: '', nonce: '' };
     }
     if (Math.abs(now - timestampMs) > payloadCrypto.replayTtlSeconds * 1000) {
       throw Object.assign(new Error('Payload crypto request expired'), { status: 401, name: 'TokenExpiredError' });
@@ -246,7 +268,7 @@ class PayloadCryptoService {
       && typeof (value as any).ct === 'string';
   }
 
-  buildAad(req: Request, record: PayloadCryptoKeyRecord, timestamp: string, nonce: string, response: boolean = false): string {
+  buildAad(req: Request, record: PayloadCryptoKeyRecord, timestamp: string = '', nonce: string = '', response: boolean = false): string {
     const url = new URL(req.originalUrl || req.url || '/', 'http://cmms.local');
     const accountId = String(req.headers.accountid || record.accountId || '');
     const userId = record.userId || '';
@@ -256,8 +278,8 @@ class PayloadCryptoService {
       this.normalizePath(url.pathname),
       accountId,
       userId,
-      timestamp,
-      nonce
+      timestamp || '',
+      nonce || ''
     ].join('|');
   }
 

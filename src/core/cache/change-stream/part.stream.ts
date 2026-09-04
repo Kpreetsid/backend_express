@@ -21,6 +21,8 @@ export class PartChangeStream extends BaseChangeStream {
   }
 }
 
-export const watchParts = (connection: mongoose.Connection): void => {
-  new PartChangeStream(connection).start();
+export const watchParts = (connection: mongoose.Connection): BaseChangeStream[] => {
+  const stream = new PartChangeStream(connection);
+  void stream.start();
+  return [stream];
 };

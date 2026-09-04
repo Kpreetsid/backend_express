@@ -18,6 +18,8 @@ export class RoleChangeStream extends BaseChangeStream {
   }
 }
 
-export const watchRoles = (connection: mongoose.Connection): void => {
-  new RoleChangeStream(connection).start();
+export const watchRoles = (connection: mongoose.Connection): BaseChangeStream[] => {
+  const stream = new RoleChangeStream(connection);
+  void stream.start();
+  return [stream];
 };

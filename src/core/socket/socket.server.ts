@@ -4,7 +4,7 @@ import { cookieAuth } from '../config/env.config';
 import { notificationService } from '../../modules/communications/services/notification-sender.service';
 import { isOriginAllowed } from '../config/cors.config';
 import { authenticateTokenContext } from '../auth/auth.middleware';
-import { LEGACY_ACCESS_COOKIE_NAME, LEGACY_ACCOUNT_COOKIE_NAME } from '../../modules/auth/services/authCookie.service';
+import { LEGACY_ACCESS_COOKIE_NAME, LEGACY_ACCOUNT_COOKIE_NAME } from '../auth/auth-cookie.service';
 import { cookieService } from '../../common/utils/cookie.helper';
 
 export const notificationSocketMetrics = {
@@ -149,4 +149,11 @@ export const initSocket = (httpServer: HttpServer) => {
   notificationService.init(io);
 
   return io;
+};
+
+export const stopSocket = async (): Promise<void> => {
+  const io = socketServer;
+  socketServer = null;
+  if (!io) return;
+  await new Promise<void>((resolve) => io.close(() => resolve()));
 };

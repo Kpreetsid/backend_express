@@ -16,6 +16,8 @@ export abstract class BaseChangeStream {
   private changeStream: mongoose.mongo.ChangeStream | null = null;
   private tokenKey: string;
   private isReconnecting = false;
+  private stopped = false;
+  private reconnectTimer: NodeJS.Timeout | null = null;
   private retryDelayMs = 2000;
   private maxRetryDelayMs = 60000; // 1 minute max backoff
 
@@ -34,9 +36,10 @@ export abstract class BaseChangeStream {
    * Starts or resumes the change stream.
    */
   public async start(): Promise<void> {
+    if (this.stopped) return;
     if (!this.connection || this.connection.readyState !== 1) {
       console.warn(`[CDC:${this.collectionName}] MongoDB not connected, delaying stream start...`);
-      setTimeout(() => this.start(), 5000);
+      this.reconnectTimer = setTimeout(() => void this.start(), 5000);
       return;
     }
 
@@ -93,7 +96,7 @@ export abstract class BaseChangeStream {
   }
 
   private triggerReconnect() {
-    if (this.isReconnecting) return;
+    if (this.isReconnecting || this.stopped) return;
     this.isReconnecting = true;
     
     if (this.changeStream) {
@@ -102,11 +105,24 @@ export abstract class BaseChangeStream {
     }
 
     console.log(`[CDC:${this.collectionName}] Reconnecting in ${this.retryDelayMs}ms...`);
-    setTimeout(() => {
-      this.start();
+    this.reconnectTimer = setTimeout(() => {
+      void this.start();
     }, this.retryDelayMs);
 
     // Exponential backoff
     this.retryDelayMs = Math.min(this.retryDelayMs * 2, this.maxRetryDelayMs);
+  }
+
+  public async stop(): Promise<void> {
+    this.stopped = true;
+    this.isReconnecting = false;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (this.changeStream) {
+      await this.changeStream.close().catch(() => undefined);
+      this.changeStream = null;
+    }
   }
 }

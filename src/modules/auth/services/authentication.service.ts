@@ -18,7 +18,7 @@ import { refreshTokenService } from "./refreshToken.service";
 import { parseTtlSeconds } from "../../../common/utils/ttl.helper";
 import { accountAccessService } from "../../users/services/account-access.service";
 import { tokenSessionStore } from "../../../core/auth/token-session-store";
-import { clearAuthCookies, setAccessCookies } from "./authCookie.service";
+import { clearAuthCookies, setAccessCookies } from "../../../core/auth/auth-cookie.service";
 import { analysisFeatureService } from "../../settings/services/analysisFeature.service";
 
 const persistAccessSession = async (

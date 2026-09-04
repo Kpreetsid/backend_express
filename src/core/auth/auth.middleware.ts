@@ -11,7 +11,7 @@ import { companyService } from '../../modules/company/services/company.service';
 import { TokenModel } from '../../modules/auth/models/userToken.model';
 import { TokenBlacklist } from './token-blacklist';
 import { tokenSessionStore, TokenSessionRecord } from './token-session-store';
-import { getAccessTokenFromCookies, getAccountIdFromCookies } from '../../modules/auth/services/auth-cookie.service';
+import { getAccessTokenFromCookies, getAccountIdFromCookies } from './auth-cookie.service';
 import { accountAccessService } from '../../modules/users/services/account-access.service';
 import { analysisFeatureService } from '../../modules/settings/services/analysisFeature.service';
 

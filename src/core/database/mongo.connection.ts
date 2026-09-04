@@ -1,8 +1,5 @@
 import mongoose from "mongoose";
 import { database } from "../config/env.config";
-import { idStandardizationPlugin } from "./mongoose.plugins";
-
-mongoose.plugin(idStandardizationPlugin);
 
 const buildHostList = (): string => {
   const hosts = database.hosts || database.host;
@@ -54,7 +51,7 @@ export class MongoConnection {
       return mongoose;
     } catch (error) {
       console.error('❌ MongoDB connection error:', error);
-      process.exit(1);
+      throw error;
     }
   }
 

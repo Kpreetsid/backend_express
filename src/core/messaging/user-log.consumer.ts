@@ -184,7 +184,16 @@ export class UserLogConsumer {
     }
   }
 
-  static stop() {
+  static async stop(): Promise<void> {
     this.isRunning = false;
+    const client = this.consumerClient;
+    this.consumerClient = null;
+    if (client) {
+      try {
+        await client.quit();
+      } catch {
+        client.disconnect();
+      }
+    }
   }
 }

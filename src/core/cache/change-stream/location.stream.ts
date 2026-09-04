@@ -23,6 +23,8 @@ export class LocationChangeStream extends BaseChangeStream {
   }
 }
 
-export const watchLocations = (connection: mongoose.Connection): void => {
-  new LocationChangeStream(connection).start();
+export const watchLocations = (connection: mongoose.Connection): BaseChangeStream[] => {
+  const stream = new LocationChangeStream(connection);
+  void stream.start();
+  return [stream];
 };

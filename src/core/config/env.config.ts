@@ -102,11 +102,25 @@ export const cookieAuth = {
   domain: envString(process.env.AUTH_COOKIE_DOMAIN, '')
 };
 
+const rawRequestDecryptEnabled = process.env.PAYLOAD_CRYPTO_REQUEST_ENABLED
+  ?? process.env.PAYLOAD_CRYPTO_REQUEST_DECRYPT_ENABLED
+  ?? process.env.PAYLOAD_CRYPTO_PAYLOAD_ENABLED;
+
+const rawResponseEncryptEnabled = process.env.PAYLOAD_CRYPTO_RESPONSE_ENABLED
+  ?? process.env.PAYLOAD_CRYPTO_RESPONSE_ENCRYPT_ENABLED;
+
+const requestDecryptEnabled = envBoolean(rawRequestDecryptEnabled, false);
+const responseEncryptEnabled = envBoolean(rawResponseEncryptEnabled, false);
+const cryptoEnabled = envBoolean(
+  process.env.PAYLOAD_CRYPTO_ENABLED,
+  requestDecryptEnabled || responseEncryptEnabled
+);
+
 export const payloadCrypto = {
-  enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, false),
+  enabled: cryptoEnabled,
   strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),
-  requestDecryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_REQUEST_DECRYPT_ENABLED, false),
-  responseEncryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_RESPONSE_ENCRYPT_ENABLED, false),
+  requestDecryptEnabled,
+  responseEncryptEnabled,
   masterSecret: process.env.PAYLOAD_CRYPTO_MASTER_SECRET,
   bootstrapTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_BOOTSTRAP_TTL_SECONDS || '300', 10),
   replayTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_REPLAY_TTL_SECONDS || '300', 10)
@@ -152,3 +166,49 @@ export const storageConfig = {
   driver: process.env.STORAGE_DRIVER || 'local',
   baseUrl: process.env.STORAGE_BASE_URL || 'http://localhost:3000'
 };
+
+export interface ConfigValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+export const validateEnvConfig = (isProduction = environment.type === 'production'): ConfigValidationResult => {
+  const errors: string[] = [];
+
+  if (!Number.isInteger(server.port) || server.port <= 0 || server.port > 65535) {
+    errors.push(`Invalid SERVER_PORT: ${process.env.SERVER_PORT}`);
+  }
+
+  if (!Number.isInteger(database.port) || database.port <= 0 || database.port > 65535) {
+    errors.push(`Invalid DB_PORT: ${process.env.DB_PORT}`);
+  }
+
+  if (redisConfig.enabled && (!Number.isInteger(redisConfig.port) || redisConfig.port <= 0 || redisConfig.port > 65535)) {
+    errors.push(`Invalid REDIS_PORT: ${process.env.REDIS_PORT}`);
+  }
+
+  if (payloadCrypto.enabled && !payloadCrypto.masterSecret) {
+    errors.push('PAYLOAD_CRYPTO_MASTER_SECRET must be configured when payload cryptography is enabled.');
+  }
+
+  if (isProduction) {
+    if (!auth.secret || auth.secret.length < 16) {
+      errors.push('AUTH_SECRET must be at least 16 characters long in production.');
+    }
+    if (!auth.issuer) {
+      errors.push('AUTH_ISSUER must be specified in production.');
+    }
+    if (!auth.audience) {
+      errors.push('AUTH_AUDIENCE must be specified in production.');
+    }
+    if (!database.databaseName) {
+      errors.push('DB_NAME must be specified in production.');
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+};
+

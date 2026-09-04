@@ -21,6 +21,8 @@ export class WorkOrderChangeStream extends BaseChangeStream {
   }
 }
 
-export const watchWorkOrders = (connection: mongoose.Connection): void => {
-  new WorkOrderChangeStream(connection).start();
+export const watchWorkOrders = (connection: mongoose.Connection): BaseChangeStream[] => {
+  const stream = new WorkOrderChangeStream(connection);
+  void stream.start();
+  return [stream];
 };

@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
 import { cookieAuth, refreshToken } from '../../core/config/env.config';
-import { LEGACY_ACCESS_COOKIE_NAME, verifyCsrfToken } from '../../modules/auth/services/authCookie.service';
+import { LEGACY_ACCESS_COOKIE_NAME, verifyCsrfToken } from '../../core/auth/auth-cookie.service';
 import { cookieService } from '../utils/cookie.helper';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -23,7 +23,7 @@ const isCookieAuthenticatedRequest = (req: Request): boolean => {
   return cookieService.has(req, [cookieAuth.accessCookieName, LEGACY_ACCESS_COOKIE_NAME, refreshToken.cookieName]);
 };
 
-export const csrfProtection = (req: Request, _res: Response, next: NextFunction): void => {
+export const csrfProtection = (req: Request, res: Response, next: NextFunction): void => {
   if (SAFE_METHODS.has(req.method.toUpperCase()) || isExcludedPath(req) || !isCookieAuthenticatedRequest(req)) {
     next();
     return;
@@ -32,8 +32,11 @@ export const csrfProtection = (req: Request, _res: Response, next: NextFunction)
   const cookieToken = cookieService.get(req, cookieAuth.csrfCookieName);
   const headerToken = String(req.get('X-CMMS-CSRF') || '');
 
-  if (!cookieToken || cookieToken !== headerToken || !verifyCsrfToken(cookieToken)) {
-    next(Object.assign(new Error('Invalid CSRF token'), { status: 403, name: 'ForbiddenError' }));
+  if (!cookieToken || !headerToken || cookieToken !== headerToken || !verifyCsrfToken(cookieToken)) {
+    res.status(403).json({
+      success: false,
+      message: 'Invalid or missing CSRF token'
+    });
     return;
   }
 

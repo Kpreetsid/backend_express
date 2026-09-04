@@ -1,5 +1,5 @@
 {
-  "name": "project_api_javascript",
+  "name": "cmms-api",
   "version": "1.0.0",
   "description": "",
   "main": "dist/server.js",

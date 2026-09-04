@@ -1,5 +1,4 @@
 import express from 'express';
-const router = express.Router();
 import usersRouter from '../../modules/users/routes/user.routes';
 import assetsRouter from '../../modules/assets/routes/asset.routes';
 import equipmentRoutes from '../../modules/assets/routes/equipment.routes';
@@ -17,8 +16,7 @@ import partsTypeRoutes from '../../modules/inventory/routes/parts-type.routes';
 import inspectionRoutes from '../../modules/maintenance/routes/inspection.routes';
 import analysisFeatureRoutes from '../../modules/settings/routes/analysisFeature.routes';
 
-const withAccountFeature = (
-    _menuKey: string,
+const createFeatureRouter = (
     registerRoutes: (router: express.Router) => void
 ): express.Router => {
     const featureRouter = express.Router();
@@ -27,19 +25,20 @@ const withAccountFeature = (
 };
 
 export default (): express.Router => {
+    const router = express.Router();
     usersRouter(router);
     companyRoutes(router);
-    router.use(withAccountFeature('asset', assetsRouter));
-    router.use(withAccountFeature('asset', equipmentRoutes));
-    router.use(withAccountFeature('inventory', partsRoutes));
-    router.use(withAccountFeature('inventory', partsTypeRoutes));
-    router.use(withAccountFeature('posts', postsRoutes));
-    router.use(withAccountFeature('preventive', scheduleRoutes));
-    router.use(withAccountFeature('inspections', inspectionRoutes));
-    router.use(withAccountFeature('form', sopsRoutes));
-    router.use(withAccountFeature('location', locationRoutes));
-    router.use(withAccountFeature('form_category', formCategoryRoutes));
-    router.use(withAccountFeature('observation', observationRoutes));
+    router.use(createFeatureRouter(assetsRouter));
+    router.use(createFeatureRouter(equipmentRoutes));
+    router.use(createFeatureRouter(partsRoutes));
+    router.use(createFeatureRouter(partsTypeRoutes));
+    router.use(createFeatureRouter(postsRoutes));
+    router.use(createFeatureRouter(scheduleRoutes));
+    router.use(createFeatureRouter(inspectionRoutes));
+    router.use(createFeatureRouter(sopsRoutes));
+    router.use(createFeatureRouter(locationRoutes));
+    router.use(createFeatureRouter(formCategoryRoutes));
+    router.use(createFeatureRouter(observationRoutes));
     floorMapRoutes(router);
     troubleshootGuideRoutes(router);
     analysisFeatureRoutes(router);

@@ -1,14 +1,14 @@
 import crypto from 'crypto';
 import { CookieOptions, Request, Response } from 'express';
-import { auth, cookieAuth, refreshToken } from '../../../core/config/env.config';
-import { parseTtlSeconds } from '../../../common/utils/ttl.helper';
-import { cookieService } from '../../../common/utils/cookie.helper';
+import { auth, cookieAuth, refreshToken } from '../config/env.config';
+import { parseTtlSeconds } from '../../common/utils/ttl.helper';
+import { cookieService } from '../../common/utils/cookie.helper';
 
 export const LEGACY_ACCESS_COOKIE_NAME = 'access_token';
 export const LEGACY_ACCOUNT_COOKIE_NAME = 'account_id';
 export const LEGACY_STATE_COOKIE_NAME = 'auth_state';
 
-interface AccessCookieInput {
+export interface AccessCookieInput {
   token: string;
   tokenId: string;
   userId: string;
@@ -16,7 +16,7 @@ interface AccessCookieInput {
   ttlSeconds: number;
 }
 
-interface MinimalAuthState {
+export interface MinimalAuthState {
   tokenId: string;
   userId: string;
   accountId: string;

@@ -1,4 +1,4 @@
-export * from './auth-cookie.service';
+export * from '../../../core/auth/auth-cookie.service';
 export * from './authentication.service';
 export * from './refreshToken.service';
 export * from './registration.service';

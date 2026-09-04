@@ -10,10 +10,8 @@ export const normalizeExperienceProfile = (value: unknown): ExperienceProfile =>
   return "standard_account";
 };
 
-export const isOemExperienceProfile = (value: unknown): boolean => {
-  return normalizeExperienceProfile(value) === "oem";
-};
+export const isOemExperienceProfile = (value: unknown): boolean =>
+  normalizeExperienceProfile(value) === "oem";
 
-export const isStandardExperienceProfile = (value: unknown): boolean => {
-  return normalizeExperienceProfile(value) === "standard_account";
-};
+export const isStandardExperienceProfile = (value: unknown): boolean =>
+  normalizeExperienceProfile(value) === "standard_account";

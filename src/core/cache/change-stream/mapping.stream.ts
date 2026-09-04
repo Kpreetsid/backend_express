@@ -20,8 +20,10 @@ export class MappingChangeStream extends BaseChangeStream {
   }
 }
 
-export const watchMappings = (connection: mongoose.Connection): void => {
-  ['mapuserassetlocations'].forEach(coll => {
-      new MappingChangeStream(connection, coll).start();
+export const watchMappings = (connection: mongoose.Connection): BaseChangeStream[] => {
+  return ['mapuserassetlocations'].map((collectionName) => {
+    const stream = new MappingChangeStream(connection, collectionName);
+    void stream.start();
+    return stream;
   });
 };

@@ -20,6 +20,9 @@ import { watchSchedules } from './schedule.stream';
 import { watchParts } from './part.stream';
 import { watchRoles } from './role.stream';
 import { watchMappings } from './mapping.stream';
+import { BaseChangeStream } from './base.stream';
+
+let activeStreams: BaseChangeStream[] = [];
 
 export const initChangeStreams = async (connection: mongoose.Connection): Promise<void> => {
   if (!cacheConfig.changeStreamsEnabled) {
@@ -54,17 +57,25 @@ export const initChangeStreams = async (connection: mongoose.Connection): Promis
   // Replica Set is confirmed; initialize streams
   console.log('🔄 [CDC] Initializing MongoDB Change Streams...');
 
-  watchAssets(connection);
-  watchLocations(connection);
-  watchUsers(connection);
-  watchWorkOrders(connection);
-  watchNotifications(connection);
-  watchSchedules(connection);
-  watchParts(connection);
-  watchRoles(connection);
-  watchMappings(connection);
+  activeStreams = [
+    ...watchAssets(connection),
+    ...watchLocations(connection),
+    ...watchUsers(connection),
+    ...watchWorkOrders(connection),
+    ...watchNotifications(connection),
+    ...watchSchedules(connection),
+    ...watchParts(connection),
+    ...watchRoles(connection),
+    ...watchMappings(connection),
+  ];
 
   console.log('✅ [CDC] All change streams registered');
+};
+
+export const stopChangeStreams = async (): Promise<void> => {
+  const streams = activeStreams;
+  activeStreams = [];
+  await Promise.allSettled(streams.map((stream) => stream.stop()));
 };
 
 export {
