@@ -69,7 +69,7 @@ class UsersService {
       if (userData.length === 0) {
         throw Object.assign(new Error('No records found'), { status: 404 });
       }
-      return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
+      return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });
     } catch (error) {
       next(error);
     }
