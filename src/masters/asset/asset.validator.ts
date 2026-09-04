@@ -4,12 +4,11 @@ export const assetValidator = [
   body('asset_name')
     .notEmpty().withMessage('Asset name is required')
     .isString().withMessage('Asset name must be a string')
-    .trim()
-    .isLength({ max: 200 }).withMessage('Asset name must not exceed 200 characters'),
-  
+    .trim(),
+
   body('asset_type')
     .notEmpty().withMessage('Asset type is required')
-    .isIn(['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other'])
+    .isIn(['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other', 'Extruder', 'Mixer', 'Agitator', 'Kiln', 'Rotary_Dryer'])
     .withMessage('Invalid asset type'),
 
   body('locationId')

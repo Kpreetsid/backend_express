@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 export const ASSET_COLLECTION_NAME = `asset_master`;
-export const ASSETS_TYPE = ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other'];
+export const ASSETS_TYPE = ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other', 'Extruder', 'Mixer', 'Agitator', 'Kiln', 'Rotary_Dryer'];
 
 export interface IAsset extends Document {
   asset_name: string;
@@ -88,7 +88,8 @@ export interface IAsset extends Document {
   bepHeadM?: number;
   bepEfficiencyPercent?: number;
   minimumContinuousStableFlowM3h?: number;
-  motorToPumpSpeedRatio?: number
+  motorToPumpSpeedRatio?: number;
+  images: Object[];
 }
 
 const assetSchema = new Schema<IAsset>(
@@ -192,7 +193,8 @@ const assetSchema = new Schema<IAsset>(
     bepHeadM: { type: Number },
     bepEfficiencyPercent: { type: Number },
     minimumContinuousStableFlowM3h: { type: Number },
-    motorToPumpSpeedRatio: { type: Number }
+    motorToPumpSpeedRatio: { type: Number },
+    images: { type: [Object], default: [] }
   },
   {
     collection: ASSET_COLLECTION_NAME,
