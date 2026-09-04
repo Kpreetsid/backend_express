@@ -4,8 +4,7 @@ export const assetValidator = [
   body('asset_name')
     .notEmpty().withMessage('Asset name is required')
     .isString().withMessage('Asset name must be a string')
-    .trim()
-    .isLength({ max: 200 }).withMessage('Asset name must not exceed 200 characters'),
+    .trim(),
 
   body('asset_type')
     .notEmpty().withMessage('Asset type is required')
