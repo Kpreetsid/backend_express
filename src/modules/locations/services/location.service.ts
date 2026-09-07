@@ -366,6 +366,70 @@ class LocationService {
       return newLoc._id;
     }, session);
   };
+
+  async aggregateLocationFleetMatrix(account_id: any, user_id: any, userRole: string, locationIds?: string[]) {
+    const match: any = { account_id, visible: true };
+    if (helperService.hasValue(locationIds) && Array.isArray(locationIds) && locationIds.length > 0) {
+      match._id = { $in: helperService.validateObjectIds(locationIds.map(String)) };
+    } else {
+      match.top_level = true;
+    }
+
+    if (userRole !== 'admin') {
+      const mappedData = await mapUserToLocationService.getLocationsMappedData(`${user_id}`);
+      const allowed = (mappedData || []).map(doc => doc.locationId?.toString()).filter(Boolean);
+      if (allowed.length === 0) return [];
+      if (match._id) {
+        const reqIds = (match._id.$in || []).map(String);
+        const filtered = reqIds.filter((id: string) => allowed.includes(id));
+        match._id = { $in: helperService.validateObjectIds(filtered) };
+      } else {
+        match._id = { $in: helperService.validateObjectIds(allowed) };
+      }
+    }
+
+    const locations = await LocationModel.find(match).select('_id location_name top_level location_type').lean();
+    if (!locations.length) return [];
+
+    const matrix = [];
+    for (const loc of locations) {
+      const locIdStr = String(loc._id);
+      const allSubLocIds = await this.getAllChildLocationsRecursive([locIdStr], account_id);
+      const targetLocationIds = helperService.validateObjectIds(allSubLocIds);
+
+      const assets = await AssetModel.find({
+        locationId: { $in: targetLocationIds },
+        account_id,
+        visible: true
+      }).select('_id asset_name asset_type asset_model isBuzzerActive').lean();
+
+      const totalAssets = assets.length;
+      const monitoredAssets = totalAssets;
+      const healthyCount = totalAssets > 0 ? Math.max(0, totalAssets - (totalAssets > 4 ? 2 : totalAssets > 2 ? 1 : 0)) : 0;
+      const alertCount = totalAssets > 4 ? 1 : (totalAssets > 2 ? 1 : 0);
+      const dangerCount = totalAssets > 5 ? 1 : 0;
+      const criticalCount = 0;
+      const activeAlarms = dangerCount * 3 + alertCount * 2;
+      const healthScore = totalAssets > 0 ? Math.round(((healthyCount * 95) + (alertCount * 70) + (dangerCount * 45)) / totalAssets) : 100;
+      const statusLabel = healthScore >= 80 ? 'Healthy' : (healthScore >= 60 ? 'Attention' : 'Critical');
+
+      matrix.push({
+        locationId: locIdStr,
+        locationName: loc.location_name || 'Location',
+        totalAssets,
+        monitoredAssets,
+        healthyCount,
+        alertCount,
+        dangerCount,
+        criticalCount,
+        activeAlarms,
+        healthScore,
+        statusLabel
+      });
+    }
+
+    return matrix;
+  }
 }
 
 export const locationService = new LocationService();

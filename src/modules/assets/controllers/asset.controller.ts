@@ -530,6 +530,28 @@ class AssetController {
     }
   }
 
+  getConditionByCategory = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const { locationIds, assetIds } = req.body || {};
+      const data = await assetService.aggregateConditionByCategory(account_id, user_id, userRole, locationIds, assetIds);
+      res.status(200).json({ status: true, message: "Category condition breakdown retrieved successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  getPdmDrilldown = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const options = req.body || {};
+      const data = await assetService.getPdmDrilldown(account_id, user_id, userRole, options);
+      res.status(200).json({ status: true, message: "PDM drilldown records retrieved successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   private assertRolePermission(req: Request, moduleName: string, action: string): void {
     const roleMenu: any = get(req, 'role', {});
     if (roleMenu?.[moduleName]?.[action] !== true) {

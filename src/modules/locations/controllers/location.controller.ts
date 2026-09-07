@@ -132,6 +132,17 @@ class LocationController {
     }
   }
 
+  getLocationFleetMatrix = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
+      const { locationIds } = req.body || {};
+      const data = await locationService.aggregateLocationFleetMatrix(account_id, user_id, userRole, locationIds);
+      res.status(200).json({ status: true, message: "Location fleet matrix retrieved successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   getLocation = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;

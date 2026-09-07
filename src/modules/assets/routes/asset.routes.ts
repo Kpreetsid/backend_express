@@ -24,6 +24,8 @@ export default (router: express.Router) => {
     assetRouter.post('/old', requireAssetCreatePermission, assetValidator, validate, assetController.createOld);
     assetRouter.put('/old-edit/:id', validateParamId, hasRolePermission('asset', 'edit_asset'), assetValidator, validate, assetController.updateOld);
     assetRouter.post('/filter', assetController.getFilteredAssets);
+    assetRouter.post('/condition-by-category', assetController.getConditionByCategory);
+    assetRouter.post('/pdm-drilldown', assetController.getPdmDrilldown);
     assetRouter.patch('/:id', validateParamId, hasRolePermission('asset', 'edit_asset'), assetController.updateAssetImage);
     assetRouter.delete('/:id', validateParamId, hasRolePermission('asset', 'delete_asset'), assetController.removeAsset);
     router.use('/assets', assetRouter);

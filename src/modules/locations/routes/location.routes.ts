@@ -20,6 +20,7 @@ export default (router: express.Router) => {
   locationRouter.get('/:id', validateParamId, locationController.getLocation);
   locationRouter.post('/', requireLocationCreatePermission, locationValidator, validate, locationController.createLocation);
   locationRouter.post('/child-assets', locationController.getChildAssetsAgainstLocation);
+  locationRouter.post('/fleet-matrix', locationController.getLocationFleetMatrix);
   locationRouter.put('/floor-map-image/:id', validateParamId,
     hasRolePermission('floorMap', 'upload_floor_map'), locationController.updateLocationFloorMapImage);
   locationRouter.put('/:id', validateParamId, hasRolePermission('location', 'edit_location'), locationValidator, validate, locationController.updateLocation);
