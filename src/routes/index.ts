@@ -13,6 +13,7 @@ export const registerAppRoutes = (app: Express): void => {
   const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
   const v1Router = createV1Router();
   app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], v1Router);
+  app.use(v1Router);
 };
 
 export * from './health.routes';

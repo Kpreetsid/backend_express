@@ -231,13 +231,15 @@ export class MailerService {
     const assetName = workOrder.asset?.asset_name || 'Not linked';
     const locationName = workOrder.location?.location_name || 'Not linked';
     const subject = `Work Order - [${workOrder.order_no}] ${workOrder.priority || 'Medium'} Priority • ${workOrder.title}`;
+
+    const targetRedirectPath = `/work-order/details/${workOrder._id}?source=email`;
     const externalToken = generateExternalAccessToken(
       {
         email: assignedUser.email,
         org_id: assignedUser.account_id,
         isExternal: false,
         isInternal: true,
-        redirectPath: `/work-order/details/${workOrder._id}?source=email`
+        redirectPath: targetRedirectPath
       },
       7 * 24 * 60 * 60
     );
