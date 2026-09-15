@@ -330,7 +330,7 @@ export class RedisUtils {
     }
 
     try {
-      return deserializeArray<T>(await client.zrange(key, 0, -1));
+      return deserializeArray<T>(await client.zrange(key, 0, '-1'));
     } catch (error: unknown) {
       this.logError('zrange', error);
       return [];

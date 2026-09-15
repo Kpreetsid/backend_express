@@ -1,8 +1,6 @@
 import { getRedisClient, isRedisReady } from '../../_config/redis';
 import { UserLogModel } from '../../models/userLogs.model';
 import { USER_LOGS_STREAM_KEY, USER_LOGS_CONSUMER_GROUP } from './userLogProducer';
-import fs from 'fs';
-import path from 'path';
 
 const CONSUMER_NAME = `consumer-${process.pid}`;
 const BATCH_SIZE = 500;
@@ -11,16 +9,11 @@ const BLOCK_TIME_MS = 5000;
 export class UserLogConsumer {
   private static isRunning = false;
   private static consumerClient: any = null;
-  private static logDir = path.join(process.cwd(), 'logs');
 
   static async initialize() {
     if (!isRedisReady()) {
       console.log('[UserLogConsumer] Redis unavailable. Consumer not starting.');
       return;
-    }
-
-    if (!fs.existsSync(this.logDir)) {
-      fs.mkdirSync(this.logDir, { recursive: true });
     }
 
     const mainClient = getRedisClient();
@@ -84,39 +77,14 @@ export class UserLogConsumer {
     }
   }
 
-  private static getIstDate() {
-    const now = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    return new Date(now.getTime() + istOffset);
-  }
-
-  private static getMonthlyLogFileName(): string {
-    const istDate = this.getIstDate();
-    const month = istDate.toLocaleString('en-US', { month: 'long' });
-    const year = istDate.getFullYear();
-    return `${month}_${year}.log`;
-  }
-
-  private static mapAction(method: any): string {
-    if (!method) return 'UNKNOWN';
-    switch (method.toUpperCase()) {
-      case 'GET': return 'READ';
-      case 'POST': return 'CREATE';
-      case 'PUT': return 'UPDATE';
-      case 'DELETE': return 'DELETE';
-      default: return method.toUpperCase();
-    }
-  }
-
   private static async processBatch(messages: any[], client: any) {
-    const documentsToInsert = [];
-    const messageIds = [];
-    let fileLogContent = '';
+    const documentsToInsert: any[] = [];
+    const messageIds: string[] = [];
 
     for (const message of messages) {
       const messageId = message[0];
       const fields = message[1]; 
-      
+
       let payloadIndex = fields.indexOf('payload');
       if (payloadIndex !== -1 && payloadIndex + 1 < fields.length) {
         try {
@@ -124,29 +92,6 @@ export class UserLogConsumer {
           const logObj = JSON.parse(payloadStr);
           documentsToInsert.push(logObj);
           messageIds.push(messageId);
-
-          // Build string formats for Console and File outputs
-          const dateIst = this.getIstDate().toISOString().replace('Z', '+05:30');
-          const userId = logObj.userId || 'Anonymous';
-          const userName = logObj.userName || 'Anonymous';
-          const method = logObj.method || 'UNKNOWN';
-          const action = this.mapAction(method);
-          const responseTime = logObj.additionalData?.durationMs || 0;
-          const status = logObj.statusCode || 200;
-          const url = logObj.requestUrl || 'unknown-url';
-          const moduleName = logObj.module || 'general';
-          const contentLength = logObj.networkInfo?.contentLength || 0;
-          const remoteAddr = logObj.ipAddress || 'unknown';
-          const device = logObj.userAgent || 'unknown';
-
-          // Console format: :date_ist | :status | :userId | :userName | :action | :method | :response-time ms | :url
-          const consoleStr = `${dateIst} | ${status} | ${userId} | ${userName} | ${action} | ${method} | ${responseTime} ms | ${url}`;
-          console.log(consoleStr);
-
-          // File format: :date_ist | :userId | :userName | :action | :method | :url | :module | :status | :res[content-length] | :response-time ms | IP: :remote-addr | Device: :device
-          const fileStr = `${dateIst} | ${userId} | ${userName} | ${action} | ${method} | ${url} | ${moduleName} | ${status} | ${contentLength} | ${responseTime} ms | IP: ${remoteAddr} | Device: ${device}\n`;
-          fileLogContent += fileStr;
-
         } catch (e) {
           console.error(`[UserLogConsumer] Failed to parse log payload for msgId ${messageId}`, e);
           messageIds.push(messageId);
@@ -154,28 +99,16 @@ export class UserLogConsumer {
       }
     }
 
-    // 1. Write to Monthly File
-    if (fileLogContent.length > 0) {
-      try {
-        const logFilePath = path.join(this.logDir, this.getMonthlyLogFileName());
-        fs.appendFileSync(logFilePath, fileLogContent);
-      } catch (err: any) {
-        console.error('[UserLogConsumer] Failed to write to log file:', err.message);
-      }
-    }
-
-    // 2. Write to MongoDB
+    // 1. Write to MongoDB
     if (documentsToInsert.length > 0) {
       try {
         await UserLogModel.insertMany(documentsToInsert, { ordered: false });
-        // console.log(`[UserLogConsumer] Batch inserted ${documentsToInsert.length} logs to MongoDB.`);
       } catch (dbError: any) {
-        console.error('[UserLogConsumer] Failed to insertMany:', dbError.message);
-        return;
+        console.error('[UserLogConsumer] Failed to insertMany batch to MongoDB:', dbError.message);
       }
     }
 
-    // 3. Acknowledge Messages in Redis
+    // 2. Acknowledge Messages in Redis
     if (messageIds.length > 0) {
       try {
         await client.xack(USER_LOGS_STREAM_KEY, USER_LOGS_CONSUMER_GROUP, ...messageIds);

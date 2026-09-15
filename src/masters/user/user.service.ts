@@ -14,7 +14,20 @@ import { assertStrongPassword } from '../../utils/passwordPolicy';
 
 class UsersService {
 
-  constructor(private mailerService: MailerService) {}
+  private _mailerService?: MailerService;
+  private get mailerService(): MailerService {
+    if (!this._mailerService) {
+      const { MailerService } = require("../../_config/mailer");
+      this._mailerService = new MailerService();
+    }
+    return this._mailerService!;
+  }
+
+  constructor(mailerService?: MailerService) {
+    if (mailerService) {
+      this._mailerService = mailerService;
+    }
+  }
 
   async getAllUsers(match: any) {
     return await UserModel.find(match).select('-password');
@@ -133,4 +146,5 @@ class UsersService {
     });
   };
 }
-export const usersService = new UsersService(new MailerService());
+
+export const usersService = new UsersService();
