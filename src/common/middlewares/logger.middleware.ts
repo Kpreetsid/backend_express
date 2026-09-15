@@ -78,9 +78,6 @@ class AppLogger {
       this.activityLogger(req, res, next);
     };
   }
-      this.activityLogger(req, res, next);
-    };
-  }
 
   private activityLogger = async (req: Request, res: Response, next: NextFunction) => {
     const startTime = Date.now();
