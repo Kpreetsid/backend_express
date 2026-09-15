@@ -4,6 +4,7 @@ import { get, merge, omit } from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import morgan from 'morgan';
+import mongoose from 'mongoose';
 import { UserLogProducer } from '../../core/messaging/user-log.producer';
 
 class AppLogger {
@@ -39,45 +40,29 @@ class AppLogger {
   }
 
   private refreshFileLogger(): void {
-    const currentMonthFile = this.getMonthlyLogFileName();
-    if (this.currentLogFile !== currentMonthFile) {
-      if (this.accessLogStream) {
-        this.accessLogStream.end();
-      }
-      this.currentLogFile = currentMonthFile;
+    const fileName = this.getMonthlyLogFileName();
+    if (this.currentLogFile === fileName && this.accessLogStream) {
+      return;
+    }
+
+    if (this.accessLogStream) {
+      this.accessLogStream.end();
+    }
+    this.currentLogFile = fileName;
+    if (!fs.existsSync(this.logDir)) {
       try {
-        const logFilePath = path.join(this.logDir, this.currentLogFile);
-        this.accessLogStream = fs.createWriteStream(logFilePath, { flags: 'a' });
-        const fileFormat = ':date_ist | :status | :userId | :userName | :action | :method | :response-time ms | :url | :device | :module';
-        this.fileLogger = morgan(fileFormat, { stream: this.accessLogStream });
+        fs.mkdirSync(this.logDir, { recursive: true });
       } catch (err) {
-        console.error('Failed to initialize file logger:', err);
+        console.error('Failed to create log directory:', err);
       }
     }
-  }
-
-  private registerMorganTokens(): void {
-    morgan.token('device', (req: Request) => (req.headers['user-agent'] as string) || 'unknown');
-    morgan.token('userName', (req: any) => req.user?.username || 'Anonymous');
-    morgan.token('userId', (req: any) => req.user?._id?.toString() || req.user?.id?.toString() || 'Anonymous');
-    morgan.token('action', (req: Request) => this.mapAction(req.method));
-    morgan.token('module', (req: Request) => this.extractModule(req.originalUrl || req.url));
-    morgan.token('date_ist', () => {
-      const now = new Date();
-      const istOffset = 5.5 * 60 * 60 * 1000;
-      const istDate = new Date(now.getTime() + istOffset);
-      return istDate.toISOString().replace('Z', '+05:30');
-    });
-  }
-
-  private mapAction(method: any): string {
-    switch (String(method).toUpperCase()) {
-      case 'GET': return 'READ';
-      case 'POST': return 'CREATE';
-      case 'PUT': return 'UPDATE';
-      case 'PATCH': return 'UPDATE';
-      case 'DELETE': return 'DELETE';
-      default: return String(method).toUpperCase();
+    try {
+      const logFilePath = path.join(this.logDir, fileName);
+      this.accessLogStream = fs.createWriteStream(logFilePath, { flags: 'a' });
+      const fileFormat = ':date_ist | :userId | :userName | :action | :method | :url | :module | :status | :res[content-length] | :response-time ms | IP: :remote-addr | Device: :device';
+      this.fileLogger = morgan(fileFormat, { stream: this.accessLogStream });
+    } catch (err) {
+      console.error('Failed to initialize file logger:', err);
     }
   }
 
@@ -93,6 +78,9 @@ class AppLogger {
       this.activityLogger(req, res, next);
     };
   }
+      this.activityLogger(req, res, next);
+    };
+  }
 
   private activityLogger = async (req: Request, res: Response, next: NextFunction) => {
     const startTime = Date.now();
@@ -101,8 +89,12 @@ class AppLogger {
         const headers: any = req.headers || {};
         const user: any = get(req, 'user', {});
         const userName = user?.username || 'Anonymous';
-        const userId = user?._id || user.id || null;
-        const accountID = headers.accountid;
+        const rawUserId = user?._id || user?.id || null;
+        const rawAccountId = headers.accountid;
+
+        const userId = rawUserId && mongoose.isValidObjectId(rawUserId) ? rawUserId : null;
+        const accountID = rawAccountId && mongoose.isValidObjectId(rawAccountId) ? rawAccountId : null;
+
         const pageUrlHeader: string = (headers['page_url'] as string) || '';
         const origin: string = (headers['origin'] as string) || '';
         const ua: string = headers['user-agent'] || 'Unknown';
@@ -141,10 +133,11 @@ class AppLogger {
           dnt: headers['dnt'] === '1',
           secCHUA: this.parseSecCHUA(headers['sec-ch-ua'])
         };
-        const moduleBackend = this.extractModule(req.originalUrl);
+        const moduleBackend = this.extractModule(req.originalUrl || req.url);
         const moduleName = this.extractModule(pageUrlHeader);
         const description = `${userName} performed ${req.method} on ${moduleBackend} from ${origin || 'unknown-origin'} at ${new Date().toISOString()}`;
-  
+        const port = Number(req.socket?.localPort) || Number(process.env.PORT) || 80;
+
         const newLog = new UserLogModel({
           userId,
           userName,
@@ -156,19 +149,19 @@ class AppLogger {
           deviceInfo,
           networkInfo,
           requestMeta,
-          module: moduleBackend,
-          description,
-          method: req.method,
-          statusCode: res.statusCode,
-          requestUrl: req.originalUrl,
-          host: req.hostname,
-          hostName: headers.host || '',
-          protocol: req.protocol,
-          port: req.socket?.localPort || null,
-          ipAddress: req.ip || (headers['x-forwarded-for'] as string) || '',
-          userAgent: ua,
+          module: moduleBackend || 'general',
+          description: description || 'HTTP Request',
+          method: req.method || 'GET',
+          statusCode: res.statusCode || 200,
+          requestUrl: req.originalUrl || req.url || '/',
+          host: req.hostname || 'localhost',
+          hostName: headers.host || req.hostname || 'localhost',
+          protocol: req.protocol || 'http',
+          port,
+          ipAddress: req.ip || (headers['x-forwarded-for'] as string) || req.socket?.remoteAddress || '127.0.0.1',
+          userAgent: ua || 'unknown',
           additionalData: {
-            correlationId: res.locals.correlationId,
+            correlationId: res.locals?.correlationId,
             params: this.redactSensitiveData(req.params || {}),
             body: this.redactSensitiveData(req.body || {}),
             query: this.redactSensitiveData(req.query || {}),
@@ -179,7 +172,7 @@ class AppLogger {
         // Asynchronously push to Redis stream (no blocking I/O)
         await UserLogProducer.pushLog(newLog);
       } catch (error) {
-        console.error('Failed to push activity log to Redis:', error);
+        console.error('Failed to log activity:', error);
       }
     });
     next();
@@ -250,9 +243,45 @@ class AppLogger {
     });
   }
 
+  private registerMorganTokens(): void {
+    morgan.token('device', (req: Request) => (req.headers['user-agent'] as string) || 'unknown');
+    morgan.token('userName', (req: any) => req.user?.username || 'Anonymous');
+    morgan.token('userId', (req: any) => req.user?._id?.toString() || req.user?.id?.toString() || 'Anonymous');
+    morgan.token('action', (req: Request) => this.mapAction(req.method));
+    morgan.token('module', (req: Request) => this.extractModule((req as any).originalUrl || req.url));
+    morgan.token('date_ist', () => {
+      const now = new Date();
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const istDate = new Date(now.getTime() + istOffset);
+      return istDate.toISOString().replace('Z', '+05:30');
+    });
+  }
+
+  private mapAction(method: any): string {
+    if (!method) return 'UNKNOWN';
+    switch (method.toUpperCase()) {
+      case 'GET': return 'READ';
+      case 'POST': return 'CREATE';
+      case 'PUT': return 'UPDATE';
+      case 'DELETE': return 'DELETE';
+      default: return method.toUpperCase();
+    }
+  }
+
   private extractModule(url: any): string {
-    const segments = String(url || '').split('/').filter(Boolean);
-    return segments[0] || 'general';
+    if (!url || typeof url !== 'string') return 'general';
+    try {
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        url = new URL(url).pathname;
+      }
+    } catch {
+      // ignore
+    }
+    const cleanPath = url.split('?')[0];
+    const segments = cleanPath.split('/').filter(Boolean);
+    const skip = new Set(['api', 'v1', 'cmms_express']);
+    const meaningful = segments.filter((s: string) => !skip.has(s.toLowerCase()));
+    return meaningful[0] || segments[0] || 'general';
   }
 }
 

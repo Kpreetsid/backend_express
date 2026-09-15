@@ -219,7 +219,28 @@ class AssetService {
 
   async createAssetOld(body: any, account_id: any, user_id: any): Promise<any> {
     await subscriptionLimitService.assertCanCreate(account_id, 'asset');
-    const data: any = new AssetModel({ ...body, account_id, createdBy: user_id });
+    let assetClass = body.asset_class || 'class_3';
+    let topLevelAssetId = body.top_level_asset_id;
+
+    if (body.parent_id) {
+      const parentAsset: any = await AssetModel.findById(helperService.validateObjectId(String(body.parent_id))).lean();
+      if (parentAsset) {
+        if (parentAsset.asset_class) {
+          assetClass = parentAsset.asset_class;
+        }
+        if (!topLevelAssetId) {
+          topLevelAssetId = parentAsset.top_level ? parentAsset._id : (parentAsset.top_level_asset_id || parentAsset._id);
+        }
+      }
+    }
+
+    const data: any = new AssetModel({
+      ...body,
+      asset_class: assetClass,
+      top_level_asset_id: topLevelAssetId,
+      account_id,
+      createdBy: user_id
+    });
     data.top_level_asset_id = data.top_level_asset_id ? data.top_level_asset_id : data._id;
     return await data.save();
   }
@@ -230,16 +251,63 @@ class AssetService {
       .lean();
   }
 
-  async updateAssetOld(id: any, body: any, user_id: any, account_id: any): Promise<any> {
+  async updateAssetOld(id: any, body: any, user_id: any, account_id?: any): Promise<any> {
     return await withTransaction(async (session) => {
+      const validatedId = helperService.validateObjectId(String(id));
+      const matchQuery: any = { _id: validatedId, visible: true };
+      if (account_id) matchQuery.account_id = account_id;
+      const existingAsset: any = await AssetModel.findOne(matchQuery).session(session).lean();
+      if (!existingAsset) {
+        throw Object.assign(new Error("Asset not found"), { status: 404 });
+      }
+
+      let targetAssetClass = body.asset_class || existingAsset.asset_class || 'class_1';
+
+      // If the asset is a child asset (has parent_id), inherit asset_class from parent
+      const parentId = body.parent_id || existingAsset.parent_id;
+      if (parentId) {
+        const parentAsset: any = await AssetModel.findById(helperService.validateObjectId(String(parentId))).session(session).lean();
+        if (parentAsset && parentAsset.asset_class) {
+          targetAssetClass = parentAsset.asset_class;
+          body.asset_class = targetAssetClass;
+        }
+      } else if (body.asset_class) {
+        targetAssetClass = body.asset_class;
+      }
+
       await mapUserToAssetService.updateUserMapping(String(id), body.userIdList, [], [], session);
       await mapUserToAssetService.updateFlagOnAssetUpdate(String(id), body.userIdList, body.alarmType, session);
-      return await AssetModel.findOneAndUpdate(
-        { _id: id, account_id, visible: true },
-        { ...body, updatedBy: user_id },
+
+      const updated = await AssetModel.findOneAndUpdate(
+        matchQuery,
+        { ...body, asset_class: targetAssetClass, updatedBy: user_id },
         { returnDocument: 'after', session }
       );
+
+      // Cascade asset_class to all child and descendant assets
+      if (targetAssetClass) {
+        await this.updateAllChildAssetsClass(validatedId, targetAssetClass, user_id, session, account_id);
+      }
+
+      return updated;
     });
+  }
+
+  async updateAllChildAssetsClass(parentId: any, asset_class: string, user_id: any, session?: any, account_id?: any): Promise<any> {
+    const allChildIds = await this.getAllChildAssetIDs(parentId, account_id);
+    const parentIdStr = String(parentId);
+    const uniqueDescendantIds = [...new Set(allChildIds.filter(cid => String(cid) !== parentIdStr))];
+    const descendantIds = uniqueDescendantIds.map(cid => helperService.validateObjectId(String(cid)));
+
+    if (descendantIds.length > 0) {
+      const updateQuery: any = { _id: { $in: descendantIds } };
+      if (account_id) updateQuery.account_id = account_id;
+      return await AssetModel.updateMany(
+        updateQuery,
+        { $set: { asset_class, updatedBy: user_id } },
+        { session }
+      );
+    }
   }
 
   async updateAllChildAssetsLocation(id: any, locationId: any, user_id: any, account_id: any): Promise<any> {
