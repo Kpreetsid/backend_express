@@ -9,7 +9,7 @@ import { MailerService } from "../../_config/mailer";
 import { VerificationCodeModel } from "../../models/userVerification.model";
 import { auth } from "../../configDB";
 import { helperService } from "../../utils/helper";
-import { IAccount, AccountModel } from "../../models/account.model";
+import { IAccount } from "../../models/account.model";
 import { companyService } from "../../masters/company/company.service";
 import { get } from "lodash";
 import { mapUserToLocationService } from "../../transaction/mapUserLocation/userLocation.service";
@@ -217,54 +217,12 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
 
 export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const identifier = String(req.params.email || req.params.accountId || req.params.id || '').trim();
-    const { type } = req.query;
+    const identifier = String(req.params.email || req.params.id || '').trim();
     if (!identifier) {
       throw Object.assign(new Error('Bad request: identifier is required'), { status: 400 });
     }
 
     const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
-
-    if (type === 'DOWNLOAD_DATA') {
-      if (!mongoose.Types.ObjectId.isValid(identifier)) {
-        throw Object.assign(new Error('Invalid account ID for download token'), { status: 400 });
-      }
-
-      const account = await AccountModel.findOne({ _id: identifier, visible: true });
-      if (!account) {
-        throw Object.assign(new Error('Account data not found'), { status: 404 });
-      }
-
-      const match: any = {
-        org_id: account._id,
-        account_name: account.account_name,
-        isExternal: false,
-        isInternal: false,
-        isDownloadData: true,
-        type: 'DOWNLOAD_DATA'
-      };
-      await TokenModel.deleteMany({ account_id: account._id, principalType: 'download_data' });
-      const external_token = generateExternalAccessToken(match);
-      const downloadDataTtlSeconds: number = 5 * 365 * 24 * 60 * 60;
-      const tokenData = new TokenModel({
-        _id: external_token,
-        tokenType: 'access',
-        token_id: new mongoose.Types.ObjectId(),
-        account_id: account._id,
-        principalType: 'download_data',
-        isExternal: true,
-        isInternal: false,
-        ttl: downloadDataTtlSeconds,
-        expiresAt: new Date(Date.now() + downloadDataTtlSeconds * 1000)
-      });
-      await tokenData.save();
-
-      return res.status(200).json({
-        status: true,
-        message: 'Download token generated successfully',
-        data: { external_token, account_id: account._id, account_name: account.account_name }
-      });
-    }
 
     // Interactive user login token
     const external_user = await UserModel.findOne({ email: identifier, user_status: 'active' });
