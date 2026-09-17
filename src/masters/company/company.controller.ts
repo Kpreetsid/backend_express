@@ -170,11 +170,57 @@ class CompanyController {
       return next(error);
     }
   }
+
+  getApiKey = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const accountId = String(user.account_id || (req as any).companyID);
+      const data = await companyService.getAccountApiKey(accountId);
+      res.status(200).json({ status: true, message: "API key retrieved successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  generateApiKey = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const accountId = String(user.account_id || (req as any).companyID);
+      const data = await companyService.generateAccountApiKey(accountId);
+      res.status(201).json({ status: true, message: "API key generated successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  regenerateApiKey = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const accountId = String(user.account_id || (req as any).companyID);
+      const data = await companyService.regenerateAccountApiKey(accountId);
+      res.status(200).json({ status: true, message: "API key regenerated successfully", data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  toggleApiKeyStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const accountId = String(user.account_id || (req as any).companyID);
+      const { visible } = req.body || {};
+      const data = await companyService.toggleAccountApiKeyStatus(accountId, visible);
+      const actionLabel = data.visible ? "activated" : "deactivated";
+      res.status(200).json({ status: true, message: `API key ${actionLabel} successfully`, data });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const companyController = controllerCache.withCache(new CompanyController(), {
   namespace: 'companies',
   ttlSeconds: 300,
   tags: ['companies', 'settings', 'users'],
-  skipMethods: ['getSubscriptionLimits']
+  skipMethods: ['getSubscriptionLimits', 'getApiKey', 'generateApiKey', 'regenerateApiKey', 'toggleApiKeyStatus']
 });
