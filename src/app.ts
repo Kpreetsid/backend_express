@@ -88,7 +88,7 @@ apiRouter.use('/master', isAuthenticated, masterRoutes());
 apiRouter.use('/work', isAuthenticated, workRoutes());
 apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());
-apiRouter.use('/notifications', isAuthenticated, notificationRoutes());
+apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
 
 const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
 app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], apiRouter);
