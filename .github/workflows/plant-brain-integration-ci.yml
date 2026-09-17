@@ -1,0 +1,35 @@
+name: Plant Brain integration CI
+
+on:
+  push:
+    branches:
+      - integrate/plant-brain-v1
+  pull_request:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout integration candidate
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install exact dependencies
+        run: npm ci
+
+      - name: Strict TypeScript check
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build

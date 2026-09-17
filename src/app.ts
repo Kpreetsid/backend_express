@@ -22,6 +22,7 @@ import { cryptoRouter } from './routes/crypto.routes';
 import { corsOptions } from './_config/cors';
 import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
 import { csrfProtection } from './middlewares/csrf.middleware';
+import plantBrainRoutes, { plantBrainPublicRoutes } from './plantBrain/plantBrain.routes';
 
 const app: Express = express();
 app.set('trust proxy', 1);
@@ -79,13 +80,15 @@ app.use('/metrics', metricsRouter);
 const apiRouter: Router = Router();
 apiRouter.use('/crypto', cryptoRouter);
 apiRouter.use('/internal/account-permissions', accountPermissionEventRoutes());
+apiRouter.use('/plant-brain', plantBrainPublicRoutes());
 apiRouter.use('/', routerIndex());
+apiRouter.use('/plant-brain', isAuthenticated, plantBrainRoutes());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
 apiRouter.use('/master', isAuthenticated, masterRoutes());
 apiRouter.use('/work', isAuthenticated, workRoutes());
 apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());
-apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
+apiRouter.use('/notifications', isAuthenticated, notificationRoutes());
 
 const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
 app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], apiRouter);
