@@ -5,6 +5,7 @@ import userRegister from './user/registration/registration.routes';
 import userTokenRoutes from './user/token/userToken.routes';
 import userResetPassword from './user/resetPassword/resetPassword.routes';
 import userVerification from './user/verification/verification.routes';
+import accountRoutes from './user/account/account.routes';
 
 export default (): express.Router => {
     userRegister(router);
@@ -12,5 +13,6 @@ export default (): express.Router => {
     userTokenRoutes(router);
     userResetPassword(router);
     userVerification(router);
+    accountRoutes(router);
     return router;
 }
