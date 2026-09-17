@@ -1,8 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+import { DIAGNOSTIC_LIFECYCLES, type DiagnosticLifecycle } from '../reports/asset/diagnostic-lifecycle';
+
 export const ASSET_REPORT_COLLECTION_NAME = 'assets-report';
-
-
 const Created_From_Enum = ["Asset Report", "Asset Alarm"];
 export const ASSET_REPORT_STATUS = ['Open', 'On-Hold', 'In-Progress', 'Completed'];
 
@@ -93,6 +93,10 @@ export interface IReportAsset extends Document {
   visible: boolean;
   createdBy: ObjectId;
   updatedBy: ObjectId;
+  diagnosticLifecycle?: DiagnosticLifecycle;
+  diagnosticLifecycleUpdatedAt?: Date;
+  diagnosticLifecycleUpdatedBy?: ObjectId;
+  resolvedAt?: Date;
 }
 
 const reportAssetSchema = new Schema<IReportAsset>({
@@ -147,38 +151,24 @@ const reportAssetSchema = new Schema<IReportAsset>({
     online: { type: Boolean, default: null },
     asset_type: { type: String, trim: true },
     acceleration: {
-      Axial: {
-        timestamp: Schema.Types.Mixed,
-        rms: Schema.Types.Mixed
-      },
-      Horizontal: {
-        timestamp: Schema.Types.Mixed,
-        rms: Schema.Types.Mixed
-      },
-      Vertical: {
-        timestamp: Schema.Types.Mixed,
-        rms: Schema.Types.Mixed
-      }
+      Axial: { timestamp: Schema.Types.Mixed, rms: Schema.Types.Mixed },
+      Horizontal: { timestamp: Schema.Types.Mixed, rms: Schema.Types.Mixed },
+      Vertical: { timestamp: Schema.Types.Mixed, rms: Schema.Types.Mixed }
     },
     velocity: {
-      Axial: {
-        timestamp: Schema.Types.Mixed,
-        rms: Schema.Types.Mixed
-      },
-      Horizontal: {
-        timestamp: Schema.Types.Mixed,
-        rms: Schema.Types.Mixed
-      },
-      Vertical: {
-        timestamp: Schema.Types.Mixed,
-        rms: Schema.Types.Mixed
-      }
+      Axial: { timestamp: Schema.Types.Mixed, rms: Schema.Types.Mixed },
+      Horizontal: { timestamp: Schema.Types.Mixed, rms: Schema.Types.Mixed },
+      Vertical: { timestamp: Schema.Types.Mixed, rms: Schema.Types.Mixed }
     },
     asset_name: { type: String, trim: true }
   }],
   visible: { type: Boolean, default: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'UserModel', required: true },
-  updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' }
+  updatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' },
+  diagnosticLifecycle: { type: String, enum: DIAGNOSTIC_LIFECYCLES, index: true },
+  diagnosticLifecycleUpdatedAt: { type: Date },
+  diagnosticLifecycleUpdatedBy: { type: Schema.Types.ObjectId, ref: 'UserModel' },
+  resolvedAt: { type: Date }
 }, {
   collection: ASSET_REPORT_COLLECTION_NAME,
   timestamps: true,
@@ -187,5 +177,7 @@ const reportAssetSchema = new Schema<IReportAsset>({
 
 reportAssetSchema.index({ accountId: 1, visible: 1, top_level_asset_id: 1, _id: -1 });
 reportAssetSchema.index({ accountId: 1, visible: 1, assetId: 1, _id: -1 });
+reportAssetSchema.index({ accountId: 1, visible: 1, assetId: 1, diagnosticLifecycle: 1, updatedAt: -1 });
+reportAssetSchema.index({ accountId: 1, visible: 1, top_level_asset_id: 1, diagnosticLifecycle: 1, updatedAt: -1 });
 
 export const ReportAssetModel = mongoose.model<IReportAsset>('Schema_ReportAsset', reportAssetSchema);

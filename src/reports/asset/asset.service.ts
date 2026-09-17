@@ -3,6 +3,40 @@ import { AssetModel } from "../../models/asset.model";
 import { LocationModel } from "../../models/location.model";
 import { ObservationModel } from "../../models/observation.model";
 import { orderService } from "../../work/order/order.service";
+import {
+  assertDiagnosticLifecycleTransition,
+  hasAuthoritativeDiagnosticFinding,
+  isCurrentDiagnosticLifecycle,
+  resolveCreationDiagnosticLifecycle,
+} from './diagnostic-lifecycle';
+
+const SERVICE_CREATE_FIELDS = new Set([
+  'top_level_asset_id', 'assetId', 'locationId', 'Observations', 'Recommendations',
+  'CreateWorkRequest', 'FaultDetected', 'Severity', 'NewFault', 'ISO', 'TrendOfAlarm',
+  'EquipmentHealth', 'files', 'harmonicIndex', 'alarmId', 'createdFrom', 'chartDetail',
+  'assetName', 'locationName', 'faultData', 'assetImage', 'asset_health_history',
+  'endpointRMSData', 'diagnosticLifecycle'
+]);
+
+const SERVICE_UPDATE_FIELDS = new Set([
+  'Observations', 'Recommendations', 'CreateWorkRequest', 'FaultDetected', 'Severity',
+  'NewFault', 'ISO', 'TrendOfAlarm', 'EquipmentHealth', 'files', 'harmonicIndex',
+  'chartDetail', 'faultData', 'asset_health_history', 'endpointRMSData', 'diagnosticLifecycle'
+]);
+
+function pickFields(input: any, allowed: Set<string>): Record<string, any> {
+  const output: Record<string, any> = {};
+  if (!input || typeof input !== 'object') return output;
+  for (const [key, value] of Object.entries(input)) {
+    if (allowed.has(key)) output[key] = value;
+  }
+  return output;
+}
+
+function lifecycleBadRequest(error: unknown): never {
+  const message = error instanceof Error ? error.message : 'Invalid diagnostic lifecycle';
+  throw Object.assign(new Error(message), { status: 400 });
+}
 
 class AssetReportService {
   private readonly resultLimit = 2000;
@@ -68,15 +102,33 @@ class AssetReportService {
     let assetReport: any = null;
     let workOrder: any = null;
     try {
-      const initialStatus = body.status || 'Open';
+      const cleanBody = pickFields(body, SERVICE_CREATE_FIELDS);
+      let diagnosticLifecycle;
+      try {
+        diagnosticLifecycle = resolveCreationDiagnosticLifecycle(
+          cleanBody.FaultDetected,
+          cleanBody.faultData,
+          cleanBody.diagnosticLifecycle,
+        );
+      } catch (error) {
+        lifecycleBadRequest(error);
+      }
+      delete cleanBody.diagnosticLifecycle;
+
+      const initialStatus = 'Open';
       const statusDetails = [{ status: initialStatus, createdBy: user._id, createdAt: new Date() }];
+      const lifecycleUpdatedAt = new Date();
       assetReport = new ReportAssetModel({
-        ...body,
+        ...cleanBody,
         accountId: user.account_id,
         userId: user._id,
         createdBy: user._id,
         status: initialStatus,
-        status_details: statusDetails
+        status_details: statusDetails,
+        diagnosticLifecycle,
+        diagnosticLifecycleUpdatedAt: lifecycleUpdatedAt,
+        diagnosticLifecycleUpdatedBy: user._id,
+        ...(diagnosticLifecycle === 'RESOLVED' ? { resolvedAt: lifecycleUpdatedAt } : {})
       });
       await assetReport.save();
       if (Number(CreateWorkRequest) === 1 && workOrderBody && Object.keys(workOrderBody).length > 0) {
@@ -99,12 +151,102 @@ class AssetReportService {
   };
 
   async updateAssetReport(id: any, body: Partial<IReportAsset>, account_id: any, user_id: any, token?: any) {
+    const existing: any = await ReportAssetModel.findOne({ _id: id, accountId: account_id, visible: true });
+    if (!existing) return null;
+
+    const incoming = pickFields(body, SERVICE_UPDATE_FIELDS);
+    const requestedLifecycle = incoming.diagnosticLifecycle;
+    delete incoming.diagnosticLifecycle;
+
+    const resultingFaultDetected = Object.prototype.hasOwnProperty.call(incoming, 'FaultDetected')
+      ? incoming.FaultDetected
+      : existing.FaultDetected;
+    const resultingFaultData = Object.prototype.hasOwnProperty.call(incoming, 'faultData')
+      ? incoming.faultData
+      : existing.faultData;
+
+    const update: any = { $set: { ...incoming, updatedBy: user_id } };
+    if (requestedLifecycle !== undefined && requestedLifecycle !== null) {
+      try {
+        const next = assertDiagnosticLifecycleTransition({
+          currentLifecycle: existing.diagnosticLifecycle,
+          nextLifecycle: requestedLifecycle,
+          resultingFaultDetected,
+          resultingFaultData,
+        });
+        const now = new Date();
+        update.$set.diagnosticLifecycle = next;
+        update.$set.diagnosticLifecycleUpdatedAt = now;
+        update.$set.diagnosticLifecycleUpdatedBy = user_id;
+        if (next === 'RESOLVED') {
+          update.$set.resolvedAt = now;
+        } else if (existing.resolvedAt) {
+          update.$unset = { resolvedAt: 1 };
+        }
+      } catch (error) {
+        lifecycleBadRequest(error);
+      }
+    } else if (
+      isCurrentDiagnosticLifecycle(existing.diagnosticLifecycle)
+      && !hasAuthoritativeDiagnosticFinding(resultingFaultDetected, resultingFaultData)
+    ) {
+      throw badRequest('Clearing an ACTIVE/MONITORING diagnosis requires an explicit RESOLVED or HISTORICAL diagnosticLifecycle transition');
+    }
+
     return await ReportAssetModel.findOneAndUpdate(
       { _id: id, accountId: account_id, visible: true },
-      { $set: { ...body, updatedBy: user_id } },
+      update,
       { returnDocument: 'after', runValidators: true }
     );
   };
+
+  async transitionDiagnosticLifecycle(id: any, accountId: any, userId: any, requestedLifecycle: unknown) {
+    const existing: any = await ReportAssetModel.findOne({ _id: id, accountId, visible: true });
+    if (!existing) return null;
+
+    let next;
+    try {
+      next = assertDiagnosticLifecycleTransition({
+        currentLifecycle: existing.diagnosticLifecycle,
+        nextLifecycle: requestedLifecycle,
+        resultingFaultDetected: existing.FaultDetected,
+        resultingFaultData: existing.faultData,
+      });
+    } catch (error) {
+      lifecycleBadRequest(error);
+    }
+
+    const now = new Date();
+    const filter: any = { _id: id, accountId, visible: true };
+    if (existing.diagnosticLifecycle) {
+      filter.diagnosticLifecycle = existing.diagnosticLifecycle;
+    } else {
+      filter.$or = [
+        { diagnosticLifecycle: { $exists: false } },
+        { diagnosticLifecycle: null }
+      ];
+    }
+
+    const update: any = {
+      $set: {
+        diagnosticLifecycle: next,
+        diagnosticLifecycleUpdatedAt: now,
+        diagnosticLifecycleUpdatedBy: userId,
+        updatedBy: userId,
+      }
+    };
+    if (next === 'RESOLVED') {
+      update.$set.resolvedAt = now;
+    } else if (existing.resolvedAt) {
+      update.$unset = { resolvedAt: 1 };
+    }
+
+    return await ReportAssetModel.findOneAndUpdate(
+      filter,
+      update,
+      { returnDocument: 'after', runValidators: true }
+    );
+  }
 
   async partialUpdateAssetReport(
     id: any,
