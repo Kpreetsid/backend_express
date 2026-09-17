@@ -15,13 +15,13 @@ const SERVICE_CREATE_FIELDS = new Set([
   'CreateWorkRequest', 'FaultDetected', 'Severity', 'NewFault', 'ISO', 'TrendOfAlarm',
   'EquipmentHealth', 'files', 'harmonicIndex', 'alarmId', 'createdFrom', 'chartDetail',
   'assetName', 'locationName', 'faultData', 'assetImage', 'asset_health_history',
-  'endpointRMSData', 'diagnosticLifecycle'
+  'endpointRMSData'
 ]);
 
 const SERVICE_UPDATE_FIELDS = new Set([
   'Observations', 'Recommendations', 'CreateWorkRequest', 'FaultDetected', 'Severity',
   'NewFault', 'ISO', 'TrendOfAlarm', 'EquipmentHealth', 'files', 'harmonicIndex',
-  'chartDetail', 'faultData', 'asset_health_history', 'endpointRMSData', 'diagnosticLifecycle'
+  'chartDetail', 'faultData', 'asset_health_history', 'endpointRMSData'
 ]);
 
 function pickFields(input: any, allowed: Set<string>): Record<string, any> {
@@ -108,12 +108,10 @@ class AssetReportService {
         diagnosticLifecycle = resolveCreationDiagnosticLifecycle(
           cleanBody.FaultDetected,
           cleanBody.faultData,
-          cleanBody.diagnosticLifecycle,
         );
       } catch (error) {
         lifecycleBadRequest(error);
       }
-      delete cleanBody.diagnosticLifecycle;
 
       const initialStatus = 'Open';
       const statusDetails = [{ status: initialStatus, createdBy: user._id, createdAt: new Date() }];
@@ -128,7 +126,6 @@ class AssetReportService {
         diagnosticLifecycle,
         diagnosticLifecycleUpdatedAt: lifecycleUpdatedAt,
         diagnosticLifecycleUpdatedBy: user._id,
-        ...(diagnosticLifecycle === 'RESOLVED' ? { resolvedAt: lifecycleUpdatedAt } : {})
       });
       await assetReport.save();
       if (Number(CreateWorkRequest) === 1 && workOrderBody && Object.keys(workOrderBody).length > 0) {
@@ -155,9 +152,6 @@ class AssetReportService {
     if (!existing) return null;
 
     const incoming = pickFields(body, SERVICE_UPDATE_FIELDS);
-    const requestedLifecycle = incoming.diagnosticLifecycle;
-    delete incoming.diagnosticLifecycle;
-
     const resultingFaultDetected = Object.prototype.hasOwnProperty.call(incoming, 'FaultDetected')
       ? incoming.FaultDetected
       : existing.FaultDetected;
@@ -165,28 +159,7 @@ class AssetReportService {
       ? incoming.faultData
       : existing.faultData;
 
-    const update: any = { $set: { ...incoming, updatedBy: user_id } };
-    if (requestedLifecycle !== undefined && requestedLifecycle !== null) {
-      try {
-        const next = assertDiagnosticLifecycleTransition({
-          currentLifecycle: existing.diagnosticLifecycle,
-          nextLifecycle: requestedLifecycle,
-          resultingFaultDetected,
-          resultingFaultData,
-        });
-        const now = new Date();
-        update.$set.diagnosticLifecycle = next;
-        update.$set.diagnosticLifecycleUpdatedAt = now;
-        update.$set.diagnosticLifecycleUpdatedBy = user_id;
-        if (next === 'RESOLVED') {
-          update.$set.resolvedAt = now;
-        } else if (existing.resolvedAt) {
-          update.$unset = { resolvedAt: 1 };
-        }
-      } catch (error) {
-        lifecycleBadRequest(error);
-      }
-    } else if (
+    if (
       isCurrentDiagnosticLifecycle(existing.diagnosticLifecycle)
       && !hasAuthoritativeDiagnosticFinding(resultingFaultDetected, resultingFaultData)
     ) {
@@ -195,7 +168,7 @@ class AssetReportService {
 
     return await ReportAssetModel.findOneAndUpdate(
       { _id: id, accountId: account_id, visible: true },
-      update,
+      { $set: { ...incoming, updatedBy: user_id } },
       { returnDocument: 'after', runValidators: true }
     );
   };
