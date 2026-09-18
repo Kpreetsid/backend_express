@@ -2,6 +2,7 @@ import axios from 'axios';
 import type { Request } from 'express';
 import type {
   PlantBrainEvidenceRef,
+  PlantBrainHistoryResponse,
   PlantBrainRespondRequest,
   PlantBrainRespondResponse
 } from './plantBrain.contract';
@@ -28,6 +29,10 @@ interface PlantBrainProxyConfig {
 interface UpstreamThread {
   threadId: string;
   pageContext?: string;
+}
+
+interface UpstreamThreadSnapshot extends UpstreamThread {
+  messages: Record<string, unknown>[];
 }
 
 interface UpstreamUnifiedAnswer {
@@ -183,14 +188,20 @@ function parseCreatedThread(payload: unknown): UpstreamThread {
   };
 }
 
-function parseThreadSnapshot(payload: unknown): UpstreamThread {
+function parseThreadSnapshot(payload: unknown): UpstreamThreadSnapshot {
   if (!isRecord(payload) || !isRecord(payload.snapshot) || !isRecord(payload.snapshot.thread)
-    || typeof payload.snapshot.thread.threadId !== 'string' || !UUID_PATTERN.test(payload.snapshot.thread.threadId)) {
+    || typeof payload.snapshot.thread.threadId !== 'string' || !UUID_PATTERN.test(payload.snapshot.thread.threadId)
+    || !Array.isArray(payload.snapshot.messages)) {
     throw new PlantBrainProxyError('Plant Brain returned an invalid thread snapshot', 502, 'plant_brain_upstream_invalid');
+  }
+  const messages = payload.snapshot.messages.filter(isRecord);
+  if (messages.length !== payload.snapshot.messages.length) {
+    throw new PlantBrainProxyError('Plant Brain returned invalid thread messages', 502, 'plant_brain_upstream_invalid');
   }
   return {
     threadId: payload.snapshot.thread.threadId.toLowerCase(),
-    ...(typeof payload.snapshot.thread.pageContext === 'string' ? { pageContext: payload.snapshot.thread.pageContext } : {})
+    ...(typeof payload.snapshot.thread.pageContext === 'string' ? { pageContext: payload.snapshot.thread.pageContext } : {}),
+    messages
   };
 }
 
@@ -235,6 +246,59 @@ function evidenceRefs(citations: unknown[], assetId: string): PlantBrainEvidence
       ...(kind === 'OPERATIONAL' ? { route: `/assets/analysis-details/${assetId}` } : {})
     }];
   });
+}
+
+function historyMessages(snapshot: UpstreamThreadSnapshot, assetId: string): PlantBrainHistoryResponse['messages'] {
+  return snapshot.messages.flatMap((message) => {
+    const role = message.role;
+    const text = message.text;
+    if ((role !== 'user' && role !== 'assistant') || typeof text !== 'string' || !text.trim()) return [];
+
+    const unified = isRecord(message.unifiedResult) ? message.unifiedResult : undefined;
+    const citations = unified && Array.isArray(unified.citations) ? unified.citations : [];
+    const limitations = unified && Array.isArray(unified.limitations)
+      ? unified.limitations.filter((item): item is string => typeof item === 'string')
+      : [];
+    const status = unified?.status;
+
+    return [{
+      role,
+      text: text.trim(),
+      ...(typeof message.createdAt === 'string' ? { created_at: message.createdAt } : {}),
+      ...(role === 'assistant' && citations.length ? { evidence_refs: evidenceRefs(citations, assetId) } : {}),
+      ...(role === 'assistant' && limitations.length ? { limitations } : {}),
+      ...(role === 'assistant' && (status === 'answered' || status === 'abstained') ? { abstained: status === 'abstained' } : {})
+    }];
+  });
+}
+
+export async function proxyPlantBrainHistory(
+  scope: PlantBrainTrustedAssetScope,
+  issuer: PlantBrainDelegatedIdentityIssuer,
+  threadId: string,
+  config = plantBrainProxyConfigFromEnv()
+): Promise<PlantBrainHistoryResponse> {
+  const delegated = issuer.mint(scope);
+  const assetId = scope.assetIds[0];
+  if (!assetId || scope.assetIds.length !== 1 || scope.locationIds.length !== 1 || scope.locationIds[0] !== scope.plantId) {
+    throw new PlantBrainProxyError('Trusted Plant Brain analysis scope is invalid', 503, 'plant_brain_scope_invalid');
+  }
+
+  const payload = await upstreamJson(
+    config,
+    'GET',
+    scopedUrl(config, `/v1/brain/threads/${threadId}`, scope),
+    { authorization: `Bearer ${delegated.token}` }
+  );
+  const snapshot = parseThreadSnapshot(payload);
+  if (snapshot.threadId !== threadId.toLowerCase() || boundAssetId(snapshot.pageContext) !== assetId) {
+    throw new PlantBrainProxyError('This Plant Brain thread is bound to a different asset', 409, 'plant_brain_thread_asset_mismatch');
+  }
+
+  return {
+    thread_id: snapshot.threadId,
+    messages: historyMessages(snapshot, assetId)
+  };
 }
 
 async function createThread(
