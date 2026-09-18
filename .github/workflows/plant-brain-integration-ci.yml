@@ -36,3 +36,6 @@ jobs:
 
       - name: Diagnostic lifecycle regressions
         run: node scripts/test-diagnostic-lifecycle.cjs
+
+      - name: Governed history regression
+        run: node scripts/test-plant-brain-history.cjs
