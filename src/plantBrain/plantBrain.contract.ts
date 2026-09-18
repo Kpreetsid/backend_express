@@ -28,6 +28,25 @@ export interface PlantBrainRespondResponse {
   limitations?: string[];
 }
 
+export interface PlantBrainHistoryRequest {
+  ui_asset_id: string;
+  thread_id: string;
+}
+
+export interface PlantBrainHistoryMessage {
+  role: 'user' | 'assistant';
+  text: string;
+  created_at?: string;
+  evidence_refs?: PlantBrainEvidenceRef[];
+  limitations?: string[];
+  abstained?: boolean;
+}
+
+export interface PlantBrainHistoryResponse {
+  thread_id: string;
+  messages: PlantBrainHistoryMessage[];
+}
+
 export class PlantBrainRequestError extends Error {
   constructor(
     message: string,
@@ -45,6 +64,24 @@ const CLIENT_TURN_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
+
+export const parsePlantBrainHistoryRequest = (query: unknown): PlantBrainHistoryRequest => {
+  if (!isRecord(query)) {
+    throw new PlantBrainRequestError('Query must be an object', 422, 'invalid_request');
+  }
+
+  if (typeof query.ui_asset_id !== 'string' || !query.ui_asset_id.trim()) {
+    throw new PlantBrainRequestError('ui_asset_id must be a non-empty string', 422, 'invalid_asset_hint');
+  }
+  if (typeof query.thread_id !== 'string' || !THREAD_ID_PATTERN.test(query.thread_id.trim())) {
+    throw new PlantBrainRequestError('thread_id must be a UUID', 422, 'invalid_thread_id');
+  }
+
+  return {
+    ui_asset_id: query.ui_asset_id.trim(),
+    thread_id: query.thread_id.trim().toLowerCase()
+  };
+};
 
 export const parsePlantBrainRespondRequest = (body: unknown): PlantBrainRespondRequest => {
   if (!isRecord(body)) {
