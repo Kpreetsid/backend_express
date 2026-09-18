@@ -1,5 +1,6 @@
 export * from './csrf.middleware';
 export * from './error.middleware';
+export * from './firstUser.middleware';
 export * from './idempotency.middleware';
 export * from './logger.middleware';
 export * from './module-permission.middleware';

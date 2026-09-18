@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only --exit-child --inspect=0.0.0.0:9229 src/server.ts --host 0.0.0.0",
-    "build": "npx shx rm -rf dist && npx tsc && npx shx mkdir -p dist/public && npx shx cp -r src/public/* dist/public/",
+    "build": "npx shx rm -rf dist && npx tsc -p tsconfig.build.json && npx shx mkdir -p dist/public && npx shx cp -r src/public/* dist/public/",
     "start": "npm run build && node dist/server.js",
     "typecheck": "npx tsc --noEmit",
     "test": "vitest run"
@@ -53,6 +53,7 @@
     "@types/nodemailer": "^8.0.1",
     "@types/sanitize-html": "^2.16.1",
     "ts-node-dev": "^2.0.0",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1"
   }
 }
