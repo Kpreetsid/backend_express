@@ -24,10 +24,21 @@ class LocationReportService {
         match: { account_id: accountId, visible: true }
       }
     ];
-    return await ReportLocationModel.find(filter)
+    let result: any[] = await ReportLocationModel.find(filter)
       .sort({ _id: -1 })
       .limit(this.reportLimit)
       .populate(populateFilter);
+    result = result.map((report: any) => {
+      const r = report.toObject();
+      if (r?.userId) {
+        r.user = r?.userId;
+      }
+      if (r?.location_id) {
+        r.location = r?.location_id;
+      }
+      return r;
+    })
+    return result;
   }
 
   getDummyMonthList() {
