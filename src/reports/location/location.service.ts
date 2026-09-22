@@ -14,7 +14,7 @@ class LocationReportService {
       {
         path: 'userId',
         model: 'Schema_User',
-        select: 'id firstName lastName email username user_role user_profile_img user_status',
+        select: 'id firstName lastName email username user_role phone_no user_profile_img user_status',
         match: { account_id: accountId, user_status: 'active' }
       },
       {
