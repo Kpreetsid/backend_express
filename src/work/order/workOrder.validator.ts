@@ -116,6 +116,18 @@ export const workOrderValidator = [
     .notEmpty().withMessage('Location ID is required')
     .isMongoId().withMessage('Invalid Location ID format'),
 
+  body('sap')
+    .optional({ nullable: true })
+    .isObject().withMessage('SAP details must be an object'),
+
+  ...['OrderType', 'MaintenancePlant', 'Equipment', 'Priority', 'SystemStatus'].map(field =>
+    body(`sap.${field}`)
+      .optional({ nullable: true, checkFalsy: true })
+      .isString().withMessage(`SAP ${field} must be a string`)
+      .isLength({ max: 500 }).withMessage(`SAP ${field} must not exceed 500 characters`)
+      .trim()
+  ),
+
   ...commonWorkOrderFields
 ];
 
@@ -142,6 +154,18 @@ export const updateWorkOrderValidator = [
   body('wo_location_id')
     .optional({ nullable: true, checkFalsy: true })
     .isMongoId().withMessage('Invalid Location ID format'),
+
+  body('sap')
+    .optional({ nullable: true })
+    .isObject().withMessage('SAP details must be an object'),
+
+  ...['OrderType', 'MaintenancePlant', 'Equipment', 'Priority', 'SystemStatus'].map(field =>
+    body(`sap.${field}`)
+      .optional({ nullable: true, checkFalsy: true })
+      .isString().withMessage(`SAP ${field} must be a string`)
+      .isLength({ max: 500 }).withMessage(`SAP ${field} must not exceed 500 characters`)
+      .trim()
+  ),
 
   ...commonWorkOrderFields
 ];
