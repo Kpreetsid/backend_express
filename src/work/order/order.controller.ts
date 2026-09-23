@@ -6,7 +6,34 @@ import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { storageProvider } from '../../_config/storage';
 import { getExpectedSyncVersion, setSyncVersionEtag } from '../../utils/sync-concurrency';
+import { SapAcknowledgement, sapMiddlewareClient } from '../../integrations/sapMiddleware.client';
 import { sanitizeWorkOrderPayload } from './workOrder.policy';
+
+function attachSapAcknowledgement(res: Response, workOrder: any, acknowledgement: SapAcknowledgement): void {
+  const sapLog = {
+    event: 'sap.middleware.work_order', operation: acknowledgement.operation,
+    workOrderId: String(workOrder?._id || workOrder?.id || ''), status: acknowledgement.status,
+    ...(acknowledgement.status === 'acknowledged' ? {
+      sapStatus: acknowledgement.sapStatus,
+      ...(acknowledgement.recovery ? { recovery: acknowledgement.recovery } : {})
+    }
+      : acknowledgement.status === 'failed' ? {
+        code: acknowledgement.code,
+        message: acknowledgement.message,
+        middlewareStatus: acknowledgement.middlewareStatus,
+        sapStatus: acknowledgement.sapStatus
+      } : {})
+  };
+  if (acknowledgement.status === 'failed') console.warn(JSON.stringify(sapLog));
+  else console.log(JSON.stringify(sapLog));
+  res.setHeader('X-SAP-Sync-Status', acknowledgement.status);
+}
+
+function mutationMessage(operation: 'created' | 'updated' | 'deleted', acknowledgement: SapAcknowledgement): string {
+  if (acknowledgement.status === 'acknowledged') return `Work order ${operation} and acknowledged by SAP.`;
+  if (acknowledgement.status === 'failed') return `Work order ${operation}, but SAP synchronization failed.`;
+  return `Work order ${operation}.`;
+}
 
 class OrderController {
 
@@ -78,13 +105,14 @@ class OrderController {
   async createOrder(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
+      const { sap, ...workOrderBody } = req.body || {};
 
       if (req.body?.work_request_id && (
         user.user_role !== 'admin' || get(req, 'role.work_request.edit') !== true
       )) {
         throw Object.assign(new Error('Only administrators with work-request edit permission can convert a work request'), { status: 403 });
       }
-      const body = sanitizeWorkOrderPayload(req.body, 'create');
+      const body = sanitizeWorkOrderPayload(workOrderBody, 'create');
       // Only trusted server workflows may attach an asset-report source. Public
       // work-request conversion is authorized separately above.
       delete body.asset_report_id;
@@ -93,8 +121,13 @@ class OrderController {
         throw Object.assign(new Error('You do not have permission to create a work order in this status'), { status: 403 });
       }
       const data = await orderService.createWorkOrder(body, user);
-
-      res.status(201).send({ status: true, message: 'Work order created.', data });
+      const sapAcknowledgement = await sapMiddlewareClient.createWorkOrder(data, sap, {
+        cmmsAccountId: String(user.account_id),
+        cmmsUserId: String(user._id)
+      });
+      attachSapAcknowledgement(res, data, sapAcknowledgement);
+      setSyncVersionEtag(res, data);
+      res.status(201).send({ status: true, message: mutationMessage('created', sapAcknowledgement), data, sapAcknowledgement });
     } catch (error) {
       next(error);
     }
@@ -104,17 +137,19 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const id = String(req.params.id);
-
-      const body = sanitizeWorkOrderPayload(req.body, 'update');
+      const { sap, ...workOrderBody } = req.body || {};
+      const body = sanitizeWorkOrderPayload(workOrderBody, 'update');
       if (Object.keys(body).length === 0) {
         throw Object.assign(new Error('No editable work-order fields were provided'), { status: 400 });
       }
       if (Object.prototype.hasOwnProperty.call(body, 'status') && get(req, 'role.workOrder.update_work_order_status') !== true) {
         throw Object.assign(new Error('You do not have permission to update work-order status'), { status: 403 });
       }
-      const data = await orderService.updateById(id, body, user);
-
-      res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
+      const data = await orderService.updateById(id, workOrderBody, user, getExpectedSyncVersion(req));
+      const sapAcknowledgement = await sapMiddlewareClient.updateWorkOrder(data, sap);
+      attachSapAcknowledgement(res, data, sapAcknowledgement);
+      setSyncVersionEtag(res, data);
+      res.status(200).send({ status: true, message: mutationMessage('updated', sapAcknowledgement), data, sapAcknowledgement });
     } catch (error) {
       next(error);
     }
@@ -126,8 +161,10 @@ class OrderController {
       const id = String(req.params.id);
       const { status, block_reason } = req.body;
       const data = await orderService.orderStatusChange(id, status, user, block_reason, getExpectedSyncVersion(req));
+      const sapAcknowledgement = await sapMiddlewareClient.updateWorkOrder(data);
+      attachSapAcknowledgement(res, data, sapAcknowledgement);
       setSyncVersionEtag(res, data);
-      res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
+      res.status(200).send({ status: true, message: mutationMessage('updated', sapAcknowledgement), data, sapAcknowledgement });
     } catch (error) {
       next(error);
     }
@@ -138,8 +175,8 @@ class OrderController {
       const user = get(req, "user", {}) as IUser;
 
       const { params: { id } } = req;
-      const body = sanitizeWorkOrderPayload(req.body, 'update');
-      
+      const { sap, ...workOrderBody } = req.body || {};
+      const body = sanitizeWorkOrderPayload(workOrderBody, 'update');
 
       if (!body || Object.keys(body).length === 0) {
         throw Object.assign(new Error('No data provided for update'), { status: 400 });
@@ -150,9 +187,11 @@ class OrderController {
         throw Object.assign(new Error('You do not have permission to update work-order status'), { status: 403 });
       }
 
-      const data = await orderService.updateById(helperService.validateObjectId(String(id)), body, user);
-
-      res.status(200).send({ status: true, message: 'Work order updated successfully.', data });
+      const data = await orderService.updateById(helperService.validateObjectId(String(id)), workOrderBody, user, getExpectedSyncVersion(req));
+      const sapAcknowledgement = await sapMiddlewareClient.updateWorkOrder(data, sap);
+      attachSapAcknowledgement(res, data, sapAcknowledgement);
+      setSyncVersionEtag(res, data);
+      res.status(200).send({ status: true, message: mutationMessage('updated', sapAcknowledgement), data, sapAcknowledgement });
     } catch (error) {
       next(error);
     }
@@ -162,8 +201,10 @@ class OrderController {
     try {
       const user = get(req, "user", {}) as IUser;
       const orderId = helperService.validateObjectId(String(req.params.id));
-      await orderService.removeOrder(orderId, user);
-      res.status(200).send({ status: true, message: 'Work order deleted successfully.' });
+      const data = await orderService.removeOrder(orderId, user);
+      const sapAcknowledgement = await sapMiddlewareClient.deleteWorkOrder(data);
+      attachSapAcknowledgement(res, data, sapAcknowledgement);
+      res.status(200).send({ status: true, message: mutationMessage('deleted', sapAcknowledgement), sapAcknowledgement });
     } catch (error) {
       next(error);
     }

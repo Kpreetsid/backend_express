@@ -2,8 +2,9 @@ import mongoose, { ClientSession } from 'mongoose';
 
 let transactionsUnsupported = false;
 let transactionsUnsupportedWarningShown = false;
+let transactionSupportChecked = false;
 
-const isUnsupportedTransactionError = (error: any): boolean => {
+export const isUnsupportedTransactionError = (error: any): boolean => {
   const errorMessage = error?.message || error?.errmsg || String(error);
   return errorMessage.includes("Transaction numbers are only allowed") ||
     errorMessage.includes("does not support retryable writes") ||
@@ -13,14 +14,28 @@ const isUnsupportedTransactionError = (error: any): boolean => {
     error?.codeName === 'IllegalOperation';
 };
 
-const warnUnsupportedTransactionsOnce = (error?: any): void => {
+const deploymentSupportsTransactions = async (): Promise<boolean | undefined> => {
+  if (transactionSupportChecked) return !transactionsUnsupported;
+  const db = mongoose.connection.db;
+  if (!db) return;
+
+  try {
+    const hello: any = await db.admin().command({ hello: 1 });
+    transactionSupportChecked = true;
+    const supported = Boolean(hello?.setName || hello?.msg === 'isdbgrid');
+    if (!supported) transactionsUnsupported = true;
+    return supported;
+  } catch {
+    // Some deployments do not authorize the hello command. In that case retain
+    // the existing runtime fallback based on the transaction operation itself.
+    return;
+  }
+};
+
+const warnUnsupportedTransactionsOnce = (): void => {
   if (transactionsUnsupportedWarningShown) return;
   transactionsUnsupportedWarningShown = true;
-  console.warn("MongoDB transactions are not supported by the current deployment. Running transaction blocks without a session.");
-  if (error) {
-    const errorMessage = error?.message || error?.errmsg || String(error);
-    console.warn(`Original transaction error: ${errorMessage}`);
-  }
+  console.info("MongoDB standalone mode detected; using the supported non-transactional fallback.");
 };
 
 /**
@@ -33,6 +48,12 @@ export const withTransaction = async <T>(fn: (session: ClientSession) => Promise
     return await fn(existingSession);
   }
   if (transactionsUnsupported) {
+    return await fn(undefined as any);
+  }
+
+  const transactionsSupported = await deploymentSupportsTransactions();
+  if (transactionsSupported === false) {
+    warnUnsupportedTransactionsOnce();
     return await fn(undefined as any);
   }
 
@@ -51,7 +72,7 @@ export const withTransaction = async <T>(fn: (session: ClientSession) => Promise
 
     if (isStandaloneError) {
       transactionsUnsupported = true;
-      warnUnsupportedTransactionsOnce(error);
+      warnUnsupportedTransactionsOnce();
       if (!sessionEnded) {
         try {
           if (session.inTransaction()) await session.abortTransaction();

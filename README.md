@@ -37,3 +37,70 @@ npm.cmd run typecheck
 npm.cmd test
 npm.cmd run build
 ```
+
+## Work-order creation acknowledgement from SAP
+
+Create, update, status-update, and delete operations on `/api/v1/work/orders`
+commit the CMMS mutation first. The backend then sends POST, PATCH, or DELETE to
+the SAP middleware and waits for its acknowledgement. Every mutation response includes
+`sapAcknowledgement` and the `X-SAP-Sync-Status` header. A middleware failure does
+not roll back an already committed CMMS mutation; it is returned explicitly as
+`sapAcknowledgement.status = "failed"`.
+
+Configure the deployed backend:
+
+```dotenv
+SAP_MIDDLEWARE_ENABLED=true
+SAP_MIDDLEWARE_URL=https://your-sap-middleware.example.com
+SAP_MIDDLEWARE_CREATE_PATH=/api/v1/master/sap/records
+# Must equal SAP_CREATE_API_KEY in the middleware deployment.
+SAP_MIDDLEWARE_API_KEY=generate-a-random-secret-containing-at-least-32-characters
+SAP_MIDDLEWARE_TIMEOUT_MS=15000
+SAP_MIDDLEWARE_DEFAULT_ORDER_TYPE=PM01
+SAP_MIDDLEWARE_DEFAULT_MAINTENANCE_PLANT=1000
+```
+
+For the bundled local SAP simulator, keep the backend on port `3010` and use
+`SAP_MIDDLEWARE_URL=http://127.0.0.1:3011`; `dev:simulator-flow` starts the
+middleware on `3011` to avoid a port collision.
+
+The backend maps `order_no`, `title`, `description`, `priority`, `status`, and the
+selected asset's external `asset_id`. It also sends the authenticated CMMS account
+and user IDs to the middleware, which resolves the active SAP identity mapping before
+the SAP request is made. A caller can optionally supply signed-off SAP
+business values without controlling the generated SAP maintenance-order identity:
+
+```json
+{
+  "title": "Inspect pump seals",
+  "priority": "High",
+  "wo_location_id": "<Mongo ObjectId>",
+  "wo_asset_id": "<Mongo ObjectId>",
+  "sap": {
+    "OrderType": "PM01",
+    "MaintenancePlant": "1000",
+    "Equipment": "EQ-0001"
+  }
+}
+```
+
+Successful creation returns HTTP 201 with:
+
+```json
+{
+  "status": true,
+  "message": "Work order created and acknowledged by SAP.",
+  "data": {},
+  "sapAcknowledgement": {
+    "status": "acknowledged",
+    "idempotencyKey": "work-order-<CMMS Mongo ID>",
+    "sapStatus": 201,
+    "record": {}
+  }
+}
+```
+
+Updates and deletes return the same acknowledgement shape with `operation` set to
+`update` or `delete`. The backend derives the SAP record ID from `order_no`, uses
+stable mutation-specific idempotency keys, and never sends the CMMS MongoDB ID as
+the SAP maintenance-order identity.

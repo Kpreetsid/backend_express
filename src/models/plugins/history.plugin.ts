@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import { isUnsupportedTransactionError } from '../../utils/transaction.helper';
 
 export interface IHistoryOptions {
   historyCollectionName?: string;
@@ -127,6 +128,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
         await logHistory(this.model, [doc], update, 'UPDATE', options.session);
       }
     } catch (error) {
+      if (options.session && isUnsupportedTransactionError(error)) return;
       console.error(`History Plugin Error (findOneAndUpdate):`, error);
     }
   });
@@ -142,6 +144,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
         await logHistory(this.model, [doc], update, 'UPDATE', options.session);
       }
     } catch (error) {
+      if (options.session && isUnsupportedTransactionError(error)) return;
       console.error(`History Plugin Error (updateOne):`, error);
     }
   });
@@ -159,6 +162,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
         await logHistory(this.model, docs, update, 'UPDATE', options.session);
       }
     } catch (error) {
+      if (options.session && isUnsupportedTransactionError(error)) return;
       console.error(`History Plugin Error (updateMany):`, error);
     }
   });
@@ -181,6 +185,7 @@ export function historyPlugin(schema: Schema, options: IHistoryOptions = {}) {
           await logHistory(model, [doc], { $set: update }, 'UPDATE_SAVE', session);
         }
       } catch (error) {
+        if (this.$session() && isUnsupportedTransactionError(error)) return;
         console.error(`History Plugin Error (save):`, error);
       }
     }
