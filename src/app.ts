@@ -22,12 +22,13 @@ import { cryptoRouter } from './routes/crypto.routes';
 import { corsOptions } from './_config/cors';
 import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
 import { csrfProtection } from './middlewares/csrf.middleware';
+import { authenticatedStatic } from './middlewares/authenticatedStatic';
 
 const app: Express = express();
 app.set('trust proxy', 1);
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(requestContextMiddleware());
-app.use(cors({ ...corsOptions, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce', 'X-Account-Permission-Version', 'X-SAP-Sync-Status', 'ETag', 'Retry-After', 'Idempotency-Replayed'] }));
+app.use(cors({ ...corsOptions, exposedHeaders: ['X-CMMS-Payload-Encrypted', 'X-CMMS-Crypto-Key-Id', 'X-CMMS-Crypto-Timestamp', 'X-CMMS-Crypto-Nonce', 'X-CMMS-Account-Encrypt-Payload', 'X-CMMS-Account-Encrypt-Response', 'X-Account-Permission-Version', 'ETag', 'Retry-After', 'Idempotency-Replayed'] }));
 app.use(cookieParser());
 app.use(csrfProtection);
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '5mb' }));
@@ -60,13 +61,13 @@ const uploadDirs = [
   'work_order'
 ];
 
-app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
+app.use('/', authenticatedStatic(path.join(__dirname, '../uploadFiles')));
 uploadDirs.forEach((dir) => {
   const dirPath = path.join(__dirname, '../uploadFiles', dir);
-  app.use('/', express.static(dirPath));
-  app.use(`/${dir}`, express.static(dirPath));
+  app.use('/', authenticatedStatic(dirPath));
+  app.use(`/${dir}`, authenticatedStatic(dirPath));
   const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
-  app.use(`${apiBasePath}/${dir}`, express.static(dirPath));
+  app.use(`${apiBasePath}/${dir}`, authenticatedStatic(dirPath));
 });
 
 app.get('/', (req: Request, res: Response) => {
