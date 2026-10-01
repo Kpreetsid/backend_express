@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { NextFunction, Request, Response } from 'express';
 import { payloadCryptoService, PayloadCryptoKeyRecord } from '../_config/payloadCrypto';
+import { cookieAuth } from '../configDB';
 import { accountFeatureService } from '../masters/company/accountFeature.service';
 
 const ENCRYPTION_HEADER = 'x-cmms-payload-encrypted';
@@ -25,7 +26,7 @@ interface AccountPayloadCryptoPolicy {
   encryptResponse: boolean;
 }
 
-export const payloadCryptoRequestMiddleware = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+export const payloadCryptoRequestMiddleware = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!payloadCryptoService.isEnabled()) {
       next();
@@ -35,21 +36,24 @@ export const payloadCryptoRequestMiddleware = async (req: Request, _res: Respons
     const encryptedHeader = String(req.headers[ENCRYPTION_HEADER] || '');
     const bodyEnvelope = payloadCryptoService.isEnvelope(req.body) ? req.body : null;
     const accountPolicy = await resolveRequestPayloadCryptoPolicy(req);
+    (req as any).payloadCryptoPolicy = accountPolicy;
+    if (getRequestAccountId(req)) {
+      res.setHeader('X-CMMS-Account-Encrypt-Payload', String(accountPolicy.encryptPayload));
+      res.setHeader('X-CMMS-Account-Encrypt-Response', String(accountPolicy.encryptResponse));
+    }
     const requestBodyEncryptionRequested = readBooleanHeader(req, ENCRYPT_REQUEST_HEADER, true);
     const responseEncryptionRequested = readBooleanHeader(req, ENCRYPT_RESPONSE_HEADER, true);
-    const requestBodyEncryptionEnabled = requestBodyEncryptionRequested && accountPolicy.encryptPayload;
+    const requestBodyEncryptionEnabled = payloadCryptoService.canDecryptRequests()
+      && requestBodyEncryptionRequested
+      && accountPolicy.encryptPayload;
     const responseEncryptionEnabled = responseEncryptionRequested && accountPolicy.encryptResponse;
     const hasCryptoHeaders = !!req.headers[KEY_ID_HEADER] && !!req.headers[TIMESTAMP_HEADER] && !!req.headers[NONCE_HEADER];
     const encryptedPayloadHeaderPresent = encryptedHeader === 'v1';
     const hasEncryptedRequestBody = !!bodyEnvelope || (encryptedPayloadHeaderPresent && canRequestCarryEncryptedPayload(req));
     const hasCryptoContext = hasEncryptedRequestBody || (hasCryptoHeaders && responseEncryptionEnabled);
 
-    if (hasEncryptedRequestBody && !accountPolicy.encryptPayload) {
-      throw Object.assign(new Error('Payload encryption is disabled for this account'), { status: 400, name: 'BadRequestError' });
-    }
-
     if (!hasCryptoContext) {
-      if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && accountPolicy.encryptPayload) {
+      if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && requestBodyEncryptionEnabled) {
         throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
       }
       next();
@@ -58,10 +62,6 @@ export const payloadCryptoRequestMiddleware = async (req: Request, _res: Respons
 
     if (payloadCryptoService.isStrictMode() && shouldRequireEncryption(req) && requestBodyEncryptionEnabled && !hasEncryptedRequestBody) {
       throw Object.assign(new Error('Encrypted payload required'), { status: 400, name: 'BadRequestError' });
-    }
-
-    if (!payloadCryptoService.canDecryptRequests() && requestBodyEncryptionEnabled && hasEncryptedRequestBody) {
-      throw Object.assign(new Error('Encrypted payload support is disabled on this server'), { status: 400, name: 'BadRequestError' });
     }
 
     const keyId = String(req.headers[KEY_ID_HEADER] || bodyEnvelope?.kid || '');
@@ -73,7 +73,11 @@ export const payloadCryptoRequestMiddleware = async (req: Request, _res: Respons
     );
     const context: PayloadCryptoContext = {
       encryptedRequest: hasCryptoContext,
-      requestBodyEncrypted: requestBodyEncryptionEnabled && hasEncryptedRequestBody,
+      // Continue accepting encrypted payloads from clients that predate the
+      // directional bootstrap flags. The server flag controls whether request
+      // encryption is requested/required, not whether a valid envelope can be
+      // safely handled during a rolling deployment.
+      requestBodyEncrypted: hasEncryptedRequestBody,
       responseEncryptionEnabled,
       keyRecord,
       timestamp: replay.timestamp,
@@ -144,7 +148,7 @@ export const payloadCryptoResponseMiddleware = () => {
     }) as any;
 
     res.send = ((body?: any): Response => {
-      const context = (req as any).payloadCrypto as PayloadCryptoContext | undefined;
+      const context = getResponseCryptoContext(req);
       if (!shouldEncryptResponse(req, res, context)) {
         return originalSend(body);
       }
@@ -168,7 +172,7 @@ export const payloadCryptoResponseMiddleware = () => {
 };
 
 function prepareResponseBody(req: Request, res: Response, body: any): any {
-  const context = (req as any).payloadCrypto as PayloadCryptoContext | undefined;
+  const context = getResponseCryptoContext(req);
   if (!shouldEncryptResponse(req, res, context, body)) {
     return body;
   }
@@ -224,11 +228,37 @@ function shouldEncryptResponse(_req: Request, res: Response, context?: PayloadCr
     return false;
   }
   return payloadCryptoService.canEncryptResponses()
-    && readBooleanHeader(_req, ENCRYPT_RESPONSE_HEADER, true)
     && !!context
     && context.responseEncryptionEnabled
-    && isResponseEncryptionEnabledForBody(body, true)
-    && (context.encryptedRequest || payloadCryptoService.isStrictMode());
+    && isResponseEncryptionEnabledForBody(body, true);
+}
+
+function getResponseCryptoContext(req: Request): PayloadCryptoContext | undefined {
+  const existingContext = (req as any).payloadCrypto as PayloadCryptoContext | undefined;
+  if (existingContext) {
+    return existingContext;
+  }
+
+  const policy = (req as any).payloadCryptoPolicy as AccountPayloadCryptoPolicy | undefined;
+  if (!policy?.encryptResponse || !payloadCryptoService.canEncryptResponses()) {
+    return undefined;
+  }
+
+  const keyRecord = payloadCryptoService.getSessionKeyRecordByToken((req as any).userToken);
+  if (!keyRecord) {
+    return undefined;
+  }
+
+  const context: PayloadCryptoContext = {
+    encryptedRequest: false,
+    requestBodyEncrypted: false,
+    responseEncryptionEnabled: true,
+    keyRecord,
+    timestamp: '',
+    nonce: ''
+  };
+  (req as any).payloadCrypto = context;
+  return context;
 }
 
 async function resolveRequestPayloadCryptoPolicy(req: Request): Promise<AccountPayloadCryptoPolicy> {
@@ -250,6 +280,7 @@ function getRequestAccountId(req: Request): string {
     requestData.companyID
     || requestData.user?.account_id
     || req.headers.accountid
+    || requestData.cookies?.[cookieAuth.accountCookieName]
     || ''
   );
 }

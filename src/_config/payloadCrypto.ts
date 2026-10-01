@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { Request } from 'express';
 import { auth, payloadCrypto } from '../configDB';
+import { parseTtlSeconds } from '../utils/ttl';
 
 export interface PayloadCryptoEnvelope {
   _encrypted: true;
@@ -14,6 +15,8 @@ export interface PayloadCryptoEnvelope {
 
 export interface PayloadCryptoSessionMetadata {
   enabled: true;
+  requestDecryptEnabled: boolean;
+  responseEncryptEnabled: boolean;
   keyId: string;
   sessionId: string;
   sessionKey: string;
@@ -42,7 +45,8 @@ class PayloadCryptoService {
   private readonly sessionKeys = new Map<string, PayloadCryptoKeyRecord>();
 
   isEnabled(): boolean {
-    return payloadCrypto.enabled && payloadCrypto.requestDecryptEnabled;
+    return payloadCrypto.enabled
+      && (payloadCrypto.requestDecryptEnabled || payloadCrypto.responseEncryptEnabled);
   }
 
   isStrictMode(): boolean {
@@ -93,6 +97,8 @@ class PayloadCryptoService {
 
     return {
       enabled: true,
+      requestDecryptEnabled: this.canDecryptRequests(),
+      responseEncryptEnabled: this.canEncryptResponses(),
       keyId: record.keyId,
       sessionId: record.sessionId,
       serverPublicKey: serverPublicKey.toString('base64'),
@@ -128,6 +134,8 @@ class PayloadCryptoService {
 
     return {
       enabled: true,
+      requestDecryptEnabled: this.canDecryptRequests(),
+      responseEncryptEnabled: this.canEncryptResponses(),
       keyId: record.keyId,
       sessionId: record.sessionId,
       sessionKey: key.toString('base64'),
@@ -150,6 +158,19 @@ class PayloadCryptoService {
       throw Object.assign(new Error('Payload crypto key expired'), { status: 401, name: 'TokenExpiredError' });
     }
     return record;
+  }
+
+  getSessionKeyRecordByToken(token: string | undefined): PayloadCryptoKeyRecord | undefined {
+    if (!token) {
+      return undefined;
+    }
+    this.cleanupExpired();
+    for (const record of this.sessionKeys.values()) {
+      if (record.token === token) {
+        return record;
+      }
+    }
+    return undefined;
   }
 
   validateReplay(record: PayloadCryptoKeyRecord, timestampHeader: unknown, nonceHeader: unknown): { timestamp: string; nonce: string } {
@@ -290,22 +311,7 @@ class PayloadCryptoService {
   }
 
   private parseDurationSeconds(value: string | undefined): number {
-    const fallback = 24 * 60 * 60;
-    if (!value) {
-      return fallback;
-    }
-    const match = /^(\d+)([smhd])?$/.exec(String(value).trim());
-    if (!match) {
-      return Number.parseInt(value, 10) || fallback;
-    }
-    const amount = Number(match[1]);
-    switch (match[2]) {
-      case 's': return amount;
-      case 'm': return amount * 60;
-      case 'h': return amount * 60 * 60;
-      case 'd': return amount * 24 * 60 * 60;
-      default: return amount;
-    }
+    return parseTtlSeconds(value, 24 * 60 * 60);
   }
 
   private normalizePath(pathname: string): string {
