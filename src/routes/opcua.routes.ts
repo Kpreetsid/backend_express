@@ -105,8 +105,14 @@ export function opcuaRoutes(): express.Router {
       await assertAsset(user, current.asset_id);
     }
     const asset = await assertAsset(user, req.body?.asset_id);
+    const selectedType = req.body.asset_type;
+    const allowedTypes = ['chiller', 'motor', 'fan', 'compressor', 'extruder', 'mixer', 'agitator', 'kiln', 'pump', 'gearbox', 'other'];
+    if (selectedType !== undefined && (typeof selectedType !== 'string' ||
+        (!allowedTypes.includes(selectedType) && selectedType !== canonicalAssetType(asset.asset_type)))) {
+      throw fail('Select a valid OPC-UA asset type.', 400);
+    }
     const body = {
-      source_asset_id: req.body.source_asset_id, asset_id: String(asset._id), asset_type: canonicalAssetType(asset.asset_type),
+      source_asset_id: req.body.source_asset_id, asset_id: String(asset._id), asset_type: selectedType ?? canonicalAssetType(asset.asset_type),
       enabled: req.body.enabled, validation_rules: req.body.validation_rules,
       expected_version: updating ? req.body.expected_version : null,
       ...(req.body.source_config === undefined ? {} : { source_config: req.body.source_config }),

@@ -6,7 +6,14 @@ import { mergeDefaultFeatureSelections, sanitizeAnalysisFeatureSelection } from 
 class AnalysisFeatureService {
 
     async getFeatureData(filter: any) {
-        return await AnalysisFeatureModel.findOne(filter)
+        const feature: any = await AnalysisFeatureModel.findOne(filter)
+        if (!feature) return null
+        const merged = mergeDefaultFeatureSelections(DEFAULT_ANALYSIS_FEATURES, feature.featuresJson)
+        if (JSON.stringify(merged) !== JSON.stringify(feature.featuresJson)) {
+            await AnalysisFeatureModel.updateOne({ _id: feature._id }, { $set: { featuresJson: merged } })
+            feature.featuresJson = merged
+        }
+        return feature
     }
 
     async createFeatureData(body: any, session?: any) {

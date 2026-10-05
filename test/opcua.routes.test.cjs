@@ -69,18 +69,31 @@ function fixture() {
   return { request, calls, env, exports, denyAsset: () => { assetAllowed = false; } };
 }
 
-test('manual mapping uses authenticated org and Mongo asset type, not supplied identity metadata', async () => {
+test('manual mapping uses authenticated org and explicitly selected mapping type', async () => {
   const f = fixture();
   const result = await f.request('post', '/mappings', { body: {
     source_asset_id: 'plc-123', asset_id: assetId, enabled: true, validation_rules: {},
-    org_id: 'attacker-org', customer_id: 'ignored', equipment_id: 'ignored', asset_type: 'wrong',
+    org_id: 'attacker-org', customer_id: 'ignored', equipment_id: 'ignored', asset_type: 'motor',
   } });
   assert.equal(result.code, 201);
   assert.equal(f.calls[0].headers['X-Opcua-Org'], 'trusted-org');
-  assert.equal(f.calls[0].data.asset_type, 'chiller');
+  assert.equal(f.calls[0].data.asset_type, 'motor');
   assert.equal(f.calls[0].data.source_asset_id, 'plc-123');
   assert.equal(f.calls[0].data.customer_id, undefined);
   assert.equal(f.calls[0].data.org_id, undefined);
+});
+
+test('invalid mapping type is rejected', async () => {
+  const f = fixture();
+  await assert.rejects(f.request('post', '/mappings', { body: { asset_id: assetId, asset_type: 'wrong' } }), e => e.status === 400);
+  assert.equal(f.calls.length, 0);
+});
+
+test('update forwards selected mapping type and revision', async () => {
+  const f = fixture();
+  await f.request('put', '/mappings/:id', { body: { asset_id: assetId, asset_type: 'chiller', expected_version: 2 } });
+  assert.equal(f.calls[1].data.asset_type, 'chiller');
+  assert.equal(f.calls[1].data.expected_version, 2);
 });
 test('write permission is required', async () => {
   const f = fixture();
