@@ -1,4 +1,5 @@
 import { body } from 'express-validator';
+import { SUPPORTED_ASSET_TYPES } from '../../catalog/asset-train-catalog';
 
 export const assetValidator = [
   body('asset_name')
@@ -8,7 +9,7 @@ export const assetValidator = [
 
   body('asset_type')
     .notEmpty().withMessage('Asset type is required')
-    .isIn(['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other', 'Extruder', 'Mixer', 'Agitator', 'Kiln', 'Rotary_Dryer'])
+    .isIn(SUPPORTED_ASSET_TYPES)
     .withMessage('Invalid asset type'),
 
   body('locationId')

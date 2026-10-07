@@ -4,9 +4,13 @@ import { hasRolePermission } from '../../middlewares';
 import { validateParamId, validateParam } from '../../middlewares/validate';
 import { assetValidator } from './asset.validator';
 import { validate } from '../../middlewares/validator.middleware';
+import { ASSET_TRAIN_CATALOG } from '../../catalog/asset-train-catalog';
 
 export default (router: express.Router) => {
     const assetRouter = express.Router();
+    assetRouter.get('/catalog', (_req, res) => {
+        res.status(200).json({ status: true, data: ASSET_TRAIN_CATALOG });
+    });
     assetRouter.get('/buzzer', assetController.getBuzzerAssetList);
     assetRouter.patch('/buzzer/:location_id', validateParam("location_id"), assetController.setBuzzerAssetList);
     assetRouter.get('/', assetController.getAssets);

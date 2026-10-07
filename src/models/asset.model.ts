@@ -1,7 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
+import { SUPPORTED_ASSET_TYPES } from '../catalog/asset-train-catalog';
 export const ASSET_COLLECTION_NAME = `asset_master`;
-export const ASSETS_TYPE = ['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other', 'Extruder', 'Mixer', 'Agitator', 'Kiln', 'Rotary_Dryer'];
+export const ASSETS_TYPE = SUPPORTED_ASSET_TYPES;
 
 export interface IAsset extends Document {
   asset_name: string;

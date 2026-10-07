@@ -7,7 +7,10 @@
     "dev": "ts-node-dev --respawn --transpile-only --exit-child --inspect=0.0.0.0:9229 src/server.ts --host 0.0.0.0",
     "build": "npx shx rm -rf dist && npx tsc && npx shx mkdir -p dist/public && npx shx cp -r src/public/* dist/public/",
     "start": "npm run build && node dist/server.js",
-    "typecheck": "npx tsc --noEmit"
+    "typecheck": "npx tsc --noEmit",
+    "catalog:generate": "node scripts/generate-asset-train-catalog.cjs",
+    "catalog:check": "node scripts/generate-asset-train-catalog.cjs --check",
+    "test:catalog": "node --require ts-node/register/transpile-only --test src/catalog/asset-train-catalog.test.ts"
   },
   "keywords": [],
   "author": "Pawan Kumar Gautam",
