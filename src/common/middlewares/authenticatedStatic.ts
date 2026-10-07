@@ -1,7 +1,7 @@
+import { isAuthenticated } from '@core/auth';
 import express, { NextFunction, Request, RequestHandler, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { isAuthenticated } from '../_config/auth';
 
 const isInside = (root: string, candidate: string): boolean => (
   candidate === root || candidate.startsWith(`${root}${path.sep}`)

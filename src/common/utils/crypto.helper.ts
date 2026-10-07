@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { Request } from 'express';
 import { auth, payloadCrypto } from '../../core/config/env.config';
-import { parseTtlSeconds } from '../utils/ttl';
+import { parseTtlSeconds } from './ttl.helper';
 
 export interface PayloadCryptoEnvelope {
   _encrypted: true;

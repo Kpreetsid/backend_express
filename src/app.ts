@@ -1,4 +1,4 @@
-import express, { Express, Request, Response, NextFunction, ErrorRequestHandler } from 'express';
+import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import path from 'path';
@@ -16,10 +16,13 @@ import {
   rateLimiter,
   errorMiddleware
 } from './common/middlewares';
-import { registerAppRoutes } from './routes';
-
-export const createApp = (): Express => {import { authenticatedStatic } from './middlewares/authenticatedStatic';
+import { authenticatedStatic } from '@common/middlewares/authenticatedStatic';
+import { isAuthenticated } from '@core/auth';
+import notificationRoutes from '@modules/communications/routes';
+import uploadRoutes from '@modules/upload/routes';
+import { healthRouter, metricsRouter, cryptoRouter, accountPermissionEventRoutes } from './routes';
 import { opcuaRoutes } from './routes/opcua.routes';
+import masterRoutes from './routes/v1/master.routes';
 
 const app: Express = express();
 app.set('trust proxy', 1);
@@ -116,8 +119,23 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Centralized Error Handling Middleware
 app.use(errorMiddleware as ErrorRequestHandler);
 
-return app;
-};
-
-const app = createApp();
 export default app;
+
+function routerIndex(): import("express-serve-static-core").RequestHandler<{}, any, any, import("qs").ParsedQs, Record<string, any>> {
+  throw new Error('Function not implemented.');
+}
+
+
+function workRoutes(): import("express-serve-static-core").RequestHandler<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>> {
+  throw new Error('Function not implemented.');
+}
+
+
+function reportsRoutes(): import("express-serve-static-core").RequestHandler<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>> {
+  throw new Error('Function not implemented.');
+}
+
+
+function transactionRoutes(): import("express-serve-static-core").RequestHandler<import("express-serve-static-core").ParamsDictionary, any, any, import("qs").ParsedQs, Record<string, any>> {
+  throw new Error('Function not implemented.');
+}
