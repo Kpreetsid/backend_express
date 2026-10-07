@@ -23,6 +23,7 @@ import { corsOptions } from './_config/cors';
 import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from './middlewares/payloadCrypto.middleware';
 import { csrfProtection } from './middlewares/csrf.middleware';
 import { authenticatedStatic } from './middlewares/authenticatedStatic';
+import { opcuaRoutes } from './routes/opcua.routes';
 
 const app: Express = express();
 app.set('trust proxy', 1);
@@ -83,6 +84,7 @@ apiRouter.use('/internal/account-permissions', accountPermissionEventRoutes());
 apiRouter.use('/', routerIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
 apiRouter.use('/master', isAuthenticated, masterRoutes());
+apiRouter.use('/opcua', isAuthenticated, opcuaRoutes());
 apiRouter.use('/work', isAuthenticated, workRoutes());
 apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());

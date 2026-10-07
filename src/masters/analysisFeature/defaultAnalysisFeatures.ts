@@ -66,5 +66,24 @@ export const DEFAULT_ANALYSIS_FEATURES = [
     subCategory: [
       { id: "magnetic-flux", name: "Magnetic Flux Trend", isSelected: false, serialNumber: 1, aggregated: false, dblClickAction: "magnetic_flux" }
     ]
+  },
+  {
+    id: "chiller",
+    serialNumber: 6,
+    categoryName: "Chiller Operations",
+    subCategory: [
+      { id: "chiller-chw-temperatures", name: "Chilled-water temperatures", isSelected: false, serialNumber: 1, aggregated: false },
+      { id: "chiller-chw-delta-t", name: "Chilled-water ΔT", isSelected: false, serialNumber: 2, aggregated: false },
+      { id: "chiller-cw-temperatures", name: "Condenser-water temperatures", isSelected: false, serialNumber: 3, aggregated: false },
+      { id: "chiller-cw-delta-t", name: "Condenser-water ΔT", isSelected: false, serialNumber: 4, aggregated: false },
+      { id: "chiller-chw-flow", name: "Chilled-water flow", isSelected: false, serialNumber: 5, aggregated: false },
+      { id: "chiller-power", name: "Electrical power", isSelected: false, serialNumber: 6, aggregated: false },
+      { id: "chiller-cooling-capacity", name: "Cooling capacity", isSelected: false, serialNumber: 7, aggregated: false },
+      { id: "chiller-load", name: "Chiller load", isSelected: false, serialNumber: 8, aggregated: false },
+      { id: "chiller-cop", name: "COP", isSelected: false, serialNumber: 9, aggregated: false },
+      { id: "chiller-kw-per-rt", name: "kW/RT", isSelected: false, serialNumber: 10, aggregated: false },
+      { id: "chiller-operating-state", name: "Operating state", isSelected: false, serialNumber: 11, aggregated: false },
+      { id: "chiller-alarm-active", name: "Alarm active", isSelected: false, serialNumber: 12, aggregated: false }
+    ]
   }
 ];
