@@ -1,6 +1,12 @@
 import { getExternalData } from "../utils/externalAPI";
 
 class ProcessorAPIService {
+    deleteChildComponent = async (rootAssetId: string, assetId: string, token: string, userId: any, environment?: string) => {
+        return await getExternalData('/asset-train-metadata/child-component/', 'DELETE', {
+            root_asset_id: rootAssetId, asset_id: assetId, delete_endpoints: true
+        }, token, String(userId), environment);
+    }
+
     setAssetHealthStatus = async (assetsList: any, account_id: any, user_id: any, token: any): Promise<any> => {
         const assetIdList: string[] = assetsList.map((item: any) => `${item.assetId}`);
         const match = { org_id: `${account_id}`, asset_status: "Not Defined", asset_id: [...new Set(assetIdList)] };

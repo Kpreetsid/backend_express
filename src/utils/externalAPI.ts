@@ -3,7 +3,7 @@ import axios, { AxiosRequestConfig } from "axios";
 import { requireProcessorBaseUrl } from './processor-url';
 
 const successStatusCode = [200, 201, 202, 203, 204, 205, 206, 207, 208, 226]
-export const getExternalData = async (path: string, method: string, body: any, token: string, userID: string) => {
+export const getExternalData = async (path: string, method: string, body: any, token: string, userID: string, environment?: string) => {
   try {
     console.group("External API");
     const baseUrl = requireProcessorBaseUrl(externalAPI.URL);
@@ -16,7 +16,8 @@ export const getExternalData = async (path: string, method: string, body: any, t
       headers: {
         "Content-Type": "application/json",
         "Authorization": token,
-        "X-User-Id": userID
+        "X-User-Id": userID,
+        ...(environment !== undefined ? { "X-Env": environment } : {})
       },
       data: body,
       timeout: 3 * 60 * 1000, // 3 minutes timeout

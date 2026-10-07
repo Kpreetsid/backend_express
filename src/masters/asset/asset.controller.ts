@@ -11,6 +11,7 @@ import { processorAPIService } from '../../api-processor';
 import { applyRoleFilter } from '../../utils/roleFilter';
 import { notificationService } from '../../utils/notification.service';
 import { withTransaction } from "../../utils/transaction.helper";
+import { getComponentDefinition } from '../../catalog/asset-train-catalog';
 
 class AssetController {
 
@@ -378,6 +379,25 @@ class AssetController {
     }
   };
 
+  createComponent = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+      const { account_id, _id: user_id } = get(req, 'user', {}) as IUser;
+      const token = get(req, 'userToken', '') as string;
+      const data = await assetService.createChildComponent(String(req.params.id), req.body, account_id, user_id, token);
+      res.status(201).json({ status: true, message: 'Child component created successfully.', data });
+    } catch (error) { next(error); }
+  };
+
+  removeComponent = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+      const { account_id, _id: user_id } = get(req, 'user', {}) as IUser;
+      const token = get(req, 'userToken', '') as string;
+      const data = await assetService.removeChildComponent(String(req.params.id), String(req.params.componentId),
+        account_id, user_id, token, req.query.delete_endpoints === 'true', req.get('X-Env'));
+      res.status(200).json({ status: true, message: 'Component and associated endpoints deleted.', data });
+    } catch (error) { next(error); }
+  };
+
   removeAsset = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
@@ -392,6 +412,18 @@ class AssetController {
       const dataExists: any = await assetService.getAllAssets(match);
       if (!dataExists || dataExists.length === 0) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
+      }
+      const asset = dataExists[0];
+      const parentId = asset.parent_id?.id || asset.parent_id?._id || asset.parent_id;
+      const directComponent = parentId && getComponentDefinition(asset.asset_type)
+        && (asset.parent_id?.top_level === true || String(asset.top_level_asset_id) === String(parentId));
+      if (asset.diagnostic_component_key || directComponent) {
+        throw Object.assign(new Error('Use confirmed component deletion to remove this component and its endpoints.'), { status: 409 });
+      }
+      const children = await assetService.getAllChildAssetsRecursive(String(id), account_id);
+      if (children.some(child => child.diagnostic_component_key || (asset.top_level === true
+        && String(child.parent_id) === String(id) && getComponentDefinition(child.asset_type)))) {
+        throw Object.assign(new Error('Delete the child components and their endpoints before deleting this parent asset.'), { status: 409 });
       }
       await mapUserToLocationService.removeLocationMapping(
         helperService.validateObjectId(String(id)),

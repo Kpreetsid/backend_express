@@ -1,9 +1,10 @@
-# Asset train catalog and creation — Phases 1–3
+# Asset train catalog, creation and component management — Phases 1–4
 
 The catalog combines existing standalone choices with the equipment and drive
 trains supplied in `catalog/asset_train.csv`. The Create Asset modal uses it to
 prepare an editable preview and save the parent and reviewed children. Optional
-attachments belong to the parent; endpoint creation and deletion remain separate.
+attachments belong to the parent. Endpoints are created manually; confirmed
+component deletion removes the associated endpoints.
 
 ## Rules
 
@@ -60,8 +61,8 @@ agreement between all snapshots and TypeScript helpers without writing files.
   registry for diagnostic component options, roles, and train-family suggestions.
 - Django canonicalizes known machine names and component aliases. Existing
   custom diagnostic slugs remain accepted. No database migration is needed.
-- Parent/child persistence and initial diagnostic metadata are implemented.
-  Component management and the Django endpoint deletion cascade remain later work.
+- Parent/child persistence, initial diagnostic metadata, manual component
+  management and confirmed endpoint deletion are implemented.
 
 ## Creation preview
 
@@ -122,6 +123,56 @@ children.
   `PROCESSOR_API_NOT_CONFIGURED` instead of the original generic Invalid URL.
   Request logs omit authorization tokens.
 
+## Component management and deletion
+
+Setup Diagnostics offers **Create child component** and **Use existing asset**.
+The first saves one new child directly under the top-level asset; the second
+adds a diagnostic row on an existing hierarchy asset. It never regenerates the
+train. New children inherit the parent location, class, timezone, alarm settings
+and user mappings, and start with empty nameplate details. Creating a child is
+an immediate action; saving diagnostic details remains a separate action.
+
+- `POST /api/master/assets/:rootId/components` accepts `name` and `asset_type`.
+  It requires `add_child_asset`, validates account ownership, sibling names and
+  train/subscription capacity, initializes health, and compensates only the
+  new child if creation fails. A unique persisted component key enables recovery
+  if the dialog is closed before its diagnostic details are saved.
+- Registered children can be edited with the existing Edit Asset action.
+  Their component catalog types are selectable. Updates preserve the component
+  key, parent, root and account, and update the stored diagnostic family/role.
+  Existing diagnostic nameplate details are edited in Setup Diagnostics.
+- Deleting a saved component first shows a warning icon and explicitly states
+  that all associated vibration and energy endpoints will be deleted. Cancel
+  makes no deletion request. Creation/deletion controls respect asset permissions
+  and disable repeat submissions while an operation is pending.
+- `DELETE /api/master/assets/:rootId/components/:componentId?delete_endpoints=true`
+  requires `delete_asset` and explicit endpoint confirmation. It accepts a direct
+  leaf component in the authenticated account. Parent/train cascades are not part
+  of this action: remove a component's children first, and remove registered
+  components before deleting their parent through the ordinary asset action.
+- Express calls Django `DELETE asset-train-metadata/child-component/` with the
+  root ID, child ID and `delete_endpoints: true`. Django independently resolves
+  the visible Mongo parent/child, checks organization and leaf ownership, then
+  transactionally deletes vibration mounts, energy mounts, equipment records,
+  endpoint diagnostic bindings, and the child's component/profile inventory.
+  Foreign endpoint ownership rejects the operation. Vibration configuration
+  records follow their existing foreign-key cascades. Parent and sibling
+  endpoints are retained. Deleted signal/bearing cache entries are invalidated
+  after commit; a cache failure is logged without undoing the SQL commit.
+- Only after Django acknowledges that exact child ID does Express hide the
+  Mongo child, its related records and user mappings. A processor failure leaves
+  the child available. SQL deletion is safe to repeat if Mongo hiding needs a
+  retry. These are separate database transactions, not a distributed transaction.
+  No live PostgreSQL/Mongo integration test has been performed.
+- `DELETE asset-train-metadata/components/` removes a saved diagnostic row on
+  an existing asset. It accepts the root ID, component key and confirmation;
+  deletes only typed endpoints bound to that key; and retains the asset itself.
+  Registered Mongo children must use the Express child deletion action.
+- The asset tree and general information Delete actions use the same confirmed
+  path for registered direct child components. Setup Diagnostics retains other
+  unsaved edits while removing the deleted child's rows and endpoints. The UI
+  forwards its configured Mongo environment for processor ownership checks.
+
 ## Focused verification
 
 The frontend catalog specs can run independently of unrelated legacy specs:
@@ -135,3 +186,10 @@ The Python registry and metadata validation tests require no external services:
 ```text
 python -B -m unittest app.diagnostic_metadata.tests.test_catalog app.diagnostic_metadata.tests.test_creation_contract
 ```
+
+`test_components` uses isolated SQLite models to exercise the production
+deletion queries, foreign-key configuration cascades, typed endpoint IDs,
+inventory cleanup and SQL rollback. Run it with Django configured for an
+in-memory SQLite database and `django.contrib.contenttypes` installed; it does
+not read or modify live Mongo/PostgreSQL data. Production model/API imports are
+also checked separately from that isolated schema.

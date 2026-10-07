@@ -19,7 +19,57 @@ import { createReviewedAssetTrain } from './asset-train-creation';
 import { UserModel } from '../../models/user.model';
 import { externalAPI } from '../../configDB';
 import { requireProcessorBaseUrl } from '../../utils/processor-url';
+import { buildChildComponent, componentIdentityForUpdate, deleteConfirmedChild } from './asset-component-management';
+import { getComponentDefinition } from '../../catalog/asset-train-catalog';
 class AssetService {
+  async createChildComponent(rootId: string, body: any, accountId: any, userId: any, token: string) {
+    requireProcessorBaseUrl(externalAPI.URL);
+    const root = await AssetModel.findOne({ _id: rootId, account_id: accountId, visible: true }).lean();
+    const mappings = await MapUserAssetLocationModel.find({ assetId: rootId, account_id: accountId }).lean();
+    const plan = buildChildComponent(root, body, accountId, userId, mappings);
+    const descendants = await this.getAllChildAssetsRecursive(rootId, accountId);
+    if (descendants.length >= 1999) {
+      throw Object.assign(new Error('An asset train may contain at most 2,000 assets including the parent.'), { status: 400 });
+    }
+    if (descendants.some(child => String(child.parent_id) === rootId
+      && String(child.asset_name).trim().toLowerCase() === plan.asset.asset_name.toLowerCase())) {
+      throw Object.assign(new Error('A child component with this name already exists.'), { status: 400 });
+    }
+    await new AssetModel(plan.asset).validate();
+    try {
+      await withTransaction(async session => {
+        await subscriptionLimitService.assertCanCreate(accountId, 'asset', 1, session);
+        await AssetModel.insertMany([plan.asset], { session, ordered: true });
+        if (plan.mappings.length) await mapUserToAssetService.createMapUserAssets(plan.mappings, session);
+      });
+      const response = await processorAPIService.setAssetHealthStatus([{ assetId: plan.asset._id }], accountId, userId, token);
+      if (response?.status === false) throw Object.assign(new Error('The processor could not initialize component health.'), { status: 502 });
+      const data = await this.getAllAssets({ _id: plan.asset._id, account_id: accountId, visible: true });
+      if (!data.length) throw new Error('The new component could not be loaded.');
+      return data;
+    } catch (error) {
+      await MapUserAssetLocationModel.deleteMany({ account_id: accountId, assetId: plan.asset._id });
+      await AssetModel.deleteOne({ account_id: accountId, _id: plan.asset._id });
+      throw error;
+    }
+  }
+
+  async removeChildComponent(rootId: string, childId: string, accountId: any, userId: any, token: string, confirmed: boolean, environment?: string) {
+    if (!confirmed) throw Object.assign(new Error('Confirm deletion of the component and all associated endpoints.'), { status: 400 });
+    const root = await AssetModel.findOne({ _id: rootId, account_id: accountId, visible: true, top_level: true }).lean();
+    const child = await AssetModel.findOne({ _id: childId, parent_id: rootId, account_id: accountId, visible: true }).lean();
+    if (!root || root.parent_id || !child || (!child.diagnostic_component_key && !getComponentDefinition(child.asset_type))) {
+      throw Object.assign(new Error('A direct child component in this asset train is required.'), { status: 404 });
+    }
+    if (await AssetModel.exists({ parent_id: childId, account_id: accountId, visible: true })) {
+      throw Object.assign(new Error('This component contains child assets. Remove those children before deleting the component.'), { status: 409 });
+    }
+    return deleteConfirmedChild(childId, {
+      deleteEndpoints: () => processorAPIService.deleteChildComponent(rootId, childId, token, userId, environment),
+      hideChild: async () => { await this.removeById({ _id: child._id, account_id: accountId }, userId, [childId]); }
+    });
+  }
+
   async createAssetTrain(body: any, accountId: any, userId: any, token: string) {
     return createReviewedAssetTrain(body, accountId, userId, {
       preflight: async plan => {
@@ -197,24 +247,25 @@ class AssetService {
     return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { returnDocument: 'after' });
   }
 
-  async removeById(match: any, userID: any) {
+  async removeById(match: any, userID: any, confirmedIds?: string[]) {
     return await withTransaction(async (session) => {
       const parentId = String(match._id);
       const account_id = match.account_id;
-      const childAssets = await this.getAllChildAssetsRecursive(parentId, account_id);
-      const totalIds = [parentId, ...childAssets.map(a => String(a._id))];
+      const childAssets = confirmedIds ? [] : await this.getAllChildAssetsRecursive(parentId, account_id);
+      const totalIds = confirmedIds || [parentId, ...childAssets.map(a => String(a._id))];
       const objectIds = helperService.validateObjectIds(totalIds);
       
       const updateQuery = { $set: { visible: false, updatedBy: userID } };
       
-      await AssetModel.updateMany({ _id: { $in: objectIds } }, updateQuery, { session });
       await WorkOrderModel.updateMany({ wo_asset_id: { $in: objectIds } }, updateQuery, { session });
       await ObservationModel.updateMany({ assetId: { $in: objectIds } }, updateQuery, { session });
       await ReportAssetModel.updateMany({ assetId: { $in: objectIds } }, updateQuery, { session });
       await InspectionModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery, { session });
       await WorkRequestModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery, { session });
       
-      await mapUserToAssetService.removeAssetListMapping(totalIds, session);
+      await MapUserAssetLocationModel.deleteMany({ assetId: { $in: objectIds }, account_id }, { session });
+      // Hide last so partial failures on standalone Mongo can be retried.
+      await AssetModel.updateMany({ _id: { $in: objectIds }, account_id }, updateQuery, { session });
       return true;
     });
   };
@@ -290,6 +341,7 @@ class AssetService {
       if (!existingAsset) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
+      body = componentIdentityForUpdate(existingAsset, body);
 
       let targetAssetClass = body.asset_class || existingAsset.asset_class || 'class_1';
 
@@ -372,7 +424,7 @@ class AssetService {
           connectFromField: '_id',
           connectToField: 'parent_id',
           as: 'children',
-          restrictSearchWithMatch: { visible: true }
+          restrictSearchWithMatch: { visible: true, ...(account_id ? { account_id } : {}) }
         }
       }
     ]);
