@@ -1,9 +1,9 @@
-# Asset train catalog and creation preview — Phases 1–2
+# Asset train catalog and creation — Phases 1–3
 
 The catalog combines existing standalone choices with the equipment and drive
 trains supplied in `catalog/asset_train.csv`. The Create Asset modal uses it to
-prepare an editable preview. Creating the parent and reviewed children together
-is Phase 3 work; attachment, endpoint creation and deletion remain separate.
+prepare an editable preview and save the parent and reviewed children. Optional
+attachments belong to the parent; endpoint creation and deletion remain separate.
 
 ## Rules
 
@@ -44,6 +44,7 @@ From backend_express in the normal three-project workspace:
 npm run catalog:generate
 npm run catalog:check
 npm run test:catalog
+npm run test:asset-train
 ```
 
 Generation rejects unknown source components and unresolved duplicate equipment
@@ -59,9 +60,8 @@ agreement between all snapshots and TypeScript helpers without writing files.
   registry for diagnostic component options, roles, and train-family suggestions.
 - Django canonicalizes known machine names and component aliases. Existing
   custom diagnostic slugs remain accepted. No database migration is needed.
-- Child creation, inherited fields, and hierarchy/metadata synchronization are
-  Phase 3 work. Component management and the Django endpoint deletion cascade
-  remain later work.
+- Parent/child persistence and initial diagnostic metadata are implemented.
+  Component management and the Django endpoint deletion cascade remain later work.
 
 ## Creation preview
 
@@ -76,28 +76,62 @@ a child does not regenerate component suggestions.
   arrangement changes retain equipment/manual edits and reconcile only the
   additional drive suggestions. Explicit removals remain removed until reset.
 - Validation rejects blank names, duplicate final child names, names over 200
-  characters (including number suffixes), and more than 2,000 total children.
+  characters (including number suffixes), and more than 1,999 children. The
+  diagnostic inventory limit is 2,000 assets including the parent.
 - `AssetModalComponent.getComponentDrafts()` returns independent, expanded
   child specifications with stable keys, display names, asset types, component
-  families and roles for Phase 3 persistence. It rejects invalid drafts.
-- Catalog train submission is deliberately gated with a visible availability
-  message until Phase 3 can persist all reviewed children. No asset, attachment
-  upload or diagnostic save is sent for a catalog preview. Standalone asset
-  creation and existing edit/manual child paths retain their current save flow.
+  families and roles for persistence. It rejects invalid drafts.
+- The submitted asset fields, reviewed children and train settings are captured
+  before attachment upload. A failed creation can retry without losing drafts
+  or uploading the same successful attachments twice.
 
-Phase 3 should remove the preview-only submit gate when the backend consumes
-these drafts and synchronizes the created child IDs into diagnostic metadata.
+## Persistence and failure behavior
+
+`POST /api/master/assets/train` accepts the usual top-level asset fields and a
+required `components` array. Each expanded child contains `key`, `name`,
+`asset_type`, `component_type` and `component_role`. An empty reviewed array is
+allowed. Standalone choices continue using `/old`; updates do not regenerate
+children.
+
+- The API validates component keys, names, diagnostic families and roles before
+  writing. Location and active-user ownership are checked against the signed-in
+  account. Account and creator IDs come from authentication.
+- The subscription capacity check counts the parent plus every child. Mongo
+  assets and their user/alarm mappings share one transaction when supported.
+- Every child is directly under the new parent, has the same root ID, location,
+  class, timezone and alarm selections, and has empty model/manufacturer/year,
+  description, asset ID and attachments. Motors/generators/alternators are
+  electric; other mechanical components are non-electric.
+- Children store `diagnostic_component_key`, `diagnostic_component_type` and
+  `diagnostic_component_role` for later recovery. No endpoints are created.
+- Asset health is initialized for all created IDs after Mongo commit. A creation
+  or processor error triggers compensation for the explicitly planned assets
+  and mappings, scoped to the account. This also covers partial writes on Mongo
+  deployments without transaction support. Cleanup failures are surfaced.
+- The response preserves `data: [parent]` and adds `components`, with the saved
+  `asset_id` for each reviewed child. The frontend then saves the existing Django
+  train profile with these IDs and empty nameplate/metadata objects. Django
+  resolves the authoritative inventory from Mongo and rejects unrelated IDs.
+- Metadata saving is a subsequent request. If it fails, the hierarchy remains
+  created and the UI points to Setup Diagnostics. That screen seeds persisted
+  component keys even before endpoints exist and retains saved diagnostic edits.
+  This avoids creating the parent/children again just to retry metadata.
+- A notification failure does not undo a successfully created train.
+- The Express processor client requires an absolute HTTP/HTTPS
+  `PROCESSOR_API_URL`. A missing or invalid URL returns
+  `PROCESSOR_API_NOT_CONFIGURED` instead of the original generic Invalid URL.
+  Request logs omit authorization tokens.
 
 ## Focused verification
 
 The frontend catalog specs can run independently of unrelated legacy specs:
 
 ```text
-ng test --watch=false --browsers=ChromeHeadless --ts-config=tsconfig.asset-creation.spec.json --include=src/app/shared/catalog/asset-train-catalog.spec.ts --include=src/app/default/assets/asset-modal/asset-modal.component.spec.ts
+ng test --watch=false --browsers=ChromeHeadless --ts-config=tsconfig.asset-creation.spec.json --include=src/app/shared/catalog/asset-train-catalog.spec.ts --include=src/app/default/assets/asset-modal/asset-modal.component.spec.ts --include=src/app/default/assets/diagnostic-setup/diagnostic-setup.component.spec.ts
 ```
 
 The Python registry and metadata validation tests require no external services:
 
 ```text
-python -B -m unittest app.diagnostic_metadata.tests.test_catalog
+python -B -m unittest app.diagnostic_metadata.tests.test_catalog app.diagnostic_metadata.tests.test_creation_contract
 ```

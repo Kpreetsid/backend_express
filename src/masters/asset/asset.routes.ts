@@ -2,7 +2,7 @@ import express from 'express';
 import { assetController } from './asset.controller';
 import { hasRolePermission } from '../../middlewares';
 import { validateParamId, validateParam } from '../../middlewares/validate';
-import { assetValidator } from './asset.validator';
+import { assetTrainValidator, assetValidator } from './asset.validator';
 import { validate } from '../../middlewares/validator.middleware';
 import { ASSET_TRAIN_CATALOG } from '../../catalog/asset-train-catalog';
 
@@ -21,6 +21,7 @@ export default (router: express.Router) => {
     assetRouter.get('/:id', validateParamId, assetController.getAsset);
     assetRouter.post('/sensor-list', assetController.getFilteredAssetSensorList);
     assetRouter.post('/old', hasRolePermission('asset', 'add_asset'), assetValidator, validate, assetController.createOld);
+    assetRouter.post('/train', hasRolePermission('asset', 'add_asset'), assetTrainValidator, validate, assetController.createTrain);
     assetRouter.put('/old-edit/:id', validateParamId, hasRolePermission('asset', 'edit_asset'), assetValidator, validate, assetController.updateOld);
     assetRouter.post('/filter', assetController.getFilteredAssets);
     assetRouter.patch('/:id', validateParamId, hasRolePermission('asset', 'edit_asset'), assetController.updateAssetImage);

@@ -15,8 +15,50 @@ import { Cacheable } from '../../_cache/decorators/cacheable.decorator';
 import { CacheKeys, CacheTTL } from '../../_cache/cacheKeys';
 import { generateDeterministicObjectKey } from '../../utils/cacheHelper';
 import { subscriptionLimitService } from '../company/subscriptionLimit.service';
-
+import { createReviewedAssetTrain } from './asset-train-creation';
+import { UserModel } from '../../models/user.model';
+import { externalAPI } from '../../configDB';
+import { requireProcessorBaseUrl } from '../../utils/processor-url';
 class AssetService {
+  async createAssetTrain(body: any, accountId: any, userId: any, token: string) {
+    return createReviewedAssetTrain(body, accountId, userId, {
+      preflight: async plan => {
+        requireProcessorBaseUrl(externalAPI.URL);
+        const root = plan.assets[0];
+        const location = await LocationModel.exists({ _id: root.locationId, account_id: accountId, visible: true });
+        if (!location) {
+          throw Object.assign(new Error('The selected location is unavailable in your account.'), { status: 400 });
+        }
+        const users = [...new Set(plan.mappings.map(mapping => mapping.userId))];
+        const userCount = await UserModel.countDocuments({ _id: { $in: users }, account_id: accountId, user_status: 'active' });
+        if (userCount !== users.length) {
+          throw Object.assign(new Error('All selected users must be active users in your account.'), { status: 400 });
+        }
+        // Validate every document before the first database write.
+        for (const asset of plan.assets) await new AssetModel(asset).validate();
+      },
+      persist: async plan => {
+        await withTransaction(async session => {
+          await subscriptionLimitService.assertCanCreate(accountId, 'asset', plan.assets.length, session);
+          await AssetModel.insertMany(plan.assets, { session, ordered: true });
+          await mapUserToAssetService.createMapUserAssets(plan.mappings, session);
+        });
+      },
+      initializeHealth: async plan => {
+        const response = await processorAPIService.setAssetHealthStatus(plan.mappings, accountId, userId, token);
+        if (response?.status === false) {
+          throw Object.assign(new Error('The processor could not initialize asset health.'), { status: 502 });
+        }
+      },
+      readRoot: rootId => this.getAllAssets({ _id: rootId, account_id: accountId, visible: true }),
+      rollback: async ids => {
+        const match = { account_id: accountId, assetId: { $in: ids } };
+        await MapUserAssetLocationModel.deleteMany(match);
+        await AssetModel.deleteMany({ account_id: accountId, _id: { $in: ids } });
+      }
+    });
+  }
+
   @Cacheable((args) => {
     const match = args[0] || {};
     if (!match.account_id) return null; // Uncachable without account isolation

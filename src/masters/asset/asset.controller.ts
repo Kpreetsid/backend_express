@@ -231,6 +231,27 @@ class AssetController {
     }
   };
 
+  createTrain = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+      const { account_id, _id: user_id } = get(req, 'user', {}) as IUser;
+      const result = await assetService.createAssetTrain(req.body, account_id, user_id, get(req, 'userToken', '') as string);
+      const root = result.data[0];
+      // A notification failure must not turn a completed creation into a failed retry.
+      try {
+        await notificationService.notifyAccountUsers({
+          accountId: String(account_id), module: 'Asset', event: 'created',
+          entityId: root.id, entityName: root.asset_name,
+          actionUrl: `/assets/asset-health/${root.id}/health`, sourceUserId: String(user_id)
+        });
+      } catch {
+        console.warn('The asset train was created, but its notification could not be sent.');
+      }
+      res.status(201).json({ status: true, message: 'Asset and components created successfully.', ...result });
+    } catch (error) {
+      next(error);
+    }
+  };
+
   createOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     var data: any;
     try {

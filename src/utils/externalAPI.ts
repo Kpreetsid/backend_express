@@ -1,14 +1,15 @@
 import { externalAPI } from "../configDB";
 import axios, { AxiosRequestConfig } from "axios";
+import { requireProcessorBaseUrl } from './processor-url';
 
 const successStatusCode = [200, 201, 202, 203, 204, 205, 206, 207, 208, 226]
 export const getExternalData = async (path: string, method: string, body: any, token: string, userID: string) => {
   try {
     console.group("External API");
-    const baseUrl = (externalAPI.URL || "").replace(/\/+$/, "");
+    const baseUrl = requireProcessorBaseUrl(externalAPI.URL);
     const normalizedPath = path.startsWith("/") ? path : `/${path}`;
     const apiUrl = `${baseUrl}${normalizedPath}`;
-    console.log({ apiUrl, body, token, userID });
+    console.log({ apiUrl, userID });
     const config: AxiosRequestConfig = {
       method: method,
       url: apiUrl,

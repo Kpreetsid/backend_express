@@ -1,5 +1,6 @@
 import { body } from 'express-validator';
 import { SUPPORTED_ASSET_TYPES } from '../../catalog/asset-train-catalog';
+import { validateReviewedComponents } from './asset-train-creation';
 
 export const assetValidator = [
   body('asset_name')
@@ -27,4 +28,12 @@ export const assetValidator = [
   body('alarmType')
     .optional()
     .isArray().withMessage('Alarm type must be an array')
+];
+
+export const assetTrainValidator = [
+  ...assetValidator,
+  body('components').custom((_value, { req }) => {
+    validateReviewedComponents(req.body);
+    return true;
+  })
 ];

@@ -10,7 +10,8 @@
     "typecheck": "npx tsc --noEmit",
     "catalog:generate": "node scripts/generate-asset-train-catalog.cjs",
     "catalog:check": "node scripts/generate-asset-train-catalog.cjs --check",
-    "test:catalog": "node --require ts-node/register/transpile-only --test src/catalog/asset-train-catalog.test.ts"
+    "test:catalog": "node --require ts-node/register/transpile-only --test src/catalog/asset-train-catalog.test.ts",
+    "test:asset-train": "node --require ts-node/register/transpile-only --test src/catalog/asset-train-catalog.test.ts src/masters/asset/asset-train-creation.test.ts"
   },
   "keywords": [],
   "author": "Pawan Kumar Gautam",

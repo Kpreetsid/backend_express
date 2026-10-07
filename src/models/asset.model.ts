@@ -91,6 +91,9 @@ export interface IAsset extends Document {
   minimumContinuousStableFlowM3h?: number;
   motorToPumpSpeedRatio?: number;
   images: Object[];
+  diagnostic_component_key?: string;
+  diagnostic_component_type?: string;
+  diagnostic_component_role?: string;
 }
 
 const assetSchema = new Schema<IAsset>(
@@ -195,7 +198,10 @@ const assetSchema = new Schema<IAsset>(
     bepEfficiencyPercent: { type: Number },
     minimumContinuousStableFlowM3h: { type: Number },
     motorToPumpSpeedRatio: { type: Number },
-    images: { type: [Object], default: [] }
+    images: { type: [Object], default: [] },
+    diagnostic_component_key: { type: String, trim: true, maxlength: 150 },
+    diagnostic_component_type: { type: String, trim: true },
+    diagnostic_component_role: { type: String, trim: true }
   },
   {
     collection: ASSET_COLLECTION_NAME,
