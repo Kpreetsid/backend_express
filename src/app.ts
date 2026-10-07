@@ -18,7 +18,9 @@ import {
 } from './common/middlewares';
 import { registerAppRoutes } from './routes';
 
-export const createApp = (): Express => {
+export const createApp = (): Express => {import { authenticatedStatic } from './middlewares/authenticatedStatic';
+import { opcuaRoutes } from './routes/opcua.routes';
+
 const app: Express = express();
 app.set('trust proxy', 1);
 
@@ -32,7 +34,7 @@ app.use(cors({
     'X-CMMS-Crypto-Key-Id',
     'X-CMMS-Crypto-Timestamp',
     'X-CMMS-Crypto-Nonce',
-    'X-Account-Permission-Version',
+    'X-CMMS-Account-Encrypt-Payload', 'X-CMMS-Account-Encrypt-Response', 'X-Account-Permission-Version',
     'ETag',
     'Retry-After',
     'Idempotency-Replayed'
@@ -74,19 +76,37 @@ const uploadDirs = [
   'work_order'
 ];
 
-app.use('/', express.static(path.join(__dirname, '../uploadFiles')));
+app.use('/', authenticatedStatic(path.join(__dirname, '../uploadFiles')));
 uploadDirs.forEach((dir) => {
   const dirPath = path.join(__dirname, '../uploadFiles', dir);
-  app.use('/', express.static(dirPath));
-  app.use(`/${dir}`, express.static(dirPath));
+  app.use('/', authenticatedStatic(dirPath));
+  app.use(`/${dir}`, authenticatedStatic(dirPath));
   const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
-  app.use(`${apiBasePath}/${dir}`, express.static(dirPath));
+  app.use(`${apiBasePath}/${dir}`, authenticatedStatic(dirPath));
 });
 
-// Register Modular Enterprise Routes
-registerAppRoutes(app);
+app.get('/', (req: Request, res: Response) => {
+  res.status(200).json({ status: true, message: 'Welcome to CMMS ExpressJS API' });
+});
 
-// 404 Catch-all Handler
+app.use('/health', healthRouter);
+app.use('/metrics', metricsRouter);
+
+const apiRouter: Router = Router();
+apiRouter.use('/crypto', cryptoRouter);
+apiRouter.use('/internal/account-permissions', accountPermissionEventRoutes());
+apiRouter.use('/', routerIndex());
+apiRouter.use('/upload', isAuthenticated, uploadRoutes());
+apiRouter.use('/master', isAuthenticated, masterRoutes());
+apiRouter.use('/opcua', isAuthenticated, opcuaRoutes());
+apiRouter.use('/work', isAuthenticated, workRoutes());
+apiRouter.use('/reports', isAuthenticated, reportsRoutes());
+apiRouter.use('/map', isAuthenticated, transactionRoutes());
+apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
+
+const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
+app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], apiRouter);
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   const err = new Error('Requested resource not found.');
   (err as any).status = 404;
