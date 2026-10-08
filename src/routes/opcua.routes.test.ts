@@ -92,6 +92,34 @@ test('fan mapping updates verify the original and selected asset and pass optimi
   assert.equal(calls[1].url, 'http://processor.test/internal/opcua/mappings/7/');
 });
 
+test('chiller cache refresh verifies asset access and forwards pending status from the processor', async t => {
+  environment(t);
+  t.mock.method(AssetModel, 'findOne', (filter: any) => {
+    assert.equal(filter.account_id, org); assert.equal(filter.visible, true);
+    assert.equal(String(filter._id), assetId);
+    return { select: () => ({ lean: async () => ({ _id: assetId, asset_name: 'Chiller' }) }) } as any;
+  });
+  const calls: any[] = [];
+  t.mock.method(axios, 'request', async (config: any) => {
+    calls.push(config);
+    return { data: config.method === 'GET' ? { asset_id: assetId, asset_type: 'chiller' } :
+      { cache_refreshed: false, mapping: { asset_id: assetId, asset_type: 'chiller', cache_refresh_pending: true } } } as any;
+  });
+  const router: any = opcuaRoutes();
+  const route = router.stack.find((layer: any) => layer.route?.path === '/mappings/:id/refresh').route;
+  const handler = route.stack[route.stack.length - 1].handle;
+  const result: any = await new Promise((resolve, reject) => {
+    let status = 200;
+    const response: any = { status(code: number) { status = code; return this; },
+      json(body: any) { resolve({ status, body }); } };
+    handler({ params: { id: '7' }, body: {}, user: { account_id: org, user_role: 'admin' } }, response, reject);
+  });
+  assert.equal(result.status, 200); assert.equal(result.body.cache_refreshed, false);
+  assert.equal(result.body.mapping.cache_refresh_pending, true);
+  assert.equal(calls[1].method, 'POST'); assert.equal(calls[1].url, 'http://processor.test/internal/opcua/mappings/7/refresh/');
+  assert.equal(calls[1].headers['X-Opcua-Org'], org);
+});
+
 test('invalid selected type or inaccessible asset never reaches the processor', async t => {
   environment(t);
   const asset = t.mock.method(AssetModel, 'findOne', () => ({ select: () => ({ lean: async () =>
