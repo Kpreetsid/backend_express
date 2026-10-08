@@ -80,9 +80,9 @@ class AssetService {
           throw Object.assign(new Error('The selected location is unavailable in your account.'), { status: 400 });
         }
         const users = [...new Set(plan.mappings.map(mapping => mapping.userId))];
-        const userCount = await UserModel.countDocuments({ _id: { $in: users }, account_id: accountId, user_status: 'active' });
+        const userCount = await UserModel.countDocuments({ _id: { $in: users }, account_id: accountId });
         if (userCount !== users.length) {
-          throw Object.assign(new Error('All selected users must be active users in your account.'), { status: 400 });
+          throw Object.assign(new Error('All selected users must belong to your account.'), { status: 400 });
         }
         // Validate every document before the first database write.
         for (const asset of plan.assets) await new AssetModel(asset).validate();

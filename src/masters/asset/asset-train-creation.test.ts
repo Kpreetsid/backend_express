@@ -137,7 +137,7 @@ test('missing processor URLs produce a clear configuration error', () => {
   assert.equal(requireProcessorBaseUrl('http://localhost:8000/api/'), 'http://localhost:8000/api');
 });
 
-test('the database adapter checks ownership and total capacity, shares one session, and scopes compensation', async t => {
+test('the database adapter maps active and inactive users while checking ownership, capacity and compensation', async t => {
   const { assetService } = require('./asset.service');
   const { LocationModel } = require('../../models/location.model');
   const { UserModel } = require('../../models/user.model');
@@ -154,7 +154,14 @@ test('the database adapter checks ownership and total capacity, shares one sessi
   };
   t.mock.method(mongoose, 'startSession', async () => session);
   const location = t.mock.method(LocationModel, 'exists', async () => ({ _id: request().locationId }));
-  const users = t.mock.method(UserModel, 'countDocuments', async () => 2);
+  const locationUsers = [
+    { _id: userId, account_id: accountId, user_status: 'active' },
+    { _id: '64a000000000000000000004', account_id: accountId, user_status: 'inactive' }
+  ];
+  const users = t.mock.method(UserModel, 'countDocuments', async (query: any) => locationUsers.filter(user =>
+    query._id.$in.includes(user._id) && user.account_id === query.account_id
+    && (!query.user_status || user.user_status === query.user_status)
+  ).length);
   const capacity = t.mock.method(subscriptionLimitService, 'assertCanCreate', async () => ({} as any));
   const assets = t.mock.method(AssetModel, 'insertMany', async () => []);
   const mappings = t.mock.method(mapUserToAssetService, 'createMapUserAssets', async () => []);
@@ -168,9 +175,17 @@ test('the database adapter checks ownership and total capacity, shares one sessi
   assert.deepEqual(location.mock.calls[0].arguments[0], {
     _id: request().locationId, account_id: accountId, visible: true
   });
+  assert.deepEqual(users.mock.calls[0].arguments[0], {
+    _id: { $in: locationUsers.map(user => user._id) }, account_id: accountId
+  });
   assert.deepEqual(capacity.mock.calls[0].arguments, [accountId, 'asset', 6, session]);
   assert.equal(((assets.mock.calls[0].arguments as any[])[1] as any).session, session);
   assert.equal(mappings.mock.calls[0].arguments[1], session);
+  const persistedMappings: any[] = mappings.mock.calls[0].arguments[0];
+  for (const asset of (assets.mock.calls[0].arguments as any[])[0]) {
+    assert.deepEqual(persistedMappings.filter(mapping => String(mapping.assetId) === String(asset._id))
+      .map(mapping => mapping.userId), locationUsers.map(user => user._id));
+  }
   assert.equal(health.mock.calls[0].arguments[0].length, 12);
   assert.equal(deletedAssets.mock.callCount(), 0);
 
@@ -186,7 +201,7 @@ test('the database adapter checks ownership and total capacity, shares one sessi
   const insertedCount = assets.mock.callCount();
   const cleanupCount = deletedAssets.mock.callCount();
   users.mock.mockImplementation(async () => 1);
-  await assert.rejects(assetService.createAssetTrain(request(), accountId, userId, 'token'), /active users in your account/);
+  await assert.rejects(assetService.createAssetTrain(request(), accountId, userId, 'token'), /users must belong to your account/);
   assert.equal(assets.mock.callCount(), insertedCount);
   assert.equal(deletedAssets.mock.callCount(), cleanupCount);
   users.mock.mockImplementation(async () => 2);
