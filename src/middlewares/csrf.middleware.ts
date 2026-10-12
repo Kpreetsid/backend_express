@@ -2,6 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { cookieAuth, refreshToken } from '../configDB';
 import { LEGACY_ACCESS_COOKIE_NAME, verifyCsrfToken } from '../user/authentication/authCookie.service';
 import { cookieService } from '../utils/cookie';
+import { isGuidePublishingBearerRequest } from '../knowledge-base/knowledge-base.publisher-auth';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -24,6 +25,10 @@ const isCookieAuthenticatedRequest = (req: Request): boolean => {
 };
 
 export const csrfProtection = (req: Request, _res: Response, next: NextFunction): void => {
+  // Publisher routes only accept a verified internal bearer token, never the
+  // customer application's cookies. Their own authentication enforces access.
+  if (isGuidePublishingBearerRequest(req)) { next(); return; }
+
   if (SAFE_METHODS.has(req.method.toUpperCase()) || isExcludedPath(req) || !isCookieAuthenticatedRequest(req)) {
     next();
     return;
