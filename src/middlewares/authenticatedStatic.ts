@@ -7,6 +7,16 @@ const isInside = (root: string, candidate: string): boolean => (
   candidate === root || candidate.startsWith(`${root}${path.sep}`)
 );
 
+const isExcluded = (root: string, candidate: string, excludedDirectories: Set<string>): boolean => {
+  const relativePath = path.relative(root, candidate);
+  const topLevelDirectory = relativePath.split(path.sep, 1)[0]?.toLowerCase();
+  return Boolean(topLevelDirectory && excludedDirectories.has(topLevelDirectory));
+};
+
+type AuthenticatedStaticOptions = {
+  excludedTopLevelDirectories?: readonly string[];
+};
+
 /**
  * Serves files from disk only after the normal API authentication succeeds.
  *
@@ -14,9 +24,13 @@ const isInside = (root: string, candidate: string): boolean => (
  * This lets the middleware be mounted at `/` for legacy upload URLs without
  * intercepting unrelated routes such as `/api/users/login`.
  */
-export const authenticatedStatic = (rootDirectory: string): RequestHandler => {
+export const authenticatedStatic = (
+  rootDirectory: string,
+  { excludedTopLevelDirectories = [] }: AuthenticatedStaticOptions = {}
+): RequestHandler => {
   const root = path.resolve(rootDirectory);
   const serveStatic = express.static(root, { fallthrough: true });
+  const excludedDirectories = new Set(excludedTopLevelDirectories.map(directory => directory.toLowerCase()));
 
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     if (req.method !== 'GET' && req.method !== 'HEAD') {
@@ -33,7 +47,7 @@ export const authenticatedStatic = (rootDirectory: string): RequestHandler => {
     }
 
     const candidate = path.resolve(root, relativePath);
-    if (!relativePath || !isInside(root, candidate)) {
+    if (!relativePath || !isInside(root, candidate) || isExcluded(root, candidate, excludedDirectories)) {
       next();
       return;
     }
@@ -45,7 +59,8 @@ export const authenticatedStatic = (rootDirectory: string): RequestHandler => {
         fs.promises.realpath(candidate)
       ]);
 
-      if (!fileStats.isFile() || !isInside(realRoot, realCandidate)) {
+      if (!fileStats.isFile() || !isInside(realRoot, realCandidate) ||
+          isExcluded(realRoot, realCandidate, excludedDirectories)) {
         next();
         return;
       }
