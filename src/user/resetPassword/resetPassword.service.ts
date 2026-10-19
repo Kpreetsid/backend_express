@@ -1,6 +1,7 @@
-import crypto from 'crypto';
 import { MailerService } from "../../_config/mailer";
-import { VerificationCodeModel, VERIFICATION_CODE_EXPIRY_SECONDS } from '../../models/userVerification.model';
+import { UserModel } from '../../models/user.model';
+import { usersService } from '../../masters/user/user.service';
+import { verificationChallenges, validateNewPassword } from '../verification/verification-challenge.service';
 
 export const RESET_PROOF_EXPIRY_MS = 10 * 60 * 1000;
 
@@ -12,46 +13,20 @@ class ResetPasswordService {
     }
 
     async sendVerificationEmailCode (match: any) {
-        return await this.mailerService.sendVerificationCode(match);
+        return await this.mailerService.sendVerificationCode(match, 'password-reset');
     }
     
-    async createResetProof(email: string, verificationCode: string): Promise<string | null> {
-        const normalizedEmail = String(email || '').trim().toLowerCase();
-        const normalizedCode = String(verificationCode || '').trim();
-        if (!normalizedEmail || !/^\d{6}$/.test(normalizedCode)) {
-            return null;
-        }
-
-        const resetToken = crypto.randomBytes(32).toString('base64url');
-        const resetTokenHash = this.hashResetToken(resetToken);
-        const resetTokenExpiresAt = new Date(Date.now() + RESET_PROOF_EXPIRY_MS);
-        const verificationCreatedAfter = new Date(Date.now() - VERIFICATION_CODE_EXPIRY_SECONDS * 1000);
-        const verified = await VerificationCodeModel.findOneAndUpdate(
-            { email: normalizedEmail, code: normalizedCode, createdAt: { $gt: verificationCreatedAfter } },
-            { $set: { resetTokenHash, resetTokenExpiresAt } },
-            { new: true }
-        );
-
-        return verified ? resetToken : null;
-    }
-
-    async consumeResetProof(email: string, resetToken: string): Promise<boolean> {
-        const normalizedEmail = String(email || '').trim().toLowerCase();
-        const normalizedToken = String(resetToken || '').trim();
-        if (!normalizedEmail || normalizedToken.length < 32) {
-            return false;
-        }
-
-        const result = await VerificationCodeModel.findOneAndDelete({
-            email: normalizedEmail,
-            resetTokenHash: this.hashResetToken(normalizedToken),
-            resetTokenExpiresAt: { $gt: new Date() }
-        });
-        return !!result;
+    async verifyUserOTP (match: any) {
+        return { resetToken: await verificationChallenges.exchangeResetOtp(match.email, match.code) };
     }
     
-    private hashResetToken(resetToken: string): string {
-        return crypto.createHash('sha256').update(resetToken, 'utf8').digest('hex');
+    async completeReset(input: { email?: unknown; token: unknown; password: unknown; confirmation?: unknown }): Promise<void> {
+        validateNewPassword(input.password, input.confirmation);
+        const verified = await verificationChallenges.consumeResetToken(input.token, input.email);
+        const user = await UserModel.findOne({ email: verified.email, user_status: 'active', visible: { $ne: false } });
+        if (!user) throw Object.assign(new Error('Recovery is invalid. Please request a new code.'), { status: 410 });
+        // Failed writes never restore a consumed proof.
+        await usersService.updateUserPassword(user._id, input.password, user.account_id);
     }
 }
 

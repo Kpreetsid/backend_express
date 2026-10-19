@@ -5,6 +5,10 @@ import { passwordService } from '../../utils/bcrypt';
 import { rolesService } from './role/roles.service';
 import { helperService } from '../../utils/helper';
 import { MailerService } from "../../_config/mailer";
+import { TokenModel } from '../../models/userToken.model';
+import { tokenSessionStore } from '../../_cache/session/tokenSessionStore';
+import { validateNewPassword } from '../../user/verification/verification-challenge.service';
+import { nextPasswordExpiry } from '../../user/authentication/password-expiry';
 import { RoleManager } from "../../_role/newUserRoles";
 import { RoleMenuModel } from "../../models/userRoleMenu.model";
 
@@ -109,22 +113,25 @@ class UsersService {
     }
   };
 
-  async updateUserPassword(user_id: any, password: string) {
+  async updateUserPassword(user_id: any, password: string, account_id: any): Promise<void> {
+    validateNewPassword(password);
     const hashedPassword = await passwordService.hashPassword(password);
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      user_id,
-      { $set: { password: hashedPassword, passwordExpiredAt: new Date() } },
-      { returnDocument: 'after', runValidators: true }
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { _id: user_id, account_id, user_status: 'active', visible: { $ne: false } },
+      { $set: { password: hashedPassword, passwordExpiredAt: nextPasswordExpiry() } },
+      { returnDocument: 'after' }
     );
-    if (!updatedUser) {
-      throw Object.assign(new Error('User not found'), { status: 404 });
-    }
+    if (!updatedUser) throw Object.assign(new Error('User not found'), { status: 404 });
+    await TokenModel.deleteMany({ userId: user_id, $or: [
+      { principalType: { $in: ['user', 'refresh_token'] } },
+      { principalType: { $exists: false } }
+    ] });
+    await tokenSessionStore.deleteUserSessions(String(account_id), String(user_id));
     try {
       await this.mailerService.sendPasswordChangeConfirmation(updatedUser);
-    } catch (error) {
-      console.error('Password change confirmation email failed', error);
+    } catch {
+      console.warn('Password updated, but confirmation email delivery failed.');
     }
-    return updatedUser;
   };
 
   async updateUserDetails(id: string, accountId: any, body: Partial<IUser>) {

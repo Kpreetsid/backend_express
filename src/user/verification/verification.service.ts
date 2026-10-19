@@ -1,5 +1,5 @@
 import { MailerService } from "../../_config/mailer";
-import { VerificationCodeModel, VERIFICATION_CODE_EXPIRY_SECONDS } from '../../models/userVerification.model';
+import { verificationChallenges } from './verification-challenge.service';
 
 class VerificationService {
     private mailerService: MailerService;
@@ -9,16 +9,12 @@ class VerificationService {
     }
 
     async sendVerificationEmailCode (match: { email: string; firstName: string; lastName: string }) {
-        return await this.mailerService.sendVerificationCode(match);
+        return await this.mailerService.sendVerificationCode(match, 'email-verification');
     }
     
-    async consumeUserOTP (email: string, code: string) {
-        const createdAfter = new Date(Date.now() - VERIFICATION_CODE_EXPIRY_SECONDS * 1000);
-        return await VerificationCodeModel.findOneAndDelete({
-            email: String(email).trim().toLowerCase(),
-            code: String(code),
-            createdAt: { $gt: createdAfter }
-        });
+    async verifyUserOTP (match: { email: string; firstName: string; lastName: string; code: string }) {
+        await verificationChallenges.consumeOtp(match.email, match.code, 'email-verification');
+        return true;
     }
     
 }

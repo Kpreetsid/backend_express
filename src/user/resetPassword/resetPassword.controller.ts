@@ -1,28 +1,27 @@
 import { NextFunction, Request, Response } from 'express';
 import { usersService } from '../../masters/user/user.service';
 import { resetPasswordService } from './resetPassword.service';
+import { verificationEmail } from '../verification/verification-challenge.service';
 
 class ResetPasswordController {
 
     async sendVerificationEmail (req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
-            const { email } = req.body;
+            const email = verificationEmail(req.body.email);
             if (!email) {
                 throw Object.assign(new Error('Email is required'), { status: 400 });
             }
-            const normalizedEmail = String(email).trim().toLowerCase();
-            const emailCheck: any = await usersService.getAllUsers({ email: normalizedEmail, user_status: 'active' });
-            if (emailCheck.length) {
-                const match = {
-                    email: normalizedEmail,
-                    firstName: emailCheck[0].firstName,
-                    lastName: emailCheck[0].lastName
-                };
-                try {
-                    await resetPasswordService.sendVerificationEmailCode(match);
-                } catch (error) {
-                    console.error('Password reset email delivery failed', error);
-                }
+            const emailCheck: any = await usersService.getAllUsers({ email: email });
+            if(emailCheck.length === 0) {
+                throw Object.assign(new Error('User not registered. Please register first.'), { status: 404 });
+            }
+            if(emailCheck[0].user_status !== 'active') {
+                throw Object.assign(new Error('User is not active, Please contact admin.'), { status: 404 });
+            }
+            const match = { email, firstName: emailCheck[0].firstName, lastName: emailCheck[0].lastName };
+            const data = await resetPasswordService.sendVerificationEmailCode(match);
+            if (!data) {
+                throw Object.assign(new Error('Failed to send verification email'), { status: 500 });
             }
             res.status(200).json({
                 status: true,
@@ -35,26 +34,28 @@ class ResetPasswordController {
     
     async userOTPVerification (req: Request, res: Response, next: NextFunction): Promise<any> {
         try {
-            const { email, verificationCode } = req.body;
+            const email = verificationEmail(req.body.email);
+            const { verificationCode } = req.body;
             if (!email || !verificationCode) {
                 throw Object.assign(new Error('Email and OTP are required'), { status: 400 });
             }
             if (verificationCode.toString().length !== 6) {
                 throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
             }
-            const normalizedEmail = String(email).trim().toLowerCase();
-            const emailCheck: any = await usersService.getAllUsers({ email: normalizedEmail, user_status: 'active' });
-            const resetToken = emailCheck.length
-                ? await resetPasswordService.createResetProof(normalizedEmail, String(verificationCode))
-                : null;
-            if (!resetToken) {
-                throw Object.assign(new Error('Invalid or expired verification code'), { status: 400 });
+            const emailCheck: any = await usersService.getAllUsers({ email });
+            if (emailCheck.length === 0) {
+                throw Object.assign(new Error('User not registered. Please register first.'), { status: 404 });
             }
-            res.status(200).json({
-                status: true,
-                message: "User OTP verified successfully",
-                data: { resetToken }
-            });
+            if (emailCheck[0].user_status !== 'active') {
+                throw Object.assign(new Error('User is not active, Please contact admin.'), { status: 404 });
+            }
+            const match: any = { email: emailCheck[0].email };
+            match.code = verificationCode;
+            const data = await resetPasswordService.verifyUserOTP(match);
+            if (!data) {
+                throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
+            }
+            res.status(200).json({ status: true, message: "User OTP verified successfully", data });
         } catch (error) {
             next(error);
         }

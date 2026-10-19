@@ -14,6 +14,9 @@ import { TokenModel } from '../../models/userToken.model';
 import { clearAuthSessionCacheForUser } from '../../_config/auth';
 import { assertStrongPassword } from '../../utils/passwordPolicy';
 import { rolesService } from './role/roles.service';
+import { validateNewPassword } from '../../user/verification/verification-challenge.service';
+import { clearAuthCookies } from '../../user/authentication/authCookie.service';
+import { refreshTokenService } from '../../user/authentication/refreshToken.service';
 import { withTransaction } from '../../utils/transaction.helper';
 
 class UserController {
@@ -211,10 +214,11 @@ class UserController {
 
       const isCorrect = await passwordService.comparePassword(password, userData.password);
       if (!isCorrect) throw Object.assign(new Error("Incorrect current password"), { status: 400 });
-      await usersService.updateUserPassword(user_id, newPassword);
-      await TokenModel.deleteMany({ userId: user_id });
-      clearAuthSessionCacheForUser(String(user_id));
-      res.status(200).json({ status: true, message: "User password updated successfully. Please sign in again." });
+      validateNewPassword(newPassword, confirmNewPassword);
+      await usersService.updateUserPassword(user_id, newPassword, account_id);
+      clearAuthCookies(res);
+      refreshTokenService.clearCookie(res);
+      res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
       next(error);
     }
@@ -222,25 +226,15 @@ class UserController {
 
   async changeUserPassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, newPassword, confirmNewPassword, resetToken } = req.body;
+      const { email, resetToken, newPassword, confirmNewPassword } = req.body;
       if (!email || !newPassword || !confirmNewPassword || !resetToken)
         throw Object.assign(new Error("Email, reset token, new password and confirm password are required"), { status: 400 });
       if (newPassword !== confirmNewPassword)
         throw Object.assign(new Error("Passwords do not match"), { status: 400 });
-      assertStrongPassword(newPassword);
 
-      const normalizedEmail = String(email).trim().toLowerCase();
-      const resetProofConsumed = await resetPasswordService.consumeResetProof(normalizedEmail, String(resetToken));
-      if (!resetProofConsumed) {
-        throw Object.assign(new Error("Password reset verification has expired or was already used."), { status: 401 });
-      }
-      const userData = await usersService.getAllUsers({ email: normalizedEmail, user_status: "active" });
-      if (!userData.length) {
-        throw Object.assign(new Error("Password reset verification has expired or was already used."), { status: 401 });
-      }
-      await usersService.updateUserPassword(`${userData[0]._id}`, newPassword);
-      await TokenModel.deleteMany({ userId: userData[0]._id });
-      clearAuthSessionCacheForUser(String(userData[0]._id));
+      await resetPasswordService.completeReset({ email, token: resetToken, password: newPassword, confirmation: confirmNewPassword });
+      clearAuthCookies(res);
+      refreshTokenService.clearCookie(res);
       res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
       next(error);
