@@ -156,7 +156,10 @@ class CompanyController {
   removeCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { _id: userId } = get(req, "user", {}) as IUser;
+      const { _id: userId, account_id, user_role, isFirstUser } = get(req, "user", {}) as IUser;
+      if (String(id) !== String(account_id) || (user_role !== 'admin' && !isFirstUser)) {
+        throw Object.assign(new Error('You do not have permission to delete this account.'), { status: 403 });
+      }
       const deleted = await companyService.removeById(
         helperService.validateObjectId(String(id)),
         userId,

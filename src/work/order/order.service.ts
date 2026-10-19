@@ -21,6 +21,8 @@ import { PartsModel } from "../../models/part.model";
 import { PartsTypeModel } from "../../models/parts-types.model";
 import { SOPsModel } from "../../models/sops.model";
 import { assertSyncVersion, createSyncConflict } from "../../utils/sync-concurrency";
+import { ReportAssetModel } from '../../models/assetReport.model';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 export interface WorkOrderSearchParams {
   account_id: any;
@@ -1255,14 +1257,14 @@ class OrderService {
       {
         $lookup: {
           from: SOPsModel.collection.name,
-          let: { sop_form_id: '$sop_form_id' },
+          let: { sop_form_id: '$sop_form_id', recordAccount: '$account_id' },
           pipeline: [
             { 
               $match: { 
                 $expr: { 
-                  $eq: [
-                    '$_id', 
-                    { $cond: [{ $eq: [{ $type: '$$sop_form_id' }, 'string'] }, { $toObjectId: '$$sop_form_id' }, '$$sop_form_id'] }
+                  $and: [
+                    { $eq: ['$_id', { $cond: [{ $eq: [{ $type: '$$sop_form_id' }, 'string'] }, { $toObjectId: '$$sop_form_id' }, '$$sop_form_id'] }] },
+                    { $eq: ['$account_id', '$$recordAccount'] }
                   ] 
                 }, 
                 visible: true 
@@ -1401,12 +1403,13 @@ class OrderService {
       {
         $lookup: {
           from: PartsTypeModel.collection.name,
-          let: { partTypeIds: "$parts.part_type" },
+          let: { partTypeIds: "$parts.part_type", recordAccount: "$account_id" },
           pipeline: [
             {
               $match: {
+                visible: true,
                 $expr: {
-                  $in: [
+                  $and: [{ $in: [
                     { $toString: "$_id" },
                     {
                       $map: {
@@ -1415,7 +1418,7 @@ class OrderService {
                         in: { $toString: "$$id" }
                       }
                     }
-                  ]
+                  ] }, { $eq: ["$account_id", "$$recordAccount"] }]
                 }
               }
             },
@@ -4070,6 +4073,7 @@ class OrderService {
     return await withTransaction(async (session) => {
       let normalizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body })));
       this.validateIncomingParts(normalizedBody.parts || []);
+      await this.validateUpdateReferences(normalizedBody, user);
       let userIdList = Array.isArray(normalizedBody.userIdList) ? normalizedBody.userIdList.filter((userId: string) => !!userId) : [];
       let parentOrder: any = null;
       let parentChildCount = 0;
@@ -4124,7 +4128,7 @@ class OrderService {
 
       const normalizedParts = partsService.normalizeWorkOrderParts(normalizedBody.parts || [], normalizedBody.status);
       const excludedProcedurePartIds = this.normalizeObjectIdArray(normalizedBody.excluded_procedure_part_ids);
-      await partsService.validateInventoryByWorkOrder([], normalizedParts, 'Open', normalizedBody.status, session);
+      await partsService.validateInventoryByWorkOrder([], normalizedParts, 'Open', normalizedBody.status, session, user.account_id);
 
       const newAssetPayload: any = {
         account_id: user.account_id,
@@ -4311,13 +4315,51 @@ class OrderService {
     });
   };
 
+  private async updateAccessFilter(id: any, user: IUser): Promise<any> {
+    const match = await this.buildSearchMatch({ account_id: user.account_id, user_id: String(user._id), user_role: user.user_role, query: {} });
+    return { ...match, _id: helperService.validateObjectId(String(id)) };
+  }
+
+  private async validateUpdateReferences(body: any, user: IUser): Promise<void> {
+    const references = [
+      ['wo_asset_id', AssetModel, 'asset', 'account_id'], ['wo_location_id', LocationModel, 'location', 'account_id'],
+      ['parentId', WorkOrderModel, '', 'account_id'], ['work_request_id', WorkRequestModel, '', 'account_id'],
+      ['asset_report_id', ReportAssetModel, '', 'accountId'], ['sop_form_id', SOPsModel, '', 'account_id']
+    ] as const;
+    for (const [key, model, mapping, accountField] of references) {
+      if (!body[key]) continue;
+      const filter = await applyRoleFilter({ user, baseFilter: { _id: helperService.validateObjectId(String(body[key])) }, mapping, accountField });
+      if (!await (model as any).exists(filter)) throw Object.assign(new Error('Referenced work-order object is unavailable or outside your scope'), { status: 403 });
+    }
+    const userIds = [...new Set([
+      ...(Array.isArray(body.userIdList) ? body.userIdList : []),
+      ...(Array.isArray(body.tasks) ? body.tasks.map((item: any) => item.assigned_user_id) : []),
+      ...(Array.isArray(body.labor_entries) ? body.labor_entries.map((item: any) => item.user_id) : [])
+    ].filter(Boolean).map(String))];
+    if (userIds.length && await UserModel.countDocuments({ _id: { $in: helperService.validateObjectIds(userIds.join(',')) }, account_id: user.account_id, user_status: 'active' }) !== userIds.length) {
+      throw Object.assign(new Error('Assigned user is unavailable or outside your scope'), { status: 403 });
+    }
+    const partTypeIds = [...new Set((Array.isArray(body.parts) ? body.parts : []).map((part: any) => String(part.part_type || '')).filter((value: string) => value && !['N/A', 'NA'].includes(value.toUpperCase())))];
+    if (partTypeIds.length && await PartsTypeModel.countDocuments({ _id: { $in: helperService.validateObjectIds(partTypeIds.join(',')) }, account_id: user.account_id, visible: true }) !== partTypeIds.length) {
+      throw Object.assign(new Error('Part type is unavailable or outside your scope'), { status: 403 });
+    }
+    const partIds = [...new Set((Array.isArray(body.parts) ? body.parts : []).map((part: any) => part.part_id || part.id || part._id).filter(Boolean).map(String))];
+    if (partIds.length && await PartsModel.countDocuments({ _id: { $in: helperService.validateObjectIds(partIds.join(',')) }, account_id: user.account_id, visible: true }) !== partIds.length) {
+      throw Object.assign(new Error('Part is unavailable or outside your scope'), { status: 403 });
+    }
+  }
+
   async updateById(id: any, body: any, user: IUser, expectedVersion?: number): Promise<any> {
     return await withTransaction(async (session) => {
-      let existingOrder: any = await WorkOrderModel.findById(id).session(session);
+      const accessFilter = await this.updateAccessFilter(id, user);
+      let existingOrder: any = await WorkOrderModel.findOne(accessFilter).session(session);
       if (!existingOrder) {
         throw Object.assign(new Error('Work Order not found'), { status: 404 });
       }
       assertSyncVersion(existingOrder, expectedVersion);
+      body = { ...body };
+      for (const field of ['_id', 'id', 'account_id', 'createdBy', 'createdAt', 'order_no', 'createdFrom', 'status_details', 'completed_by', 'completed_at', 'oldParts']) delete body[field];
+      await this.validateUpdateReferences(body, user);
 
       const childCount = await this.getChildOrderCount(id, session);
       if (childCount > 0 && this.hasExecutionOwnedFieldChanges(body)) {
@@ -4353,14 +4395,14 @@ class OrderService {
       if (body.hasOwnProperty('parts')) {
         const normalizedParts = partsService.normalizeWorkOrderParts(body.parts || [], updatedData.status || existingOrder.status);
         await partsService.validateInventoryByWorkOrder(
-          body.oldParts || existingOrder.parts || [],
+          existingOrder.parts || [],
           normalizedParts,
           existingOrder.status,
           updatedData.status || existingOrder.status,
-          session
+          session, user.account_id
         );
         updatedData.parts = normalizedParts;
-        const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || existingOrder.parts || [], normalizedParts, user, session, {
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder(existingOrder.parts || [], normalizedParts, user, session, {
           account_id: user.account_id,
           work_order_id: existingOrder._id,
           work_order_no: existingOrder.order_no,
@@ -4377,7 +4419,7 @@ class OrderService {
           normalizedParts,
           existingOrder.status,
           updatedData.status || existingOrder.status,
-          session
+          session, user.account_id
         );
         updatedData.parts = normalizedParts;
         const inventoryResult = await partsService.adjustInventoryByWorkOrder(existingOrder.parts || [], normalizedParts, user, session, {
@@ -4408,12 +4450,12 @@ class OrderService {
       updatedData = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData)));
       updatedData = this.syncStatusDetailAuditFields(this.syncCompletionAuditFields(updatedData, existingOrder.status, user), user);
       delete updatedData.sync_version;
-      const updateFilter: any = { _id: id };
+      const updateFilter: any = { ...accessFilter };
       if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
       const data = await WorkOrderModel.findOneAndUpdate(updateFilter, updatedData, { returnDocument: 'after', session });
       if (!data) {
         if (expectedVersion !== undefined) {
-          throw createSyncConflict(await WorkOrderModel.findById(id).session(session));
+          throw createSyncConflict(await WorkOrderModel.findOne(accessFilter).session(session));
         }
         throw Object.assign(new Error('Failed to update work order'), { status: 400 });
       }

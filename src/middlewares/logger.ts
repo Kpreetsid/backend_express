@@ -6,6 +6,7 @@ import path from 'path';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
 import { UserLogProducer } from '../_cache/streams/userLogProducer';
+import { sanitizeLogUrl, redactLogData } from '../utils/log-redaction';
 
 class AppLogger {
   private logDir: string;
@@ -13,7 +14,6 @@ class AppLogger {
   private fileLogger!: RequestHandler;
   private consoleLogger: RequestHandler;
   private currentLogFile: string = '';
-  private readonly sensitiveKeyPattern = /(password|passcode|token|authorization|auth|otp|secret|cookie|session|card|ssn|external_token|verificationCode|confirmNewPassword|newPassword|payloadCrypto|sessionKey|_encrypted|kid|iv|tag|ct|__cmms_crypto_fields)/i;
 
   constructor() {
     this.logDir = path.join(process.cwd(), 'logs');
@@ -22,7 +22,7 @@ class AppLogger {
     }
     this.registerMorganTokens();
     this.refreshFileLogger();
-    const consoleFormat = ':date_ist | :status | :userId | :userName | :action | :method | :response-time ms | :url';
+    const consoleFormat = ':date_ist | :status | :userId | :userName | :action | :method | :response-time ms | :safe_url';
     this.consoleLogger = morgan(consoleFormat);
   }
 
@@ -50,7 +50,7 @@ class AppLogger {
     }
     const logFilePath = path.join(this.logDir, fileName);
     this.accessLogStream = fs.createWriteStream(logFilePath, { flags: 'a' });
-    const fileFormat = ':date_ist | :userId | :userName | :action | :method | :url | :module | :status | :res[content-length] | :response-time ms | IP: :remote-addr | Device: :device';
+    const fileFormat = ':date_ist | :userId | :userName | :action | :method | :safe_url | :module | :status | :res[content-length] | :response-time ms | IP: :remote-addr | Device: :device';
     this.fileLogger = morgan(fileFormat, { stream: this.accessLogStream });
   }
 
@@ -71,12 +71,12 @@ class AppLogger {
         const user: any = get(req, 'user', {});
         const userName = user?.username || 'Anonymous';
         const rawUserId = user?._id || user?.id || null;
-        const rawAccountId = headers.accountid;
+        const rawAccountId = user?.account_id || (req as any).companyID;
 
         const userId = rawUserId && mongoose.isValidObjectId(rawUserId) ? rawUserId : null;
         const accountID = rawAccountId && mongoose.isValidObjectId(rawAccountId) ? rawAccountId : null;
 
-        const pageUrlHeader: string = (headers['page_url'] as string) || '';
+        const pageUrlHeader = sanitizeLogUrl(headers['page_url']);
         const origin: string = (headers['origin'] as string) || '';
         const ua: string = headers['user-agent'] || '';
         const systemInfo = {
@@ -98,7 +98,7 @@ class AppLogger {
         merge(req, { device: omit(deviceInfo, 'userAgent') });
         const networkInfo = {
           origin: origin || 'unknown',
-          referer: headers['referer'] || '',
+          referer: sanitizeLogUrl(headers['referer']),
           host: headers['host'] || '',
           connection: headers['connection'] || '',
           contentLength: Number(headers['content-length']) || 0,
@@ -123,7 +123,7 @@ class AppLogger {
           userId,
           userName,
           account_id: accountID,
-          pageUrl: `${origin}${pageUrlHeader}` || '',
+          pageUrl: sanitizeLogUrl(`${origin}${pageUrlHeader}`),
           moduleName: moduleName || 'general',
           systemInfo,
           browserInfo,
@@ -134,7 +134,7 @@ class AppLogger {
           description: description || 'HTTP Request',
           method: req.method || 'GET',
           statusCode: res.statusCode || 200,
-          requestUrl: req.originalUrl || req.url || '/',
+          requestUrl: sanitizeLogUrl(req.originalUrl || req.url || '/'),
           host: req.hostname || 'localhost',
           hostName: headers.host || req.hostname || 'localhost',
           protocol: req.protocol || 'http',
@@ -160,19 +160,7 @@ class AppLogger {
   };
 
   private redactSensitiveData(value: unknown): unknown {
-    if (Array.isArray(value)) {
-      return value.map((item) => this.redactSensitiveData(item));
-    }
-
-    if (!value || typeof value !== 'object') {
-      return value;
-    }
-
-    const redacted: Record<string, unknown> = {};
-    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
-      redacted[key] = this.sensitiveKeyPattern.test(key) ? '[REDACTED]' : this.redactSensitiveData(nestedValue);
-    }
-    return redacted;
+    return redactLogData(value);
   }
 
   private extractOS (userAgent: string | undefined): string {
@@ -225,6 +213,7 @@ class AppLogger {
   }
 
   private registerMorganTokens(): void {
+    morgan.token('safe_url', (req: Request) => sanitizeLogUrl(req.originalUrl || req.url || '/'));
     morgan.token('device', (req: Request) => (req.headers['user-agent'] as string) || 'unknown');
     morgan.token('userName', (req: any) => req.user?.username || 'Anonymous');
     morgan.token('userId', (req: any) => req.user?._id?.toString() || req.user?.id?.toString() || 'Anonymous');

@@ -1,6 +1,23 @@
 import { SOPsModel, ISopsMaster } from '../../models/sops.model';
+import { LocationModel } from '../../models/location.model';
+import { CategoryModel } from '../../models/formCategory.model';
 
 class SOPsService {
+
+    private editableFields(body: any): Record<string, any> {
+        const fields = ['name', 'description', 'locationId', 'categoryId', 'json_temp'];
+        return Object.fromEntries(fields.filter(key => Object.prototype.hasOwnProperty.call(body || {}, key)).map(key => [key, body[key]]));
+    }
+
+    private async validateReferences(body: any, account_id: any): Promise<void> {
+        if (!account_id) throw Object.assign(new Error('Authenticated account is required'), { status: 403 });
+        for (const [field, model] of [['locationId', LocationModel], ['categoryId', CategoryModel]] as const) {
+            if (body[field] === undefined) continue;
+            if (!await (model as any).exists({ _id: body[field], account_id, visible: true })) {
+                throw Object.assign(new Error('Referenced form object is unavailable or outside your account'), { status: 403 });
+            }
+        }
+    }
 
     async getSOPs (match: any): Promise<ISopsMaster[]> {
         match.visible = true;
@@ -15,17 +32,23 @@ class SOPsService {
     };
 
     async createSOPs (body: any, account_id: any, user_id: any): Promise<ISopsMaster> {
-        const newSchedule = new SOPsModel({ ...body, account_id, createdBy: user_id });
+        const fields = this.editableFields(body);
+        await this.validateReferences(fields, account_id);
+        const newSchedule = new SOPsModel({ ...fields, account_id, createdBy: user_id, visible: true });
         return await newSchedule.save();
     };
 
-    async updateSOPs (id: any, body: any, user_id: any): Promise<ISopsMaster | null> {
-        body.updatedBy = user_id;
-        return await SOPsModel.findByIdAndUpdate(id, body);
+    async updateSOPs (id: any, body: any, user_id: any, account_id: any): Promise<ISopsMaster | null> {
+        const fields = this.editableFields(body);
+        await this.validateReferences(fields, account_id);
+        return await SOPsModel.findOneAndUpdate({ _id: id, account_id, visible: true },
+            { $set: { ...fields, updatedBy: user_id } }, { returnDocument: 'after', runValidators: true });
     };
 
-    async removeSOPs (id: any, user_id: any): Promise<any> {
-        return await SOPsModel.findByIdAndUpdate(id, { visible: false, updatedBy: user_id }, { returnDocument: 'after' });
+    async removeSOPs (id: any, user_id: any, account_id: any): Promise<any> {
+        if (!account_id) throw Object.assign(new Error('Authenticated account is required'), { status: 403 });
+        return await SOPsModel.findOneAndUpdate({ _id: id, account_id, visible: true },
+            { $set: { visible: false, updatedBy: user_id } }, { returnDocument: 'after' });
     };
 }
 

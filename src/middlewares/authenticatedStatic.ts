@@ -2,6 +2,7 @@ import express, { NextFunction, Request, RequestHandler, Response } from 'expres
 import fs from 'fs';
 import path from 'path';
 import { isAuthenticated } from '../_config/auth';
+import { isUploadOwnedBy } from '../utils/upload-ownership';
 
 const isInside = (root: string, candidate: string): boolean => (
   candidate === root || candidate.startsWith(`${root}${path.sep}`)
@@ -39,6 +40,7 @@ export const authenticatedStatic = (
     }
 
     let relativePath: string;
+    let verifiedCandidate: string;
     try {
       relativePath = decodeURIComponent(req.path).replace(/^[/\\]+/, '');
     } catch {
@@ -64,6 +66,7 @@ export const authenticatedStatic = (
         next();
         return;
       }
+      verifiedCandidate = realCandidate;
     } catch {
       // It is not a static file under this mount; allow the next route to try.
       next();
@@ -73,6 +76,10 @@ export const authenticatedStatic = (
     isAuthenticated(req, res, (authenticationError?: unknown) => {
       if (authenticationError) {
         next(authenticationError);
+        return;
+      }
+      if (!isUploadOwnedBy(verifiedCandidate, (req as any).user?.account_id)) {
+        next(Object.assign(new Error('You do not have permission to access this file.'), { status: 403 }));
         return;
       }
       serveStatic(req, res, next);

@@ -52,8 +52,7 @@ class SOPsController {
 
   async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      console.log({ account_id, user_id, userRole });
+      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const data = await sopsService.createSOPs(req.body, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('SOP not created'), { status: 404 });
@@ -72,7 +71,7 @@ class SOPsController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('SOP not found'), { status: 404 });
       }
-      const data = await sopsService.updateSOPs(id, body, user_id);
+      const data = await sopsService.updateSOPs(id, body, user_id, account_id);
       if (!data) {
         throw Object.assign(new Error('SOP not updated'), { status: 404 });
       }
@@ -90,7 +89,7 @@ class SOPsController {
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('SOP not found'), { status: 404 });
       }
-      const data = await sopsService.removeSOPs(id, user_id);
+      const data = await sopsService.removeSOPs(id, user_id, account_id);
       if (!data) {
         throw Object.assign(new Error('SOP not deleted'), { status: 404 });
       }

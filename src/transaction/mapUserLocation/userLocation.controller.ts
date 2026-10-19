@@ -5,34 +5,42 @@ import { get } from 'lodash';
 import { IUser } from '../../models/user.model';
 import { helperService } from '../../utils/helper';
 import { locationService } from '../../masters/location/location.service';
+import { LocationModel } from '../../models/location.model';
+import { UserModel } from '../../models/user.model';
+import { applyRoleFilter } from '../../utils/roleFilter';
 
 class MapUserLocationController {
+  private async validateReferences(body: any[], user: IUser): Promise<void> {
+    const locationIds = [...new Set(body.map(item => String(item.locationId)))];
+    const userIds = [...new Set(body.map(item => String(item.userId)))];
+    const locationFilter = await applyRoleFilter({ user, baseFilter: { _id: { $in: locationIds } }, mapping: 'location' });
+    const [locations, users] = await Promise.all([
+      LocationModel.countDocuments(locationFilter),
+      UserModel.countDocuments({ _id: { $in: userIds }, account_id: user.account_id, user_status: 'active' })
+    ]);
+    if (locations !== locationIds.length || users !== userIds.length) {
+      throw Object.assign(new Error('Mapping reference is unavailable or outside your scope'), { status: 403 });
+    }
+  }
+
 
   async getUserLocations(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const query: any = req.query;
-      const match: any = { locationId: { $exists: true } };
-      const filter: any = { populate: "userId" };
-      if (userRole === "admin") {
-        const locationMatch = { account_id, visible: true };
-        const locationData = await locationService.getLocationsList(locationMatch);
-        if (!locationData?.length) {
-          throw Object.assign(new Error("Location not found"), { status: 404 });
-        }
-        match.locationId = { $in: locationData.map((doc) => doc._id) };
+      const { account_id, _id: user_id, user_role: userRole } = get(req, 'user', {}) as IUser;
+      const locationMatch: any = { account_id, visible: true };
+      if (req.query.locationId) locationMatch._id = { $in: helperService.validateObjectIds(String(req.query.locationId)) };
+      const locations = await locationService.getLocationsList(locationMatch);
+      const match: any = {
+        locationId: { $in: locations.map(location => location._id) },
+        $or: [{ account_id }, { account_id: { $exists: false } }]
+      };
+      if (userRole === 'admin') {
+        const users = await UserModel.find({ account_id, user_status: 'active' }).select('_id').lean();
+        match.userId = { $in: users.map(item => item._id) };
+      } else {
+        match.userId = user_id;
       }
-      if (query.locationId) {
-        const locationIds = helperService.validateObjectIds(query.locationId);
-        match.locationId = { $in: locationIds };
-        const locationData = await locationService.getLocationsList({ _id: { $in: locationIds }, account_id, visible: true });
-        if (!locationData?.length) {
-          throw Object.assign(new Error("Location not found"), { status: 404 });
-        }
-      }
-      if (query?.populate) {
-        filter.populate = query.populate;
-      }
+      const filter = { populate: req.query.populate === 'locationId' ? 'locationId' : 'userId' };
       const data = await mapUserToLocationService.userLocations(match, filter);
       if (!data || data.length === 0) {
         throw Object.assign(new Error("User location mapping not found"), { status: 404 });
@@ -54,6 +62,7 @@ class MapUserLocationController {
       if (validatedData.length === 0) {
         throw Object.assign(new Error('Invalid data'), { status: 400 });
       }
+      await this.validateReferences(validatedData, get(req, 'user', {}) as IUser);
       await mapUserToLocationService.mapUserLocations(validatedData, account_id);
       res.status(201).json({ message: 'User locations mapped successfully' });
     } catch (error) {
@@ -69,6 +78,7 @@ class MapUserLocationController {
         locationId: helperService.validateObjectId(String(doc.locationId)),
         userId: helperService.validateObjectId(String(doc.userId))
       }));
+      await this.validateReferences(validatedBody, get(req, 'user', {}) as IUser);
       const data = await mapUserToLocationService.mapUserLocations(validatedBody, account_id);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Location mapping not updated'), { status: 404 });

@@ -54,7 +54,7 @@ class UsersService {
   };
 
   async verifyUserLogin({ id, companyID, username }: UserLoginPayload) {
-    return await UserModel.findOne({ _id: id, account_id: companyID, username: username }).select('-password');
+    return await UserModel.findOne({ _id: id, account_id: companyID, username: username, user_status: 'active', visible: { $ne: false } }).select('-password');
   };
 
   async userVerified(id: string) {
@@ -109,16 +109,34 @@ class UsersService {
     }
   };
 
-  async updateUserDetails(id: string, body: IUser) {
-    return await UserModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
+  async updateUserDetails(id: string, body: Record<string, unknown>, account_id: any) {
+    const fields = ['firstName', 'lastName', 'username', 'email', 'phone_no', 'user_profile_img', 'isTourCompleted', 'user_role', 'user_status', 'isVerified', 'updatedBy'];
+    const changes = Object.fromEntries(fields.filter(field => body[field] !== undefined).map(field => [field, body[field]]));
+    const updated = await UserModel.findOneAndUpdate({ _id: id, account_id }, { $set: changes }, { returnDocument: 'after', runValidators: true });
+    if (updated && changes.user_status === 'inactive') {
+      await this.revokeUserSessions(id, account_id);
+    }
+    return updated;
   }
 
-  async removeById(id: string) {
-    return await withTransaction(async (session) => {
-      await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
-      return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { returnDocument: 'after', session });
+  async removeById(id: string, account_id: any) {
+    const removed = await withTransaction(async (session) => {
+      const updated = await UserModel.findOneAndUpdate({ _id: id, account_id }, { user_status: 'inactive' }, { returnDocument: 'after', session });
+      if (updated) await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
+      return updated;
     });
+    if (removed) await this.revokeUserSessions(id, account_id);
+    return removed;
   };
+
+  private async revokeUserSessions(userId: string, accountId: any): Promise<void> {
+    // User IDs are globally unique. Legacy access records may not have account_id.
+    await TokenModel.deleteMany({ userId, $or: [
+      { principalType: { $in: ['user', 'refresh_token'] } },
+      { principalType: { $exists: false } }
+    ] });
+    await tokenSessionStore.deleteUserSessions(String(accountId), String(userId));
+  }
 }
 
 export const usersService = new UsersService();

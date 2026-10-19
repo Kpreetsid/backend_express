@@ -380,7 +380,8 @@ class PartsService {
     newParts: any[] = [],
     previousStatus: string = 'Open',
     nextStatus: string = 'Open',
-    session?: any
+    session?: any,
+    accountId?: any
   ): Promise<void> {
     const normalizedOldParts = this.normalizeWorkOrderParts(oldParts, previousStatus);
     const normalizedNewParts = this.normalizeWorkOrderParts(newParts, nextStatus);
@@ -415,13 +416,14 @@ class PartsService {
         continue;
       }
 
-      const query = PartsModel.findById(partId);
+      const query = accountId ? PartsModel.findOne({ _id: partId, account_id: accountId, visible: true }) : PartsModel.findById(partId);
       if (session) {
         query.session(session);
       }
 
       const part = await query;
       if (!part) {
+        if (accountId) throw Object.assign(new Error('Part is unavailable or outside your scope'), { status: 403 });
         continue;
       }
 
@@ -931,8 +933,8 @@ class PartsService {
 
         if (reserveDelta === 0 && issueDelta === 0) continue;
 
-        const part = await PartsModel.findById(partId).session(s);
-        if (!part) continue;
+        const part = await PartsModel.findOne({ _id: partId, account_id: user.account_id, visible: true }).session(s);
+        if (!part) throw Object.assign(new Error('Part is unavailable or outside your scope'), { status: 403 });
 
         if (netStockDelta < 0 && part.quantity < Math.abs(netStockDelta)) {
           throw Object.assign(new Error(`Insufficient stock for ${part.part_name}`), { status: 400 });
