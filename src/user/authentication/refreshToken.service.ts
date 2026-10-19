@@ -83,9 +83,10 @@ class RefreshTokenService {
   readonly cookieName = refreshTokenConfig.cookieName;
   readonly refreshHeader = REFRESH_HEADER;
 
-  async createAccessSession(user: IUser, flags: { isExternal?: boolean; isInternal?: boolean } = {}): Promise<AccessSession> {
+  async createAccessSession(user: IUser, flags: { isExternal?: boolean; isInternal?: boolean } = {}, sessionStartedAt = new Date()): Promise<AccessSession> {
     const tokenId = new mongoose.Types.ObjectId();
-    const userTokenPayload: UserLoginPayload = {
+    const userTokenPayload: UserLoginPayload & { sessionStartedAt: number } = {
+      sessionStartedAt: sessionStartedAt.getTime(),
       id: String(user._id),
       username: user.username,
       companyID: String(user.account_id),
@@ -121,7 +122,11 @@ class RefreshTokenService {
     return { token, token_id: tokenId, ttlSeconds };
   }
 
-  async issueForUser(req: Request, res: Response, user: IUser, accessTokenId?: mongoose.Types.ObjectId): Promise<RefreshIssueResult> {
+  async issueForUser(req: Request, res: Response, user: IUser, accessTokenId?: mongoose.Types.ObjectId, sessionStartedAt = new Date()): Promise<RefreshIssueResult> {
+    // Password login/refresh already holds a private credential snapshot. Other
+    // callers load one here; never put the hash in a token, response or cache.
+    const credentialUser = user.password ? user : await UserModel.findOne({ _id: user._id, account_id: user.account_id }).select('+password').read('primary');
+    if (!credentialUser?.password) throw Object.assign(new Error('Session could not be issued'), { status: 401 });
     const accountId = String(user.account_id || '');
     const cookieEnabled = await accountFeatureService.isCookieEnabledForAccount(accountId);
 
@@ -134,6 +139,7 @@ class RefreshTokenService {
     await new TokenModel({
       _id: tokenHash,
       tokenType: 'refresh' as const,
+      created: sessionStartedAt,
       token_id: accessTokenId,
       userId: user._id,
       account_id: user.account_id,
@@ -154,6 +160,8 @@ class RefreshTokenService {
       userAgent,
       ipAddress
     });
+
+    await this.assertPasswordUnchanged(credentialUser, res, accessTokenId, tokenHash);
 
     if (cookieEnabled) {
       cookieService.set(res, refreshTokenConfig.cookieName, rawToken, getCookieOptions());
@@ -238,12 +246,12 @@ class RefreshTokenService {
 
     const user = await UserModel
       .findOne({ _id: storedRefreshToken.userId, account_id: storedRefreshToken.account_id, user_status: 'active' })
-      .select('-password');
-    if (!user) {
+      .select('+password');
+    if (!user || !storedRefreshToken.created || !Number.isFinite(storedRefreshToken.created.getTime())) {
       await this.revokeStored(storedRefreshToken);
       this.clearCookie(res);
       clearAuthCookies(res);
-      throw Object.assign(new Error('User not found'), { status: 401 });
+      throw Object.assign(new Error('User not found or session invalidated by password change'), { status: 401 });
     }
 
     if (user.user_role !== 'admin') {
@@ -270,7 +278,7 @@ class RefreshTokenService {
     }
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails[0]);
 
-    const accessSession = await this.createAccessSession(user);
+    const accessSession = await this.createAccessSession(user, {}, storedRefreshToken.created);
     if (cookieEnabled) {
       setAccessCookies(res, {
         token: accessSession.token,
@@ -283,8 +291,9 @@ class RefreshTokenService {
       clearAuthCookies(res);
     }
     let replacementRefreshToken: string | undefined;
+    let replacementRefreshHash: string | undefined;
     if (refreshTokenConfig.rotate) {
-      const newRefresh = await this.issueForUser(req, res, user, accessSession.token_id);
+      const newRefresh = await this.issueForUser(req, res, user, accessSession.token_id, storedRefreshToken.created);
       if (!newRefresh.issued || !newRefresh.tokenHash || !newRefresh.rawToken) {
         await this.revokeStored(storedRefreshToken);
         this.clearCookie(res);
@@ -292,8 +301,14 @@ class RefreshTokenService {
         throw Object.assign(new Error('Refresh token could not be rotated'), { status: 401, name: 'InvalidTokenError' });
       }
       replacementRefreshToken = newRefresh.rawToken;
+      replacementRefreshHash = newRefresh.tokenHash;
       storedRefreshToken.replacedByTokenHash = newRefresh.tokenHash;
-      await storedRefreshToken.save();
+      try {
+        await storedRefreshToken.save();
+      } catch {
+        // Reset may have deleted the original after we claimed it for rotation.
+        await this.rejectIssuedSession(user, res, accessSession.token_id, [tokenHash, newRefresh.tokenHash]);
+      }
       await tokenSessionStore.deleteRefreshSession(String(storedRefreshToken._id));
     } else {
       if (cookieEnabled) {
@@ -302,6 +317,16 @@ class RefreshTokenService {
         replacementRefreshToken = rawToken;
       }
       await this.cacheStoredRefreshToken(storedRefreshToken);
+      await this.assertPasswordUnchanged(user, res, accessSession.token_id, tokenHash);
+    }
+
+    // A reset may complete BEFORE the user/password snapshot is read. In that
+    // case the hash fence alone passes, but the original refresh has been deleted.
+    const sourceStillStored = await TokenModel.exists({ _id: tokenHash, userId: user._id,
+      account_id: user.account_id, tokenType: 'refresh' }).read('primary');
+    if (!sourceStillStored) {
+      await this.rejectIssuedSession(user, res, accessSession.token_id,
+        [tokenHash, ...(replacementRefreshHash ? [replacementRefreshHash] : [])]);
     }
 
     return {
@@ -321,6 +346,28 @@ class RefreshTokenService {
     storedRefreshToken.revokedAt = new Date();
     await storedRefreshToken.save();
     await tokenSessionStore.deleteRefreshSession(String(storedRefreshToken._id));
+  }
+
+  private async assertPasswordUnchanged(user: IUser, res: Response, accessTokenId?: mongoose.Types.ObjectId, refreshHash?: string): Promise<void> {
+    const current = await UserModel.exists({ _id: user._id, account_id: user.account_id,
+      user_status: 'active', password: user.password }).read('primary');
+    if (current) return;
+    await this.rejectIssuedSession(user, res, accessTokenId, refreshHash ? [refreshHash] : []);
+  }
+
+  private async rejectIssuedSession(user: IUser, res: Response, accessTokenId: mongoose.Types.ObjectId | undefined, refreshHashes: string[]): Promise<never> {
+    // Clear browser credentials even when persistence cleanup itself fails.
+    this.clearCookie(res);
+    clearAuthCookies(res);
+    try {
+      await Promise.all([
+        TokenModel.deleteMany({ userId: user._id, account_id: user.account_id,
+          $or: [...(accessTokenId ? [{ token_id: accessTokenId }] : []), ...refreshHashes.map(_id => ({ _id }))] }),
+        tokenSessionStore.deleteUserSessions(String(user.account_id), String(user._id))
+      ]);
+    } finally {
+      throw Object.assign(new Error('Session changed during authentication. Please log in again.'), { status: 401 });
+    }
   }
 
   private async cacheStoredRefreshToken(storedRefreshToken: StoredRefreshToken): Promise<void> {

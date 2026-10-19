@@ -4,12 +4,14 @@ import { generateExternalAccessToken } from './auth';
 import fs from 'fs';
 import path from 'path';
 import { IMailLog, MailLogModel, createMailLog } from '../models/mailLog.model';
-import { VerificationCodeModel, VERIFICATION_CODE_EXPIRY_SECONDS } from '../models/userVerification.model';
+import { VERIFICATION_CODE_EXPIRY_SECONDS } from '../models/userVerification.model';
+import { verificationChallenges, VerificationPurpose } from '../user/verification/verification-challenge.service';
 
 interface MailPayload {
   to: string;
   subject: string;
   html: string;
+  sensitive?: boolean;
 }
 
 export class MailerService {
@@ -29,8 +31,8 @@ export class MailerService {
     });
   }
 
-  private async send({ to, subject, html }: MailPayload): Promise<void> {
-    const mailLog: IMailLog = new MailLogModel({ to, subject, html });
+  private async send({ to, subject, html, sensitive = false }: MailPayload): Promise<void> {
+    const mailLog: IMailLog = new MailLogModel({ to, subject, html: sensitive ? '[Verification content redacted]' : html });
     try {
       await this.transporter.verify();
       console.log('Mail verified');
@@ -40,14 +42,14 @@ export class MailerService {
         subject,
         html
       });
-      mailLog.messageId = info.messageId;
-      mailLog.mailInfo = info;
+      if (!sensitive) mailLog.messageId = info.messageId;
+      if (!sensitive) mailLog.mailInfo = info;
       mailLog.status = 'success';
-      console.log(`Message Id: ${info.messageId}, Accepted: ${info.accepted}, Rejected: ${info.rejected}, Response: ${info.response}`);
+      if (!sensitive) console.log(`Message Id: ${info.messageId}, Accepted: ${info.accepted}, Rejected: ${info.rejected}, Response: ${info.response}`);
     } catch (error: any) {
-      console.error('Error sending email:', error);
+      console.error('Error sending email:', sensitive ? 'Verification delivery failed' : error);
       mailLog.status = 'failed';
-      mailLog.error = error;
+      mailLog.error = sensitive ? 'Verification delivery failed' : error;
       throw error;
     } finally {
       await createMailLog(mailLog);
@@ -135,9 +137,10 @@ export class MailerService {
     return `${hours} hour${hours === 1 ? '' : 's'} ${remainingMinutes} minute${remainingMinutes === 1 ? '' : 's'}`;
   }
 
-  async sendVerificationCode(user: any): Promise<boolean> {
+  async sendVerificationCode(user: any, purpose: VerificationPurpose): Promise<boolean> {
+    let otp: string | undefined;
     try {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      otp = await verificationChallenges.issueOtp(user, purpose);
       const fileName = this.loadTemplate(`verificationCode.template.html`);
       const html = this.replace(fileName,
         {
@@ -149,14 +152,10 @@ export class MailerService {
           LOGIN_LINK: mailCredential.loginUrl
         }
       );
-      await this.send({to: user.email, subject: 'Verify your email address for Presage CMMS', html});
-      await VerificationCodeModel.findOneAndUpdate(
-        { email: user.email },
-        { firstName: user.firstName, code: otp, createdAt: new Date() },
-        { upsert: true, new: true, setDefaultsOnInsert: true }
-      );
+      await this.send({to: user.email, subject: 'Verify your email address for Presage CMMS', html, sensitive: true});
       return true;
     } catch {
+      if (otp) await verificationChallenges.discardOtp(user.email, otp, purpose);
       return false;
     }
   }
