@@ -11,7 +11,11 @@ class MapUserAssetController {
   async getUserAssets(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
-      const { userId, assetId, populate } = req.query;
+      const { userId, assetId, populate, includeHierarchy } = req.query;
+      const hierarchyRequested = includeHierarchy === 'true';
+      if (hierarchyRequested && (populate !== 'assetId' || !account_id)) {
+        throw Object.assign(new Error('Asset hierarchy requires assetId population and an authenticated account'), { status: 400 });
+      }
       const match: any = { assetId: { $exists: true } };
       if (userId) {
         match.userId = helperService.validateObjectId(String(userId));
@@ -34,7 +38,7 @@ class MapUserAssetController {
           match.assetId = { $in: ids };
         }
       }
-      const data = await mapUserToAssetService.userAssets(match, populate);
+      const data = await mapUserToAssetService.userAssets(match, populate, hierarchyRequested ? account_id : undefined);
       if (!data || data.length === 0) {
         throw Object.assign(new Error('User asset mapping not found'), { status: 404 });
       }
