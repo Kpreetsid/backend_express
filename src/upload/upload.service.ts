@@ -11,11 +11,9 @@ class UploadService {
     return new UploadModel({
       originalName: file.originalname || file.originalName || fileName,
       type: file.mimetype || file.type,
-      destination: file.destination,
       folderName: folderName,
       fileName: fileName,
       fileURL: fileURL,
-      filePath: file.path || file.filePath,
       size: file.size
     });
   }

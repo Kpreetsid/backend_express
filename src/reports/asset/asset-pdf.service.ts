@@ -3,8 +3,34 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { storageConfig } from '../../configDB';
 import { processorAPIService } from '../../api-processor';
+import { isUploadOwnedBy } from '../../utils/upload-ownership';
 
 export class PdfService {
+  private readonly labelKeys = new Set([
+    'analysisDateLabel', 'assetConditionLabel', 'assetNameLabel', 'attachmentsLabel', 'chartDataLabel',
+    'createdFromLabel', 'diagnosticsReportLabel', 'faultsDetectedLabel', 'generatedOnLabel', 'latestReadingsLabel',
+    'locationLabel', 'observationsLabel', 'recommendationsLabel', 'sensorsMappedLabel', 'accelerationLabel',
+    'alertLabel', 'axialLabel', 'criticalLabel', 'dangerLabel', 'dateLabel', 'faultConditionLabel', 'fieldLabel',
+    'goodLabel', 'healthHistoryLabel', 'healthyLabel', 'horizontalLabel', 'measuringPointLabel', 'noDataCollectedLabel',
+    'noFaultsDetectedLabel', 'notAvailableLabel', 'rmsValuesLabel', 'satisfactoryLabel', 'statusLabel', 'timestampLabel',
+    'unacceptableLabel', 'unsatisfactoryLabel', 'velocityLabel', 'verticalLabel', 'assetLabel', 'reportDateLabel',
+    'pageLabel', 'ofLabel', 'isoEvaluationLabel', 'classLabel', 'descriptionLabel', 'noChartDataLabel',
+    'errorRenderingChartLabel', 'beforeLabel', 'afterLabel'
+  ]);
+
+  private textLabels(input: any): Record<string, string> {
+    const labels: Record<string, string> = {};
+    if (!input || typeof input !== 'object' || Array.isArray(input)) return labels;
+    for (const key of this.labelKeys) {
+      if (typeof input[key] === 'string') labels[key] = input[key].slice(0, 500);
+    }
+    return labels;
+  }
+
+  private jsonForScript(value: any): string {
+    return JSON.stringify(value).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  }
+
   private twfChartProto = {
     showSplitLine: true,
     titleFontSize: '12',
@@ -272,6 +298,7 @@ export class PdfService {
   }
 
   public async generateAssetReportPdf(data: any, token?: string, userId?: string): Promise<Buffer> {
+    data = { ...data, labels: this.textLabels(data.labels) };
     console.log(`[PdfService] Generating PDF for asset: ${data.assetName || 'Unknown'}`);
 
     // Chart data resolution: prefer legacy small chartData if present; otherwise
@@ -325,6 +352,16 @@ export class PdfService {
 
     try {
       const page = await browser.newPage();
+      await page.setRequestInterception(true);
+      page.on('request', request => {
+        // The chart library is inlined from our installed package; reports need no network or filesystem navigation.
+        const url = request.url();
+        if (/^data:image\/(?:png|jpeg|svg\+xml);base64,[a-zA-Z0-9+/=]+$/.test(url)) {
+          void request.continue();
+        } else {
+          void request.abort();
+        }
+      });
 
       // Enable console and error logging for debugging
       page.on('console', (msg: any) => console.log('PAGE LOG:', msg.text()));
@@ -356,22 +393,13 @@ export class PdfService {
       }
 
       const labels = data.labels || {};
-      const assetLabel = labels.assetLabel || 'Asset';
-      const reportDateLabel = labels.reportDateLabel || 'Report Date';
-      const pageLabel = labels.pageLabel || 'Page';
-      const ofLabel = labels.ofLabel || 'of';
+      const assetLabel = this.escapeHtml(labels.assetLabel || 'Asset');
+      const reportDateLabel = this.escapeHtml(labels.reportDateLabel || 'Report Date');
+      const pageLabel = this.escapeHtml(labels.pageLabel || 'Page');
+      const ofLabel = this.escapeHtml(labels.ofLabel || 'of');
 
       // Convert logo to Base64 for reliable loading in Puppeteer header
-      let logoBase64 = '';
-      try {
-        const logoPath = path.join(process.cwd(), 'uploadFiles', 'presage-logo.png');
-        if (fs.existsSync(logoPath)) {
-          const logoBuffer = fs.readFileSync(logoPath);
-          logoBase64 = `data:image/png;base64,${logoBuffer.toString('base64')}`;
-        }
-      } catch (e) {
-        console.error('[PdfService] Failed to load logo for header:', e);
-      }
+      const logoBase64 = this.toBase64(path.join(process.cwd(), 'uploadFiles', 'presage-logo.png'), undefined, true);
 
       const pdfBuffer = await page.pdf({
         format: 'A4',
@@ -384,7 +412,7 @@ export class PdfService {
           </style>
           <div style="font-size: 10px; width: 100%; height: 70px; background-color: rgb(0, 0, 105); color: #ffffff; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; box-sizing: border-box; font-family: 'Inter', 'Segoe UI', Roboto, sans-serif; margin: 0 !important;">
             <div style="display: flex; flex-direction: column; justify-content: center;">
-              <div style="font-weight: bold; font-size: 18px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">${assetLabel}: ${data.assetName || 'NA'}</div>
+              <div style="font-weight: bold; font-size: 18px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">${assetLabel}: ${this.escapeHtml(data.assetName || 'NA')}</div>
               <div style="opacity: 0.9; font-size: 10px;">&nbsp; ${reportDateLabel}: ${this.formatDate(data.analysisDate, data.timezone, false, data.locale)}</div>
             </div>
             <div style="display: flex; align-items: center;">
@@ -437,46 +465,44 @@ export class PdfService {
   }
 
   private buildHtml(data: any): string {
+    data = { ...data, labels: this.textLabels(data.labels) };
     const templatePath = path.join(__dirname, '..', '..', 'public', 'asset-report.html');
     let template = fs.readFileSync(templatePath, 'utf8');
     const hasFrontendChartImages = Array.isArray(data.frontendChartImages) && data.frontendChartImages.length > 0;
 
     const replacements: any = {
-      generatedDate: this.formatDate(new Date(), data.timezone, false, data.locale),
-      assetName: data.assetName || 'NA',
-      analysisDate: this.formatDate(data.analysisDate, data.timezone, false, data.locale),
-      location: data.location || 'NA',
-      sensorsMapped: data.sensorsMapped || '0',
-      assetCondition: data.assetCondition || 'NA',
+      generatedDate: this.escapeHtml(this.formatDate(new Date(), data.timezone, false, data.locale)),
+      assetName: this.escapeHtml(data.assetName || 'NA'),
+      analysisDate: this.escapeHtml(this.formatDate(data.analysisDate, data.timezone, false, data.locale)),
+      location: this.escapeHtml(data.location || 'NA'),
+      sensorsMapped: this.escapeHtml(data.sensorsMapped || '0'),
+      assetCondition: this.escapeHtml(data.assetCondition || 'NA'),
       conditionClass: this.getConditionClass(data.conditionClass),
-      createdFrom: data.createdFrom || 'NA',
-      observations: data.observations || '-',
-      recommendations: data.recommendations || '-',
+      createdFrom: this.escapeHtml(data.createdFrom || 'NA'),
+      observations: this.escapeHtml(data.observations || '-'),
+      recommendations: this.escapeHtml(data.recommendations || '-'),
       assetImageHtml: this.buildAssetImage(data),
       isoSection: this.buildIsoSection(data),
       healthHistorySection: this.buildHealthHistorySection(data),
       readingsTable: this.buildReadingsTable(data),
       faultsTable: this.buildFaultsTable(data.faultData),
-      attachmentsHtml: this.buildAttachments(data.attachments),
+      attachmentsHtml: this.buildAttachments(data.attachments, data.accountId),
       frontendChartsHtml: this.buildFrontendChartImages(data.frontendChartImages),
       hasFrontendChartImages: hasFrontendChartImages ? 'true' : 'false',
       backendChartsRootStyle: hasFrontendChartImages ? 'display:none;' : '',
       echartsScript: this.getEchartsScript(),
-      chartDataJson: JSON.stringify(data.chartData || {}),
-      readingsJson: JSON.stringify(data.readings || []),
-      labelsJson: JSON.stringify({ ...data.labels, locale: data.locale, timezone: data.timezone })
+      chartDataJson: this.jsonForScript(data.chartData || {}),
+      readingsJson: this.jsonForScript(data.readings || []),
+      labelsJson: this.jsonForScript({ ...data.labels, locale: data.locale, timezone: data.timezone })
     };
 
-    if (data.labels) {
-      Object.keys(data.labels).forEach(key => {
-        replacements[key] = data.labels[key];
-      });
+    const labelReplacements = Object.fromEntries(Object.entries(data.labels).map(([key, value]) => [key, this.escapeHtml(value)]));
+    // Resolve label placeholders in generated sections before one non-recursive template pass.
+    for (const key of ['isoSection', 'healthHistorySection', 'readingsTable', 'faultsTable']) {
+      replacements[key] = replacements[key].replace(/{{([A-Za-z0-9_]+)}}/g, (_match: string, label: string) => labelReplacements[label] || '');
     }
-
-    Object.keys(replacements).forEach(key => {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      template = template.replace(regex, () => String(replacements[key] ?? ''));
-    });
+    Object.assign(replacements, labelReplacements);
+    template = template.replace(/{{([A-Za-z0-9_]+)}}/g, (_match: string, key: string) => String(replacements[key] ?? ''));
 
     return template;
   }
@@ -495,28 +521,35 @@ export class PdfService {
       .replace(/'/g, '&#39;');
   }
 
-  private toBase64(filePath: string): string {
+  private toBase64(filePath: string, accountId?: unknown, trusted = false): string {
     try {
-      if (fs.existsSync(filePath)) {
-        const fileBuffer = fs.readFileSync(filePath);
-        const extension = path.extname(filePath).substring(1) || 'png';
-        return `data:image/${extension === 'jpg' ? 'jpeg' : extension};base64,${fileBuffer.toString('base64')}`;
-      }
-    } catch (e: any) {
-      console.error(`[PdfService] toBase64 failed for ${filePath}:`, e.message);
+      const root = fs.realpathSync(path.join(process.cwd(), 'uploadFiles'));
+      const candidate = fs.realpathSync(filePath);
+      if (!candidate.startsWith(root + path.sep)) return '';
+      const relative = path.relative(root, candidate);
+      const builtin = relative === 'presage-logo.png' || /^report-icons[\\/][a-zA-Z0-9_-]{1,80}\.png$/.test(relative);
+      if (trusted ? !builtin : !isUploadOwnedBy(candidate, accountId)) return '';
+      const stats = fs.statSync(candidate);
+      if (!stats.isFile() || stats.size > 5 * 1024 * 1024 || stats.size < 8) return '';
+      const fileBuffer = fs.readFileSync(candidate);
+      const png = fileBuffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+      const jpeg = fileBuffer[0] === 0xff && fileBuffer[1] === 0xd8 && fileBuffer[2] === 0xff;
+      if (!png && !jpeg) return '';
+      return `data:image/${png ? 'png' : 'jpeg'};base64,${fileBuffer.toString('base64')}`;
+    } catch {
+      return '';
     }
-    return '';
   }
 
   private buildAssetImage(data: any): string {
     if (data.assetImage) {
       const imgPath = path.join(process.cwd(), 'uploadFiles', 'assets', data.assetImage);
-      const b64 = this.toBase64(imgPath);
+      const b64 = this.toBase64(imgPath, data.accountId);
       if (b64) {
         return `<img src="${b64}" alt="Asset Image" style="width:100%; height:180px; border-radius:12px; object-fit:cover;" />`;
       }
     }
-    return `<div class="asset-initials">${data.assetName}</div>`;
+    return `<div class="asset-initials">${this.escapeHtml(data.assetName)}</div>`;
   }
 
   private buildIsoSection(data: any): string {
@@ -525,9 +558,9 @@ export class PdfService {
     const isKo = data.locale === 'ko';
 
     // Fallback labels
-    const isoEvaluationLabel = labels.isoEvaluationLabel || (isKo ? 'ISO 평가' : 'ISO Evaluation');
-    const classLabel = labels.classLabel || (isKo ? '클래스' : 'Class');
-    const descriptionLabel = labels.descriptionLabel || (isKo ? '설명' : 'Description');
+    const isoEvaluationLabel = this.escapeHtml(labels.isoEvaluationLabel || (isKo ? 'ISO 평가' : 'ISO Evaluation'));
+    const classLabel = this.escapeHtml(labels.classLabel || (isKo ? '클래스' : 'Class'));
+    const descriptionLabel = this.escapeHtml(labels.descriptionLabel || (isKo ? '설명' : 'Description'));
 
     const rows = this.isoTableDetails.map(item => {
       const className = isKo ? (item.ko_class || item.class) : item.class;
@@ -536,7 +569,7 @@ export class PdfService {
     }).join('');
 
     const isoChartPath = path.join(process.cwd(), 'uploadFiles', 'report-icons', 'ISO_chart.png');
-    const isoChartB64 = this.toBase64(isoChartPath);
+    const isoChartB64 = this.toBase64(isoChartPath, undefined, true);
 
     return `
       <div class="section-title">${isoEvaluationLabel}</div>
@@ -565,7 +598,7 @@ export class PdfService {
     if (!data.healthHistory || data.healthHistory.length === 0) return '';
 
     const slice = data.healthHistory.slice(-12);
-    const headers = slice.map((h: any) => `<th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">${h.date}</th>`).join('');
+    const headers = slice.map((h: any) => `<th style="background: #000069 !important; color: white !important; border: 1px solid #ffffff44;">${this.escapeHtml(h.date)}</th>`).join('');
     const cells = slice.map((h: any) => {
       const cls = this.getConditionClass(h.status);
       return `<td><div class="health-status-dot ${cls}"></div></td>`;
@@ -606,18 +639,18 @@ export class PdfService {
 
       rows += `
         <tr>
-          <td rowspan="2" class="font-semibold" style="background: #fdfdfd;">${point.point}</td>
+          <td rowspan="2" class="font-semibold" style="background: #fdfdfd;">${this.escapeHtml(point.point)}</td>
           <td rowspan="2" style="text-align:center; background: #fdfdfd;">${dateStr}</td>
           <td style="text-align:center; color: #555;">{{accelerationLabel}}</td>
-          <td style="text-align:center; font-weight: bold;">${point.acceleration?.h ?? '-'}</td>
-          <td style="text-align:center; font-weight: bold;">${point.acceleration?.v ?? '-'}</td>
-          <td style="text-align:center; font-weight: bold;">${point.acceleration?.a ?? '-'}</td>
+          <td style="text-align:center; font-weight: bold;">${this.escapeHtml(point.acceleration?.h ?? '-')}</td>
+          <td style="text-align:center; font-weight: bold;">${this.escapeHtml(point.acceleration?.v ?? '-')}</td>
+          <td style="text-align:center; font-weight: bold;">${this.escapeHtml(point.acceleration?.a ?? '-')}</td>
         </tr>
         <tr>
           <td style="text-align:center; color: #555;">{{velocityLabel}}</td>
-          <td style="text-align:center; font-weight: bold;">${point.velocity?.h ?? '-'}</td>
-          <td style="text-align:center; font-weight: bold;">${point.velocity?.v ?? '-'}</td>
-          <td style="text-align:center; font-weight: bold;">${point.velocity?.a ?? '-'}</td>
+          <td style="text-align:center; font-weight: bold;">${this.escapeHtml(point.velocity?.h ?? '-')}</td>
+          <td style="text-align:center; font-weight: bold;">${this.escapeHtml(point.velocity?.v ?? '-')}</td>
+          <td style="text-align:center; font-weight: bold;">${this.escapeHtml(point.velocity?.a ?? '-')}</td>
         </tr>
       `;
     });
@@ -650,19 +683,20 @@ export class PdfService {
         return val == target ? `<div style="width: 50px; height: 12px; border-radius: 5%; background-color: ${color}; margin: 0 auto; box-shadow: 0 0 4px ${color};"></div>` : '';
       };
 
-      const iconPath = path.join(process.cwd(), 'uploadFiles', 'report-icons', `${row.name}.png`);
-      let iconB64 = this.toBase64(iconPath);
+      const iconName = typeof row.name === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(row.name) ? row.name : 'Other';
+      const iconPath = path.join(process.cwd(), 'uploadFiles', 'report-icons', `${iconName}.png`);
+      let iconB64 = this.toBase64(iconPath, undefined, true);
       if (!iconB64) {
         const otherPath = path.join(process.cwd(), 'uploadFiles', 'report-icons', 'Other.png');
-        iconB64 = this.toBase64(otherPath);
+        iconB64 = this.toBase64(otherPath, undefined, true);
       }
 
       return `
         <tr>
           <td class="font-semibold" style="padding-left: 15px;">
             <div style="display: flex; align-items: center; gap: 10px;">
-              ${iconB64 ? `<img src="${iconB64}" alt="${row.name}_icon" style="height: 25px; width: 25px; object-fit: contain; vertical-align: middle;" />` : ''}
-              <span style="margin-left: 8px;">${row.translatedName || row.name}</span>
+              ${iconB64 ? `<img src="${iconB64}" alt="${this.escapeHtml(row.name)}_icon" style="height: 25px; width: 25px; object-fit: contain; vertical-align: middle;" />` : ''}
+              <span style="margin-left: 8px;">${this.escapeHtml(row.translatedName || row.name)}</span>
             </div>
           </td>
           <td>${getDot(row.value, 1, '#03b03e')}</td>
@@ -720,7 +754,7 @@ export class PdfService {
     }
   }
 
-  private buildAttachments(attachments: any[]): string {
+  private buildAttachments(attachments: any[], accountId?: unknown): string {
     if (!attachments || attachments.length === 0) return '<div class="no-data-msg">No files attached to this report.</div>';
 
     return `
@@ -731,7 +765,7 @@ export class PdfService {
             // Handle both absolute URLs and potential relative paths
             const relativePath = item.replace(storageConfig.baseUrl, '').replace(/^\/+/, '');
             const filePath = path.join(process.cwd(), 'uploadFiles', relativePath);
-            b64 = this.toBase64(filePath);
+            b64 = this.toBase64(filePath, accountId);
           }
           
           if (!b64) return '';

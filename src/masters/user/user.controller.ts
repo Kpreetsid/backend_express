@@ -13,6 +13,7 @@ import { subscriptionLimitService } from '../company/subscriptionLimit.service';
 import { validateNewPassword } from '../../user/verification/verification-challenge.service';
 import { clearAuthCookies } from '../../user/authentication/authCookie.service';
 import { refreshTokenService } from '../../user/authentication/refreshToken.service';
+import { hasUserManagementPermission, requireUserManagementPermission, userCreateFields, userUpdateFields } from './userAuthorization';
 
 class UserController {
 
@@ -72,8 +73,9 @@ class UserController {
 
   async createUser(req: Request, res: Response, next: NextFunction) {
     try {
+      requireUserManagementPermission(req, 'add');
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const body = req.body;
+      const body = userCreateFields(req);
       const emailExists = await usersService.getAllUsers({ email: body.email });
       if (emailExists.length) throw Object.assign(new Error("Email already exists"), { status: 400 });
 
@@ -83,7 +85,7 @@ class UserController {
       body.account_id = account_id;
       body.createdBy = user_id;
 
-      const data = await usersService.createNewUser(body, account_id);
+      const data = await usersService.createNewUser(body as unknown as IUser, account_id);
       await mailerService.sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email });
       await notificationService.notifyAccountUsers({
         accountId: String(account_id),
@@ -95,7 +97,8 @@ class UserController {
         sourceUserId: String(user_id),
         recipientRoles: ['admin']
       });
-      res.status(201).json({ status: true, message: "User created successfully", data: data.userDetails, roleData: data.roleDetails });
+      const { password: _password, ...safeUser } = data.userDetails.toObject();
+      res.status(201).json({ status: true, message: "User created successfully", data: safeUser, roleData: data.roleDetails });
     } catch (error) {
       next(error);
     }
@@ -105,11 +108,16 @@ class UserController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { params: { id }, body } = req;
+      const isSelf = String(user._id) === String(id);
+      const canManage = hasUserManagementPermission(req, 'edit');
+      if (!isSelf && !canManage) requireUserManagementPermission(req, 'edit');
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)), user_status: 'active' };
       if (user.user_role === 'admin') {
         delete baseFilter.user_status;
       }
-      const filter: any = await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
+      const filter: any = isSelf
+        ? { ...baseFilter, account_id: user.account_id }
+        : await applyRoleFilter({ user, baseFilter, accountField: 'account_id', createdByField: 'createdBy' });
       delete filter.visible;
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length) {
@@ -118,7 +126,8 @@ class UserController {
       if (userData[0].user_status !== 'active' && body.user_status === 'active') {
         await subscriptionLimitService.assertCanCreate(user.account_id, 'user');
       }
-      const data = await usersService.updateUserDetails(String(id), { ...userData[0].toObject(), ...body, updatedBy: user._id });
+      const changes = userUpdateFields(req, userData[0]);
+      const data = await usersService.updateUserDetails(String(id), { ...changes, updatedBy: user._id }, user.account_id);
       if (!data) {
         throw Object.assign(new Error("Failed to update user"), { status: 500 });
       }
@@ -181,6 +190,7 @@ class UserController {
 
   async removeUser(req: Request, res: Response, next: NextFunction) {
     try {
+      requireUserManagementPermission(req, 'delete');
       const user = get(req, "user", {}) as IUser;
       const { id } = req.params;
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)), user_status: 'active' };
@@ -189,7 +199,7 @@ class UserController {
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length)
         throw Object.assign(new Error("User not found or already deleted"), { status: 404 });
-      await usersService.removeById(String(id));
+      await usersService.removeById(String(id), user.account_id);
       res.status(200).json({ status: true, message: "User deleted successfully" });
     } catch (error) {
       next(error);

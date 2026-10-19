@@ -7,6 +7,7 @@ import { helperService } from '../../../utils/helper';
 import { RoleManager } from '../../../_role/newUserRoles';
 import { companyService } from '../../company/company.service';
 import { accountAccessService } from '../../../_role/accountAccess.service';
+import { requireRoleManagementPermission } from '../userAuthorization';
 
 const getAccountRoleMenuOrThrow = async (accountId: unknown) => {
   const account = await companyService.verifyCompany(String(accountId));
@@ -80,6 +81,7 @@ class RolesController {
 
   async createRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
+      requireRoleManagementPermission(req, 'add');
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const userData: any = await usersService.getAllUsers({ _id: helperService.validateObjectId(String(user_id)) });
       if (!userData || userData.length === 0) {
@@ -90,7 +92,7 @@ class RolesController {
         throw Object.assign(new Error('User role not found'), { status: 404 });
       }
       req.body.roleMenu = newRoleMenu;
-      const data = await rolesService.insertRole(req.body, account_id, user_id);
+      const data = await rolesService.insertRole({ data: req.body.data, roleMenu: newRoleMenu }, account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('Role not created'), { status: 404 });
       }
@@ -102,6 +104,7 @@ class RolesController {
 
   async updateRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
+      requireRoleManagementPermission(req, 'edit');
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
       const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
@@ -128,6 +131,7 @@ class RolesController {
 
   async removeRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
+      requireRoleManagementPermission(req, 'delete');
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
       const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };

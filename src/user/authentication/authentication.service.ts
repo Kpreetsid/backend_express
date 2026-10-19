@@ -50,7 +50,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     if (!username || !password) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { $or: [{ username: username }, { email: username }], user_status: 'active' };
+    const match: any = { $or: [{ username: username }, { email: username }], user_status: 'active', visible: { $ne: false } };
     const user: IUser | null = await UserModel.findOne(match).select('+password');
     if (!user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
@@ -157,7 +157,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     if (!username || !password) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
     }
-    const match: any = { $or: [{ username: username }, { email: username }], user_status: 'active' };
+    const match: any = { $or: [{ username: username }, { email: username }], user_status: 'active', visible: { $ne: false } };
     const user: IUser | null = await UserModel.findOne(match).select('+password');
     if (!user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
@@ -170,6 +170,13 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     const isMatch = await passwordService.comparePassword(password, user.password);
     if (!isMatch) {
       throw Object.assign(new Error('Invalid credentials'), { status: 401 });
+    }
+    if (!user.isVerified) {
+      throw Object.assign(new Error('Unverified user'), { status: 403 });
+    }
+    const getFirstUser = await UserModel.findOne({ account_id: user.account_id, isFirstUser: true, user_status: 'active' });
+    if (!getFirstUser) {
+      throw Object.assign(new Error('Your account has been locked. Please contact support team.'), { status: 401 });
     }
     if (user.user_role !== 'admin') {
       const locationList = await mapUserToLocationService.getLocationsMappedData(user._id);
@@ -222,15 +229,21 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
 
 export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const identifier = String(req.params.email || req.params.id || '').trim();
+    const identifier = String(req.params.email || req.params.id || '').trim().toLowerCase();
     if (!identifier) {
       throw Object.assign(new Error('Bad request: identifier is required'), { status: 400 });
+    }
+
+    const caller = get(req, 'user') as IUser | undefined;
+    const callerAccount = String(get(req, 'companyID') || '');
+    if (!caller?._id || !callerAccount || callerAccount !== String(caller.account_id)) {
+      throw Object.assign(new Error('Unauthorized access'), { status: 401 });
     }
 
     const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
 
     // Interactive user login token
-    const external_user = await UserModel.findOne({ email: identifier, user_status: 'active' });
+    const external_user = await UserModel.findOne({ _id: caller._id, account_id: caller.account_id, email: identifier, user_status: 'active', visible: { $ne: false } });
     if (!external_user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }

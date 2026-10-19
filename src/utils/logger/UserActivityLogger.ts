@@ -1,5 +1,6 @@
 import { ILogger } from './ILogger';
 import { LogQueue } from './LogQueue';
+import { redactLogData } from '../log-redaction';
 
 /**
  * UserActivityLogger is the main facade for the logging system.
@@ -26,7 +27,7 @@ export class UserActivityLogger implements ILogger {
     const log: any = {
       userId,
       action,
-      metadata,
+      metadata: redactLogData(metadata),
       createdAt: new Date()
     };
     this.queue.push(log);

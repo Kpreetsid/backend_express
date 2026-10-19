@@ -31,7 +31,7 @@ export const TokenBlacklist = {
     }
     const key = CacheKeys.jwtBlacklist(jti);
     await client.set(key, '1', 'EX', ttlSeconds);
-    console.debug(`[TokenBlacklist] Blacklisted jti="${jti}" for ${ttlSeconds}s`);
+    console.debug(`[TokenBlacklist] Token revoked for ${ttlSeconds}s`);
   },
 
   /**

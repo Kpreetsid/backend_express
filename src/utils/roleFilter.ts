@@ -28,15 +28,18 @@ export const applyRoleFilter = async ({
     case "manager":
     case "employee":
     case "customer": {
-      if (!finalFilter[idField]) {
-        if (mapping === "location") {
-          const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
-          finalFilter[idField] = { $in: mappedLocations.map((doc: any) => doc.locationId) };
-        }
-        if (mapping === "asset") {
-          const mappedAssets = await mapUserToAssetService.getAssetsMappedData(user._id);
-          finalFilter[idField] = { $in: mappedAssets.map((doc: any) => doc.assetId) };
-        }
+      const requiredScope: Record<string, any> = {};
+      if (mapping === "location") {
+        const mappedLocations = await mapUserToLocationService.getLocationsMappedData(user._id);
+        requiredScope[idField] = { $in: mappedLocations.map((doc: any) => doc.locationId) };
+      }
+      if (mapping === "asset") {
+        const mappedAssets = await mapUserToAssetService.getAssetsMappedData(user._id);
+        requiredScope[idField] = { $in: mappedAssets.map((doc: any) => doc.assetId) };
+      }
+      if (Object.keys(requiredScope).length) {
+        // Client-selected IDs are search criteria, never evidence of permission.
+        return { $and: [finalFilter, requiredScope], [accountField]: user.account_id, visible: true };
       }
       finalFilter[accountField] = user.account_id;
       finalFilter.visible = true;
