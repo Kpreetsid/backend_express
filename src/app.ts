@@ -24,6 +24,7 @@ import { payloadCryptoRequestMiddleware, payloadCryptoResponseMiddleware } from 
 import { csrfProtection } from './middlewares/csrf.middleware';
 import { authenticatedStatic } from './middlewares/authenticatedStatic';
 import { opcuaRoutes } from './routes/opcua.routes';
+import { knowledgeBaseRoutes } from './knowledge-base/knowledge-base.routes';
 
 const app: Express = express();
 app.set('trust proxy', 1);
@@ -62,7 +63,9 @@ const uploadDirs = [
   'work_order'
 ];
 
-app.use('/', authenticatedStatic(path.join(__dirname, '../uploadFiles')));
+app.use('/', authenticatedStatic(path.join(__dirname, '../uploadFiles'), {
+  excludedTopLevelDirectories: ['knowledge_base']
+}));
 uploadDirs.forEach((dir) => {
   const dirPath = path.join(__dirname, '../uploadFiles', dir);
   app.use('/', authenticatedStatic(dirPath));
@@ -89,6 +92,7 @@ apiRouter.use('/work', isAuthenticated, workRoutes());
 apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());
 apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
+apiRouter.use('/knowledge-base', isAuthenticated, knowledgeBaseRoutes());
 
 const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
 app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], apiRouter);

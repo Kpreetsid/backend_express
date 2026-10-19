@@ -9,6 +9,7 @@ const splitOrigins = (value?: string): string[] => {
 
 const defaultAllowedOrigins = [
   'http://localhost:4200',
+  'http://localhost:4300',
   'https://new.presageinsights.ai',
   'https://app.presageinsights.ai'
 ];
