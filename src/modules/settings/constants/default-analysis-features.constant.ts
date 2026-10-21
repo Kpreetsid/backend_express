@@ -1,3 +1,5 @@
+import { PA_FAN_ANALYSIS_FEATURES } from './paFanAnalysisFeatures';
+
 export const DEFAULT_ANALYSIS_FEATURES = [
   {
     id: "vibration",
@@ -85,5 +87,6 @@ export const DEFAULT_ANALYSIS_FEATURES = [
       { id: "chiller-operating-state", name: "Operating state", isSelected: false, serialNumber: 11, aggregated: false },
       { id: "chiller-alarm-active", name: "Alarm active", isSelected: false, serialNumber: 12, aggregated: false }
     ]
-  }
+  },
+  PA_FAN_ANALYSIS_FEATURES
 ];
