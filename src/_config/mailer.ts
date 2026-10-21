@@ -22,10 +22,9 @@ export class MailerService {
       ...(mailCredential.host
         ? {
             host: mailCredential.host,
-            port: mailCredential.port,
-            secure: mailCredential.secure || mailCredential.port === 465
+            port: mailCredential.port
           }
-        : { service: mailCredential.service }),
+        : { }),
       requireTLS: true,
       tls: { rejectUnauthorized: true },
       auth: {
