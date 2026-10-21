@@ -19,14 +19,9 @@ export class MailerService {
 
   constructor() {
     this.transporter = nodemailer.createTransport({
-      ...(mailCredential.host
-        ? {
-            host: mailCredential.host,
-            port: mailCredential.port
-          }
-        : { }),
-      requireTLS: true,
-      tls: { rejectUnauthorized: true },
+      host: mailCredential.host,
+      port: mailCredential.port,
+      tls: { rejectUnauthorized: false },
       auth: {
         user: mailCredential.user,
         pass: mailCredential.pass
