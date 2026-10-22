@@ -50,7 +50,8 @@ class MapUserToAssetService {
     }
   };
 
-  userAssets = async (match: any, populate: any): Promise<any> => {
+  userAssets = async (match: any, populate: any, hierarchyAccountId?: any): Promise<any> => {
+    const hierarchyAccount = hierarchyAccountId === undefined ? undefined : helperService.validateObjectId(hierarchyAccountId);
     const pipeline: any[] = [{ $match: match }];
     if (populate === "assetId") {
       pipeline.push({
@@ -58,13 +59,31 @@ class MapUserToAssetService {
           from: AssetModel.collection.name,
           let: { assetId: "$assetId" },
           pipeline: [
-            { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true } },
+            { $match: { $expr: { $eq: ["$_id", "$$assetId"] }, visible: true,
+              ...(hierarchyAccount ? { account_id: hierarchyAccount } : {}) } },
             { $project: { _id: 1, id: "$_id", asset_name: 1, asset_type: 1, asset_model: 1, top_level: 1, parent_id: 1, visible: 1 } },
           ],
           as: "asset",
         },
       });
       pipeline.push({ $unwind: "$asset" });
+      if (hierarchyAccount) {
+        pipeline.push({ $graphLookup: {
+          from: AssetModel.collection.name,
+          startWith: '$asset.parent_id',
+          connectFromField: 'parent_id',
+          connectToField: '_id',
+          as: 'assetAncestors',
+          restrictSearchWithMatch: { account_id: hierarchyAccount, visible: true }
+        } });
+        // Context only: never expose full ancestor documents or create new mappings.
+        pipeline.push({ $set: { assetAncestors: { $map: {
+          input: '$assetAncestors', as: 'ancestor', in: {
+            _id: '$$ancestor._id', id: '$$ancestor._id', asset_name: '$$ancestor.asset_name',
+            asset_type: '$$ancestor.asset_type', parent_id: '$$ancestor.parent_id', top_level: '$$ancestor.top_level'
+          }
+        } } } });
+      }
     }
     if (populate === "userId") {
       pipeline.push({
