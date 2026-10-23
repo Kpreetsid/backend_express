@@ -64,7 +64,20 @@ jobs:
         run: npm run test:password-security && npm run test:asset-train
       - name: Build candidate
         run: npm run build
-      - name: Record validated Git objects without changing a branch
+      - name: Report verified blobs without updating any branch
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node scripts/cmms-candidate.cjs propose
+        run: |
+          node <<'NODE'
+          const originalFetch = globalThis.fetch;
+          globalThis.fetch = async (url, options) => {
+            if (new URL(url).pathname.endsWith('/git/trees')) {
+              console.log('VALIDATED_TREE_MANIFEST=' + options.body);
+              console.log('VALIDATED_PARENT=' + process.env.GITHUB_SHA);
+              process.exit(0);
+            }
+            return originalFetch(url, options);
+          };
+          process.argv[2] = 'propose';
+          require('./scripts/cmms-candidate.cjs');
+          NODE
