@@ -9,6 +9,18 @@ import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 import { notificationService } from '../../communications/services/notification-sender.service';
 import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '../../../common/utils/sync-concurrency.helper';
 
+const editableRequestFields = ['title', 'description', 'problemType', 'priority', 'location_id', 'asset_id', 'files', 'status', 'tags', 'remarks', 'review_sla_hours', 'order_sla_hours'] as const;
+function editableRequestPayload(value: any): Record<string, any> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('A work request object is required'), { status: 400 });
+  const payload: Record<string, any> = {};
+  for (const field of editableRequestFields) if (Object.prototype.hasOwnProperty.call(value, field)) payload[field] = value[field];
+  if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
+    if (!WORK_REQUEST_STATUSES.includes(payload.status)) throw Object.assign(new Error('Status is not editable'), { status: 400 });
+    if (['Approved', 'Rejected'].includes(payload.status)) throw Object.assign(new Error('Use the dedicated approval actions for this request'), { status: 400 });
+  }
+  return payload;
+}
+
 class RequestController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
@@ -60,12 +72,9 @@ class RequestController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { account_id } = user;
-      const { params: { id }, query } = req;
+      const { params: { id } } = req;
       const requestId = helperService.validateObjectId(id);
-      let baseFilter: any = { _id: requestId, account_id: account_id, visible: true };
-      if (query) {
-        baseFilter = { ...baseFilter, ...query };
-      }
+      const baseFilter: any = { _id: requestId, account_id: account_id, visible: true };
 
       const filter = await applyRoleFilter({
         user,
@@ -89,7 +98,7 @@ class RequestController {
   async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const body = req.body;
+      const body = editableRequestPayload(req.body);
       const data = await requestService.createRequest(body, user);
       if (!data) {
         throw Object.assign(new Error('Work request not created'), { status: 404 });
@@ -114,7 +123,8 @@ class RequestController {
   async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
-      const { params: { id, status }, body } = req;
+      const { params: { id, status } } = req;
+      const body = editableRequestPayload(req.body);
       const requestId = helperService.validateObjectId(id);
       if (status === 'Approved' || status === 'Rejected') {
         throw Object.assign(new Error('Use the dedicated approval actions for this request'), { status: 400 });
@@ -136,7 +146,10 @@ class RequestController {
       }
       const expectedVersion = getExpectedSyncVersion(req);
       assertSyncVersion(existingRequest[0], expectedVersion);
-      if (body.remarks !== existingRequest[0].remarks) {
+      if (typeof body.remarks !== 'string' || !body.remarks.trim() || body.remarks === existingRequest[0].remarks) {
+        delete body.remarks;
+      } else {
+        body.remarks = body.remarks.trim();
         const dateTime = `${new Date().toISOString().split('T')[0]} ${new Date().toISOString().split('T')[1].split('.')[0]}`;
         body.remarks = existingRequest[0].remarks ? `${existingRequest[0].remarks} ${body.remarks} by ${firstName} ${lastName} on ${dateTime}` : `${body.remarks} by ${firstName} ${lastName} on ${dateTime}`;
       }
@@ -222,7 +235,8 @@ class RequestController {
       if (user_role !== 'admin') {
         throw Object.assign(new Error('Only administrators can reject work requests'), { status: 403 });
       }
-      const { params: { id }, body: { remarks } } = req;
+      const { params: { id } } = req;
+      const remarks = typeof req.body?.remarks === 'string' ? req.body.remarks.trim() : '';
       const requestId = helperService.validateObjectId(id);
       if (!remarks) {
         throw Object.assign(new Error('Remarks is required'), { status: 400 });

@@ -2,57 +2,13 @@ import { usersService } from "../../modules/users/services/user.service";
 import { IScheduleMaster, SchedulerModel } from "../../modules/maintenance/models/scheduleMaster.model";
 import { orderService } from "../../modules/work-orders/services/order.service";
 import crypto from "crypto";
+import { isScheduleDue } from "./schedule-calendar";
 
 class SchedulerService {
     private readonly instanceId = `${process.pid}-${crypto.randomUUID()}`;
     private readonly lockTtlMs = Number(process.env.SCHEDULER_LOCK_TTL_MS || 10 * 60 * 1000);
 
-    private getTodayDateStr(): string {
-        return new Date().toISOString().split("T")[0];
-    }
-
-    private getTodayName(): string {
-        return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date()).toLowerCase();
-    }
-
-    private isSameDate(d1: Date | string, d2: Date | string): boolean {
-        return new Date(d1).toDateString() === new Date(d2).toDateString();
-    }
-
-    private shouldRun(schedule: IScheduleMaster): boolean {
-        const s = schedule.schedule;
-        const today = new Date();
-        const startDate = new Date(s.start_date);
-        const endDate = s.end_date ? new Date(s.end_date) : null;
-        if (today < startDate) return false;
-        if (endDate && today > endDate) return false;
-        if (!s.enabled) return false;
-        if (s.no_of_repetition && s.no_of_execution >= s.no_of_repetition) {
-            return false;
-        }
-        return true;
-    }
-
-    private shouldSkipToday(schedule: IScheduleMaster): boolean {
-        const s = schedule.schedule;
-        const today = new Date();
-        const todayStr = this.getTodayDateStr();
-        const dayIndex = today.getDay();
-        if (s.skipDates.includes(todayStr)) return true;
-        if (s.skipWeekends) {
-            if (dayIndex === 6 && s.skipWeekendSaturday) return true; // Saturday
-            if (dayIndex === 0 && s.skipWeekendSunday) return true;   // Sunday
-        }
-        return false;
-    }
-
-    private alreadyExecutedToday(schedule: IScheduleMaster): boolean {
-        const last = schedule.schedule.last_execution_date;
-        if (!last) return false;
-        return this.isSameDate(last, new Date());
-    }
-
-    private async acquireScheduleLock(scheduleId: any): Promise<boolean> {
+    private async acquireScheduleLock(scheduleId: any): Promise<IScheduleMaster | null> {
         const lockExpiresBefore = new Date(Date.now() - this.lockTtlMs);
         const locked = await (SchedulerModel as any).findOneAndUpdate(
             {
@@ -74,7 +30,7 @@ class SchedulerService {
             { new: true }
         );
 
-        return !!locked;
+        return locked;
     }
 
     private async releaseScheduleLock(scheduleId: any): Promise<void> {
@@ -102,7 +58,7 @@ class SchedulerService {
             created_by: schedule.createdBy,
             wo_asset_id: schedule.work_order.wo_asset_id,
             wo_location_id: schedule.work_order.wo_location_id,
-            createdFrom: schedule.work_order.createdFrom,
+            createdFrom: schedule.work_order.createdFrom || "Preventive",
             tasks: schedule.work_order.tasks,
             parts: schedule.work_order.parts,
             userIdList: schedule.work_order.userIdList
@@ -121,11 +77,12 @@ class SchedulerService {
                 body.end_date = new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split("T")[0];
                 break;
         }
-        const systemUser: any = await usersService.getAllUsers({ _id: schedule.createdBy });
+        const systemUser: any = await usersService.getAllUsers({ _id: schedule.createdBy, account_id: schedule.account_id });
+        if (!systemUser?.[0]) throw new Error("Schedule creator is unavailable in this account");
         console.log(`▶️ Creating Work Order for schedule: ${schedule.title}`);
         const workOrder = await orderService.createWorkOrder(body, systemUser[0]);
         if (!workOrder) {
-            console.error(`❌ Failed to create work order for schedule: ${schedule.title}`);
+            throw new Error("Scheduled work order creation failed; execution was not recorded");
         }
         console.log(`✅ Work Order created for schedule: ${schedule.title}`);
         s.no_of_execution = (s.no_of_execution ?? 0) + 1;
@@ -140,44 +97,27 @@ class SchedulerService {
 
     public async runUnifiedScheduler(): Promise<void> {
         try {
-            const today = new Date();
-            const todayName = this.getTodayName();
-            const todayDate = today.getDate();
             const schedules = await SchedulerModel.find({ visible: true, "schedule.enabled": true });
-            console.log(`🗓️ Scheduler started | ${schedules.length} active schedules`);
             for (const schedule of schedules) {
                 try {
-                    const s = schedule.schedule;
-                    if (!this.shouldRun(schedule)) continue;
-                    if (this.shouldSkipToday(schedule)) continue;
-                    if (this.alreadyExecutedToday(schedule)) continue;
-                    const lockAcquired = await this.acquireScheduleLock(schedule._id);
-                    if (!lockAcquired) continue;
-                    
+                    if (!isScheduleDue(schedule.schedule)) continue;
+                    const claimed = await this.acquireScheduleLock(schedule._id);
+                    if (!claimed) continue;
                     try {
-                        if (s.mode === "daily") {
-                            await this.executeSchedule(schedule);
-                        } else if (s.mode === "weekly") {
-                            if (s.weekly.days.includes(todayName)) {
-                                await this.executeSchedule(schedule);
-                            }
-                        } else if (s.mode === "monthly") {
-                            if (s.monthly.monthDays.includes(todayDate)) {
-                                await this.executeSchedule(schedule);
-                            }
-                        }
+                        // Another worker or an edit may have changed the plan after the initial scan.
+                        if (isScheduleDue(claimed.schedule)) await this.executeSchedule(claimed);
                     } finally {
                         await this.releaseScheduleLock(schedule._id);
                     }
-                } catch (indivError) {
-                    console.error(`❌ Schedule execution failed for "${schedule.title}":`, indivError);
+                } catch (error) {
+                    console.error('Schedule execution failed', String(schedule._id), error);
                 }
             }
-            console.log("✅ Scheduler completed successfully");
         } catch (error) {
-            console.error("❌ Scheduler failed:", error);
+            console.error('Scheduler failed', error);
         }
     }
+
 }
 
 export const schedulerService = new SchedulerService();

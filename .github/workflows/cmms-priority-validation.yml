@@ -57,21 +57,11 @@ jobs:
         run: npm run test:asset-train
       # catalog:check requires sibling frontend and data_processors checkouts.
       # This job deliberately does not access or modify those integrations.
+      - name: CMMS workflow regression tests
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        env:
+          TZ: UTC
+        run: npm run test:cmms
       - name: Build application
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
-      - name: Package isolated verification workspace
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: |
-          mkdir -p verification-artifacts
-          git archive --format=tar HEAD | gzip > verification-artifacts/source.tar.gz
-          tar -czf verification-artifacts/dependencies.tar.gz node_modules
-      - name: Retain verification workspace temporarily
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: cmms-backend-verification-${{ github.sha }}
-          path: verification-artifacts/*.tar.gz
-          compression-level: 0
-          retention-days: 1
-          if-no-files-found: error

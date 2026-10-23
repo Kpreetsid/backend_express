@@ -4037,7 +4037,7 @@ class OrderService {
       const overdueCount = result.overdue[0]?.count || 0;
       const plannedCount = result.planned[0]?.count || 0;
 
-      const workRequestMatch: any = { status: { $nin: ['completed'] } }
+      const workRequestMatch: any = { account_id: workOrderMatch.account_id, status: { $nin: ['completed'] } }
       if (workOrderMatch.wo_asset_id) workRequestMatch.asset_id = workOrderMatch.wo_asset_id;
       if (workOrderMatch.wo_location_id) workRequestMatch.location_id = workOrderMatch.wo_location_id;
       if (workOrderMatch.createdAt) workRequestMatch.createdAt = workOrderMatch.createdAt;
@@ -4313,7 +4313,7 @@ class OrderService {
 
   async updateById(id: any, body: any, user: IUser, expectedVersion?: number): Promise<any> {
     return await withTransaction(async (session) => {
-      let existingOrder: any = await WorkOrderModel.findById(id).session(session);
+      let existingOrder: any = await WorkOrderModel.findOne({ _id: id, account_id: user.account_id, visible: true }).session(session);
       if (!existingOrder) {
         throw Object.assign(new Error('Work Order not found'), { status: 404 });
       }
@@ -4341,7 +4341,10 @@ class OrderService {
         }
       }
       
-      let updatedData = { ...existingOrder.toObject(), ...body };
+      let updatedData = { ...existingOrder.toObject(), ...body,
+        _id: existingOrder._id, account_id: existingOrder.account_id,
+        createdBy: existingOrder.createdBy, created_by: existingOrder.created_by,
+        createdAt: existingOrder.createdAt, order_no: existingOrder.order_no, visible: existingOrder.visible }; 
       if (body.hasOwnProperty('parts')) {
         this.validateIncomingParts(body.parts || []);
       }
@@ -4353,14 +4356,14 @@ class OrderService {
       if (body.hasOwnProperty('parts')) {
         const normalizedParts = partsService.normalizeWorkOrderParts(body.parts || [], updatedData.status || existingOrder.status);
         await partsService.validateInventoryByWorkOrder(
-          body.oldParts || existingOrder.parts || [],
+          existingOrder.parts || [],
           normalizedParts,
           existingOrder.status,
           updatedData.status || existingOrder.status,
           session
         );
         updatedData.parts = normalizedParts;
-        const inventoryResult = await partsService.adjustInventoryByWorkOrder(body.oldParts || existingOrder.parts || [], normalizedParts, user, session, {
+        const inventoryResult = await partsService.adjustInventoryByWorkOrder(existingOrder.parts || [], normalizedParts, user, session, {
           account_id: user.account_id,
           work_order_id: existingOrder._id,
           work_order_no: existingOrder.order_no,
@@ -4408,7 +4411,7 @@ class OrderService {
       updatedData = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData)));
       updatedData = this.syncStatusDetailAuditFields(this.syncCompletionAuditFields(updatedData, existingOrder.status, user), user);
       delete updatedData.sync_version;
-      const updateFilter: any = { _id: id };
+      const updateFilter: any = { _id: id, account_id: user.account_id, visible: true };
       if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
       const data = await WorkOrderModel.findOneAndUpdate(updateFilter, updatedData, { returnDocument: 'after', session });
       if (!data) {
@@ -4507,7 +4510,7 @@ class OrderService {
       if (existingOrder.parts?.length > 0) {
         existingOrder.parts = existingOrder.parts.map((part: any) => ({
           ...part,
-          actualQuantity: part.actualQuantity || part.estimatedQuantity
+          actualQuantity: part.actualQuantity === null || part.actualQuantity === undefined || part.actualQuantity === '' ? part.estimatedQuantity : part.actualQuantity
         }));
       }
       if (!existingOrder.actual_start_date) {
