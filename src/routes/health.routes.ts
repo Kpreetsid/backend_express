@@ -1,8 +1,8 @@
 import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { redisConfig } from '../configDB';
-import { isRedisReady } from '../_config/redis';
-import { notificationSocketMetrics } from '../_config/socket';
+import { redisConfig } from '../core/config/env.config';
+import { isRedisReady } from '../core/cache/redis.client';
+import { notificationSocketMetrics } from '../core/socket/socket.server';
 
 const mongoState = () => {
   switch (mongoose.connection.readyState) {

@@ -1,0 +1,401 @@
+import crypto from 'crypto';
+import mongoose from 'mongoose';
+import { CookieOptions, Request, Response } from 'express';
+import { auth, refreshToken as refreshTokenConfig } from '../../../core/config/env.config';
+import { generateAccessToken } from '../../../core/auth/auth.middleware';
+import { IUserToken, TokenModel } from '../models/userToken.model';
+import { IUser, UserLoginPayload, UserModel } from '../../users/models/user.model';
+import { companyService } from '../../company/services/company.service';
+import { accountFeatureService } from '../../company/services/accountFeature.service';
+import { rolesService } from '../../users/services/roles.service';
+import { mapUserToLocationService } from '../../mappings/services/userLocation.service';
+import { parseTtlSeconds } from '../../../common/utils/ttl.helper';
+import { accountAccessService } from '../../users/services/account-access.service';
+import { tokenSessionStore } from '../../../core/auth/token-session-store';
+import { clearAuthCookies, setAccessCookies } from '../../../core/auth/auth-cookie.service';
+import { cookieService } from '../../../common/utils/cookie.helper';
+
+const REFRESH_HEADER = 'x-cmms-refresh-request';
+const REFRESH_PRINCIPAL_TYPE = 'refresh_token';
+
+interface AccessSession {
+  token: string;
+  token_id: mongoose.Types.ObjectId;
+  ttlSeconds: number;
+}
+
+type StoredRefreshToken = IUserToken & {
+  account_id: mongoose.Types.ObjectId;
+  revokedAt?: Date;
+  replacedByTokenHash?: string;
+};
+
+interface RefreshIssueResult {
+  issued: boolean;
+  rawToken?: string;
+  tokenHash?: string;
+  expiresAt?: Date;
+}
+
+const getCookieOptions = (): CookieOptions => ({
+  httpOnly: true,
+  secure: refreshTokenConfig.cookieSecure,
+  sameSite: refreshTokenConfig.cookieSameSite,
+  path: refreshTokenConfig.cookiePath,
+  maxAge: parseTtlSeconds(refreshTokenConfig.expiresIn, 7 * 24 * 60 * 60) * 1000
+});
+
+const hashRefreshToken = (token: string): string => {
+  return crypto
+    .createHmac('sha256', refreshTokenConfig.secret)
+    .update(token)
+    .digest('hex');
+};
+
+const createRawRefreshToken = (): string => crypto.randomBytes(64).toString('base64url');
+
+const getRequestRefreshToken = (req: Request): string => {
+  return cookieService.get(req, refreshTokenConfig.cookieName)
+    || String(req.body?.refreshToken || req.headers['x-cmms-refresh-token'] || '');
+};
+
+const getRequestIp = (req: Request): string => {
+  const forwardedFor = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return forwardedFor || req.ip || req.socket.remoteAddress || '';
+};
+
+const getSafeUser = (user: IUser): any => {
+  const userObject = typeof (user as any).toObject === 'function' ? (user as any).toObject() : { ...(user as any) };
+  delete userObject.password;
+  userObject.id = userObject._id;
+  return userObject;
+};
+
+const assertRefreshRequest = (req: Request): void => {
+  if (req.headers[REFRESH_HEADER] !== 'true') {
+    throw Object.assign(new Error('Invalid refresh request'), { status: 403 });
+  }
+};
+
+const remainingTtlSeconds = (expiresAt: Date): number => Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
+
+class RefreshTokenService {
+  readonly cookieName = refreshTokenConfig.cookieName;
+  readonly refreshHeader = REFRESH_HEADER;
+
+  async createAccessSession(user: IUser, flags: { isExternal?: boolean; isInternal?: boolean } = {}, sessionStartedAt = new Date()): Promise<AccessSession> {
+    const tokenId = new mongoose.Types.ObjectId();
+    const userTokenPayload: UserLoginPayload & { sessionStartedAt: number } = {
+      sessionStartedAt: sessionStartedAt.getTime(),
+      id: String(user._id),
+      username: user.username,
+      companyID: String(user.account_id),
+      jti: String(tokenId)
+    };
+    const token = generateAccessToken(userTokenPayload);
+    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+    const userTokenData = new TokenModel({
+      _id: token,
+      tokenType: 'access',
+      token_id: tokenId,
+      userId: user._id,
+      account_id: user.account_id,
+      principalType: 'user',
+      isExternal: flags.isExternal || false,
+      isInternal: flags.isInternal || false,
+      ttl: ttlSeconds,
+      expiresAt
+    });
+    await userTokenData.save();
+    await tokenSessionStore.setAccessSession({
+      token,
+      tokenId: String(tokenId),
+      userId: String(user._id),
+      accountId: String(user.account_id || ''),
+      principalType: 'user',
+      expiresAt: expiresAt.toISOString(),
+      ttlSeconds,
+      isExternal: flags.isExternal || false,
+      isInternal: flags.isInternal || false
+    });
+    return { token, token_id: tokenId, ttlSeconds };
+  }
+
+  async issueForUser(req: Request, res: Response, user: IUser, accessTokenId?: mongoose.Types.ObjectId, sessionStartedAt = new Date()): Promise<RefreshIssueResult> {
+    // Password login/refresh already holds a private credential snapshot. Other
+    // callers load one here; never put the hash in a token, response or cache.
+    const credentialUser = user.password ? user : await UserModel.findOne({ _id: user._id, account_id: user.account_id }).select('+password').read('primary');
+    if (!credentialUser?.password) throw Object.assign(new Error('Session could not be issued'), { status: 401 });
+    const accountId = String(user.account_id || '');
+    const cookieEnabled = await accountFeatureService.isCookieEnabledForAccount(accountId);
+
+    const rawToken = createRawRefreshToken();
+    const tokenHash = hashRefreshToken(rawToken);
+    const ttlSeconds = parseTtlSeconds(refreshTokenConfig.expiresIn, 7 * 24 * 60 * 60);
+    const expiresAt = new Date(Date.now() + ttlSeconds * 1000);
+    const userAgent = String(req.headers['user-agent'] || '');
+    const ipAddress = getRequestIp(req);
+    await new TokenModel({
+      _id: tokenHash,
+      tokenType: 'refresh' as const,
+      created: sessionStartedAt,
+      token_id: accessTokenId,
+      userId: user._id,
+      account_id: user.account_id,
+      principalType: REFRESH_PRINCIPAL_TYPE,
+      ttl: ttlSeconds,
+      expiresAt,
+      userAgent,
+      ipAddress
+    }).save();
+    await tokenSessionStore.setRefreshSession({
+      tokenHash,
+      tokenId: accessTokenId ? String(accessTokenId) : undefined,
+      userId: String(user._id),
+      accountId: String(user.account_id || ''),
+      principalType: REFRESH_PRINCIPAL_TYPE,
+      expiresAt: expiresAt.toISOString(),
+      ttlSeconds,
+      userAgent,
+      ipAddress
+    });
+
+    await this.assertPasswordUnchanged(credentialUser, res, accessTokenId, tokenHash);
+
+    if (cookieEnabled) {
+      cookieService.set(res, refreshTokenConfig.cookieName, rawToken, getCookieOptions());
+    } else {
+      this.clearCookie(res);
+    }
+    return { issued: true, rawToken, tokenHash, expiresAt };
+  }
+
+  clearCookie(res: Response): void {
+    cookieService.clear(res, refreshTokenConfig.cookieName, {
+      httpOnly: true,
+      secure: refreshTokenConfig.cookieSecure,
+      sameSite: refreshTokenConfig.cookieSameSite,
+      path: refreshTokenConfig.cookiePath
+    });
+  }
+
+  async revokeCurrent(req: Request, res?: Response): Promise<void> {
+    const rawToken = getRequestRefreshToken(req);
+    if (!rawToken) {
+      if (res) {
+        this.clearCookie(res);
+      }
+      return;
+    }
+
+    const tokenHash = hashRefreshToken(rawToken);
+    await TokenModel.updateOne(
+      { _id: tokenHash, principalType: REFRESH_PRINCIPAL_TYPE, revokedAt: { $exists: false } },
+      { $set: { revokedAt: new Date() } }
+    );
+    await tokenSessionStore.deleteRefreshSession(tokenHash);
+    if (res) {
+      this.clearCookie(res);
+    }
+  }
+
+  async refreshAccessToken(req: Request, res: Response): Promise<any> {
+    assertRefreshRequest(req);
+    const rawToken = getRequestRefreshToken(req);
+    if (!rawToken) {
+      clearAuthCookies(res);
+      throw Object.assign(new Error('Refresh token missing'), { status: 401, name: 'InvalidTokenError' });
+    }
+
+    const tokenHash = hashRefreshToken(rawToken);
+    const cachedRefreshToken = await tokenSessionStore.getRefreshSession(tokenHash);
+    const refreshTokenQuery = {
+      _id: tokenHash,
+      tokenType: 'refresh' as const,
+      principalType: REFRESH_PRINCIPAL_TYPE,
+      revokedAt: { $exists: false },
+      expiresAt: { $gt: new Date() }
+    };
+    const storedRefreshToken = (refreshTokenConfig.rotate
+      ? await TokenModel.findOneAndUpdate(
+        refreshTokenQuery,
+        { $set: { revokedAt: new Date() } },
+        { returnDocument: 'after' }
+      ).exec()
+      : await TokenModel.findOne(refreshTokenQuery).exec()) as StoredRefreshToken | null;
+    if (!storedRefreshToken) {
+      await tokenSessionStore.deleteRefreshSession(tokenHash);
+      this.clearCookie(res);
+      clearAuthCookies(res);
+      throw Object.assign(new Error('Refresh token invalid or revoked'), { status: 401, name: 'InvalidTokenError' });
+    }
+
+    if (storedRefreshToken.expiresAt.getTime() <= Date.now()) {
+      await this.revokeStored(storedRefreshToken);
+      this.clearCookie(res);
+      clearAuthCookies(res);
+      throw Object.assign(new Error('Refresh token expired'), { status: 401, name: 'TokenExpiredError' });
+    }
+    if (!cachedRefreshToken) {
+      await this.cacheStoredRefreshToken(storedRefreshToken);
+    }
+
+    const accountId = String(storedRefreshToken.account_id || '');
+    const cookieEnabled = await accountFeatureService.isCookieEnabledForAccount(accountId);
+
+    const user = await UserModel
+      .findOne({ _id: storedRefreshToken.userId, account_id: storedRefreshToken.account_id, user_status: 'active' })
+      .select('+password');
+    if (!user || !storedRefreshToken.created || !Number.isFinite(storedRefreshToken.created.getTime())) {
+      await this.revokeStored(storedRefreshToken);
+      this.clearCookie(res);
+      clearAuthCookies(res);
+      throw Object.assign(new Error('User not found or session invalidated by password change'), { status: 401 });
+    }
+
+    if (user.user_role !== 'admin') {
+      const locationList = await mapUserToLocationService.getLocationsMappedData(user._id);
+      if (!locationList || locationList.length === 0) {
+        await this.revokeStored(storedRefreshToken);
+        this.clearCookie(res);
+        clearAuthCookies(res);
+        throw Object.assign(new Error('User does not have any location'), { status: 401 });
+      }
+    }
+
+    const accountDetails = await companyService.getAllCompanies({ _id: user.account_id });
+    if (!accountDetails || accountDetails.length === 0) {
+      await this.revokeStored(storedRefreshToken);
+      this.clearCookie(res);
+      clearAuthCookies(res);
+      throw Object.assign(new Error('User account not found'), { status: 401 });
+    }
+
+    let userRoleData: any = await rolesService.verifyUserRole(String(user._id), String(user.account_id));
+    if (!userRoleData) {
+      userRoleData = await rolesService.createUserRole(user.user_role, user);
+    }
+    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails[0]);
+
+    const accessSession = await this.createAccessSession(user, {}, storedRefreshToken.created);
+    if (cookieEnabled) {
+      setAccessCookies(res, {
+        token: accessSession.token,
+        tokenId: String(accessSession.token_id),
+        userId: String(user._id),
+        accountId: String(user.account_id),
+        ttlSeconds: accessSession.ttlSeconds
+      });
+    } else {
+      clearAuthCookies(res);
+    }
+    let replacementRefreshToken: string | undefined;
+    let replacementRefreshHash: string | undefined;
+    if (refreshTokenConfig.rotate) {
+      const newRefresh = await this.issueForUser(req, res, user, accessSession.token_id, storedRefreshToken.created);
+      if (!newRefresh.issued || !newRefresh.tokenHash || !newRefresh.rawToken) {
+        await this.revokeStored(storedRefreshToken);
+        this.clearCookie(res);
+        clearAuthCookies(res);
+        throw Object.assign(new Error('Refresh token could not be rotated'), { status: 401, name: 'InvalidTokenError' });
+      }
+      replacementRefreshToken = newRefresh.rawToken;
+      replacementRefreshHash = newRefresh.tokenHash;
+      storedRefreshToken.replacedByTokenHash = newRefresh.tokenHash;
+      try {
+        await storedRefreshToken.save();
+      } catch {
+        // Reset may have deleted the original after we claimed it for rotation.
+        await this.rejectIssuedSession(user, res, accessSession.token_id, [tokenHash, newRefresh.tokenHash]);
+      }
+      await tokenSessionStore.deleteRefreshSession(String(storedRefreshToken._id));
+    } else {
+      if (cookieEnabled) {
+        cookieService.set(res, refreshTokenConfig.cookieName, rawToken, getCookieOptions());
+      } else {
+        replacementRefreshToken = rawToken;
+      }
+      await this.cacheStoredRefreshToken(storedRefreshToken);
+      await this.assertPasswordUnchanged(user, res, accessSession.token_id, tokenHash);
+    }
+
+    // A reset may complete BEFORE the user/password snapshot is read. In that
+    // case the hash fence alone passes, but the original refresh has been deleted.
+    const sourceStillStored = await TokenModel.exists({ _id: tokenHash, userId: user._id,
+      account_id: user.account_id, tokenType: 'refresh' }).read('primary');
+    if (!sourceStillStored) {
+      await this.rejectIssuedSession(user, res, accessSession.token_id,
+        [tokenHash, ...(replacementRefreshHash ? [replacementRefreshHash] : [])]);
+    }
+
+    return {
+      authMethod: cookieEnabled ? 'cookie' : 'localStorage',
+      token: accessSession.token,
+      token_id: accessSession.token_id,
+      ...(!cookieEnabled && replacementRefreshToken ? { refreshToken: replacementRefreshToken } : {}),
+      accountDetails: accountDetails[0],
+      userDetails: getSafeUser(user),
+      platformControl: effectivePermissions.platformControl,
+      roleMenu: effectivePermissions.roleMenu,
+      accountPermissionVersion: Number(accountDetails[0].account_permission_version || 1)
+    };
+  }
+
+  private async revokeStored(storedRefreshToken: StoredRefreshToken): Promise<void> {
+    storedRefreshToken.revokedAt = new Date();
+    await storedRefreshToken.save();
+    await tokenSessionStore.deleteRefreshSession(String(storedRefreshToken._id));
+  }
+
+  private async assertPasswordUnchanged(user: IUser, res: Response, accessTokenId?: mongoose.Types.ObjectId, refreshHash?: string): Promise<void> {
+    const current = await UserModel.exists({ _id: user._id, account_id: user.account_id,
+      user_status: 'active', password: user.password }).read('primary');
+    if (current) return;
+    await this.rejectIssuedSession(user, res, accessTokenId, refreshHash ? [refreshHash] : []);
+  }
+
+  private async rejectIssuedSession(user: IUser, res: Response, accessTokenId: mongoose.Types.ObjectId | undefined, refreshHashes: string[]): Promise<never> {
+    // Clear browser credentials even when persistence cleanup itself fails.
+    this.clearCookie(res);
+    clearAuthCookies(res);
+    try {
+      await Promise.all([
+        TokenModel.deleteMany({ userId: user._id, account_id: user.account_id,
+          $or: [...(accessTokenId ? [{ token_id: accessTokenId }] : []), ...refreshHashes.map(_id => ({ _id }))] }),
+        tokenSessionStore.deleteUserSessions(String(user.account_id), String(user._id))
+      ]);
+    } finally {
+      throw Object.assign(new Error('Session changed during authentication. Please log in again.'), { status: 401 });
+    }
+  }
+
+  private async cacheStoredRefreshToken(storedRefreshToken: StoredRefreshToken): Promise<void> {
+    const ttlSeconds = remainingTtlSeconds(storedRefreshToken.expiresAt);
+    if (ttlSeconds <= 0) {
+      return;
+    }
+
+    await tokenSessionStore.setRefreshSession({
+      tokenHash: String(storedRefreshToken._id),
+      tokenId: storedRefreshToken.token_id ? String(storedRefreshToken.token_id) : undefined,
+      userId: String(storedRefreshToken.userId),
+      accountId: String(storedRefreshToken.account_id || ''),
+      principalType: REFRESH_PRINCIPAL_TYPE,
+      expiresAt: storedRefreshToken.expiresAt.toISOString(),
+      ttlSeconds,
+      userAgent: storedRefreshToken.userAgent,
+      ipAddress: storedRefreshToken.ipAddress
+    });
+  }
+}
+
+export const refreshTokenService = new RefreshTokenService();
+
+export const __refreshTokenTestUtils = {
+  hashRefreshToken,
+  getCookieOptions,
+  getRequestRefreshToken,
+  REFRESH_PRINCIPAL_TYPE,
+  REFRESH_HEADER
+};

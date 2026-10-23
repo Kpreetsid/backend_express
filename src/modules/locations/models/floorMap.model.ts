@@ -1,0 +1,85 @@
+import mongoose, { Schema, Document } from 'mongoose';
+import { ObjectId } from 'mongodb';
+export const FLOOR_MAP_COLLECTION_NAME = 'floor_map';
+
+
+export const FLOOR_MAP_DATA_TYPES = ['location', 'asset', 'kpi'];
+
+interface ICoordinate {
+  x: number;
+  y: number;
+}
+
+interface IEndPoint {
+  is_linked: boolean;
+  composite_id: string;
+  point_name: string;
+  mount_location: string;
+  mount_type?: string | null;
+  mount_material?: string | null;
+  mount_direction: string;
+  asset_id: ObjectId | string;
+  asset_name: string;
+  org_id: ObjectId | string;
+  mac_id: string;
+  image?: string | null;
+  online: string;
+  id: number;
+  selected: boolean;
+}
+
+export interface IEndpointLocation extends Document {
+  coordinate: ICoordinate;
+  locationId: ObjectId;
+  account_id: ObjectId;
+  data_type: string;
+  createdOn: Date;
+  end_point_id: number;
+  end_point: IEndPoint;
+  createdBy: ObjectId;
+  updatedBy?: ObjectId;
+}
+
+const coordinateSchema = new Schema<ICoordinate>({
+  x: { type: Number, required: true },
+  y: { type: Number, required: true },
+}, { _id: false });
+
+const endPointSchema = new Schema<IEndPoint>({
+  is_linked: { type: Boolean },
+  composite_id: { type: String, trim: true },
+  point_name: { type: String, trim: true, required: true },
+  mount_location: { type: String, trim: true },
+  mount_type: { type: String, trim: true },
+  mount_material: { type: String, trim: true },
+  mount_direction: { type: String, trim: true },
+  asset_id: { type: mongoose.Schema.Types.Mixed },
+  asset_name: { type: String, trim: true, required: true },
+  org_id: { type: mongoose.Schema.Types.Mixed, required: true },
+  mac_id: { type: String, trim: true },
+  image: { type: String, trim: true },
+  online: { type: String, trim: true },
+  id: { type: Number, required: true },
+  selected: { type: Boolean }
+}, { _id: false });
+
+const endpointLocationSchema = new Schema<IEndpointLocation>({
+  coordinate: { type: coordinateSchema, required: true },
+  locationId: { type: mongoose.Schema.Types.ObjectId, ref: 'LocationModel', required: true },
+  account_id: { type: mongoose.Schema.Types.ObjectId, ref: 'AccountModel', required: true },
+  data_type: { type: String, trim: true, enum: FLOOR_MAP_DATA_TYPES, required: true },
+  createdOn: { type: Date, default: Date.now },
+  end_point_id: { type: Number },
+  end_point: { type: endPointSchema },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
+}, {
+  collection: FLOOR_MAP_COLLECTION_NAME,
+  timestamps: true,
+  versionKey: false
+});
+
+endpointLocationSchema.index({ account_id: 1, locationId: 1 });
+endpointLocationSchema.index({ account_id: 1, data_type: 1 });
+
+export const EndpointLocationModel = mongoose.model<IEndpointLocation>('Schema_EndPoints', endpointLocationSchema);

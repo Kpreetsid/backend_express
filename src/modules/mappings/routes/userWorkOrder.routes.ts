@@ -1,0 +1,16 @@
+import express from 'express';
+import { userWorkOrderController } from '../controllers/userWorkOrder.controller';
+import { validateParam } from '../../../common/middlewares/validate.middleware';
+import { userWorkOrderValidator } from '../validators/userWorkOrder.validator';
+import { validate } from '../../../common/middlewares/validator.middleware';
+
+export default (router: express.Router) => {
+    const workOrderRouter = express.Router();
+    workOrderRouter.get('/', userWorkOrderController.getUserWorkOrders);
+    workOrderRouter.get('/:workOrderId', validateParam("workOrderId"), userWorkOrderController.getMappedData);
+    workOrderRouter.post('/', userWorkOrderValidator, validate, userWorkOrderController.create);
+    workOrderRouter.put('/:workOrderId', validateParam("workOrderId"), userWorkOrderValidator, validate, userWorkOrderController.update);
+    workOrderRouter.patch('/:workOrderId', validateParam("workOrderId"), userWorkOrderValidator, validate, userWorkOrderController.update);
+    workOrderRouter.delete('/:workOrderId', validateParam("workOrderId"), userWorkOrderController.remove);
+    router.use('/users/workOrders', workOrderRouter);
+}
