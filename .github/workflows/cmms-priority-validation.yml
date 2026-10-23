@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 25
     env:
       CI: 'true'
+      NODE_ENV: test
+      REDIS_ENABLED: 'false'
       PUPPETEER_SKIP_DOWNLOAD: 'true'
     steps:
       - name: Checkout exact commit
@@ -29,6 +31,18 @@ jobs:
         with:
           node-version: '24'
           cache: npm
+      - name: Generate ephemeral test signing keys
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          for (const name of ['AUTH_SECRET', 'EXTERNAL_AUTH_SECRET', 'REFRESH_TOKEN_SECRET']) {
+            const value = crypto.randomBytes(48).toString('hex');
+            console.log(`::add-mask::${value}`);
+            fs.appendFileSync(process.env.GITHUB_ENV, `${name}=${value}\n`);
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV, 'AUTH_ISSUER=cmms-ci\nAUTH_AUDIENCE=cmms-ci\n');
+          NODE
       - name: Install locked dependencies
         id: install
         run: npm ci --no-audit --no-fund
@@ -38,12 +52,26 @@ jobs:
       - name: Password security regression tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:password-security
-      - name: Asset train regression tests
+      - name: Asset train and local catalog regression tests
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test:asset-train
-      - name: Verify generated catalog
-        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
-        run: npm run catalog:check
+      # catalog:check requires sibling frontend and data_processors checkouts.
+      # This job deliberately does not access or modify those integrations.
       - name: Build application
         if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
+      - name: Package isolated verification workspace
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: |
+          mkdir -p verification-artifacts
+          git archive --format=tar HEAD | gzip > verification-artifacts/source.tar.gz
+          tar -czf verification-artifacts/dependencies.tar.gz node_modules
+      - name: Retain verification workspace temporarily
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmms-backend-verification-${{ github.sha }}
+          path: verification-artifacts/*.tar.gz
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
