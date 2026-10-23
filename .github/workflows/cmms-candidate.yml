@@ -24,6 +24,8 @@ jobs:
       NODE_ENV: test
       REDIS_ENABLED: 'false'
       TZ: UTC
+      AUTH_ISSUER: cmms-ci
+      AUTH_AUDIENCE: cmms-ci
       PUPPETEER_SKIP_DOWNLOAD: 'true'
     steps:
       - uses: actions/checkout@v4
