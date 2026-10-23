@@ -21,7 +21,7 @@ class ObservationController {
       }
       if (assetId) {
         const childAssetIds = await assetService.getAllChildAssetIDs(helperService.validateObjectId(String(assetId)));
-        baseFilter['assetId'] = { $in: childAssetIds };
+        baseFilter['assetId'] = { $in: helperService.validateObjectIds(String(childAssetIds)) };
       }
       if (alarmId) {
         baseFilter['alarmId'] = Number(alarmId);
