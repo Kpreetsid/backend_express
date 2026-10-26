@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { userWorkOrderService } from '../services/userWorkOrder.service';
 import { get } from 'lodash';
 import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { orderService } from '../../work-orders/services/order.service';
 import { notificationService } from '../../communications/services/notification-sender.service';
 

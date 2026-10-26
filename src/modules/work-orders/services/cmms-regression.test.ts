@@ -1,0 +1,46 @@
+import assert from 'node:assert/strict';
+import { afterEach, mock, test } from 'node:test';
+import { orderService } from './order.service';
+import { requestService } from './request.service';
+import { WorkOrderModel } from '../models/workOrder.model';
+import { partsService } from '../../inventory/services/parts.service';
+import { workOrderActivityService } from './workOrderActivity.service';
+import { notificationService } from '../../communications/services/notification-sender.service';
+const transactions = require('../../../common/utils/transaction.helper');
+const id = '111111111111111111111111', account = '222222222222222222222222';
+const actor: any = { _id: '333333333333333333333333', account_id: account, firstName: 'Test', lastName: 'Technician' };
+afterEach(() => mock.restoreAll());
+test('dashboard work-request count retains tenant and selected location scope', async () => {
+  let requestMatch: any;
+  mock.method(WorkOrderModel, 'aggregate', async () => [{ total: [{ count: 2 }], completedOnTime: [], overdue: [], planned: [] }] as any);
+  mock.method(requestService, 'countRequests', async (match: any) => { requestMatch = match; return 1; });
+  const match = { account_id: account, wo_location_id: id, visible: true };
+  await orderService.summaryData(match);
+  assert.equal(requestMatch.account_id, account); assert.equal(requestMatch.location_id, id);
+});
+test('generic work-order update reads within the authenticated account', async () => {
+  let filter: any;
+  mock.method(transactions, 'withTransaction', async (callback: any) => callback(null));
+  mock.method(WorkOrderModel, 'findById', () => ({ session: async () => null }) as any);
+  mock.method(WorkOrderModel, 'findOne', (value: any) => { filter = value; return { session: async () => null } as any; });
+  await assert.rejects(() => orderService.updateById(id, { title: 'Updated' }, actor), (error: any) => error.status === 404);
+  assert.equal(filter?.account_id, account); assert.equal(filter?.visible, true); assert.equal(filter?._id, id);
+});
+test('status completion preserves zero consumption through the real status service', async () => {
+  let persisted: any;
+  const original: any = { _id: id, account_id: account, order_no: 'WO-TEST', status: 'In-Progress', procedures: [], parts: [{ part_id: id, estimatedQuantity: 5, actualQuantity: 0 }], status_details: [], actual_start_date: new Date('2026-10-01T01:00:00Z') };
+  mock.method(transactions, 'withTransaction', async (callback: any) => callback(null));
+  mock.method(orderService, 'getAllOrders', async () => [original] as any);
+  mock.method(partsService, 'adjustInventoryByWorkOrder', async () => ({ warnings: [] }));
+  mock.method(WorkOrderModel, 'findOneAndUpdate', async (filter: any, data: any) => {
+    assert.equal(filter.account_id, account);
+    assert.equal(filter.status, 'In-Progress');
+    assert.equal(data.$push.status_details.status, 'Completed');
+    persisted = data.$set;
+    return { ...original, ...data.$set } as any;
+  });
+  mock.method(workOrderActivityService, 'logActivity', async () => undefined as any);
+  mock.method(notificationService, 'notifyAccountUsers', async () => undefined as any);
+  await orderService.orderStatusChange(id, 'Completed', actor);
+  assert.equal(persisted.parts[0].actualQuantity, 0); assert.equal(persisted.parts[0].issuedQuantity, 0); assert.equal(persisted.parts[0].returnedQuantity, 5);
+});

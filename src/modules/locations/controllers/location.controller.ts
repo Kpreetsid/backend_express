@@ -5,7 +5,7 @@ import { assetService } from '../../assets/services/asset.service';
 import { get } from "lodash";
 import { IUser, UserModel } from "../../users/models/user.model";
 import { mapUserToLocationService } from '../../mappings/services/userLocation.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 import { withTransaction } from "../../../common/utils/transaction.helper";
 import { LocationModel } from "../models/location.model";

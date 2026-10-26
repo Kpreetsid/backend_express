@@ -15,7 +15,7 @@ const UPLOAD_PERMISSION_REGISTRY: Record<string, string[]> = {
   work_request: ['work_request'],
 };
 
-const ALWAYS_AVAILABLE_UPLOADS = new Set(['user_profile_img']);
+const ALWAYS_AVAILABLE_UPLOADS = new Set(['user_profile_img', 'logo']);
 
 export const enforceUploadPermission = (req: Request, res: Response, next: NextFunction): void | Response => {
   const folderName = String(req.params.folderName || req.body?.folderName || '').trim();

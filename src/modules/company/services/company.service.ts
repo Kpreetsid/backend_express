@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 import { AccountModel, IAccount } from "../models/account.model";
 import { RoleManager } from "../../users/constants/account-role-menu.constant";
 import { normalizeExperienceProfile } from "../../../common/constants/experience-profile.constant";

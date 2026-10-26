@@ -3,7 +3,7 @@ import { PostModel, IPost } from '../models/post.model';
 import { CommentsModel } from '../../work-orders/models/comment.model';
 import { LocationModel } from '../../locations/models/location.model';
 import { IUser, UserModel } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { sanitizePostPayload, SanitizedPostPayload } from '../policies/post.policy';
 import { mapUserToLocationService } from '../../mappings/services/userLocation.service';
 

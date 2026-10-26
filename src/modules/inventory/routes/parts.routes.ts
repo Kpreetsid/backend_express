@@ -1,3 +1,4 @@
+import { idempotencyMiddleware } from '../../../common/middlewares/idempotency.middleware';
 import express from 'express';
 import { partsController } from '../controllers/parts.controller';
 import { validateParamId } from '../../../common/middlewares/validate.middleware';
@@ -34,6 +35,7 @@ const importUpload = multer({
 
 export default (router: express.Router) => {
     const partRouter = express.Router();
+    partRouter.use(idempotencyMiddleware);
 
     partRouter.get('/', hasRolePermission('inventory', 'view'), partsController.getParts);
     partRouter.get('/cycle-counts', hasRolePermission('inventory', 'view'), cycleCountQueryValidator, validate, partsController.getCycleCounts);

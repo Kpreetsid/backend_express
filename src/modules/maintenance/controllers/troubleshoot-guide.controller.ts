@@ -2,7 +2,7 @@ import { controllerCache } from '../../../core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { sanitizeTroubleshootingPayload } from '../services/guide-payload.service';
 import {
   assertGuideMutationPermission,

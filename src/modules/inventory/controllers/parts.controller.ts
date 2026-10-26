@@ -3,9 +3,9 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from "lodash";
 import { partsService } from '../services/parts.service';
 import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
-import { setSyncVersionEtag } from '../../../common/utils/sync-concurrency.helper';
+import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '../../../common/utils/sync-concurrency.helper';
 
 class PartsController {
 
@@ -231,7 +231,9 @@ class PartsController {
       }
 
 
-      const updated = await partsService.updatePartById(String(id), body, user, account_id);
+      const expectedVersion = getExpectedSyncVersion(req);
+      assertSyncVersion(isDataExists[0], expectedVersion);
+      const updated = await partsService.updatePartById(String(id), body, user, account_id, expectedVersion);
 
       if (!updated) {
         throw Object.assign(new Error('Part not found'), { status: 404 });

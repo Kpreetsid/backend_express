@@ -107,7 +107,7 @@ class SchedulerService {
             created_by: schedule.createdBy,
             wo_asset_id: schedule.work_order.wo_asset_id,
             wo_location_id: schedule.work_order.wo_location_id,
-            createdFrom: schedule.work_order.createdFrom,
+            createdFrom: schedule.work_order.createdFrom || "Preventive",
             tasks: schedule.work_order.tasks,
             parts: schedule.work_order.parts,
             userIdList: await this.resolveActiveAssigneeIds(schedule)
@@ -165,7 +165,6 @@ class SchedulerService {
         try {
             const today = calendarDateInTimeZone(new Date(), this.timeZone);
             const schedules = await SchedulerModel.find({ visible: true, "schedule.enabled": true });
-            console.log(`🗓️ Scheduler started | ${schedules.length} active schedules`);
             for (const schedule of schedules) {
                 try {
                     if (!isScheduleDueOnDate(schedule, today)) continue;
@@ -183,15 +182,15 @@ class SchedulerService {
                         clearInterval(heartbeat);
                         await this.releaseScheduleLock(schedule._id);
                     }
-                } catch (indivError) {
-                    console.error(`❌ Schedule execution failed for "${schedule.title}":`, indivError);
+                } catch (error) {
+                    console.error('Schedule execution failed', String(schedule._id), error);
                 }
             }
-            console.log("✅ Scheduler completed successfully");
         } catch (error) {
-            console.error("❌ Scheduler failed:", error);
+            console.error('Scheduler failed', error);
         }
     }
+
 }
 
 export const schedulerService = new SchedulerService();

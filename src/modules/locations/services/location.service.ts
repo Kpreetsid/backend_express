@@ -8,7 +8,7 @@ import { WorkRequestModel } from "../../work-orders/models/workRequest.model";
 import { InspectionModel } from "../../maintenance/models/inspection.model";
 import { SOPsModel } from "../../maintenance/models/sops.model";
 import { SchedulerModel } from "../../maintenance/models/scheduleMaster.model";
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 import mongoose from "mongoose";
 import { mapUserToLocationService } from '../../mappings/services/userLocation.service';
 import { mapUserToAssetService, updateLocationAssetMapping } from '../../mappings/services/userAsset.service';

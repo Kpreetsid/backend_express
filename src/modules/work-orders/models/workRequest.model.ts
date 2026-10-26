@@ -6,6 +6,7 @@ import { syncVersionPlugin } from '../../../core/database/plugins/sync-version.p
 export const WORK_REQUEST_COLLECTION_NAME = 'work_request';
 
 export const WORK_REQUEST_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress', 'Approved', 'Rejected'];
+export const WORK_REQUEST_EDITABLE_STATUSES = ['Open', 'Pending', 'On-Hold', 'In-Progress'];
 export const WORK_REQUEST_PRIORITIES = ['None', 'Low', 'Medium', 'High', 'Urgent'];
 export const WORK_REQUEST_REVIEW_SLA_HOURS: Record<string, number> = {
   None: 96,

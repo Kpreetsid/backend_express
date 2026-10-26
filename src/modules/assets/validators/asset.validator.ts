@@ -1,4 +1,6 @@
 import { body } from 'express-validator';
+import { SUPPORTED_ASSET_TYPES } from '../catalog/asset-train-catalog';
+import { validateReviewedComponents } from '../services/asset-train-creation';
 
 export const assetValidator = [
   body('asset_name')
@@ -8,7 +10,7 @@ export const assetValidator = [
 
   body('asset_type')
     .notEmpty().withMessage('Asset type is required')
-    .isIn(['Equipment', 'Motor', 'Flexible', 'Rigid', 'Belt_Pulley', 'Gearbox', 'Fan_Blower', 'Pumps', 'Compressor', 'Chillers', 'CNC', 'Other', 'Extruder', 'Mixer', 'Agitator', 'Kiln', 'Rotary_Dryer'])
+    .isIn(SUPPORTED_ASSET_TYPES)
     .withMessage('Invalid asset type'),
 
   body('locationId')
@@ -56,4 +58,12 @@ export const assetValidator = [
   body('asset_class').optional({ nullable: true }).isString().trim().isLength({ max: 100 }),
   body('snoozeAlarm').optional().isBoolean().withMessage('Snooze alarm must be a boolean'),
   body('snoozeValue').optional().isFloat({ min: 0, max: 525600 }).withMessage('Snooze value must be between 0 and 525600'),
+];
+
+export const assetTrainValidator = [
+  ...assetValidator,
+  body('components').custom((_value, { req }) => {
+    validateReviewedComponents(req.body);
+    return true;
+  })
 ];

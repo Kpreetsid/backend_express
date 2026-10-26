@@ -3,7 +3,7 @@ import { AssetModel } from '../../assets/models/asset.model';
 import { LocationModel } from '../../locations/models/location.model';
 import { PartsModel } from '../../inventory/models/part.model';
 import { ProcedureModel } from '../models/procedure.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { withTransaction } from '../../../common/utils/transaction.helper';
 import { sanitizeProcedureContent } from '../policies/procedure.policy';
 

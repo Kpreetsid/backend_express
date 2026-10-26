@@ -1,7 +1,7 @@
 import { SchedulerModel, IScheduleMaster } from "../models/scheduleMaster.model";
 import { UserModel } from "../../users/models/user.model";
 import { PartsTypeModel } from "../../inventory/models/parts-types.model";
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 import { AssetModel } from "../../assets/models/asset.model";
 import { LocationModel } from "../../locations/models/location.model";
 

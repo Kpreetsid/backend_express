@@ -2,7 +2,7 @@ import { AssetModel } from '../models/asset.model';
 import { MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../mappings/services/userAsset.service";
 import { processorAPIService } from './processor-api.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { WorkOrderModel } from '../../work-orders/models/workOrder.model';
 import { ObservationModel } from '../models/observation.model';
 import { ReportAssetModel } from '../../reports/models/assetReport.model';
@@ -16,8 +16,100 @@ import { Cacheable } from '../../../core/cache/decorators/cacheable.decorator';
 import { CacheKeys, CacheTTL } from '../../../core/cache/cache.keys';
 import { generateDeterministicObjectKey } from '../../../core/cache/cache-helper';
 import { subscriptionLimitService } from '../../company/services/subscriptionLimit.service';
-
+import { createReviewedAssetTrain } from './asset-train-creation';
+import { UserModel } from '../../users/models/user.model';
+import { externalAPI } from '../../../core/config/env.config';
+import { requireProcessorBaseUrl } from '../../../common/utils/processor-url';
+import { buildChildComponent, componentIdentityForUpdate, deleteConfirmedChild } from './asset-component-management';
+import { getComponentDefinition } from '../catalog/asset-train-catalog';
 class AssetService {
+  async createChildComponent(rootId: string, body: any, accountId: any, userId: any, token: string) {
+    requireProcessorBaseUrl(externalAPI.URL);
+    const root = await AssetModel.findOne({ _id: rootId, account_id: accountId, visible: true }).lean();
+    const mappings = await MapUserAssetLocationModel.find({ assetId: rootId, account_id: accountId }).lean();
+    const plan = buildChildComponent(root, body, accountId, userId, mappings);
+    const descendants = await this.getAllChildAssetsRecursive(rootId, accountId);
+    if (descendants.length >= 1999) {
+      throw Object.assign(new Error('An asset train may contain at most 2,000 assets including the parent.'), { status: 400 });
+    }
+    if (descendants.some(child => String(child.parent_id) === rootId
+      && String(child.asset_name).trim().toLowerCase() === plan.asset.asset_name.toLowerCase())) {
+      throw Object.assign(new Error('A child component with this name already exists.'), { status: 400 });
+    }
+    await new AssetModel(plan.asset).validate();
+    try {
+      await withTransaction(async session => {
+        await subscriptionLimitService.assertCanCreate(accountId, 'asset', 1, session);
+        await AssetModel.insertMany([plan.asset], { session, ordered: true });
+        if (plan.mappings.length) await mapUserToAssetService.createMapUserAssets(plan.mappings, session);
+      });
+      const response = await processorAPIService.setAssetHealthStatus([{ assetId: plan.asset._id }], accountId, userId, token);
+      if (response?.status === false) throw Object.assign(new Error('The processor could not initialize component health.'), { status: 502 });
+      const data = await this.getAllAssets({ _id: plan.asset._id, account_id: accountId, visible: true });
+      if (!data.length) throw new Error('The new component could not be loaded.');
+      return data;
+    } catch (error) {
+      await MapUserAssetLocationModel.deleteMany({ account_id: accountId, assetId: plan.asset._id });
+      await AssetModel.deleteOne({ account_id: accountId, _id: plan.asset._id });
+      throw error;
+    }
+  }
+
+  async removeChildComponent(rootId: string, childId: string, accountId: any, userId: any, token: string, confirmed: boolean, environment?: string) {
+    if (!confirmed) throw Object.assign(new Error('Confirm deletion of the component and all associated endpoints.'), { status: 400 });
+    const root = await AssetModel.findOne({ _id: rootId, account_id: accountId, visible: true, top_level: true }).lean();
+    const child = await AssetModel.findOne({ _id: childId, parent_id: rootId, account_id: accountId, visible: true }).lean();
+    if (!root || root.parent_id || !child || (!child.diagnostic_component_key && !getComponentDefinition(child.asset_type))) {
+      throw Object.assign(new Error('A direct child component in this asset train is required.'), { status: 404 });
+    }
+    if (await AssetModel.exists({ parent_id: childId, account_id: accountId, visible: true })) {
+      throw Object.assign(new Error('This component contains child assets. Remove those children before deleting the component.'), { status: 409 });
+    }
+    return deleteConfirmedChild(childId, {
+      deleteEndpoints: () => processorAPIService.deleteChildComponent(rootId, childId, token, userId, environment),
+      hideChild: async () => { await this.removeById({ _id: child._id, account_id: accountId }, userId, [childId]); }
+    });
+  }
+
+  async createAssetTrain(body: any, accountId: any, userId: any, token: string) {
+    return createReviewedAssetTrain(body, accountId, userId, {
+      preflight: async plan => {
+        requireProcessorBaseUrl(externalAPI.URL);
+        const root = plan.assets[0];
+        const location = await LocationModel.exists({ _id: root.locationId, account_id: accountId, visible: true });
+        if (!location) {
+          throw Object.assign(new Error('The selected location is unavailable in your account.'), { status: 400 });
+        }
+        const users = [...new Set(plan.mappings.map(mapping => mapping.userId))];
+        const userCount = await UserModel.countDocuments({ _id: { $in: users }, account_id: accountId });
+        if (userCount !== users.length) {
+          throw Object.assign(new Error('All selected users must belong to your account.'), { status: 400 });
+        }
+        // Validate every document before the first database write.
+        for (const asset of plan.assets) await new AssetModel(asset).validate();
+      },
+      persist: async plan => {
+        await withTransaction(async session => {
+          await subscriptionLimitService.assertCanCreate(accountId, 'asset', plan.assets.length, session);
+          await AssetModel.insertMany(plan.assets, { session, ordered: true });
+          await mapUserToAssetService.createMapUserAssets(plan.mappings, session);
+        });
+      },
+      initializeHealth: async plan => {
+        const response = await processorAPIService.setAssetHealthStatus(plan.mappings, accountId, userId, token);
+        if (response?.status === false) {
+          throw Object.assign(new Error('The processor could not initialize asset health.'), { status: 502 });
+        }
+      },
+      readRoot: rootId => this.getAllAssets({ _id: rootId, account_id: accountId, visible: true }),
+      rollback: async ids => {
+        const match = { account_id: accountId, assetId: { $in: ids } };
+        await MapUserAssetLocationModel.deleteMany(match);
+        await AssetModel.deleteMany({ account_id: accountId, _id: { $in: ids } });
+      }
+    });
+  }
+
   @Cacheable((args) => {
     const match = args[0] || {};
     if (!match.account_id) return null; // Uncachable without account isolation
@@ -158,24 +250,25 @@ class AssetService {
     return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { returnDocument: 'after' });
   }
 
-  async removeById(match: any, userID: any) {
+  async removeById(match: any, userID: any, confirmedIds?: string[]) {
     return await withTransaction(async (session) => {
       const parentId = String(match._id);
       const account_id = match.account_id;
-      const childAssets = await this.getAllChildAssetsRecursive(parentId, account_id);
-      const totalIds = [parentId, ...childAssets.map(a => String(a._id))];
+      const childAssets = confirmedIds ? [] : await this.getAllChildAssetsRecursive(parentId, account_id);
+      const totalIds = confirmedIds || [parentId, ...childAssets.map(a => String(a._id))];
       const objectIds = helperService.validateObjectIds(totalIds);
       
       const updateQuery = { $set: { visible: false, updatedBy: userID } };
       
-      await AssetModel.updateMany({ _id: { $in: objectIds } }, updateQuery, { session });
       await WorkOrderModel.updateMany({ wo_asset_id: { $in: objectIds } }, updateQuery, { session });
       await ObservationModel.updateMany({ assetId: { $in: objectIds } }, updateQuery, { session });
       await ReportAssetModel.updateMany({ assetId: { $in: objectIds } }, updateQuery, { session });
       await InspectionModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery, { session });
       await WorkRequestModel.updateMany({ asset_id: { $in: objectIds } }, updateQuery, { session });
       
-      await mapUserToAssetService.removeAssetListMapping(totalIds, session);
+      await MapUserAssetLocationModel.deleteMany({ assetId: { $in: objectIds }, account_id }, { session });
+      // Hide last so partial failures on standalone Mongo can be retried.
+      await AssetModel.updateMany({ _id: { $in: objectIds }, account_id }, updateQuery, { session });
       return true;
     });
   };
@@ -260,6 +353,7 @@ class AssetService {
       if (!existingAsset) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
+      body = componentIdentityForUpdate(existingAsset, body);
 
       let targetAssetClass = body.asset_class || existingAsset.asset_class || 'class_1';
 

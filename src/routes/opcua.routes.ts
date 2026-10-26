@@ -2,10 +2,10 @@ import express, { NextFunction, Request, Response } from 'express';
 import axios from 'axios';
 import { get } from 'lodash';
 import { Types } from 'mongoose';
-import { hasRolePermission, hasAccountFeature } from '@common/middlewares';
-import { applyRoleFilter } from '@common/utils/role-filter.helper';
-import { AssetModel } from '@modules/assets';
-import { IUser } from '@modules/users';
+import { hasRolePermission, hasAccountFeature } from '../common/middlewares/index';
+import { applyRoleFilter } from '../common/utils/role-filter.helper';
+import { AssetModel } from '../modules/assets/index';
+import { IUser } from '../modules/users/index';
 
 const fail = (message: string, status: number): Error => Object.assign(new Error(message), { status });
 const principal = (req: Request): IUser => get(req, 'user') as unknown as IUser;
@@ -26,8 +26,13 @@ export async function callOpcuaProcessor(org: string, path: string, method = 'GE
     if (axios.isAxiosError(error)) {
       const code = error.response?.status;
       const detail = error.response?.data?.detail;
-      if (code && [400, 404, 409].includes(code)) {
-        throw fail(typeof detail === 'string' ? detail : 'Invalid mapping. Check the asset ID and validation rules.', code);
+      if (code && [400, 404, 409, 503].includes(code)) {
+        const data = error.response?.data;
+        const fieldErrors = data && typeof data === 'object' ? Object.entries(data)
+          .filter(([, value]) => Array.isArray(value) && value.every(item => typeof item === 'string'))
+          .map(([field, value]) => `${field}: ${(value as string[]).join(' ')}`).join(' ') : '';
+        throw fail(typeof detail === 'string' ? detail : fieldErrors ||
+          (code === 503 ? 'OPC-UA processing service is unavailable. Please retry.' : 'Invalid mapping. Check the asset ID and validation rules.'), code);
       }
       throw fail('OPC-UA processing service is unavailable. Please retry.', 503);
     }
@@ -106,7 +111,7 @@ export function opcuaRoutes(): express.Router {
     }
     const asset = await assertAsset(user, req.body?.asset_id);
     const selectedType = req.body.asset_type;
-    const allowedTypes = ['chiller', 'motor', 'fan', 'compressor', 'extruder', 'mixer', 'agitator', 'kiln', 'pump', 'gearbox', 'other'];
+    const allowedTypes = ['chiller', 'motor', 'fan', 'pa_fan', 'compressor', 'extruder', 'mixer', 'agitator', 'kiln', 'pump', 'gearbox', 'other'];
     if (selectedType !== undefined && (typeof selectedType !== 'string' ||
         (!allowedTypes.includes(selectedType) && selectedType !== canonicalAssetType(asset.asset_type)))) {
       throw fail('Select a valid OPC-UA asset type.', 400);

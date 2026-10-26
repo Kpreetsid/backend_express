@@ -1,0 +1,156 @@
+Equipment,Typical drive train
+Centrifugal Pump,Motor ? Coupling ? Pump Shaft ? Impeller
+Multistage Pump,Motor ? Coupling ? Pump Shaft ? Multiple Impellers
+Reciprocating Pump,Motor ? Coupling ? Gearbox ? Crankshaft ? Connecting Rod ? Piston
+Screw Pump,Motor ? Coupling ? Pump Shaft ? Screw Rotor
+Gear Pump,Motor ? Coupling ? Drive Gear ? Driven Gear
+Vertical Pump,Motor ? Coupling ? Vertical Shaft ? Impeller
+Submersible Pump,Motor ? Shaft ? Impeller
+Boiler Feed Pump,Motor/Turbine ? Coupling ? Pump Shaft ? Impellers
+Cooling Water Pump,Motor ? Coupling ? Pump Shaft ? Impeller
+Vacuum Pump,Motor ? Coupling/Belt ? Pump Rotor
+Centrifugal Fan,Motor ? Coupling ? Fan Shaft ? Impeller
+ID Fan,Motor ? Coupling ? Fan Shaft ? Impeller
+FD Fan,Motor ? Coupling ? Fan Shaft ? Impeller
+PA Fan,Motor ? Coupling ? Fan Shaft ? Impeller
+Cooling Tower Fan,Motor ? Coupling ? Gearbox ? Fan Shaft ? Fan Blades
+Axial Fan,Motor ? Coupling/Direct Drive ? Fan Shaft ? Propeller
+Blower,Motor ? Coupling ? Blower Shaft ? Impeller
+Roots Blower,Motor ? Coupling/Belt ? Timing Gears ? Twin Lobes
+Centrifugal Blower,Motor ? Coupling ? Shaft ? Impeller
+Air Compressor,Motor ? Coupling ? Compressor Shaft ? Impeller/Screw
+Screw Compressor,Motor ? Coupling ? Male Rotor ? Female Rotor
+Reciprocating Compressor,Motor ? Coupling ? Crankshaft ? Connecting Rod ? Piston
+Centrifugal Compressor,Motor/Turbine ? Coupling ? Compressor Shaft ? Impellers
+Rotary Vane Compressor,Motor ? Coupling ? Rotor ? Vanes
+Refrigeration Compressor,Motor ? Coupling/Direct Drive ? Compressor
+Chiller Compressor,Motor ? Compressor Shaft ? Screw/Impeller
+Conveyor Belt,Motor ? Coupling ? Gearbox ? Drive Pulley ? Belt
+Roller Conveyor,Motor ? Gearbox ? Chain/Sprocket ? Rollers
+Screw Conveyor,Motor ? Coupling ? Gearbox ? Screw Shaft
+Chain Conveyor,Motor ? Gearbox ? Drive Sprocket ? Chain
+Drag Chain Conveyor,Motor ? Coupling ? Gearbox ? Sprocket ? Chain
+Apron Feeder,Motor ? Gearbox ? Sprocket ? Apron Chain
+Bucket Elevator,Motor ? Coupling ? Gearbox ? Head Pulley/Sprocket ? Belt/Chain
+Vibrating Feeder,Motor/Exciter Motor ? Eccentric Shaft ? Feeder Deck
+Rotary Feeder,Motor ? Gearbox ? Rotor Shaft ? Rotor
+Weigh Feeder,Motor ? Gearbox ? Pulley ? Belt
+Jaw Crusher,Motor ? Belt/Coupling ? Flywheel ? Eccentric Shaft ? Jaw
+Cone Crusher,Motor ? Coupling ? Gearbox/Countershaft ? Eccentric ? Main Shaft
+Gyratory Crusher,Motor ? Coupling ? Gearbox ? Eccentric ? Main Shaft
+Hammer Crusher,Motor ? Coupling/Belt ? Rotor Shaft ? Hammers
+Impact Crusher,Motor ? Coupling/Belt ? Rotor Shaft ? Blow Bars
+Roll Crusher,Motor ? Gearbox ? Roll Shafts
+Ball Mill,Motor ? Coupling ? Gearbox ? Pinion ? Girth Gear ? Mill Shell
+SAG Mill,Motor ? Coupling ? Gearbox/Pinion ? Girth Gear ? Mill Shell
+Rod Mill,Motor ? Coupling ? Gearbox ? Pinion ? Girth Gear ? Mill Shell
+Coal Mill,Motor ? Coupling ? Gearbox ? Grinding Table/Rollers
+Vertical Roller Mill,Motor ? Coupling ? Planetary Gearbox ? Grinding Table
+Cement Mill,Motor ? Coupling ? Gearbox ? Pinion ? Girth Gear ? Mill
+Pulverizer,Motor ? Coupling ? Gearbox ? Grinding Bowl/Rollers
+Rotary Kiln,Motor ? Coupling ? Gearbox ? Pinion ? Girth Gear ? Kiln Shell
+Rotary Dryer,Motor ? Coupling ? Gearbox ? Pinion ? Girth Gear ? Drum
+Rotary Cooler,Motor ? Coupling ? Gearbox ? Pinion ? Girth Gear ? Drum
+Rotary Drum,Motor ? Gearbox ? Pinion/Roller ? Drum
+Mixer,Motor ? Coupling ? Gearbox ? Mixer Shaft ? Blades
+Agitator,Motor ? Coupling ? Gearbox ? Agitator Shaft ? Impeller
+Reactor Agitator,Motor ? Coupling ? Gearbox ? Shaft ? Impeller
+Kneader,Motor ? Coupling ? Gearbox ? Mixing Shafts
+Extruder,Motor ? Coupling ? Gearbox ? Screw Shaft ? Extruder Screw
+Plastic Extruder,Motor ? Coupling ? Reduction Gearbox ? Screw
+Twin Screw Extruder,Motor ? Coupling ? Gearbox ? Twin Screw Shafts
+Injection Moulding Machine,Motor/Servo ? Gearbox/Ball Screw/Hydraulic Pump ? Injection Unit
+Granulator,Motor ? Belt/Coupling ? Rotor Shaft ? Blades
+Shredder,Motor ? Gearbox ? Cutter Shafts
+Pelletizer,Motor ? Gearbox ? Die/Roller Shaft
+Rolling Mill,Motor ? Coupling ? Gearbox ? Pinion Stand ? Roll Shafts
+Hot Rolling Mill,Motor ? Coupling ? Gearbox ? Spindles ? Work Rolls
+Cold Rolling Mill,Motor ? Coupling ? Gearbox ? Spindles ? Rolls
+Steel Mill Pinion Stand,Motor ? Coupling ? Gearbox ? Pinion Stand ? Roll
+Recoiler,Motor ? Gearbox ? Mandrel
+Uncoiler,Motor ? Gearbox ? Mandrel
+Slitting Machine,Motor ? Gearbox ? Cutter Shaft
+Straightening Machine,Motor ? Gearbox ? Roller Shafts
+Wire Drawing Machine,Motor ? Gearbox ? Capstan
+Tube Mill,Motor ? Gearbox ? Spindles ? Forming Rolls
+Lathe,Motor ? Belt/Gearbox ? Spindle
+CNC Lathe,Servo Motor ? Coupling/Belt ? Spindle
+CNC Milling Machine,Spindle Motor ? Coupling/Belt ? Spindle
+Machining Center,Spindle Motor ? Belt/Coupling ? Spindle
+Grinding Machine,Motor ? Spindle ? Grinding Wheel
+Drilling Machine,Motor ? Belt/Gearbox ? Spindle
+Boring Machine,Motor ? Gearbox ? Spindle
+Press Machine,Motor ? Flywheel ? Clutch ? Crankshaft ? Ram
+Mechanical Press,Motor ? Belt ? Flywheel ? Clutch ? Crankshaft
+Hydraulic Press,Motor ? Coupling ? Hydraulic Pump ? Cylinder
+Power Press,Motor ? Flywheel ? Clutch ? Crankshaft
+Centrifuge,Motor ? Coupling/Belt ? Bowl Shaft ? Bowl
+Decanter Centrifuge,Motor ? Gearbox ? Bowl + Scroll
+Separator,Motor ? Gearbox ? Vertical Spindle ? Bowl
+Hydro Extractor,Motor ? Belt ? Basket Shaft
+Cooling Tower,Motor ? Coupling ? Gearbox ? Fan Shaft ? Fan
+HVAC AHU Fan,Motor ? Belt/Coupling ? Fan Shaft ? Impeller
+Chiller,Motor ? Compressor Shaft ? Compressor
+Cooling Tower Pump,Motor ? Coupling ? Pump
+Boiler FD Fan,Motor ? Coupling ? Fan
+Boiler ID Fan,Motor ? Coupling ? Fan
+Boiler PA Fan,Motor ? Coupling ? Fan
+Boiler Feed Pump,Motor/Turbine ? Coupling ? Pump
+Steam Turbine,Steam ? Turbine Rotor ? Coupling ? Generator/Driven Machine
+Gas Turbine,Compressor ? Combustion ? Turbine Shaft ? Generator
+Generator,Turbine/Engine ? Coupling ? Generator Rotor
+Diesel Generator,Diesel Engine ? Coupling ? Alternator
+Gas Engine Generator,Gas Engine ? Coupling ? Alternator
+Hydraulic Turbine,Turbine Runner ? Main Shaft ? Generator
+Wind Turbine,Rotor Blades ? Main Shaft ? Gearbox ? Generator
+Cooling Bed,Motor ? Gearbox ? Crank/Chain Mechanism
+Crane Hoist,Motor ? Brake ? Coupling ? Gearbox ? Drum
+EOT Crane Travel,Motor ? Gearbox ? Drive Wheel
+Winch,Motor ? Brake ? Gearbox ? Drum
+Hoist,Motor ? Brake ? Gearbox ? Rope Drum
+Elevator,Motor ? Brake ? Gearbox/Direct Drive ? Sheave
+Escalator,Motor ? Gearbox ? Drive Sprocket ? Step Chain
+Paper Machine,Motor ? Gearbox ? Drive Shaft ? Rolls
+Paper Dryer,Motor ? Gearbox ? Dryer Rolls
+Pulp Refiner,Motor ? Coupling ? Rotor Shaft ? Refining Disc
+Calendar Roll,Motor ? Gearbox ? Roll
+Printing Machine,Motor ? Gearbox ? Printing Rollers
+Textile Spinning Machine,Motor ? Belt/Gear Train ? Spindles
+Loom,Motor ? Gearbox ? Main Shaft
+Carding Machine,Motor ? Belt/Gearbox ? Cylinder
+Sugar Mill,Motor/Turbine ? Gearbox ? Mill Rollers
+Cane Crusher,Motor/Turbine ? Gearbox ? Crushing Rolls
+Centrifugal Sugar Machine,Motor ? Coupling ? Basket
+Refinery Process Pump,Motor ? Coupling ? Pump
+Refinery Compressor,Motor/Turbine ? Coupling ? Compressor
+Chemical Reactor,Motor ? Gearbox ? Agitator Shaft
+Cooling Water Fan,Motor ? Gearbox ? Fan
+Furnace Blower,Motor ? Coupling ? Blower
+Furnace Exhaust Fan,Motor ? Coupling ? Fan
+Induced Draft Fan,Motor ? Coupling ? Fan
+Dust Collector Fan,Motor ? Coupling ? Fan
+Bag Filter Fan,Motor ? Coupling ? Fan
+Rotary Airlock,Motor ? Gearbox ? Rotor
+Vibrating Screen,Motor ? Coupling ? Exciter Shaft ? Screen
+Trommel Screen,Motor ? Gearbox ? Drive Roller/Girth Gear ? Drum
+Disc Screen,Motor ? Gearbox ? Disc Shafts
+Magnetic Separator,Motor ? Gearbox ? Drum
+Clarifier,Motor ? Gearbox ? Central Shaft ? Scraper
+Thickener,Motor ? Gearbox ? Drive Shaft ? Rake
+Aerator,Motor ? Gearbox ? Aerator Shaft
+Sewage Pump,Motor ? Coupling ? Pump
+Sludge Pump,Motor ? Coupling ? Pump
+Rotary Vacuum Filter,Motor ? Gearbox ? Drum
+Dryer Fan,Motor ? Coupling ? Fan
+Cooling Drum,Motor ? Gearbox ? Drum
+Packaging Machine,Servo Motor ? Gearbox/Coupling ? Rollers
+Filling Machine,Motor/Servo ? Gearbox ? Rotary Table/Pump
+Bottling Machine,Motor ? Gearbox ? Star Wheel/Carousel
+Palletizer,Servo Motor ? Gearbox ? Robot/Conveyor
+Robot,Servo Motor ? Reduction Gear ? Joint
+Industrial Robot Arm,Servo ? Harmonic/Planetary Gearbox ? Joint
+Compressor Cooling Fan,Motor ? Fan Shaft ? Fan
+Large Industrial Pump with VFD,VFD Motor ? Coupling ? Pump
+Gear Driven Pump,Motor ? Coupling ? Gearbox ? Pump
+Belt Driven Fan,Motor ? Pulley ? Belt ? Fan Pulley ? Fan Shaft
+Belt Driven Pump,Motor ? Pulley ? Belt ? Pump Pulley ? Pump Shaft

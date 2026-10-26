@@ -122,7 +122,7 @@ class UploadFilesService {
   }
 
   getDestinationPath(folderName?: string): string {
-    const root = (storageProvider as any).getRootPath ? (storageProvider as any).getRootPath() : path.resolve(__dirname, '../../uploadFiles');
+    const root = (storageProvider as any).getRootPath ? (storageProvider as any).getRootPath() : path.resolve(__dirname, '../../../../uploadFiles');
     const cleanFolder = this.normalizeFolderName(folderName) || '';
     const destination = cleanFolder ? path.join(root, cleanFolder) : root;
     const resolvedRoot = path.resolve(root);

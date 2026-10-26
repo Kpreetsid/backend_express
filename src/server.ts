@@ -4,13 +4,13 @@ mongoose.plugin(idStandardizationPlugin);
 
 import app from "./app";
 import { server as hostDetails, validateEnvConfig } from './core/config/env.config';
-import { connectDB, disconnectDB } from "./core/database";
-import { initJobScheduler, stopJobScheduler } from "./core/scheduler";
-import { initSocket, stopSocket } from "./core/socket";
+import { connectDB, disconnectDB } from "./core/database/index";
+import { initJobScheduler, stopJobScheduler } from "./core/scheduler/index";
+import { initSocket, stopSocket } from "./core/socket/index";
 import { connectRedis, disconnectRedis } from "./core/cache/redis.client";
 import { initChangeStreams, stopChangeStreams } from "./core/cache/change-stream/index";
-import { UserLogConsumer } from "./core/messaging";
-import { startRuntime, type RuntimeServices } from './core/bootstrap';
+import { UserLogConsumer } from "./core/messaging/index";
+import { startRuntime, type RuntimeServices } from './core/bootstrap/index';
 
 
 const runtimeServices: RuntimeServices = {

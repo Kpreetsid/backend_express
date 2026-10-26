@@ -4,7 +4,7 @@ import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
 import { formCategoryService } from '../services/formCategory.service';
 import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 
 class FormCategoryController {

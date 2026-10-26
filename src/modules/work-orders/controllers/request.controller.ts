@@ -3,12 +3,24 @@ import { Request, Response, NextFunction } from 'express';
 import { requestService } from '../services/request.service';
 import { get } from 'lodash';
 import { IUser } from '../../users/models/user.model';
-import { WORK_REQUEST_PRIORITIES } from '../models/workRequest.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES, WORK_REQUEST_EDITABLE_STATUSES } from '../models/workRequest.model';
+import { helperService } from '../../../common/utils/helper';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 import { notificationService } from '../../communications/services/notification-sender.service';
 import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '../../../common/utils/sync-concurrency.helper';
 import { sanitizeWorkRequestPayload } from '../policies/workRequest.policy';
+
+const editableRequestFields = ['title', 'description', 'problemType', 'priority', 'location_id', 'asset_id', 'files', 'status', 'tags', 'remarks', 'review_sla_hours', 'order_sla_hours'] as const;
+function editableRequestPayload(value: any): Record<string, any> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw Object.assign(new Error('A work request object is required'), { status: 400 });
+  const payload: Record<string, any> = {};
+  for (const field of editableRequestFields) if (Object.prototype.hasOwnProperty.call(value, field)) payload[field] = value[field];
+  if (Object.prototype.hasOwnProperty.call(payload, 'status')) {
+    if (!WORK_REQUEST_STATUSES.includes(payload.status)) throw Object.assign(new Error('Status is not editable'), { status: 400 });
+    if (['Approved', 'Rejected'].includes(payload.status)) throw Object.assign(new Error('Use the dedicated approval actions for this request'), { status: 400 });
+  }
+  return payload;
+}
 
 class RequestController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
@@ -74,6 +86,7 @@ class RequestController {
       if (!data || data.length === 0) {
         throw Object.assign(new Error('Work request not found'), { status: 404 });
       }
+      setSyncVersionEtag(res, data[0]);
       res.status(200).json({ status: true, message: "Work request fetched successfully.", data: data[0] });
     } catch (error) {
       next(error);
@@ -83,7 +96,7 @@ class RequestController {
   async create(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const user = get(req, "user", {}) as IUser;
-      const body = sanitizeWorkRequestPayload(req.body);
+      const body = sanitizeWorkRequestPayload(editableRequestPayload(req.body));
       await requestService.assertRequestReferences(body, user.account_id);
       const data = await requestService.createRequest(body, user);
 
@@ -111,9 +124,12 @@ class RequestController {
   async update(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const { account_id, _id: user_id, firstName, lastName } = get(req, "user", {}) as IUser;
-      const { params: { id }, body: rawBody } = req;
+      const { params: { id, status }, body: rawBody } = req;
       const requestId = helperService.validateObjectId(id);
-      const body = sanitizeWorkRequestPayload(rawBody);
+      const editableBody = editableRequestPayload(rawBody);
+      const body = sanitizeWorkRequestPayload(editableBody);
+      const requestedStatus = status || editableBody.status;
+      if (requestedStatus !== undefined) body.status = editableRequestPayload({ status: requestedStatus }).status;
       await requestService.assertRequestReferences(body, account_id);
       if (body.priority) {
         if (!WORK_REQUEST_PRIORITIES.includes(body.priority)) {
@@ -135,9 +151,14 @@ class RequestController {
       }
       const expectedVersion = getExpectedSyncVersion(req);
       assertSyncVersion(existingRequest[0], expectedVersion);
+      if (status === existingRequest[0].status) throw Object.assign(new Error('No changes detected'), { status: 400 });
+      if (existingRequest[0].converted_work_order_id) throw Object.assign(new Error('Converted work requests cannot be edited'), { status: 400 });
+      if (['Approved', 'Rejected'].includes(existingRequest[0].status)) throw Object.assign(new Error('Finalized work requests cannot be edited'), { status: 400 });
       const data = await requestService.updateRequest(String(id), body, user_id, undefined, {
         account_id,
-        visible: true
+        visible: true,
+        status: { $in: WORK_REQUEST_EDITABLE_STATUSES },
+        $or: [{ converted_work_order_id: { $exists: false } }, { converted_work_order_id: null }]
       }, expectedVersion);
       if (!data || (data.matchedCount === 0 && data.modifiedCount === 0)) {
         throw Object.assign(new Error('Work request not updated'), { status: 404 });
@@ -152,7 +173,7 @@ class RequestController {
         queryParams: { id: String(id) },
         sourceUserId: String(user_id)
       });
-      const updatedRequest = await requestService.getRequestById(String(id));
+      const updatedRequest = await requestService.getRequestById(String(id), account_id);
       setSyncVersionEtag(res, updatedRequest);
       res.status(200).json({ status: true, message: "Work request updated successfully.", data: updatedRequest });
     } catch (error) {
@@ -197,7 +218,9 @@ class RequestController {
         queryParams: { id: String(id) },
         sourceUserId: String(user_id)
       });
-      res.status(200).json({ status: true, message: "Work request approved successfully." });
+      const updatedRequest = await requestService.getRequestById(String(id), account_id);
+      setSyncVersionEtag(res, updatedRequest);
+      res.status(200).json({ status: true, message: "Work request approved successfully.", data: updatedRequest });
     } catch (error) {
       next(error);
     }
@@ -209,7 +232,8 @@ class RequestController {
       if (user_role !== 'admin') {
         throw Object.assign(new Error('Only administrators can reject work requests'), { status: 403 });
       }
-      const { params: { id }, body: { remarks } } = req;
+      const { params: { id } } = req;
+      const remarks = typeof req.body?.remarks === 'string' ? req.body.remarks.trim() : '';
       const requestId = helperService.validateObjectId(id);
       if (!remarks) {
         throw Object.assign(new Error('Remarks is required'), { status: 400 });
@@ -245,7 +269,9 @@ class RequestController {
         queryParams: { id: String(id) },
         sourceUserId: String(user_id)
       });
-      res.status(200).json({ status: true, message: "Work request rejected successfully." });
+      const updatedRequest = await requestService.getRequestById(String(id), account_id);
+      setSyncVersionEtag(res, updatedRequest);
+      res.status(200).json({ status: true, message: "Work request rejected successfully.", data: updatedRequest });
     } catch (error) {
       next(error);
     }

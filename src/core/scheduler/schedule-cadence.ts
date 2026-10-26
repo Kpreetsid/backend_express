@@ -1,7 +1,6 @@
 import { IScheduleMaster } from '../../modules/maintenance/models/scheduleMaster.model';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const WEEKDAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+import { isScheduleDue } from './schedule-calendar';
 
 export const resolveSchedulerTimeZone = (candidate = process.env.SCHEDULER_TIMEZONE): string => {
   const fallback = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
@@ -52,11 +51,6 @@ const dateOnlyUtc = (value: Date | string): Date | null => {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 };
 
-const positiveInteger = (value: unknown, fallback = 1): number => {
-  const numberValue = Number(value);
-  return Number.isInteger(numberValue) && numberValue > 0 ? numberValue : fallback;
-};
-
 export const dateKeyUtc = (value: Date | string): string => {
   const date = dateOnlyUtc(value);
   return date ? date.toISOString().slice(0, 10) : '';
@@ -67,49 +61,21 @@ export const isSameUtcDate = (left: Date | string, right: Date | string): boolea
   return !!leftKey && leftKey === dateKeyUtc(right);
 };
 
+/** Evaluate the shared recurrence policy using the scheduler's resolved calendar day. */
 export const isScheduleDueOnDate = (schedule: IScheduleMaster | any, now: Date = new Date()): boolean => {
   const config = schedule?.schedule;
   const today = dateOnlyUtc(now);
-  const start = dateOnlyUtc(config?.start_date);
-  if (!config || !today || !start || today < start || config.enabled === false) return false;
-
-  const end = config.end_date ? dateOnlyUtc(config.end_date) : null;
-  if (config.end_date && !end) return false;
-  if (end && today > end) return false;
-  if (config.no_of_repetition && Number(config.no_of_execution || 0) >= Number(config.no_of_repetition)) return false;
-  if (config.last_execution_date && isSameUtcDate(config.last_execution_date, today)) return false;
-
-  const todayKey = dateKeyUtc(today);
-  if (Array.isArray(config.skipDates) && config.skipDates.includes(todayKey)) return false;
-  if (config.skipWeekends) {
-    const day = today.getUTCDay();
-    if (day === 6 && config.skipWeekendSaturday) return false;
-    if (day === 0 && config.skipWeekendSunday) return false;
-  }
-
-  const daysSinceStart = Math.floor((today.getTime() - start.getTime()) / DAY_MS);
-  if (config.mode === 'daily') {
-    return daysSinceStart % positiveInteger(config.daily?.everyNDays) === 0;
-  }
-
-  if (config.mode === 'weekly') {
-    const weeksSinceStart = Math.floor(daysSinceStart / 7);
-    const days = Array.isArray(config.weekly?.days)
-      ? config.weekly.days.map((day: unknown) => String(day).trim().toLowerCase())
-      : [];
-    return weeksSinceStart % positiveInteger(config.weekly?.everyNWeeks) === 0
-      && days.includes(WEEKDAYS[today.getUTCDay()]);
-  }
-
-  if (config.mode === 'monthly') {
-    const monthsSinceStart = (today.getUTCFullYear() - start.getUTCFullYear()) * 12
-      + today.getUTCMonth() - start.getUTCMonth();
-    const monthDays = Array.isArray(config.monthly?.monthDays)
-      ? config.monthly.monthDays.map(Number)
-      : [];
-    return monthsSinceStart % positiveInteger(config.monthly?.everyNMonths) === 0
-      && monthDays.includes(today.getUTCDate());
-  }
-
-  return false;
+  if (!config || !today) return false;
+  // The shared policy uses local calendar fields. Dates persisted by this scheduler
+  // represent UTC calendar days; convert them to date-only strings before evaluation.
+  const calendarValue = (value: Date | string | null | undefined) =>
+    value instanceof Date ? dateKeyUtc(value) : value;
+  const policySchedule = {
+    ...config,
+    start_date: calendarValue(config.start_date),
+    end_date: calendarValue(config.end_date),
+    last_execution_date: calendarValue(config.last_execution_date)
+  };
+  const localCalendarDay = new Date(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate(), 12);
+  return isScheduleDue(policySchedule, localCalendarDay);
 };

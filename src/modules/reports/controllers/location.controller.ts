@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { locationReportService } from '../services/location.service';
 import { get } from 'lodash';
 import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 import { LocationModel } from '../../locations/models/location.model';
 import { sanitizeLocationReportUpdatePayload } from '../policies/location.policy';

@@ -65,7 +65,7 @@ The application implements a dependency-aware bootstrap and idempotent shutdown 
 
 ## Payload Cryptography
 
-Payload cryptography is controlled purely via environment variables:
+`RedisUtils` in `src/core/cache/redis.utils.ts` is the shared low-level Redis command wrapper. Use it for Redis strings, hashes, lists, sets, sorted sets, counters, and scan-based pattern deletion. Request-scoped cache code must still call the controller/cache gate before reading or writing Redis; `RedisUtils` does not replace account `redis_status`, client-readiness checks, or the optional `REDIS_ENABLED=false` kill switch.
 
 | Variable | Description | Default |
 |---|---|---|

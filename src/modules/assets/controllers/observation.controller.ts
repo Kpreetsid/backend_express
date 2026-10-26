@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 
 import { get } from 'lodash';
 import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { assetService } from '../services/asset.service';
 import { processorAPIService } from '../services/processor-api.service';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';

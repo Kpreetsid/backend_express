@@ -3,8 +3,12 @@ import { MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation
 import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../../common/utils/bcrypt.helper';
 import { rolesService } from './roles.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { MailerService } from "../../../core/mailer/mailer.service";
+import { TokenModel } from '../../auth/models/userToken.model';
+import { tokenSessionStore } from '../../../core/auth/token-session-store';
+import { validateNewPassword } from '../../auth/services/verification-challenge.service';
+import { nextPasswordExpiry } from '../../auth/services/password-expiry';
 import { RoleManager } from "../../../common/constants/new-user-roles.constant";
 import { RoleMenuModel } from "../models/userRoleMenu.model";
 
@@ -96,22 +100,25 @@ class UsersService {
     }
   };
 
-  async updateUserPassword(user_id: any, password: string) {
+  async updateUserPassword(user_id: any, password: string, account_id: any): Promise<void> {
+    validateNewPassword(password);
     const hashedPassword = await passwordService.hashPassword(password);
-    const updatedUser = await UserModel.findByIdAndUpdate(
-      user_id,
-      { $set: { password: hashedPassword, passwordExpiredAt: new Date() } },
-      { returnDocument: 'after', runValidators: true }
+    const updatedUser = await UserModel.findOneAndUpdate(
+      { _id: user_id, account_id, user_status: 'active', visible: { $ne: false } },
+      { $set: { password: hashedPassword, passwordExpiredAt: nextPasswordExpiry() } },
+      { returnDocument: 'after' }
     );
-    if (!updatedUser) {
-      throw Object.assign(new Error('User not found'), { status: 404 });
-    }
+    if (!updatedUser) throw Object.assign(new Error('User not found'), { status: 404 });
+    await TokenModel.deleteMany({ userId: user_id, $or: [
+      { principalType: { $in: ['user', 'refresh_token'] } },
+      { principalType: { $exists: false } }
+    ] });
+    await tokenSessionStore.deleteUserSessions(String(account_id), String(user_id));
     try {
       await this.mailerService.sendPasswordChangeConfirmation(updatedUser);
-    } catch (error) {
-      console.error('Password change confirmation email failed', error);
+    } catch {
+      console.warn('Password updated, but confirmation email delivery failed.');
     }
-    return updatedUser;
   };
 
   async updateUserDetails(id: string, accountId: any, body: Partial<IUser>) {

@@ -4,7 +4,7 @@ import { rolesService } from '../services/roles.service';
 import { IUser } from '../models/user.model';
 import { usersService } from '../services/user.service';
 import { get } from 'lodash';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { RoleManager } from '../../../common/constants/new-user-roles.constant';
 import { PlatformControlManager } from '../../../common/constants/roles.constant';
 import { TokenModel } from '../../auth/models/userToken.model';
