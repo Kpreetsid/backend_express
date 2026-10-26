@@ -22,7 +22,7 @@ cmms:{accountId}:{userId}:{namespace}:{operation}:{hash(params,query,body)}
 
 Routes should keep only routing/auth/validation/permission responsibilities. Redis decisions belong to controllers through each controller's namespace, tags, TTL, read method overrides, mutation method overrides, and skip method overrides.
 
-`RedisUtils` in `src/utils/redis.service.ts` is the shared low-level Redis command wrapper. Use it for Redis strings, hashes, lists, sets, sorted sets, counters, and scan-based pattern deletion. Request-scoped cache code must still call the controller/cache gate before reading or writing Redis; `RedisUtils` does not replace account `redis_status`, client-readiness checks, or the optional `REDIS_ENABLED=false` kill switch.
+`RedisUtils` in `src/core/cache/redis.utils.ts` is the shared low-level Redis command wrapper. Use it for Redis strings, hashes, lists, sets, sorted sets, counters, and scan-based pattern deletion. Request-scoped cache code must still call the controller/cache gate before reading or writing Redis; `RedisUtils` does not replace account `redis_status`, client-readiness checks, or the optional `REDIS_ENABLED=false` kill switch.
 
 ## JWT-compatible Redis session metadata
 

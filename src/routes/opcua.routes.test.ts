@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import axios from 'axios';
-import { AssetModel } from '../models/asset.model';
+import { AssetModel } from '../modules/assets/models/asset.model';
 import { callOpcuaProcessor, opcuaRoutes } from './opcua.routes';
 
 const org = '64a000000000000000000001';
