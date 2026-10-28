@@ -13,6 +13,7 @@ import { subscriptionLimitService } from '../../company/services/subscriptionLim
 import { validateNewPassword } from '../../auth/services/verification-challenge.service';
 import { clearAuthCookies } from '../../../core/auth/auth-cookie.service';
 import { refreshTokenService } from '../../auth/services/refreshToken.service';
+import { pickUserCreateFields, pickUserUpdateFields } from '../services/user-update-policy';
 
 class UserController {
 
@@ -73,7 +74,7 @@ class UserController {
   async createUser(req: Request, res: Response, next: NextFunction) {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const body = req.body;
+      const body = pickUserCreateFields(req.body);
       const emailExists = await usersService.getAllUsers({ email: body.email });
       if (emailExists.length) throw Object.assign(new Error("Email already exists"), { status: 400 });
 
@@ -104,7 +105,8 @@ class UserController {
   async updateUser(req: Request, res: Response, next: NextFunction) {
     try {
       const user = get(req, "user", {}) as IUser;
-      const { params: { id }, body } = req;
+      const { params: { id } } = req;
+      const body = pickUserUpdateFields(req.body);
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)), user_status: 'active' };
       if (user.user_role === 'admin') {
         delete baseFilter.user_status;
@@ -118,7 +120,11 @@ class UserController {
       if (userData[0].user_status !== 'active' && body.user_status === 'active') {
         await subscriptionLimitService.assertCanCreate(user.account_id, 'user');
       }
-      const data = await usersService.updateUserDetails(String(id), { ...userData[0].toObject(), ...body, updatedBy: user._id });
+      const data = await usersService.updateUserDetails(
+        String(id),
+        { ...body, updatedBy: user._id } as Partial<IUser>,
+        user.account_id
+      );
       if (!data) {
         throw Object.assign(new Error("Failed to update user"), { status: 500 });
       }
@@ -189,7 +195,10 @@ class UserController {
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length)
         throw Object.assign(new Error("User not found or already deleted"), { status: 404 });
-      await usersService.removeById(String(id));
+      const removed = await usersService.removeById(String(id), user.account_id);
+      if (!removed) {
+        throw Object.assign(new Error("User not found or outside account"), { status: 404 });
+      }
       res.status(200).json({ status: true, message: "User deleted successfully" });
     } catch (error) {
       next(error);
