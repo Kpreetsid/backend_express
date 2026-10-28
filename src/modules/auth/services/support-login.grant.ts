@@ -1,3 +1,5 @@
+import mongoose from 'mongoose';
+
 export const SUPPORT_LOGIN_GRANT_TTL_SECONDS = 60;
 
 export const buildSupportLoginGrant = (email: string, companyId: string) => ({
@@ -10,9 +12,9 @@ export const buildSupportLoginGrant = (email: string, companyId: string) => ({
 
 export const buildSupportLoginConsumeFilter = (token: string, companyId: string, now: Date = new Date()) => ({
   _id: token,
-  tokenType: 'access',
+  tokenType: 'access' as const,
   principalType: 'user',
-  account_id: String(companyId || '').trim(),
+  account_id: new mongoose.Types.ObjectId(String(companyId || '').trim()),
   isExternal: true,
   isInternal: true,
   expiresAt: { $gt: now }
