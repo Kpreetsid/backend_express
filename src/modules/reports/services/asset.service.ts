@@ -12,11 +12,11 @@ class AssetReportService {
 
   async getAllAssetReports(match: any) {
     return await ReportAssetModel.find(match).sort({ _id: -1 }).populate(this.populateFilter);
-  };
+  }
 
   async getLatest(match: any, selectedFields: any) {
     return await ReportAssetModel.findOne(match).select(selectedFields).sort({ _id: -1 }).limit(1);
-  };
+  }
 
   async createAssetReportWithWorkOrder(body: IReportAsset, user: any, token: any, CreateWorkRequest: number, workOrderBody?: any) {
     let assetReport: any = null;
@@ -52,22 +52,37 @@ class AssetReportService {
     }
   };
 
-  async updateAssetReport(id: any, body: IReportAsset, account_id: any, user_id: any, token: any) {
-    return await ReportAssetModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
+  async updateAssetReport(id: any, body: IReportAsset, account_id: any, _user_id: any, _token: any) {
+    return await ReportAssetModel.findOneAndUpdate(
+      buildAssetReportScope(account_id, id),
+      body,
+      { returnDocument: 'after', runValidators: true }
+    );
   };
 
-  async partialUpdateAssetReport(id: any, body: IReportAsset, user_id: any, token: string) {
-    const oldData = await ReportAssetModel.findById(id);
-    const newBody: any = { ...oldData?.toObject(), ...body };
+  async partialUpdateAssetReport(id: any, account_id: any, body: IReportAsset, user_id: any, _token: string) {
+    const scope = buildAssetReportScope(account_id, id);
+    const oldData = await ReportAssetModel.findOne(scope);
+    if (!oldData) return null;
+
+    const newBody: any = { ...oldData.toObject(), ...body };
     if (body.status) {
       newBody.status_details = [...(newBody.status_details || []), { status: body.status, createdBy: user_id }];
     }
-    return await ReportAssetModel.findByIdAndUpdate(id, newBody, { returnDocument: 'after' });
+    return await ReportAssetModel.findOneAndUpdate(
+      scope,
+      { $set: newBody },
+      { returnDocument: 'after', runValidators: true }
+    );
   };
 
-  async removeAssetReportById(id: any, user_id: any) {
-    return await ReportAssetModel.findByIdAndUpdate(id, { updatedBy: user_id, visible: false }, { returnDocument: 'after' });
-  }
+  async removeAssetReportById(id: any, account_id: any, user_id: any) {
+    return await ReportAssetModel.findOneAndUpdate(
+      buildAssetReportScope(account_id, id),
+      { $set: { updatedBy: user_id, visible: false } },
+      { returnDocument: 'after' }
+    );
+  };
 
   async deleteAssetReport(id: any) {
     return await ReportAssetModel.findByIdAndDelete(id);
