@@ -210,6 +210,8 @@ export interface IWorkOrder extends Document {
   parts: IParts[];
   labor_entries: ILaborEntry[];
   work_request_id: ObjectId;
+  source_inspection_id?: ObjectId;
+  source_finding_key?: string;
   files: object[];
   visible: boolean;
   createdBy: ObjectId;
@@ -222,7 +224,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   title: { type: String, trim: true, required: true },
   description: { type: String, trim: true },
   estimated_time: { type: Number },
-  createdFrom: { type: String, trim: true, enum: [ 'Asset Report', 'Work Request', 'Work Order', 'Preventive'], default: "Work Order" },
+  createdFrom: { type: String, trim: true, enum: [ 'Asset Report', 'Work Request', 'Work Order', 'Preventive', 'Inspection'], default: "Work Order" },
   priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: "Low" },
   status: { type: String, trim: true, enum: WORK_ORDER_STATUSES, default: "Open" },
   parentId: { type: Schema.Types.ObjectId, ref: 'Schema_WorkOrder' },
@@ -260,6 +262,8 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   labor_entries: { type: [LaborEntrySchema], default: [] },
   asset_report_id: { type: Schema.Types.ObjectId, ref: 'AssetReportModel' },
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
+  source_inspection_id: { type: Schema.Types.ObjectId, ref: 'Schema_Inspection' },
+  source_finding_key: { type: String, trim: true, maxlength: 160 },
   files: { type: [Object] },
   visible: { type: Boolean, default: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true },
@@ -278,6 +282,17 @@ WorkOrderSchema.index({ wo_location_id: 1, visible: 1 });
 WorkOrderSchema.index({ parentId: 1 });
 WorkOrderSchema.index({ order_no: 1 });
 WorkOrderSchema.index({ createdBy: 1 });
+WorkOrderSchema.index(
+  { account_id: 1, source_inspection_id: 1, source_finding_key: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      visible: true,
+      source_inspection_id: { $exists: true },
+      source_finding_key: { $type: 'string' }
+    }
+  }
+);
 
 WorkOrderSchema.plugin(syncVersionPlugin);
 
