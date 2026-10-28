@@ -7,6 +7,7 @@ import { SOPsModel } from "../models/sops.model";
 import { UserModel } from "../../users/models/user.model";
 import { mapInspectionService } from "../../mappings/services/userInspection.service";
 import { withTransaction } from "../../../common/utils/transaction.helper";
+import { orderService } from "../../work-orders/services/order.service";
 
 class InspectionService {
  async getAllInspection (filter: any) {
