@@ -81,10 +81,13 @@ class UserController {
       const usernameExists = await usersService.getAllUsers({ username: body.username });
       if (usernameExists.length) throw Object.assign(new Error("Username already exists"), { status: 400 });
 
-      body.account_id = account_id;
-      body.createdBy = user_id;
+      const createPayload = {
+        ...body,
+        account_id,
+        createdBy: user_id
+      } as IUser;
 
-      const data = await usersService.createNewUser(body, account_id);
+      const data = await usersService.createNewUser(createPayload, account_id);
       await mailerService.sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email });
       await notificationService.notifyAccountUsers({
         accountId: String(account_id),
