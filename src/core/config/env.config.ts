@@ -138,7 +138,9 @@ export const permissionSync = {
 };
 
 export const supportLogin = {
-  serviceKey: envString(process.env.SUPPORT_LOGIN_SERVICE_KEY, '')
+  serviceKey: envString(process.env.SUPPORT_LOGIN_SERVICE_KEY, ''),
+  environment: envString(process.env.SUPPORT_LOGIN_ENVIRONMENT, process.env.NODE_ENV === 'production' ? 'production' : 'staging'),
+  introspectionUrl: envString(process.env.SUPPORT_LOGIN_INTROSPECTION_URL, '')
 };
 
 export const storageConfig = {
