@@ -23,11 +23,11 @@ const pdfChartUpload = multer({
 
 export default (router: express.Router) => {
     const assetReportRouter = express.Router();
-    assetReportRouter.get('/', assetReportController.getAssetsReport);
-    assetReportRouter.get('/latest/:id', validateParamId, assetReportController.getLatestReport);
-    assetReportRouter.get('/:id', validateParamId, assetReportController.getAssetsReportById);
+    assetReportRouter.get('/', hasRolePermission('asset', 'view'), assetReportController.getAssetsReport);
+    assetReportRouter.get('/latest/:id', validateParamId, hasRolePermission('asset', 'view'), assetReportController.getLatestReport);
+    assetReportRouter.get('/:id', validateParamId, hasRolePermission('asset', 'view'), assetReportController.getAssetsReportById);
     assetReportRouter.post('/', hasRolePermission('asset', 'create_report'), assetReportController.createAssetsReport);
-    assetReportRouter.post('/generate-pdf/:id', validateParamId, pdfChartUpload.array('chartImages', 60), payloadCryptoMultipartMiddleware, assetReportController.generateAssetReportPdf);
+    assetReportRouter.post('/generate-pdf/:id', validateParamId, hasRolePermission('asset', 'export'), pdfChartUpload.array('chartImages', 60), payloadCryptoMultipartMiddleware, assetReportController.generateAssetReportPdf);
     assetReportRouter.put('/:id', validateParamId, hasRolePermission('asset', 'edit_report'), assetReportController.updateAssetsReport);
     assetReportRouter.patch('/:id', validateParamId, hasRolePermission('asset', 'edit_report'), assetReportController.partialUpdateAssetsReport);
     assetReportRouter.delete('/:id', validateParamId, hasRolePermission('asset', 'delete_report'), assetReportController.deleteAssetsReport);
