@@ -1,7 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const { execFileSync } = require('node:child_process');
+const { spawnSync } = require('node:child_process');
 
 const patterns = [
   ['private-key', /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/],
@@ -24,14 +24,20 @@ function scan(text, source) {
   return findings;
 }
 
-function git(args) {
-  return execFileSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+function git(args, allowedCodes = [0]) {
+  const result = spawnSync('git', args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+  if (result.error) throw result.error;
+  if (!allowedCodes.includes(result.status ?? 1)) {
+    throw new Error(`git ${args[0]} failed with exit ${result.status}: ${result.stderr || ''}`);
+  }
+  return result.stdout || '';
 }
 
-const current = scan(git(['grep', '-I', '-n', '-E',
+const currentText = git(['grep', '-I', '-n', '-E',
   '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,255}|github_pat_[A-Za-z0-9_]{50,255}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[0-9A-Za-z-]{20,}',
   '--', '.', ':(exclude)package-lock.json'
-]), 'current-tree');
+], [0, 1]);
+const current = scan(currentText, 'current-tree');
 
 const historyPatch = git(['log', '--all', '--no-ext-diff', '--format=commit:%H', '-p', '--unified=0', '--', '.', ':(exclude)package-lock.json']);
 const history = scan(
