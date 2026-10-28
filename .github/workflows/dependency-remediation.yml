@@ -1,0 +1,83 @@
+name: CMMS backend dependency remediation
+
+on:
+  push:
+    branches: ['priority/bugs']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cmms-backend-dependency-remediation
+  cancel-in-progress: false
+
+jobs:
+  remediate:
+    if: github.ref == 'refs/heads/priority/bugs'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      NODE_ENV: test
+      REDIS_ENABLED: 'false'
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: priority/bugs
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Generate ephemeral test signing keys
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const crypto=require('node:crypto');
+          for (const name of ['AUTH_SECRET','EXTERNAL_AUTH_SECRET','REFRESH_TOKEN_SECRET']) {
+            const value=crypto.randomBytes(48).toString('hex');
+            console.log(`::add-mask::${value}`);
+            fs.appendFileSync(process.env.GITHUB_ENV, `${name}=${value}\n`);
+          }
+          fs.appendFileSync(process.env.GITHUB_ENV, 'AUTH_ISSUER=cmms-ci\nAUTH_AUDIENCE=cmms-ci\n');
+          NODE
+      - name: Detect remediation
+        id: deps
+        run: |
+          node - <<'NODE' >> "$GITHUB_OUTPUT"
+          const p=require('./package.json');
+          const multer=String(p.dependencies?.multer || '');
+          const puppeteer=String(p.dependencies?.puppeteer || '');
+          console.log('needs=' + (!(multer.includes('2.5.0') && puppeteer.includes('25.16.0'))));
+          NODE
+      - name: Upgrade reviewed direct dependencies
+        if: steps.deps.outputs.needs == 'true'
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const p=JSON.parse(fs.readFileSync('package.json','utf8'));
+          p.dependencies.multer='2.5.0';
+          p.dependencies.puppeteer='25.16.0';
+          fs.writeFileSync('package.json', JSON.stringify(p,null,2)+'\n');
+          NODE
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm audit fix --package-lock-only --omit=dev --ignore-scripts --no-fund
+      - name: Verify remediated graph
+        if: steps.deps.outputs.needs == 'true'
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm audit --omit=dev --audit-level=high
+          npm run typecheck
+          npm run test:password-security
+          npm run test:asset-train
+          npm run test:cmms
+          npm run build
+      - name: Commit verified dependency remediation
+        if: steps.deps.outputs.needs == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git diff --cached --quiet && exit 0
+          git commit -m "fix(deps): remediate CMMS backend runtime audit"
+          git push origin HEAD:priority/bugs
