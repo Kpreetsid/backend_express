@@ -147,7 +147,7 @@ class RequestService {
   async markConverted(id: string, body: { workOrderId: any; orderNo: string; priority?: string; approvedBy?: any; approvedAt?: Date; convertedBy: any }, session?: any): Promise<any> {
     const convertedAt = new Date();
     const approvedAt = body.approvedAt ? new Date(body.approvedAt) : convertedAt;
-    return await this.updateRequest(id, {
+    const update = {
       status: 'Approved',
       approvedBy: body.approvedBy || body.convertedBy,
       approvedAt,
@@ -155,8 +155,21 @@ class RequestService {
       convertedAt,
       converted_work_order_id: body.workOrderId,
       converted_order_no: body.orderNo,
+      updatedBy: body.convertedBy,
       ...this.buildOrderGovernance(body.priority || 'Low', approvedAt)
-    }, body.convertedBy, session);
+    };
+    const result = await WorkRequestModel.updateOne({
+      _id: id,
+      status: 'Approved',
+      $or: [
+        { converted_work_order_id: null },
+        { converted_work_order_id: { $exists: false } }
+      ]
+    }, update, { session });
+    if (result.matchedCount !== 1) {
+      throw Object.assign(new Error('This work request has already been converted into a work order'), { status: 409 });
+    }
+    return result;
   }
 }
 
