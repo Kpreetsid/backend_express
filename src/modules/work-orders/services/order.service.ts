@@ -824,6 +824,7 @@ class OrderService {
       'sop_form_id',
       'work_request_id',
       'asset_report_id',
+      'source_inspection_id',
       'parentId',
       'updatedBy',
       'createdBy'
@@ -4066,7 +4067,7 @@ class OrderService {
     return `WO-${year}${sequence}`;
   };
 
-  async createWorkOrder(body: any, user: IUser): Promise<any> {
+  async createWorkOrder(body: any, user: IUser, existingSession?: any): Promise<any> {
     return await withTransaction(async (session) => {
       let normalizedBody = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder({ ...body })));
       this.validateIncomingParts(normalizedBody.parts || []);
@@ -4156,6 +4157,8 @@ class OrderService {
         labor_entries: normalizedBody.labor_entries,
         work_request_id: normalizedBody.work_request_id,
         asset_report_id: normalizedBody.asset_report_id,
+        source_inspection_id: normalizedBody.source_inspection_id,
+        source_finding_key: typeof normalizedBody.source_finding_key === 'string' ? normalizedBody.source_finding_key.trim() : undefined,
         status_details: [{ status: normalizedBody.status, createdBy: user._id }],
         createdBy: user._id
       };
@@ -4308,7 +4311,7 @@ class OrderService {
         console.warn('Failed to fetch enriched work order after create, returning saved document instead:', readError?.message || readError);
         return data?.toObject ? data.toObject() : data;
       }
-    });
+    }, existingSession);
   };
 
   async updateById(id: any, body: any, user: IUser, expectedVersion?: number): Promise<any> {
