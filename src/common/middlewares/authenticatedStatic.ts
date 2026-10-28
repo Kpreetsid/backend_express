@@ -2,6 +2,7 @@ import express, { NextFunction, Request, RequestHandler, Response } from 'expres
 import fs from 'fs';
 import path from 'path';
 import { isAuthenticated } from '../../core/auth/auth.middleware';
+import { isStaticFileOwnedByAccount } from './static-file-scope';
 
 const isInside = (root: string, candidate: string): boolean => (
   candidate === root || candidate.startsWith(`${root}${path.sep}`)
@@ -75,6 +76,13 @@ export const authenticatedStatic = (
         next(authenticationError);
         return;
       }
+
+      const accountId = (req as any).user?.account_id;
+      if (!isStaticFileOwnedByAccount(relativePath, accountId)) {
+        next(Object.assign(new Error('File not found'), { status: 404 }));
+        return;
+      }
+
       serveStatic(req, res, next);
     });
   };
