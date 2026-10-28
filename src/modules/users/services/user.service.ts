@@ -1,5 +1,6 @@
 import { UserModel, IUser, UserLoginPayload } from "../models/user.model";
 import { MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation.model";
+import { LocationModel } from '../../locations/models/location.model';
 import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../../common/utils/bcrypt.helper';
 import { rolesService } from './roles.service';
@@ -11,7 +12,7 @@ import { validateNewPassword } from '../../auth/services/verification-challenge.
 import { nextPasswordExpiry } from '../../auth/services/password-expiry';
 import { RoleManager } from "../../../common/constants/new-user-roles.constant";
 import { RoleMenuModel } from "../models/userRoleMenu.model";
-import { buildUserAccountFilter } from './user-update-policy';
+import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter } from './user-update-policy';
 
 import { withTransaction } from "../../../common/utils/transaction.helper";
 import { subscriptionLimitService } from "../../company/services/subscriptionLimit.service";
@@ -64,15 +65,26 @@ class UsersService {
 
   async getLocationWiseUser(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { params: { locationID } } = req;
-      const locationId = helperService.validateObjectId(locationID);
-      const data = await MapUserAssetLocationModel.find({ locationId: locationId }).select('userId -_id');
+      const user = (req as any).user as IUser;
+      const locationParam = String(req.params.id || req.params.locationID || '');
+      const locationId = helperService.validateObjectId(locationParam);
+      const accountId = user?.account_id;
+      if (!accountId) {
+        throw Object.assign(new Error('Account context is required'), { status: 403 });
+      }
+
+      const location = await LocationModel.findOne(buildLocationAccountFilter(locationId, accountId)).select('_id').lean();
+      if (!location) {
+        throw Object.assign(new Error('Location not found'), { status: 404 });
+      }
+
+      const data = await MapUserAssetLocationModel.find({ locationId }).select('userId -_id').lean();
       const userIDList = data.map((doc: any) => doc.userId);
-      const userData = await this.getAllUsers({ _id: { $in: userIDList } });
+      const userData = await this.getAllUsers(buildMappedUserFilter(userIDList, accountId));
       if (userData.length === 0) {
         throw Object.assign(new Error('No records found'), { status: 404 });
       }
-      return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });;
+      return res.status(200).json({ status: true, message: "Data fetched successfully", data: userData });
     } catch (error) {
       next(error);
     }
