@@ -29,3 +29,16 @@ export const buildUserAccountFilter = (userId: any, accountId: any) => ({
   account_id: accountId,
   visible: { $ne: false }
 });
+
+
+export const buildLocationAccountFilter = (locationId: any, accountId: any) => ({
+  _id: locationId,
+  account_id: accountId,
+  visible: { $ne: false }
+});
+
+export const buildMappedUserFilter = (userIds: any[], accountId: any) => ({
+  _id: { $in: userIds },
+  account_id: accountId,
+  visible: { $ne: false }
+});
