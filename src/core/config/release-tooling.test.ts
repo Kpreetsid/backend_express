@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-const root = path.resolve(__dirname, '../../../..');
+const root = path.resolve(__dirname, '../../..');
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 
 test('development inspector is loopback-only and production start is inspector-free', () => {
