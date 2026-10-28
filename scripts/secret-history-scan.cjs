@@ -33,7 +33,7 @@ function git(args, allowedCodes = [0]) {
   return result.stdout || '';
 }
 
-const currentText = git(['grep', '-I', '-n', '-E',
+const currentText = git(['grep', '-I', '-n', '-E', '-e',
   '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,255}|github_pat_[A-Za-z0-9_]{50,255}|AIza[0-9A-Za-z_-]{35}|xox[baprs]-[0-9A-Za-z-]{20,}',
   '--', '.', ':(exclude)package-lock.json'
 ], [0, 1]);
