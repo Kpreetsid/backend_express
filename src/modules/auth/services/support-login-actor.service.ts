@@ -1,5 +1,8 @@
 import { supportLogin } from '../../../core/config/env.config';
 
+export const isAuthorizedSupportActorResponse = (payload: any): boolean =>
+  payload?.status === true && payload?.authorized === true;
+
 export const authorizeSupportActor = async (input: {
   actorId: string;
   companyId: string;
@@ -29,7 +32,7 @@ export const authorizeSupportActor = async (input: {
   }
 
   const payload: any = await response.json().catch(() => null);
-  if (!payload?.status || payload?.authorized !== true) {
+  if (!isAuthorizedSupportActorResponse(payload)) {
     throw Object.assign(new Error('Support-login actor is no longer authorized'), { status: 403 });
   }
 };
