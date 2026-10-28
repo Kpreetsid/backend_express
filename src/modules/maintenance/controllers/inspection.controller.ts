@@ -8,6 +8,15 @@ import { helperService } from '../../../common/utils/helper';
 import { notificationService } from '../../communications/services/notification-sender.service';
 
 class InspectionController {
+ private async assertInspectionAccess(accountId: any, userId: any, userRole: string, inspectionId: any): Promise<void> {
+  if (userRole === 'admin') return;
+  const mappings: any[] = await mapInspectionService.getInspectionByUserId(accountId, userId);
+  const allowed = mappings.some((mapping: any) => String(mapping?.inspection_id) === String(inspectionId));
+  if (!allowed) {
+    throw Object.assign(new Error('Inspection not found or unauthorized'), { status: 404 });
+  }
+ }
+
 
  async getAll (req: Request, res: Response, next: NextFunction) {
   try {
@@ -36,9 +45,11 @@ class InspectionController {
 
  async getById (req: Request, res: Response, next: NextFunction) {
   try {
-    const { account_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const data = await inspectionService.getAllInspection({ _id: helperService.validateObjectId(id), account_id, visible: true });
+    const inspectionId = helperService.validateObjectId(id);
+    await this.assertInspectionAccess(account_id, user_id, userRole, inspectionId);
+    const data = await inspectionService.getAllInspection({ _id: inspectionId, account_id, visible: true });
     if (!data.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
@@ -76,13 +87,15 @@ class InspectionController {
 
  async updateById (req: Request, res: Response, next: NextFunction) {
   try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const data = await inspectionService.updateInspection(helperService.validateObjectId(id), req.body, account_id, user_id);
+    const inspectionId = helperService.validateObjectId(id);
+    await this.assertInspectionAccess(account_id, user_id, userRole, inspectionId);
+    const data = await inspectionService.updateInspection(inspectionId, req.body, account_id, user_id);
     if (!data) {
       throw Object.assign(new Error('Inspection not updated'), { status: 404 });
     }
-    const result = await inspectionService.getAllInspection({ _id: helperService.validateObjectId(id), account_id, visible: true });
+    const result = await inspectionService.getAllInspection({ _id: inspectionId, account_id, visible: true });
     if (!result.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
@@ -103,13 +116,15 @@ class InspectionController {
 
  async removeById (req: Request, res: Response, next: NextFunction) {
   try {
-    const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = get(req, "user", {}) as IUser;
     const { id } = req.params;
-    const data = await inspectionService.getAllInspection({ _id: helperService.validateObjectId(id), account_id, visible: true });
+    const inspectionId = helperService.validateObjectId(id);
+    await this.assertInspectionAccess(account_id, user_id, userRole, inspectionId);
+    const data = await inspectionService.getAllInspection({ _id: inspectionId, account_id, visible: true });
     if (!data.length) {
       throw Object.assign(new Error('Inspection not found'), { status: 404 });
     }
-    const result = await inspectionService.removeInspection(helperService.validateObjectId(id), account_id, user_id);
+    const result = await inspectionService.removeInspection(inspectionId, account_id, user_id);
     if (!result) {
       throw Object.assign(new Error('Inspection not deleted'), { status: 404 });
     }
@@ -118,6 +133,29 @@ class InspectionController {
     next(error);
   }
 };
+
+ async createCorrectiveWorkOrder(req: Request, res: Response, next: NextFunction) {
+  try {
+    const user = get(req, "user", {}) as IUser;
+    const { account_id, _id: user_id, user_role: userRole } = user;
+    const inspectionId = helperService.validateObjectId(req.params.id);
+    await this.assertInspectionAccess(account_id, user_id, userRole, inspectionId);
+    const data: any = await inspectionService.createCorrectiveWorkOrder(
+      inspectionId,
+      String(req.body?.finding_key || ''),
+      req.body,
+      user
+    );
+    res.status(201).json({
+      status: true,
+      message: 'Corrective work order created successfully',
+      data
+    });
+  } catch (error) {
+    next(error);
+  }
+ };
+
 }
 
 export const inspectionController = controllerCache.withCache(new InspectionController(), { namespace: 'inspections', ttlSeconds: 300, tags: ['inspections', 'assets', 'locations'] });
