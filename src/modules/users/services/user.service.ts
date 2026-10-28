@@ -11,6 +11,7 @@ import { validateNewPassword } from '../../auth/services/verification-challenge.
 import { nextPasswordExpiry } from '../../auth/services/password-expiry';
 import { RoleManager } from "../../../common/constants/new-user-roles.constant";
 import { RoleMenuModel } from "../models/userRoleMenu.model";
+import { buildUserAccountFilter } from './user-update-policy';
 
 import { withTransaction } from "../../../common/utils/transaction.helper";
 import { subscriptionLimitService } from "../../company/services/subscriptionLimit.service";
@@ -109,14 +110,24 @@ class UsersService {
     }
   };
 
-  async updateUserDetails(id: string, body: IUser) {
-    return await UserModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
+  async updateUserDetails(id: string, body: Partial<IUser>, accountId: any) {
+    return await UserModel.findOneAndUpdate(
+      buildUserAccountFilter(id, accountId),
+      { $set: body },
+      { returnDocument: 'after', runValidators: true }
+    );
   }
 
-  async removeById(id: string) {
+  async removeById(id: string, accountId: any) {
     return await withTransaction(async (session) => {
+      const user = await UserModel.findOneAndUpdate(
+        buildUserAccountFilter(id, accountId),
+        { $set: { visible: false, user_status: 'inactive' } },
+        { returnDocument: 'after', session }
+      );
+      if (!user) return null;
       await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
-      return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { returnDocument: 'after', session });
+      return user;
     });
   };
 }
