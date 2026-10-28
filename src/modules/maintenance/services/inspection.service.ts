@@ -137,6 +137,79 @@ class InspectionService {
     );
   });
  };
+
+ async createCorrectiveWorkOrder(inspectionId: any, findingKey: string, body: any, user: any) {
+  const normalizedFindingKey = String(findingKey || '').trim();
+  if (!normalizedFindingKey || normalizedFindingKey.length > 160) {
+    throw Object.assign(new Error('A valid inspection finding key is required'), { status: 400 });
+  }
+
+  try {
+    return await withTransaction(async (session) => {
+      const query = InspectionModel.findOne({
+        _id: inspectionId,
+        account_id: user.account_id,
+        visible: true
+      });
+      const inspection: any = session ? await query.session(session) : await query;
+      if (!inspection) {
+        throw Object.assign(new Error('Inspection not found'), { status: 404 });
+      }
+
+      const actions = Array.isArray(inspection.corrective_actions) ? inspection.corrective_actions : [];
+      if (actions.some((action: any) => action?.finding_key === normalizedFindingKey)) {
+        throw Object.assign(new Error('A corrective work order already exists for this inspection finding'), { status: 409 });
+      }
+
+      const workOrder = await orderService.createWorkOrder({
+        title: String(body?.title || `Corrective action - ${inspection.title}`).trim(),
+        description: String(body?.description || inspection.description || '').trim(),
+        priority: body?.priority || 'Medium',
+        status: 'Open',
+        type: body?.type || 'Corrective',
+        nature_of_work: body?.nature_of_work || 'Corrective',
+        createdFrom: 'Inspection',
+        wo_location_id: inspection.location_id,
+        wo_asset_id: inspection.asset_id,
+        start_date: body?.start_date || new Date(),
+        end_date: body?.end_date,
+        estimated_time: body?.estimated_time,
+        tasks: Array.isArray(body?.tasks) ? body.tasks : [],
+        parts: Array.isArray(body?.parts) ? body.parts : [],
+        procedure_ids: Array.isArray(body?.procedure_ids) ? body.procedure_ids : [],
+        userIdList: Array.isArray(body?.userIdList) ? body.userIdList : [],
+        files: Array.isArray(body?.files) ? body.files : [],
+        source_inspection_id: inspection._id,
+        source_finding_key: normalizedFindingKey
+      }, user, session);
+
+      if (!workOrder?._id) {
+        throw Object.assign(new Error('Corrective work order was not created'), { status: 500 });
+      }
+
+      inspection.corrective_actions = [
+        ...actions,
+        {
+          finding_key: normalizedFindingKey,
+          work_order_id: workOrder._id,
+          order_no: workOrder.order_no,
+          createdBy: user._id,
+          createdAt: new Date()
+        }
+      ];
+      inspection.no_of_actions = inspection.corrective_actions.length;
+      inspection.updatedBy = user._id;
+      await inspection.save({ session });
+      return workOrder;
+    });
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      throw Object.assign(new Error('A corrective work order already exists for this inspection finding'), { status: 409 });
+    }
+    throw error;
+  }
+ }
+
 }
 
 export const inspectionService = new InspectionService();
