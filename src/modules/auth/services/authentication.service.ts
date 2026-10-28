@@ -2,11 +2,11 @@ import mongoose from "mongoose";
 import { IUser, UserModel, UserLoginPayload } from "../../users/models/user.model";
 import { Request, Response, NextFunction } from 'express';
 import { passwordService } from '../../../common/utils/bcrypt.helper';
-import { decryptToken, generateAccessToken, generateExternalAccessToken } from '../../../core/auth/auth.middleware';
+import { generateAccessToken } from '../../../core/auth/auth.middleware';
 import { getAccessTokenTypeFilter, TokenModel } from "../models/userToken.model";
 import { rolesService } from "../../users/services/roles.service";
 import { resetPasswordService } from './resetPassword.service';
-import { auth } from "../../../core/config/env.config";
+import { auth, supportLogin } from "../../../core/config/env.config";
 import { helperService } from "../../../common/utils/helper";
 import { IAccount } from "../../company/models/account.model";
 import { companyService } from "../../company/services/company.service";
@@ -20,7 +20,8 @@ import { tokenSessionStore } from "../../../core/auth/token-session-store";
 import { clearAuthCookies, setAccessCookies } from "../../../core/auth/auth-cookie.service";
 import { analysisFeatureService } from "../../settings/services/analysisFeature.service";
 import { passwordExpiryNotice } from './password-expiry';
-import { SUPPORT_LOGIN_GRANT_TTL_SECONDS, buildSupportLoginConsumeFilter, buildSupportLoginGrant } from './support-login.grant';
+import { EXTERNAL_LOGIN_GRANT_TTL_SECONDS, consumeExternalLoginGrant, issueExternalLoginGrant, resolveSupportEnvironment } from './external-login-grant.service';
+import { authorizeSupportActor } from './support-login-actor.service';
 
 const persistAccessSession = async (
   token: string,
@@ -225,41 +226,44 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
   try {
     const identifier = String(req.body?.email || '').trim().toLowerCase();
     const companyId = String(req.body?.company_id || '').trim();
-    if (!identifier || !companyId) {
-      throw Object.assign(new Error('Bad request: email and company_id are required'), { status: 400 });
+    const actorId = String(req.body?.actor_id || '').trim();
+    const stateChallenge = String(req.body?.state_challenge || '').trim();
+    const environment = resolveSupportEnvironment(req.body?.environment);
+
+    if (!identifier || !companyId || !actorId || stateChallenge.length < 32) {
+      throw Object.assign(new Error('Complete support login context is required'), { status: 400 });
     }
 
     const accountId = helperService.validateObjectId(companyId);
-    const external_user = await UserModel.findOne({
+    await authorizeSupportActor({ actorId, companyId: String(accountId), environment });
+
+    const externalUser = await UserModel.findOne({
       email: identifier,
       account_id: accountId,
-      user_status: 'active'
+      user_status: 'active',
+      visible: { $ne: false }
     });
-    if (!external_user) {
+    if (!externalUser) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
 
-    const ttlSeconds = SUPPORT_LOGIN_GRANT_TTL_SECONDS;
-    const grant = buildSupportLoginGrant(external_user.email, String(external_user.account_id));
-    const external_token = generateExternalAccessToken(grant, ttlSeconds);
-    const userTokenData = new TokenModel({
-      _id: external_token,
-      tokenType: 'access',
-      token_id: new mongoose.Types.ObjectId(),
-      userId: external_user._id,
-      account_id: external_user.account_id,
-      principalType: 'user',
-      isExternal: true,
-      isInternal: true,
-      ttl: ttlSeconds,
-      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+    const grant = await issueExternalLoginGrant({
+      actorId,
+      targetUserId: externalUser._id as mongoose.Types.ObjectId,
+      companyId: externalUser.account_id as mongoose.Types.ObjectId,
+      environment,
+      stateChallenge
     });
-    await userTokenData.save();
 
     return res.status(200).json({
       status: true,
       message: 'Login grant created',
-      data: { external_token, org_id: external_user.account_id, user_id: external_user._id, expires_in: ttlSeconds }
+      data: {
+        external_token: grant.code,
+        org_id: externalUser.account_id,
+        user_id: externalUser._id,
+        expires_in: EXTERNAL_LOGIN_GRANT_TTL_SECONDS
+      }
     });
   } catch (error) {
     next(error);
@@ -268,26 +272,30 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
 
 export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { body: { external_token } } = req;
-    if (!external_token) {
-      throw Object.assign(new Error('Bad request'), { status: 404 });
-    }
-    const decoded = decryptToken(external_token);
-    const { email, org_id, isExternal, isInternal, isDownloadData, redirectPath, supportGrant } = decoded;
-    if (!email || !org_id || supportGrant !== true) {
-      throw Object.assign(new Error('Invalid support login grant'), { status: 401 });
-    }
-    if (true === !!isDownloadData) {
-      throw Object.assign(new Error(`User can't access this application resource.`), { status: 401 });
+    const externalToken = String(req.body?.external_token || '').trim();
+    const stateProof = String(req.body?.state_proof || '').trim();
+    if (!externalToken || stateProof.length < 32) {
+      throw Object.assign(new Error('External login grant and browser state are required'), { status: 400 });
     }
 
-    const consumedGrant = await TokenModel.findOneAndDelete(
-      buildSupportLoginConsumeFilter(external_token, String(org_id))
-    );
+    const environment = resolveSupportEnvironment(supportLogin.environment);
+    const consumedGrant = await consumeExternalLoginGrant(externalToken, stateProof, environment);
     if (!consumedGrant) {
       throw Object.assign(new Error('Support login grant is expired, invalid, or already used'), { status: 401 });
     }
-    const userDetails = await UserModel.findOne({ email, account_id: helperService.validateObjectId(org_id), user_status: 'active' });
+
+    await authorizeSupportActor({
+      actorId: consumedGrant.actorId,
+      companyId: String(consumedGrant.companyId),
+      environment
+    });
+
+    const userDetails = await UserModel.findOne({
+      _id: consumedGrant.targetUserId,
+      account_id: consumedGrant.companyId,
+      user_status: 'active',
+      visible: { $ne: false }
+    });
     if (!userDetails) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
@@ -314,17 +322,15 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       userId: userDetails._id,
       account_id: userDetails.account_id,
       principalType: 'user',
-      isExternal,
-      isInternal,
+      isExternal: true,
+      isInternal: true,
       ttl: ttlSeconds,
       expiresAt: new Date(Date.now() + ttlSeconds * 1000)
     });
     await userTokenData.save();
-    await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal, isInternal });
+    await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal: true, isInternal: true });
     const refreshSession = await refreshTokenService.issueForUser(req, res, userDetails, token_id);
-    const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
-      ? redirectPath
-      : '/dashboard';
+    const safeRedirectPath = '/dashboard';
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleMenu, accountDetails[0]);
     const isCookieAuth = accountDetails[0].cookie_status === 'enabled';
     const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id })
@@ -345,8 +351,8 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
           authMethod: 'cookie',
           token_id,
           token: newToken,
-          isExternal: !!isExternal,
-          isInternal: !!isInternal,
+          isExternal: true,
+          isInternal: true,
           redirectPath: safeRedirectPath,
           analysisFeature: analysisFeature
         }
@@ -368,8 +374,8 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
           platformControl: effectivePermissions.platformControl,
           roleMenu: effectivePermissions.roleMenu,
           accountPermissionVersion: Number(accountDetails[0].account_permission_version || 1),
-          isExternal: !!isExternal,
-          isInternal: !!isInternal,
+          isExternal: true,
+          isInternal: true,
           redirectPath: safeRedirectPath
         }
       });
