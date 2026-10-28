@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { storageProvider } from "../../../core/config/storage.config";
+import { isAllowedUploadSignature } from "./upload-signature";
 
 const ALLOWED_FOLDERS = new Set([
   'assets',
@@ -80,6 +81,9 @@ class UploadFilesService {
 
       const imageBuffer = Buffer.from(base64Data, "base64");
       const extension = mimeType.split("/")[1];
+      if (!isAllowedUploadSignature(imageBuffer, `.${extension}`)) {
+        throw Object.assign(new Error('Base64 content does not match an allowed image type'), { status: 400 });
+      }
 
       const fileName = this.generateFileName(extension, folderName, accountId);
       
