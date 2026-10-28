@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export const EXTERNAL_LOGIN_GRANT_COLLECTION = 'ExternalLoginGrant';
 
-export interface IExternalLoginGrant extends Document {
+export interface IExternalLoginGrant extends Document<string> {
   _id: string;
   issuer: 'internal-admin';
   audience: 'cmms-web';
