@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildUserAccountFilter, pickUserCreateFields, pickUserUpdateFields } from './user-update-policy';
+import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, pickUserCreateFields, pickUserUpdateFields } from './user-update-policy';
 
 test('user mutation filter is bound to account and active visibility', () => {
   assert.deepEqual(buildUserAccountFilter('user-1', 'account-1'), {
@@ -60,5 +60,19 @@ test('user create allowlist rejects tenant and internal verification flags', () 
     email: 'new@example.com',
     user_role: 'employee',
     phone_no: { code: '+91', number: '123' }
+  });
+});
+
+
+test('location-wise users require both location and returned users to match the account', () => {
+  assert.deepEqual(buildLocationAccountFilter('location-1', 'account-1'), {
+    _id: 'location-1',
+    account_id: 'account-1',
+    visible: { $ne: false }
+  });
+  assert.deepEqual(buildMappedUserFilter(['user-1', 'user-2'], 'account-1'), {
+    _id: { $in: ['user-1', 'user-2'] },
+    account_id: 'account-1',
+    visible: { $ne: false }
   });
 });
