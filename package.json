@@ -13,7 +13,7 @@
     "catalog:check": "node scripts/generate-asset-train-catalog.cjs --check",
     "test:catalog": "node --require ts-node/register/transpile-only --test src/modules/assets/catalog/asset-train-catalog.test.ts",
     "test:asset-train": "node --require ts-node/register/transpile-only --test src/modules/assets/catalog/asset-train-catalog.test.ts src/modules/assets/services/asset-train-creation.test.ts src/modules/assets/services/asset-component-management.test.ts",
-    "test:cmms": "node --require ts-node/register/transpile-only --test src/core/scheduler/scheduler-recurrence.test.ts src/modules/inventory/services/work-order-quantities.test.ts src/modules/work-orders/controllers/request-boundaries.test.ts src/modules/work-orders/services/cmms-regression.test.ts"
+    "test:cmms": "node --require ts-node/register/transpile-only --test src/core/scheduler/scheduler-recurrence.test.ts src/modules/inventory/services/work-order-quantities.test.ts src/modules/work-orders/controllers/request-boundaries.test.ts src/modules/work-orders/services/cmms-regression.test.ts src/modules/work-orders/services/request-conversion.test.ts"
   },
   "keywords": [],
   "author": "Pawan Kumar Gautam",
