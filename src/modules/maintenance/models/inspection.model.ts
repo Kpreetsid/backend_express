@@ -16,10 +16,25 @@ export interface IInspection extends Document {
   month: string;
   createdFrom: string;
   no_of_actions: number;
+  corrective_actions: Array<{
+    finding_key: string;
+    work_order_id: ObjectId;
+    order_no?: string;
+    createdBy: ObjectId;
+    createdAt: Date;
+  }>;
   visible: boolean;
   createdBy: ObjectId;
   updatedBy?: ObjectId;
 }
+
+const CorrectiveActionSchema = new Schema({
+  finding_key: { type: String, required: true, trim: true, maxlength: 160 },
+  work_order_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Schema_WorkOrder', required: true },
+  order_no: { type: String, trim: true },
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
+  createdAt: { type: Date, required: true, default: Date.now }
+}, { _id: false, versionKey: false });
 
 const InspectionSchema = new Schema<IInspection>(
   {
@@ -35,6 +50,7 @@ const InspectionSchema = new Schema<IInspection>(
     month: { type: String, required: true, trim: true },
     createdFrom: { type: String, required: true, trim: true },
     no_of_actions: { type: Number, required: true, default: 0 },
+    corrective_actions: { type: [CorrectiveActionSchema], default: [] },
     visible: { type: Boolean, required: true, default: true },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' }
