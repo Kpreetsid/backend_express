@@ -137,6 +137,10 @@ export const permissionSync = {
   serviceKey: envString(process.env.PERMISSION_SYNC_SERVICE_KEY, '')
 };
 
+export const supportLogin = {
+  serviceKey: envString(process.env.SUPPORT_LOGIN_SERVICE_KEY, '')
+};
+
 export const storageConfig = {
   driver: process.env.STORAGE_DRIVER || 'local',
   baseUrl: process.env.STORAGE_BASE_URL || 'http://localhost:3000'
