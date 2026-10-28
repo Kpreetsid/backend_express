@@ -9,6 +9,7 @@ import { ASSET_REPORT_STATUS } from '../models/assetReport.model';
 import { observationService } from '../../assets/services/observation.service';
 import { PdfService } from '../services/asset-pdf.service';
 import { storageConfig } from '../../../core/config/env.config';
+import { buildAssetReportScope } from '../services/report-scope';
 
 class AssetReportController {
   private pdfService = new PdfService();
@@ -173,13 +174,13 @@ class AssetReportController {
       if (body.status === ASSET_REPORT_STATUS[3] && isAssetReportExists[0].status !== ASSET_REPORT_STATUS[3]) {
         body.chartDetail = isAssetReportExists[0].chartDetail.map((item: any) => ({ ...item, compare_time: Math.floor(Date.now() / 1000) }));
       }
-      const data = await assetReportService.partialUpdateAssetReport(helperService.validateObjectId(String(id)), body, user_id, userToken);
+      const data = await assetReportService.partialUpdateAssetReport(helperService.validateObjectId(String(id)), account_id, body, user_id, userToken);
       if (!data) {
         throw Object.assign(new Error('Asset report not updated'), { status: 404 });
       }
       if (body.status === ASSET_REPORT_STATUS[3] && isAssetReportExists[0].status !== ASSET_REPORT_STATUS[3]) {
         const topLevelAssetId = isAssetReportExists[0].top_level_asset_id;
-        const getAllIncompleteReport: any = await assetReportService.getAllAssetReports({ top_level_asset_id: topLevelAssetId, status: { $ne: ASSET_REPORT_STATUS[3] }, visible: true, _id: { $ne: helperService.validateObjectId(String(id)) } });
+        const getAllIncompleteReport: any = await assetReportService.getAllAssetReports(buildAssetReportScope(account_id, undefined, { top_level_asset_id: topLevelAssetId, status: { $ne: ASSET_REPORT_STATUS[3] }, _id: { $ne: helperService.validateObjectId(String(id)) } }));
         if (getAllIncompleteReport && getAllIncompleteReport.length === 0) {
           const payload = { asset_id: topLevelAssetId, freeze_score: false };
           await processorAPIService.assetHealthFreezeStatus(payload, user_id, userToken);
@@ -203,7 +204,7 @@ class AssetReportController {
       }
       if (isDataExists[0].status !== ASSET_REPORT_STATUS[3]) {
         const topLevelAssetId = isDataExists[0].top_level_asset_id;
-        const getAllIncompleteReport: any = await assetReportService.getAllAssetReports({ top_level_asset_id: topLevelAssetId, status: { $ne: ASSET_REPORT_STATUS[3] }, visible: true });
+        const getAllIncompleteReport: any = await assetReportService.getAllAssetReports(buildAssetReportScope(account_id, undefined, { top_level_asset_id: topLevelAssetId, status: { $ne: ASSET_REPORT_STATUS[3] } }));
         if (getAllIncompleteReport && getAllIncompleteReport.length === 1 && String(getAllIncompleteReport[0]._id) === String(id)) {
           const payload = { asset_id: topLevelAssetId, freeze_score: false };
           await processorAPIService.assetHealthFreezeStatus(payload, user_id, userToken);
@@ -214,7 +215,7 @@ class AssetReportController {
         await processorAPIService.updateAlarmHistoryData(payload, user_id, userToken);
       }
       await observationService.updateObservation({ report_id: helperService.validateObjectId(String(id)), accountId: account_id, visible: true }, { report_id: null, updatedBy: user_id });
-      const data = await assetReportService.removeAssetReportById(helperService.validateObjectId(String(id)), user_id);
+      const data = await assetReportService.removeAssetReportById(helperService.validateObjectId(String(id)), account_id, user_id);
       if (!data) {
         throw Object.assign(new Error('Asset report not deleted'), { status: 404 });
       }
@@ -232,7 +233,8 @@ class AssetReportController {
         : (req.body || {});
       const frontendChartImages = this.getFrontendChartImages(req);
       const reportId = helperService.validateObjectId(String(id));
-      const reports: any[] = await assetReportService.getAllAssetReports({ _id: reportId, visible: true });
+      const { account_id } = get(req, "user", {}) as IUser;
+      const reports: any[] = await assetReportService.getAllAssetReports(buildAssetReportScope(account_id, reportId));
 
       if (!reports || reports.length === 0) {
         throw Object.assign(new Error('Asset report not found'), { status: 404 });
