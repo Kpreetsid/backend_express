@@ -1,5 +1,6 @@
 import { ReportAssetModel, IReportAsset } from "../models/assetReport.model";
 import { orderService } from "../../work-orders/services/order.service";
+import { buildAssetReportScope } from "./report-scope";
 
 class AssetReportService {
 
