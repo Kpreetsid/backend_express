@@ -19,7 +19,7 @@ test('support login consume filter is one-use and expiry-bound', () => {
   assert.equal(filter._id, 'grant-token');
   assert.equal(filter.tokenType, 'access');
   assert.equal(filter.principalType, 'user');
-  assert.equal(filter.account_id, 'company-1');
+  assert.equal(String(filter.account_id), 'company-1');
   assert.equal(filter.isExternal, true);
   assert.equal(filter.isInternal, true);
   assert.equal(filter.expiresAt.$gt, now);
