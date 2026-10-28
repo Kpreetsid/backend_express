@@ -11,8 +11,8 @@ export default (router: express.Router) => {
     rolesRoutes(userRouter);
     userLogRouters(userRouter);
     userRouter.get('/', userController.getUsers);
-    userRouter.get('/:id', validateParamId, userController.getUser);
     userRouter.get('/location/:id', validateParamId, userController.getLocationWiseUsers);
+    userRouter.get('/:id', validateParamId, userController.getUser);
     userRouter.post('/', userValidator, validate, userController.createUser);
     userRouter.post('/change-password', userController.updatePasswordUser);
     userRouter.put('/:id', validateParamId, userController.updateUser);
