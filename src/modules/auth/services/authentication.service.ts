@@ -20,6 +20,7 @@ import { tokenSessionStore } from "../../../core/auth/token-session-store";
 import { clearAuthCookies, setAccessCookies } from "../../../core/auth/auth-cookie.service";
 import { analysisFeatureService } from "../../settings/services/analysisFeature.service";
 import { passwordExpiryNotice } from './password-expiry';
+import { SUPPORT_LOGIN_GRANT_TTL_SECONDS, buildSupportLoginConsumeFilter, buildSupportLoginGrant } from './support-login.grant';
 
 const persistAccessSession = async (
   token: string,
@@ -222,26 +223,25 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
 
 export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const identifier = String(req.params.email || req.params.id || '').trim();
-    if (!identifier) {
-      throw Object.assign(new Error('Bad request: identifier is required'), { status: 400 });
+    const identifier = String(req.body?.email || '').trim().toLowerCase();
+    const companyId = String(req.body?.company_id || '').trim();
+    if (!identifier || !companyId) {
+      throw Object.assign(new Error('Bad request: email and company_id are required'), { status: 400 });
     }
 
-    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
-
-    // Interactive user login token
-    const external_user = await UserModel.findOne({ email: identifier, user_status: 'active' });
+    const accountId = helperService.validateObjectId(companyId);
+    const external_user = await UserModel.findOne({
+      email: identifier,
+      account_id: accountId,
+      user_status: 'active'
+    });
     if (!external_user) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
 
-    const match: any = {
-      email: external_user.email,
-      org_id: external_user.account_id,
-      isExternal: false,
-      isInternal: true
-    };
-    const external_token = generateExternalAccessToken(match);
+    const ttlSeconds = SUPPORT_LOGIN_GRANT_TTL_SECONDS;
+    const grant = buildSupportLoginGrant(external_user.email, String(external_user.account_id));
+    const external_token = generateExternalAccessToken(grant, ttlSeconds);
     const userTokenData = new TokenModel({
       _id: external_token,
       tokenType: 'access',
@@ -250,7 +250,7 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
       account_id: external_user.account_id,
       principalType: 'user',
       isExternal: true,
-      isInternal: false,
+      isInternal: true,
       ttl: ttlSeconds,
       expiresAt: new Date(Date.now() + ttlSeconds * 1000)
     });
@@ -258,8 +258,8 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
 
     return res.status(200).json({
       status: true,
-      message: 'Login successful',
-      data: { external_token, org_id: external_user.account_id, user_id: external_user._id }
+      message: 'Login grant created',
+      data: { external_token, org_id: external_user.account_id, user_id: external_user._id, expires_in: ttlSeconds }
     });
   } catch (error) {
     next(error);
@@ -273,12 +273,19 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       throw Object.assign(new Error('Bad request'), { status: 404 });
     }
     const decoded = decryptToken(external_token);
-    const { email, org_id, isExternal, isInternal, isDownloadData, redirectPath } = decoded;
-    if (!email && !org_id) {
-      throw Object.assign(new Error('Invalid token'), { status: 401 });
+    const { email, org_id, isExternal, isInternal, isDownloadData, redirectPath, supportGrant } = decoded;
+    if (!email || !org_id || supportGrant !== true) {
+      throw Object.assign(new Error('Invalid support login grant'), { status: 401 });
     }
     if (true === !!isDownloadData) {
       throw Object.assign(new Error(`User can't access this application resource.`), { status: 401 });
+    }
+
+    const consumedGrant = await TokenModel.findOneAndDelete(
+      buildSupportLoginConsumeFilter(external_token, String(org_id))
+    );
+    if (!consumedGrant) {
+      throw Object.assign(new Error('Support login grant is expired, invalid, or already used'), { status: 401 });
     }
     const userDetails = await UserModel.findOne({ email, account_id: helperService.validateObjectId(org_id), user_status: 'active' });
     if (!userDetails) {
