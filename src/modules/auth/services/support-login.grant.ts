@@ -8,10 +8,11 @@ export const buildSupportLoginGrant = (email: string, companyId: string) => ({
   isInternal: true
 });
 
-export const buildSupportLoginConsumeFilter = (token: string, now: Date = new Date()) => ({
+export const buildSupportLoginConsumeFilter = (token: string, companyId: string, now: Date = new Date()) => ({
   _id: token,
   tokenType: 'access',
   principalType: 'user',
+  account_id: String(companyId || '').trim(),
   isExternal: true,
   isInternal: true,
   expiresAt: { $gt: now }
