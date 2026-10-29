@@ -102,6 +102,14 @@ class UsersService {
     return { userDetails, roleDetails };
   };
 
+  async revokeAuthorizationSessions(userId: any, accountId: any): Promise<void> {
+    await TokenModel.deleteMany({ userId, $or: [
+      { principalType: { $in: ['user', 'refresh_token'] } },
+      { principalType: { $exists: false } }
+    ] });
+    await tokenSessionStore.deleteUserSessions(String(accountId), String(userId));
+  }
+
   async updateUserPassword(user_id: any, password: string, account_id: any): Promise<void> {
     validateNewPassword(password);
     const hashedPassword = await passwordService.hashPassword(password);
