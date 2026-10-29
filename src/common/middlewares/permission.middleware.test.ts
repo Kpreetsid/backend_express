@@ -44,9 +44,9 @@ test('admin platform control covers every currently routed CMMS module action', 
   const admin: any = await PlatformControlManager.getRoleMenuData('admin');
 
   const required: Record<string, string[]> = {
-    asset: ['view', 'add_asset', 'delete_asset', 'add_child_asset', 'edit_asset', 'create_report', 'delete_report', 'download_report', 'edit_report', 'config_alarm', 'add_observation', 'edit_observation', 'delete_observation', 'create_endpoint', 'edit_endpoint', 'delete_end_point', 'attach_sensor', 'update_config'],
-    location: ['view', 'add_location', 'delete_location', 'add_child_location', 'edit_location', 'create_report', 'delete_report', 'download_report', 'edit_report'],
-    workOrder: ['view', 'create_work_order', 'edit_work_order', 'delete_work_order', 'update_work_order_status', 'add_comment_work_order', 'edit_comment_work_order', 'delete_comment_work_order', 'add_task_work_order', 'update_parts_work_order'],
+    asset: ['view', 'add', 'edit', 'delete', 'import', 'export', 'add_asset', 'delete_asset', 'add_child_asset', 'edit_asset', 'create_report', 'delete_report', 'download_report', 'edit_report', 'config_alarm', 'add_observation', 'edit_observation', 'delete_observation', 'create_endpoint', 'edit_endpoint', 'delete_end_point', 'attach_sensor', 'update_config'],
+    location: ['view', 'add', 'edit', 'delete', 'import', 'export', 'add_location', 'delete_location', 'add_child_location', 'edit_location', 'create_report', 'delete_report', 'download_report', 'edit_report'],
+    workOrder: ['view', 'add', 'edit', 'delete', 'import', 'export', 'create_work_order', 'edit_work_order', 'delete_work_order', 'update_work_order_status', 'add_comment_work_order', 'edit_comment_work_order', 'delete_comment_work_order', 'add_task_work_order', 'update_parts_work_order'],
     floorMap: ['create_kpi', 'view_floor_map', 'delete_kpi', 'upload_floor_map'],
     preventive: ['view', 'add', 'edit', 'delete', 'import', 'export'],
     inspections: ['view', 'add', 'edit', 'delete', 'import', 'export'],
