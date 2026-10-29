@@ -137,7 +137,7 @@ For every discovered module:
 | P0 | CMMS-ExpressJS | b2ad6fdf464daa2c7ff0f35648ad58bf819c1ae6 | Previous role/session hardening checkpoint | baseline |
 | P0 | CMMS-Angular | a7e14c77821ca7a3e501636367c94de0cd9b1fc1 | Previous auth guard/interceptor checkpoint | baseline |
 | P1 | both | pending | Inventory + canonical permission catalogue | pending |
-| P2 | backend | pending | Bootstrap-owner + admin defaults | pending |
+| P2 | backend | 6d3b4129ad0b8e71ae40d38d94bb3400b7c16250 | Source invariants inspected; local test execution blocked by sandbox DNS; GitHub status checks not exposed | code complete / runtime verification pending |
 | P3 | backend | pending | Module route/service authorization | pending |
 | P4 | frontend | pending | Route/menu/action authorization | pending |
 | P5 | both | pending | Full verification and final review | pending |
@@ -150,3 +150,11 @@ For every discovered module:
 4. Re-run or inspect the targeted verification evidence for that checkpoint.
 5. If the checkpoint is intact, continue with the next unchecked item; do not repeat completed changes.
 6. If a checkpoint is incomplete, repair it before proceeding.
+
+
+### Resume note — backend authorization core
+- Test-first commits: `73a1cfd8`, `9b4e3c92`.
+- Implementation commits: `2b323a8e`, `6d3b4129`.
+- Trusted first-user bypass exists only in `hasRolePermission`; account-feature checks are unchanged.
+- Admin platform-control now includes missing routed modules/actions; lower roles receive the same keys with denied defaults.
+- Verification limitation: this harness cannot resolve github.com for local checkout, and connector status checks are currently empty. Re-run `npm run typecheck && npm run test:cmms && npm run build` when executable CI/local access is available.
