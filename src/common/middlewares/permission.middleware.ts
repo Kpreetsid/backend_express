@@ -42,8 +42,11 @@ export const hasRolePermission = (moduleName: string, action: string) => {
       if (!user?.user_role) {
         throw Object.assign(new Error("Unauthorized access"), { status: 403 });
       }
+      if (user.isFirstUser === true) {
+        return next();
+      }
       if (USER_ROLES.includes(user.user_role)) {
-        if (!roleMenu?.[moduleName]?.[action]) {
+        if (roleMenu?.[moduleName]?.[action] !== true) {
           throw Object.assign(new Error("You do not have permission to access."), { status: 403 });
         }
         return next();
