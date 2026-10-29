@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { hasRolePermission } from './permission.middleware';
+import { hasAnyRolePermission, hasRolePermission } from './permission.middleware';
 import { PlatformControlManager } from '../constants/roles.constant';
 
 const run = async (middleware: any, req: any): Promise<any> =>
@@ -107,4 +107,21 @@ test('lower roles expose every routed core action key so permissions remain dele
       }
     }
   }
+});
+
+
+test('alternative role permissions allow shared read endpoints without broadening mutation access', async () => {
+  const middleware = hasAnyRolePermission([['users', 'view'], ['asset_mail', 'view']]);
+  const run = async (role: any) => await new Promise<any>((resolve) => {
+    middleware(
+      { user: { user_role: 'employee' }, role } as any,
+      {} as any,
+      (error?: any) => resolve(error || null)
+    );
+  });
+
+  assert.equal(await run({ users: { view: false }, asset_mail: { view: true } }), null);
+  assert.equal(await run({ users: { view: true }, asset_mail: { view: false } }), null);
+  const denied = await run({ users: { view: false }, asset_mail: { view: false } });
+  assert.equal(denied?.status, 403);
 });
