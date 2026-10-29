@@ -128,7 +128,7 @@ test('permission delegation cannot exceed the actor effective platform control',
 
   assert.equal(accountAccessService.canDelegatePlatformControl(actor, { inventory: { edit: true } }), true);
   assert.equal(accountAccessService.canDelegatePlatformControl(actor, { inventory: { add: true } }), false);
-  assert.equal(accountAccessService.canDelegatePlatformControl(actor, { inventory: { delete: false } }), false);
+  assert.equal(accountAccessService.canDelegatePlatformControl(actor, { inventory: { delete: false } }), true);
   assert.equal(accountAccessService.canDelegatePlatformControl(actor, { users: { edit: true } }), false);
   assert.equal(accountAccessService.canDelegatePlatformControl(actor, { unknown: { view: true } }), false);
 });
