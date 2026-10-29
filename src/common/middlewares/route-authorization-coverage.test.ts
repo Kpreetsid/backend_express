@@ -144,6 +144,19 @@ test('inventory, posts and mappings enforce action permissions', () => {
   ]);
 });
 
+test('company lifecycle routes enforce tenant-level authorization', () => {
+  expectAll('src/modules/company/routes/company.routes.ts', [
+    "companyRouter.post('/', requireFirstUser",
+    "hasRolePermission('admin_panel', 'edit'), companyValidator",
+    "hasRolePermission('admin_panel', 'edit'), companyController.updateImageCompany",
+    "companyRouter.delete('/:id', validateParamId, requireFirstUser"
+  ]);
+  expectAll('src/modules/company/controllers/company.controller.ts', [
+    "if (String(account_id) !== id)",
+    "Invalid account ID"
+  ]);
+});
+
 test('admin settings, logs and reports use matching action keys', () => {
   expectAll('src/modules/settings/routes/analysisFeature.routes.ts', [
     "analysisFeatureRouter.use(hasRolePermission('admin_panel', 'view'))",
