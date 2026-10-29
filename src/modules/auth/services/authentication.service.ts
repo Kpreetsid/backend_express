@@ -104,7 +104,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     await userTokenData.save();
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
     const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id, new Date(sessionStartedAt));
-    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, userAccount[0]);
+    const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(user, userRoleData, userAccount[0]);
     const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
 
     const isCookieAuth = userAccount[0].cookie_status === 'enabled';
@@ -331,7 +331,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal: true, isInternal: true });
     const refreshSession = await refreshTokenService.issueForUser(req, res, userDetails, token_id);
     const safeRedirectPath = '/dashboard';
-    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleMenu, accountDetails[0]);
+    const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(userDetails, userRoleMenu, accountDetails[0]);
     const isCookieAuth = accountDetails[0].cookie_status === 'enabled';
     const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id })
 
@@ -461,7 +461,7 @@ export const userGetMeService = async (req: Request, res: Response, next: NextFu
 
     const { password: _, ...safeUser } = user;
     safeUser.id = safeUser._id || safeUser.id;
-    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails[0]);
+    const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(user, userRoleData, accountDetails[0]);
     const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
 
     const userToken = String(get(req, 'userToken') || '');
