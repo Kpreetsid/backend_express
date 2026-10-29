@@ -67,3 +67,14 @@ export const shouldRevokeUserSessionsAfterUpdate = (
 ): boolean => SECURITY_SENSITIVE_USER_FIELDS.some(
   (key) => updates[key] !== undefined && String(updates[key]) !== String(existing[key])
 );
+
+
+export const isProtectedFirstUserMutation = (
+  target: { isFirstUser?: boolean; user_role?: string; user_status?: string } | null | undefined,
+  updates: Partial<Record<'user_role' | 'user_status', any>> = {}
+): boolean => {
+  if (target?.isFirstUser !== true) return false;
+  if (updates.user_role !== undefined && String(updates.user_role) !== 'admin') return true;
+  if (updates.user_status !== undefined && String(updates.user_status) !== 'active') return true;
+  return false;
+};
