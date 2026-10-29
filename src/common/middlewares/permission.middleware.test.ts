@@ -73,3 +73,19 @@ test('admin platform control covers every currently routed CMMS module action', 
     }
   }
 });
+
+
+test('lower-role defaults preserve read access for core routed modules while mutations stay denied', async () => {
+  for (const roleName of ['manager', 'employee', 'customer', 'user']) {
+    const role: any = await PlatformControlManager.getRoleMenuData(roleName);
+    assert.equal(role.asset.view, true, `${roleName} should view assets`);
+    assert.equal(role.location.view, true, `${roleName} should view locations`);
+    assert.equal(role.workOrder.view, true, `${roleName} should view work orders`);
+    assert.equal(role.floorMap.view_floor_map, true, `${roleName} should view floor maps`);
+
+    assert.equal(role.asset.edit_asset, false, `${roleName} should not edit assets by default`);
+    assert.equal(role.location.edit_location, false, `${roleName} should not edit locations by default`);
+    assert.equal(role.workOrder.edit_work_order, false, `${roleName} should not edit work orders by default`);
+    assert.equal(role.floorMap.upload_floor_map, false, `${roleName} should not edit floor maps by default`);
+  }
+});
