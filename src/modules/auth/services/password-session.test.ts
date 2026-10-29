@@ -81,7 +81,7 @@ for (const authenticate of [userAuthentication, userAuthenticationToken]) {
     t.mock.method(analysisFeatureService, 'getFeatureData', async () => null);
     let error: any;
     let response: any;
-    const res: any = { clearCookie() {}, status() { return this; }, json(value: any) { response = value; } };
+    const res: any = { cookie() {}, clearCookie() {}, status() { return this; }, json(value: any) { response = value; } };
     await authenticate({ body: { username: 'test', password: 'old-password' }, headers: {} } as any, res, value => { error = value; });
     assert.equal(error, undefined);
     assert.equal(response.status, true);
