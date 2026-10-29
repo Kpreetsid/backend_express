@@ -213,25 +213,47 @@ class AccountAccessService {
     };
   }
 
-  async getEffectivePermissionsForUser(
+  async getRoleDataWithDefaultsForUser(
     user: { user_role?: string; isFirstUser?: boolean } | null | undefined,
-    userRoleData: any,
-    account: IAccount | any
-  ): Promise<{ platformControl: PlatformControl; roleMenu: RoleMenu }> {
+    userRoleData: any
+  ): Promise<{ data: PlatformControl; roleMenu: RoleMenu }> {
     const role = user?.isFirstUser === true ? "admin" : String(user?.user_role || "user");
     const defaultRoleData = {
       data: await PlatformControlManager.getRoleMenuData(role),
       roleMenu: await UserRoleManager.getRoleMenuData(role)
     };
 
-    const sourceRoleData = user?.isFirstUser === true
-      ? defaultRoleData
-      : {
-          data: this.mergePermissionDefaults(defaultRoleData.data, userRoleData?.data),
-          roleMenu: this.mergePermissionDefaults(defaultRoleData.roleMenu, userRoleData?.roleMenu)
-        };
+    if (user?.isFirstUser === true) {
+      return defaultRoleData;
+    }
 
+    return {
+      data: this.mergePermissionDefaults(defaultRoleData.data, userRoleData?.data),
+      roleMenu: this.mergePermissionDefaults(defaultRoleData.roleMenu, userRoleData?.roleMenu)
+    };
+  }
+
+  async getEffectivePermissionsForUser(
+    user: { user_role?: string; isFirstUser?: boolean } | null | undefined,
+    userRoleData: any,
+    account: IAccount | any
+  ): Promise<{ platformControl: PlatformControl; roleMenu: RoleMenu }> {
+    const sourceRoleData = await this.getRoleDataWithDefaultsForUser(user, userRoleData);
     return this.getEffectivePermissions(sourceRoleData, account);
+  }
+
+  async toConfigurableRoleForUser(
+    user: { user_role?: string; isFirstUser?: boolean } | null | undefined,
+    role: any,
+    accountRoleMenu: RoleMenu
+  ): Promise<any> {
+    const roleObject = typeof role?.toObject === "function" ? role.toObject() : clone(role);
+    const sourceRoleData = await this.getRoleDataWithDefaultsForUser(user, roleObject);
+    return {
+      ...roleObject,
+      data: this.filterConfigurablePlatformControl(sourceRoleData.data, accountRoleMenu),
+      roleMenu: this.applyRoleMenuCap(sourceRoleData.roleMenu, accountRoleMenu)
+    };
   }
 
   private mergePermissionDefaults(defaults: any, stored: any): any {
@@ -329,6 +351,26 @@ class AccountAccessService {
     }
 
     return filtered;
+  }
+
+  canDelegatePlatformControl(actorControl: any, submittedControl: any): boolean {
+    if (!isRecord(submittedControl)) {
+      return false;
+    }
+    for (const [moduleName, actions] of Object.entries(submittedControl)) {
+      if (!isRecord(actions) || !isRecord(actorControl?.[moduleName])) {
+        return false;
+      }
+      for (const [actionName, value] of Object.entries(actions)) {
+        if (typeof value !== "boolean") {
+          return false;
+        }
+        if (actorControl[moduleName]?.[actionName] !== true) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
   mergeConfigurablePlatformControl(existingControl: any, submittedControl: any, accountRoleMenu: RoleMenu): PlatformControl {
