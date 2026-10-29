@@ -135,4 +135,68 @@ test('child WO consumption and RMS roll up into the parent asset and deduplicate
   assert.equal(result.week_total_snapshot.spare_qty_used, 2);
   assert.equal(result.week_total_snapshot.low_critical_spares, 1);
   assert.equal(result.critical_spares_stock_replenishment.length, 1);
+  assert.equal(result.critical_spares_stock_replenishment[0].asset_id, 'motor');
+  assert.equal(result.critical_spares_stock_replenishment[0].asset_name, 'Motor');
+  assert.equal(result.critical_spares_stock_replenishment[0].location_name, 'Line');
+  assert.equal(train.summary.oldest_sensor_reading, result.cmms_summary[0].oldest_sensor_reading);
+  assert.equal(train.summary.oldest_sensor_reading, result.week_total_snapshot.oldest_sensor_reading);
+});
+
+test('flat summary excludes location-only rows and uses each asset actual location', async t => {
+  const orders = [{ _id: 'location-work', wo_location_id: root, status: 'Open', end_date: '2020-01-01T00:00:00Z' }];
+  for (const [model, records] of [[LocationModel, locations], [AssetModel, assets], [WorkOrderModel, orders],
+    [PartsModel, []], [PartsTypeModel, []], [ReportAssetModel, []]] as const) {
+    t.mock.method(model, 'find', (() => {
+      const query: any = { select: () => query, sort: () => query, lean: async () => records };
+      return query;
+    }) as any);
+  }
+  const result = await cmmsDataService.getData({ org_id: org, location_ids: [root] }, org);
+  assert.equal(result.cmms_summary.length, 2);
+  assert.deepEqual(result.cmms_summary.map(row => [row.asset_id, row.asset_name, row.location_id, row.location_name]),
+    [['train', 'Train', root, 'Plant'], ['pump', 'Pump', 'grandchild', 'Room']]);
+  assert.ok(result.cmms_summary.every(row => !('asset_location' in row) && row.open_overdue_wos === 0));
+  assert.equal(result.locations[0].summary.open_overdue_wos, 1);
+  assert.equal(result.week_total_snapshot.open_overdue_wos, 1);
+  assert.equal(result.week_total_snapshot.overdue_wos, 1);
+});
+
+test('shared spare associations are deduplicated per asset and never multiply stock totals', async t => {
+  const orders = [
+    { _id: 'one', wo_asset_id: 'motor', parts: [{ part_id: 'shared' }, { part_id: 'shared' }] },
+    { _id: 'two', wo_asset_id: 'motor', parts: [{ part_id: 'shared' }] },
+    { _id: 'three', wo_asset_id: 'pump', parts: [{ part_id: 'shared' }] },
+    { _id: 'four', wo_location_id: root, parts: [{ part_id: 'unlinked' }] },
+    { _id: 'outside-work', wo_asset_id: 'outside', parts: [{ part_id: 'unlinked' }] }
+  ];
+  const parts = ['shared', 'unlinked'].map(partId => ({ _id: partId, part_name: partId, part_number: partId,
+    location_id: root, part_type: 'critical', quantity: 1, min_quantity: 2, cost: 10 }));
+  for (const [model, records] of [[LocationModel, locations], [AssetModel, assets], [WorkOrderModel, orders],
+    [PartsModel, parts], [PartsTypeModel, [{ _id: 'critical', name: 'Critical' }]], [ReportAssetModel, []]] as const) {
+    t.mock.method(model, 'find', (() => {
+      const query: any = { select: () => query, sort: () => query, lean: async () => records };
+      return query;
+    }) as any);
+  }
+  const result = await cmmsDataService.getData({ org_id: org, location_ids: [root] }, org);
+  assert.deepEqual(result.critical_spares_stock_replenishment.map(row => [row.part_id, row.asset_id, row.asset_name]),
+    [['shared', 'motor', 'Motor'], ['shared', 'pump', 'Pump'], ['unlinked', null, null]]);
+  assert.ok(result.critical_spares_stock_replenishment.every(row => row.location_name === 'Plant' && !('asset_location' in row)));
+  assert.equal(result.week_total_snapshot.low_critical_spares, 2);
+  assert.equal(result.locations[0].summary.low_critical_spares, 2);
+});
+
+test('an empty location returns no synthetic asset summary row', async t => {
+  for (const [model, records] of [[LocationModel, locations], [AssetModel, []],
+    [WorkOrderModel, [{ _id: 'location-work', wo_location_id: root, status: 'Open' }]],
+    [PartsModel, []], [PartsTypeModel, []], [ReportAssetModel, []]] as const) {
+    t.mock.method(model, 'find', (() => {
+      const query: any = { select: () => query, sort: () => query, lean: async () => records };
+      return query;
+    }) as any);
+  }
+  const result = await cmmsDataService.getData({ org_id: org, location_ids: [root] }, org);
+  assert.deepEqual(result.cmms_summary, []);
+  assert.equal(result.locations[0].summary.open_overdue_wos, 1);
+  assert.equal(result.week_total_snapshot.open_overdue_wos, 1);
 });

@@ -59,7 +59,7 @@ test('historical peak differs from newest reading and sensor age uses latest sav
   ];
   const result = metrics([], reports);
   assert.equal(result.peak_endpoint_rms_mm_s, 16.75);
-  assert.equal(result.oldest_sensor_reading, '2026-10-26T06:00:00.000Z');
+  assert.equal(result.oldest_sensor_reading, '26 10 2026 11 30 00');
   assert.equal(result.data_quality_flag, 'RECENT');
 });
 
@@ -72,17 +72,27 @@ test('a stale component makes the train stale and readings from other assets do 
   const result = metrics([], reports);
   assert.equal(result.data_quality_flag, 'STALE');
   assert.equal(result.peak_endpoint_rms_mm_s, 2);
-  assert.equal(result.oldest_sensor_reading, '2026-10-20T06:00:00.000Z');
+  assert.equal(result.oldest_sensor_reading, '20 10 2026 11 30 00');
 });
 
 test('missing, zero, future and absent velocity data produce explicit quality flags', () => {
   assert.equal(metrics([]).data_quality_flag, 'NO_DATA');
+  assert.equal(metrics([]).peak_endpoint_rms_mm_s, null);
+  assert.equal(metrics([]).oldest_sensor_reading, null);
   const snapshot = (reading: { rms?: unknown; timestamp?: unknown }): CmmsSensorReport[] =>
     [{ createdOn: now, assetId: 'motor', endpointRMSData: [{ composite_id: 'zero', velocity: { Axial: reading } }] }];
   assert.equal(metrics([], snapshot({ rms: 0, timestamp: now })).data_quality_flag, 'RECENT');
   assert.equal(metrics([], snapshot({ rms: null, timestamp: now })).data_quality_flag, 'MISSING');
   assert.equal(metrics([], snapshot({ rms: 1 })).data_quality_flag, 'MISSING');
   assert.equal(metrics([], snapshot({ rms: 1, timestamp: '2027-01-01T00:00:00Z' })).data_quality_flag, 'NO_DATA');
+});
+
+test('sensor timestamp formatting uses IST date rollover and padded 24-hour components', () => {
+  const result = metrics([], [{ createdOn: now, assetId: 'motor', endpointRMSData: [{
+    velocity: { Axial: { rms: 1, timestamp: '2025-12-31T18:35:09Z' } }
+  }] }]);
+  assert.equal(result.oldest_sensor_reading, '01 01 2026 00 05 09');
+  assert.equal(result.data_quality_flag, 'STALE');
 });
 
 test('stock rows map low/out of stock/OK, supplier and criticality without inventing maximum stock', () => {
@@ -92,7 +102,8 @@ test('stock rows map low/out of stock/OK, supplier and criticality without inven
     { _id: 'three', part_name: 'Grease', part_number: 'GRS', part_type: 'general', location_id: 'loc', quantity: 5, min_quantity: 4, cost: 320 }
   ], [{ _id: 'critical', name: 'Critical' }, { _id: 'general', name: 'General' }], new Map([['loc', 'Dadar 201']]));
   assert.deepEqual(rows.map(row => row.stock_status), ['LOW', 'OUT OF STOCK', 'OK']);
-  assert.equal(rows[0].asset_location, 'Dadar 201');
+  assert.equal(rows[0].location_name, 'Dadar 201');
+  assert.equal('asset_location' in rows[0], false);
   assert.equal(rows[0].max_stock, null);
   assert.equal(rows[0].replenishment_inr, null);
   assert.equal(rows[0].reorder_to_max_qty, null);

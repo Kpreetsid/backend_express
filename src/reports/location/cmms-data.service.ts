@@ -126,6 +126,25 @@ export const cmmsDataService = {
     const spareRows = cmmsSpareRows(parts, partTypes, new Map(locations.map(location => [id(location._id), location.location_name])));
     const allAssetIds = new Set(assetIds);
     const scopedOrders = orders.filter(order => !order.wo_asset_id || allAssetIds.has(id(order.wo_asset_id)));
+    // A part has location stock, but no direct asset/BOM field. Preserve every
+    // distinct association evidenced by scoped WOs without multiplying totals.
+    const assetsById = new Map(assets.map(asset => [id(asset._id), asset]));
+    const partAssets = new Map<string, Set<string>>();
+    for (const order of scopedOrders) {
+      const assetId = id(order.wo_asset_id);
+      if (!assetId) continue;
+      for (const part of order.parts || []) {
+        const partId = id(part.part_id);
+        if (!partAssets.has(partId)) partAssets.set(partId, new Set());
+        partAssets.get(partId)!.add(assetId);
+      }
+    }
+    const replenishmentRows = spareRows.flatMap(part => {
+      const linkedAssets = [...(partAssets.get(part.part_id) || [])];
+      const associations: (string | null)[] = linkedAssets.length ? linkedAssets : [null];
+      return associations.map(assetId => ({ ...part, asset_id: assetId,
+        asset_name: assetId ? assetsById.get(assetId)?.asset_name ?? null : null }));
+    });
     const locationsData = hierarchy.map(location => {
       const locationSet = new Set([location.location_id, ...location.child_location_ids]);
       const locationAssets = new Set(location.asset_data.flatMap(asset => [asset._id, ...asset.child_assets.map(child => child._id)]));
@@ -148,20 +167,12 @@ export const cmmsDataService = {
       report_period: { from_date: period.from.toISOString(), to_date: period.to.toISOString(), timezone: 'Asia/Kolkata' },
       snapshot_at: now.toISOString(),
       locations: locationsData,
-      cmms_summary: locationsData.flatMap(location => {
-        const rows = location.asset_data.map(asset => ({ asset_id: asset._id, location_id: location.location_id,
-          asset_location: asset.asset_name, ...asset.summary }));
-        // Location-only work and stock are represented separately so they are never assigned to every asset.
-        const locationSet = new Set([location.location_id, ...location.child_location_ids]);
-        const locationOnlyOrders = scopedOrders.filter(order => !order.wo_asset_id && locationSet.has(id(order.wo_location_id)));
-        if (locationOnlyOrders.length || !rows.length) {
-          rows.push({ asset_id: '', location_id: location.location_id, asset_location: location.location_name,
-            ...cmmsMetrics(locationOnlyOrders, [], [], new Set(), request.org_id, period, now) });
-        }
-        return rows;
-      }),
+      cmms_summary: locationsData.flatMap(location => location.asset_data.map(asset => ({
+        asset_id: asset._id, asset_name: asset.asset_name,
+        location_id: asset.locationId, location_name: asset.location_name, ...asset.summary
+      }))),
       week_total_snapshot: cmmsMetrics(scopedOrders, spareRows, reports, allAssetIds, request.org_id, period, now),
-      critical_spares_stock_replenishment: spareRows,
+      critical_spares_stock_replenishment: replenishmentRows,
       metadata: {
         currency: 'INR', stale_after_hours: period.staleAfterHours,
         pm_basis: 'Visible, non-rejected preventive WOs due in the period (start date fallback); completed and overdue use this same cohort.',
@@ -170,7 +181,9 @@ export const cmmsDataService = {
         open_work_order_basis: 'open_overdue_wos counts all non-completed/non-rejected WOs once, including overdue ones; overdue_wos provides the overdue subset.',
         sensor_source: 'Persisted asset report endpointRMSData.velocity, not a live processor query.',
         sensor_basis: 'Peak is the historical maximum in saved reports as of snapshot_at; oldest is the oldest reading in the most recent saved snapshot for each endpoint axis.',
-        asset_spare_basis: 'Asset stock association is inferred from WO part references; location/global stock counts deduplicate part IDs.',
+        sensor_reading_timezone: 'Asia/Kolkata', sensor_reading_format: 'dd mm yyyy hh mm ss (24-hour)',
+        summary_basis: 'cmms_summary contains top-level assets only; location-only WOs remain in location summaries and week_total_snapshot.',
+        asset_spare_basis: 'Asset stock association is inferred from WO part references. Replenishment has one row per part and associated asset, or null asset fields if unlinked; shared stock is repeated per asset and location/global stock counts deduplicate part IDs.',
         null_fields: ['downtime_h when breakdowns exist: equipment downtime is not recorded',
           'labor_cost_inr when labor is logged: labor rates are not recorded',
           'total_cost_inr when either cost component is unavailable',

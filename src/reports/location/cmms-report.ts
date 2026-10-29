@@ -58,6 +58,13 @@ export function reportDate(value: unknown): Date | null {
   return Number.isFinite(date.getTime()) ? date : null;
 }
 
+function formatIst(date: Date): string {
+  const local = new Date(date.getTime() + 330 * 60000);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return [pad(local.getUTCDate()), pad(local.getUTCMonth() + 1), local.getUTCFullYear(),
+    pad(local.getUTCHours()), pad(local.getUTCMinutes()), pad(local.getUTCSeconds())].join(' ');
+}
+
 export function cmmsPeriod(body: unknown, now = new Date()): CmmsPeriod {
   const input = body as { from_date?: unknown; to_date?: unknown; stale_after_hours?: unknown };
   const offset = 330 * 60000;
@@ -112,7 +119,7 @@ function sensorMetrics(reports: CmmsSensorReport[], assetIds: Set<string>, orgId
   const missing = readings.some(reading => reading.rms === null || !reading.timestamp);
   return {
     peak_endpoint_rms_mm_s: peak,
-    oldest_sensor_reading: oldest?.toISOString() || null,
+    oldest_sensor_reading: oldest ? formatIst(oldest) : null,
     data_quality_flag: !readings.length ? 'NO_DATA' : missing ? 'MISSING' :
       oldest && asOf.getTime() - oldest.getTime() > staleHours * 3600000 ? 'STALE' : 'RECENT'
   };
@@ -127,7 +134,7 @@ export function cmmsSpareRows(parts: CmmsPart[], partTypes: { _id: unknown; name
     const classification = type?.toLowerCase() === 'critical' ? 'Critical' : type?.toLowerCase() === 'general' ? 'General' : null;
     const status = stock === null || minimum === null ? 'UNKNOWN' : stock === 0 ? 'OUT OF STOCK' : stock < minimum ? 'LOW' : 'OK';
     return {
-      part_id: key(part._id), location_id: key(part.location_id), asset_location: locations.get(key(part.location_id)) || null,
+      part_id: key(part._id), location_id: key(part.location_id), location_name: locations.get(key(part.location_id)) || null,
       spare_part_name: part.part_name, spare_part_code: part.part_number, classification,
       on_hand_stock: stock, min_stock: minimum, max_stock: null,
       stock_status: status, reorder_to_max_qty: status === 'OK' ? 0 : null,
