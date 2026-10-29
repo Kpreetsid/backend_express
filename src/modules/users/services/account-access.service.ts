@@ -362,10 +362,11 @@ class AccountAccessService {
         return false;
       }
       for (const [actionName, value] of Object.entries(actions)) {
-        if (typeof value !== "boolean") {
+        const actorValue = actorControl[moduleName]?.[actionName];
+        if (typeof value !== "boolean" || typeof actorValue !== "boolean") {
           return false;
         }
-        if (actorControl[moduleName]?.[actionName] !== true) {
+        if (value === true && actorValue !== true) {
           return false;
         }
       }
