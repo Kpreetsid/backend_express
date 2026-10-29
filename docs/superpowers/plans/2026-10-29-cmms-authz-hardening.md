@@ -194,3 +194,30 @@ For every discovered module:
 - Intentionally permission-free authenticated routes reviewed: notification operations are user-owned; Knowledge Base is authenticated read-only; user password change and role self-read are self-service.
 - Company list/detail are authenticated and tenant-scoped through `applyRoleFilter`; API-key operations remain first-user-only; company mutation remains permission/first-user restricted.
 - Remaining work: finish Angular action-control inventory, confirm backend/frontend permission-key parity for every routed/action key, add any missing frontend action guards/tests, then run both full CI workflows and final whole-branch review.
+
+
+## Execution checkpoint — 2026-10-29 authorization implementation
+
+> Resume rule: fetch the live `priority/bugs` head before any write. Do not repeat checked tasks. Never write to `master`/other branches.
+
+- [x] Backend route/action catalogue enforced by server middleware; private-route permission coverage remains the authoritative security boundary.
+- [x] First-account-user access is server-derived through `isFirstUser`; normal user create/update allowlists cannot set it.
+- [x] First-account-user effective permissions start from canonical admin defaults, then account/subscription feature caps are still applied.
+- [x] Ordinary `admin` effective permissions also start from current canonical admin defaults so legacy stored `false` values cannot hide newly introduced modules/actions.
+- [x] Lower roles continue using delegated/stored permissions; no blanket role bypass was added.
+- [x] Security-sensitive user role/status/identity changes synchronize authorization state and revoke active sessions.
+- [x] Backend GREEN checkpoint: `7f681cc8ce58a1b6b7805ebb518667ec9049d538`, GitHub Actions run `40856624686` passed install/audit, typecheck, password-security tests, asset-train tests, CMMS regression tests, and build.
+- [ ] Final resume check after this documentation-only checkpoint: confirm the live backend head still contains `7f681cc8...` code and verify the latest branch validation result before declaring the overall project complete.
+
+### Frontend dependency checkpoint (cross-repo)
+
+Frontend code candidate before its final combined validation: `presage-pawan/CMMS-Angular@4943ed198af404627a9d57ff95b4606dd603a812`.
+
+Completed frontend modules awaiting one combined final validation:
+- [x] Procedures use `procedures:add/edit/delete`.
+- [x] Floor Map uses centralized `floorMap:view_floor_map/create_kpi/upload_floor_map/delete_kpi` and direct-route `RoleGuard`.
+- [x] Gateways use centralized `gateways:add/edit/delete`; route already uses `gateways:view`.
+- [x] Forms/SOP use centralized `form:add/edit/delete` and `form_category:add`.
+- [x] Asset report top/detail actions use centralized report permissions.
+- [x] Location report top/detail actions use centralized report permissions.
+- [ ] Run the exact-head frontend priority validation and fix any app/spec/unit/build failures before completion.
