@@ -107,46 +107,26 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(user, userRoleData, userAccount[0]);
     const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
 
-    const isCookieAuth = userAccount[0].cookie_status === 'enabled';
-    if (isCookieAuth) {
-      setAccessCookies(res, {
-        token,
-        tokenId: String(token_id),
-        userId: String(user._id),
-        accountId: String(user.account_id),
-        ttlSeconds: accessTtlSeconds
-      });
-
-      res.status(200).json({
-        status: true,
-        message: 'Login successful',
-        data: {
-          ...passwordExpiryNotice(user.passwordExpiredAt),
-          authMethod: 'cookie',
-          token_id,
-          token
-        }
-      });
-    } else {
-      clearAuthCookies(res);
-      res.status(200).json({
-        status: true,
-        message: 'Login successful',
-        data: {
-          ...passwordExpiryNotice(user.passwordExpiredAt),
-          authMethod: 'localStorage',
-          token,
-          token_id,
-          refreshToken: refreshSession.rawToken,
-          accountDetails: userAccount[0],
-          userDetails: safeUser,
-          platformControl: effectivePermissions.platformControl,
-          roleMenu: effectivePermissions.roleMenu,
-          analysisFeature: analysisFeature,
-          accountPermissionVersion: Number(userAccount[0].account_permission_version || 1)
-        }
-      });
-    }
+    // Cookie-backed browser login is mandatory for every eligible account.
+    // Keep the legacy response token temporarily for existing clients until the
+    // Angular browser credential migration removes token consumption.
+    setAccessCookies(res, {
+      token,
+      tokenId: String(token_id),
+      userId: String(user._id),
+      accountId: String(user.account_id),
+      ttlSeconds: accessTtlSeconds
+    });
+    res.status(200).json({
+      status: true,
+      message: 'Login successful',
+      data: {
+        ...passwordExpiryNotice(user.passwordExpiredAt),
+        authMethod: 'cookie',
+        token_id,
+        token
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -204,7 +184,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     await userTokenData.save();
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
     const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id, new Date(sessionStartedAt));
-    const isCookieAuth = userAccount[0].cookie_status === 'enabled';
+    // Machine-token authentication is a separate compatibility contract.
     res.status(200).json({
       status: true,
       message: 'Login successful',
@@ -212,7 +192,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
         ...passwordExpiryNotice(user.passwordExpiredAt),
         token,
         token_id,
-        ...(!isCookieAuth ? { refreshToken: refreshSession.rawToken } : {}),
+        refreshToken: refreshSession.rawToken,
         org_id: user.account_id,
         user_id: user._id
       }
@@ -332,53 +312,29 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     const refreshSession = await refreshTokenService.issueForUser(req, res, userDetails, token_id);
     const safeRedirectPath = '/dashboard';
     const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(userDetails, userRoleMenu, accountDetails[0]);
-    const isCookieAuth = accountDetails[0].cookie_status === 'enabled';
-    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id })
+    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id });
 
-    if (isCookieAuth) {
-      setAccessCookies(res, {
+    setAccessCookies(res, {
+      token: newToken,
+      tokenId: String(token_id),
+      userId: String(userDetails._id),
+      accountId: String(userDetails.account_id),
+      ttlSeconds: accessTtlSeconds
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: 'Login successful',
+      data: {
+        authMethod: 'cookie',
+        token_id,
         token: newToken,
-        tokenId: String(token_id),
-        userId: String(userDetails._id),
-        accountId: String(userDetails.account_id),
-        ttlSeconds: accessTtlSeconds
-      });
-
-      return res.status(200).json({
-        status: true,
-        message: 'Login successful',
-        data: {
-          authMethod: 'cookie',
-          token_id,
-          token: newToken,
-          isExternal: true,
-          isInternal: true,
-          redirectPath: safeRedirectPath,
-          analysisFeature: analysisFeature
-        }
-      });
-    }
-
-    clearAuthCookies(res);
-    res.status(200).json(
-      {
-        status: true,
-        message: 'Login successful',
-        data: {
-          authMethod: 'localStorage',
-          token: newToken,
-          token_id,
-          refreshToken: refreshSession.rawToken,
-          accountDetails: accountDetails[0],
-          userDetails: newSafeUserValue,
-          platformControl: effectivePermissions.platformControl,
-          roleMenu: effectivePermissions.roleMenu,
-          accountPermissionVersion: Number(accountDetails[0].account_permission_version || 1),
-          isExternal: true,
-          isInternal: true,
-          redirectPath: safeRedirectPath
-        }
-      });
+        isExternal: true,
+        isInternal: true,
+        redirectPath: safeRedirectPath,
+        analysisFeature
+      }
+    });
   } catch (error) {
     next(error);
   }
