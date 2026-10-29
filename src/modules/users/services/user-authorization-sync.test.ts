@@ -27,4 +27,5 @@ test('controller rejects unauthorized role assignment on create and update', () 
   const matches = source.match(/canAssignUserRole\(/g) || [];
   assert.ok(matches.length >= 2);
   assert.match(source, /You cannot assign the requested user role/);
+  assert.match(source, /First account user cannot be deleted/);
 });
