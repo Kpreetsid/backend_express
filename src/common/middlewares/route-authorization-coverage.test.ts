@@ -21,7 +21,7 @@ test('asset and location routes enforce view plus mutation permissions', () => {
   ]);
   expectAll('src/modules/assets/routes/observation.routes.ts', [
     "observationRouter.use(hasRolePermission('asset', 'view'))",
-    "hasRolePermission('asset', 'edit_observation'), observationController.updateObservation",
+    "hasRolePermission('asset', 'edit_observation'), observationValidator",
     "hasRolePermission('asset', 'delete_observation'), observationController.removeObservation"
   ]);
   expectAll('src/modules/locations/routes/location.routes.ts', [
