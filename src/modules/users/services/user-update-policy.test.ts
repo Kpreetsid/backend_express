@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, canAssignUserRole, isProtectedFirstUserMutation, pickUserCreateFields, pickUserUpdateFields, shouldRevokeUserSessionsAfterUpdate } from './user-update-policy';
+import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, canAssignUserRole, canModifyUserRecord, isProtectedFirstUserMutation, pickUserCreateFields, pickUserUpdateFields, shouldRevokeUserSessionsAfterUpdate } from './user-update-policy';
 
 test('user mutation filter is bound to account and active visibility', () => {
   assert.deepEqual(buildUserAccountFilter('user-1', 'account-1'), {
@@ -102,4 +102,26 @@ test('first account user cannot be demoted or deactivated through profile mutati
   assert.equal(isProtectedFirstUserMutation(owner, { user_status: 'inactive' }), true);
   assert.equal(isProtectedFirstUserMutation(owner, { firstName: 'Owner' } as any), false);
   assert.equal(isProtectedFirstUserMutation({ isFirstUser: false }, { user_role: 'manager' }), false);
+});
+
+test('manager cannot edit privileged identities or perform account role escalation', () => {
+  const manager = { _id: 'manager-1', user_role: 'manager', isFirstUser: false };
+  const peer = { _id: 'employee-1', user_role: 'employee', isFirstUser: false };
+  const admin = { _id: 'admin-1', user_role: 'admin', isFirstUser: false };
+  assert.equal(canModifyUserRecord(manager, manager, { user_role: 'admin' }), false);
+  assert.equal(canModifyUserRecord(manager, manager, { email: 'changed@example.com' }), false);
+  assert.equal(canModifyUserRecord(manager, peer, { user_status: 'inactive' }), false);
+  assert.equal(canModifyUserRecord(manager, admin, { firstName: 'Tampered' }), false);
+  assert.equal(canModifyUserRecord(manager, peer, { firstName: 'Allowed' }), true);
+});
+
+test('administrator cannot take over the first user or change their own privileged identity', () => {
+  const admin = { _id: 'admin-2', user_role: 'admin', isFirstUser: false };
+  const owner = { _id: 'owner-1', user_role: 'admin', isFirstUser: true };
+  const peer = { _id: 'employee-1', user_role: 'employee', isFirstUser: false };
+  assert.equal(canModifyUserRecord(admin, owner, { email: 'takeover@example.com' }), false);
+  assert.equal(canModifyUserRecord(admin, admin, { user_role: 'manager' }), false);
+  assert.equal(canModifyUserRecord(admin, admin, { email: 'self@example.com' }), false);
+  assert.equal(canModifyUserRecord(admin, peer, { firstName: 'Allowed' }), true);
+  assert.equal(canModifyUserRecord(owner, peer, { user_role: 'admin' }), true);
 });
