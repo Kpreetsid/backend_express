@@ -58,9 +58,12 @@ export const canAssignUserRole = (
   return MANAGER_ASSIGNABLE_ROLES.has(requestedRole);
 };
 
+const SECURITY_SENSITIVE_USER_FIELDS = ['user_role', 'user_status', 'email', 'username'] as const;
+type SecuritySensitiveUserField = typeof SECURITY_SENSITIVE_USER_FIELDS[number];
+
 export const shouldRevokeUserSessionsAfterUpdate = (
-  existing: Partial<Record<'user_role' | 'user_status' | 'email' | 'username', any>> = {},
-  updates: Partial<Record<'user_role' | 'user_status' | 'email' | 'username', any>> = {}
-): boolean => ['user_role', 'user_status', 'email', 'username'].some(
+  existing: Partial<Record<SecuritySensitiveUserField, any>> = {},
+  updates: Partial<Record<SecuritySensitiveUserField, any>> = {}
+): boolean => SECURITY_SENSITIVE_USER_FIELDS.some(
   (key) => updates[key] !== undefined && String(updates[key]) !== String(existing[key])
 );
