@@ -5,6 +5,7 @@ import { validateParamId } from '../../../common/middlewares/validate.middleware
 
 export default (router: express.Router) => {
     const equipmentRouter = express.Router();
+    equipmentRouter.use(hasRolePermission('asset', 'view'));
     equipmentRouter.get('/', equipmentController.getAssets);
     equipmentRouter.get('/tree', equipmentController.getAssetTree);
     equipmentRouter.get('/tree/:id', validateParamId, equipmentController.getAssetTreeById);
