@@ -8,16 +8,17 @@ import { validate } from '../../../common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
   const locationRouter = express.Router();
+  locationRouter.use(hasRolePermission('location', 'view'));
   locationRouter.get('/', locationController.getLocations);
   locationRouter.get('/tree', locationController.getLocationTree);
   locationRouter.get('/sensor-list', locationController.getLocationSensorList);
   locationRouter.get('/kpi-filter', locationController.getKpiFilterLocations);
   locationRouter.get('/child/:id', validateParamId, locationController.getChildLocation);
-  locationRouter.get('/make-copy/:id', validateParamId, locationController.createDuplicateLocation);
+  locationRouter.get('/make-copy/:id', validateParamId, hasRolePermission('location', 'add_location'), locationController.createDuplicateLocation);
   locationRouter.get('/:id', validateParamId, locationController.getLocation);
   locationRouter.post('/', hasRolePermission('location', 'add_location'), locationValidator, validate, locationController.createLocation);
   locationRouter.post('/child-assets', locationController.getChildAssetsAgainstLocation);
-  locationRouter.put('/floor-map-image/:id', validateParamId, locationController.updateLocationFloorMapImage);
+  locationRouter.put('/floor-map-image/:id', validateParamId, hasRolePermission('location', 'edit_location'), locationController.updateLocationFloorMapImage);
   locationRouter.put('/:id', validateParamId, hasRolePermission('location', 'edit_location'), locationValidator, validate, locationController.updateLocation);
   locationRouter.patch('/:id', validateParamId, hasRolePermission('location', 'edit_location'), locationValidator, validate, locationController.updateLocation);
   locationRouter.delete('/:id', validateParamId, hasRolePermission('location', 'delete_location'), locationController.removeLocation);
