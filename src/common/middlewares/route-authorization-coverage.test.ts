@@ -87,7 +87,7 @@ test('work order and request routes enforce mutation and workflow actions', () =
   expectAll('src/modules/work-orders/routes/order.routes.ts', [
     "orderRouter.use(hasRolePermission('workOrder', 'view'))",
     "hasRolePermission('workOrder', 'edit_work_order'), updateWorkOrderValidator",
-    "hasRolePermission('workOrder', 'edit_work_order'), orderController.uploadAttachments"
+    "orderRouter.post('/:id/attachments', validateParamId, hasRolePermission('workOrder', 'edit_work_order')"
   ]);
   expectAll('src/modules/work-orders/routes/comment.routes.ts', [
     "router.use(hasRolePermission('workOrder', 'view'))",
