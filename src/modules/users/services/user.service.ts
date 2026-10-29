@@ -11,8 +11,9 @@ import { tokenSessionStore } from '../../../core/auth/token-session-store';
 import { validateNewPassword } from '../../auth/services/verification-challenge.service';
 import { nextPasswordExpiry } from '../../auth/services/password-expiry';
 import { RoleManager } from "../../../common/constants/new-user-roles.constant";
+import { PlatformControlManager } from "../../../common/constants/roles.constant";
 import { RoleMenuModel } from "../models/userRoleMenu.model";
-import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter } from './user-update-policy';
+import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, shouldRevokeUserSessionsAfterUpdate } from './user-update-policy';
 
 import { withTransaction } from "../../../common/utils/transaction.helper";
 import { subscriptionLimitService } from "../../company/services/subscriptionLimit.service";
@@ -123,11 +124,38 @@ class UsersService {
   };
 
   async updateUserDetails(id: string, body: Partial<IUser>, accountId: any) {
-    return await UserModel.findOneAndUpdate(
-      buildUserAccountFilter(id, accountId),
-      { $set: body },
-      { returnDocument: 'after', runValidators: true }
-    );
+    const existing = await UserModel.findOne(buildUserAccountFilter(id, accountId)).lean();
+    if (!existing) return null;
+
+    const updated = await withTransaction(async (session) => {
+      const user = await UserModel.findOneAndUpdate(
+        buildUserAccountFilter(id, accountId),
+        { $set: body },
+        { returnDocument: 'after', runValidators: true, session }
+      );
+      if (!user) return null;
+
+      if (body.user_role && body.user_role !== existing.user_role) {
+        const roleMenu = await RoleManager.getRoleMenuData(body.user_role);
+        const data = await PlatformControlManager.getRoleMenuData(body.user_role);
+        await RoleMenuModel.findOneAndUpdate(
+          { user_id: user._id, account_id: accountId },
+          { $set: { roleMenu, data, updatedBy: body.updatedBy } },
+          { returnDocument: 'after', session }
+        );
+      }
+      return user;
+    });
+
+    if (updated && shouldRevokeUserSessionsAfterUpdate(existing as any, body as any)) {
+      await TokenModel.deleteMany({ userId: id, $or: [
+        { principalType: { $in: ['user', 'refresh_token'] } },
+        { principalType: { $exists: false } }
+      ] });
+      await tokenSessionStore.deleteUserSessions(String(accountId), String(id));
+    }
+
+    return updated;
   }
 
   async removeById(id: string, accountId: any) {
