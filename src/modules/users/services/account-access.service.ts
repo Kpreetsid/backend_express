@@ -35,6 +35,8 @@ const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> 
     edit_report: { menuKey: "report_asset", action: "edit" },
     config_alarm: { menuKey: "config_alarm", action: "edit" },
     add_observation: { menuKey: "observation", action: "add" },
+    edit_observation: { menuKey: "observation", action: "edit" },
+    delete_observation: { menuKey: "observation", action: "delete" },
     create_endpoint: { menuKey: "endpoint", action: "add" },
     edit_endpoint: { menuKey: "endpoint", action: "edit" },
     delete_end_point: { menuKey: "endpoint", action: "delete" },
@@ -48,7 +50,8 @@ const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> 
     edit_location: { menuKey: "location", action: "edit" },
     create_report: { menuKey: "location_report", action: "add" },
     delete_report: { menuKey: "location_report", action: "delete" },
-    download_report: { menuKey: "location_report", action: "export" }
+    download_report: { menuKey: "location_report", action: "export" },
+    edit_report: { menuKey: "location_report", action: "edit" }
   },
   workOrder: {
     create_work_order: { menuKey: "work_order", action: "add" },
@@ -56,6 +59,8 @@ const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> 
     delete_work_order: { menuKey: "work_order", action: "delete" },
     update_work_order_status: { menuKey: "work_order_status", action: "edit" },
     add_comment_work_order: { menuKey: "comment_work_order", action: "add" },
+    edit_comment_work_order: { menuKey: "comment_work_order", action: "edit" },
+    delete_comment_work_order: { menuKey: "comment_work_order", action: "delete" },
     add_task_work_order: { menuKey: "inspections", action: "add" },
     update_parts_work_order: { menuKey: "parts_work_order", action: "edit" }
   },
@@ -68,6 +73,9 @@ const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> 
 };
 
 const PLATFORM_MODULE_RULES: Record<string, string> = {
+  asset: "asset",
+  location: "location",
+  workOrder: "work_order",
   preventive: "preventive",
   form: "form",
   form_category: "form_category",
@@ -83,6 +91,30 @@ const PLATFORM_MODULE_RULES: Record<string, string> = {
   users: "users",
   permission: "permission",
   asset_mail: "asset_mail"
+};
+
+const PLATFORM_PARENT_FEATURE_RULES: Record<string, string> = {
+  asset: "master_asset",
+  location: "master_location",
+  workOrder: "master_work_order",
+  floorMap: "master_dashboard",
+  preventive: "master_preventive",
+  form: "master_form",
+  form_category: "master_form",
+  inspections: "master_inspections",
+  work_order_templates: "master_library",
+  procedures: "master_library",
+  work_request: "master_work_request",
+  work_request_status: "master_work_request",
+  posts: "master_posts",
+  inventory: "master_inventory",
+  devices: "master_devices",
+  gateways: "master_devices",
+  peripheral_sensors: "master_devices",
+  admin_panel: "master_admin_panel",
+  users: "master_admin_panel",
+  permission: "master_admin_panel",
+  asset_mail: "master_admin_panel"
 };
 
 const PARENT_PLATFORM_MODULE_RULES: Record<string, string> = {
@@ -317,6 +349,11 @@ class AccountAccessService {
   }
 
   isPlatformActionAllowed(accountRoleMenu: RoleMenu, moduleName: string, actionName: string): boolean {
+    const parentFeature = PLATFORM_PARENT_FEATURE_RULES[moduleName];
+    if (parentFeature && !this.isAccountPermissionEnabled(accountRoleMenu, parentFeature, "view")) {
+      return false;
+    }
+
     const mappedRule = PLATFORM_ACTION_RULES[moduleName]?.[actionName];
     if (mappedRule) {
       const keys = Array.isArray(mappedRule.menuKey) ? mappedRule.menuKey : [mappedRule.menuKey];
