@@ -186,13 +186,11 @@ export function cmmsMetrics(orders: CmmsOrder[], spares: SpareRow[], reports: Cm
     const date = reportDate(value);
     return !!date && date >= period.from && date <= period.to;
   };
-  const normalized = (value?: string) => (value || '').toLowerCase().replace(/[^a-z]/g, '');
-  const terminal = (order: CmmsOrder) => ['Completed', 'Rejected'].includes(order.status || '');
-  const preventive = (order: CmmsOrder) => order.createdFrom === 'Preventive' ||
-    ['preventive', 'preventivemaintenance', 'pm'].includes(normalized(order.type));
-  const breakdown = (order: CmmsOrder) => [order.type, order.nature_of_work].some(value => normalized(value).startsWith('breakdown'));
-  // Ignore rejected/cancelled planned work and keep the same PM cohort for all three counts.
-  const planned = orders.filter(order => order.status !== 'Rejected' && preventive(order) && inPeriod(order.end_date || order.start_date));
+  const breakdown = (order: CmmsOrder) => order.nature_of_work === 'Breakdown';
+  const eligibleOrders = orders.filter(order => order.status !== 'Rejected');
+  // Planner is identified by its creation source, not its type or nature of work.
+  const plannerCount = eligibleOrders.filter(order => order.createdFrom === 'Preventive').length;
+  const completedCount = eligibleOrders.filter(order => order.status === 'Completed').length;
   const cohort = orders.filter(order => order.status !== 'Rejected' && inPeriod(order.start_date || order.createdAt));
   let spareQty = 0;
   let spareCost: number | null = 0;
@@ -213,13 +211,11 @@ export function cmmsMetrics(orders: CmmsOrder[], spares: SpareRow[], reports: Cm
   const breakdownCount = cohort.filter(breakdown).length;
   const laborCost = laborUnpriced ? null : 0;
   return {
-    pm_planned: planned.length,
-    pm_completed: planned.filter(order => order.status === 'Completed').length,
-    pm_overdue: planned.filter(order => !terminal(order) && !!reportDate(order.end_date) && reportDate(order.end_date)! < asOf).length,
-    breakdown_wos: breakdownCount,
+    planner_wos: plannerCount,
+    completed_wos: completedCount,
+    open_overdue_wos: eligibleOrders.length - completedCount,
+    breakdown_wos: eligibleOrders.filter(breakdown).length,
     downtime_h: breakdownCount ? null : 0,
-    open_overdue_wos: orders.filter(order => !terminal(order)).length,
-    overdue_wos: orders.filter(order => !terminal(order) && !!reportDate(order.end_date) && reportDate(order.end_date)! < asOf).length,
     spare_qty_used: round(spareQty), spare_cost_inr: spareCost === null ? null : round(spareCost),
     labor_cost_inr: laborCost,
     total_cost_inr: spareCost === null || laborCost === null ? null : round(spareCost + laborCost),

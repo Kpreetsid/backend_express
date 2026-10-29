@@ -87,7 +87,7 @@ test('all database reads enforce tenant and visibility and invalid requests neve
   assert.equal(reads, 6);
   assert.equal(data.locations[0].asset_data.length, 2);
   assert.equal(data.cmms_summary.length, 2);
-  assert.equal(data.week_total_snapshot.pm_planned, 0);
+  assert.equal(data.week_total_snapshot.planner_wos, 0);
   for (const summary of [data.locations[0].summary, data.locations[0].asset_data[0].summary,
     data.cmms_summary[0], data.week_total_snapshot]) {
     assert.equal(summary.peak_endpoint_rms_mm_s, 0);
@@ -134,7 +134,8 @@ test('child WO consumption and RMS roll up into the parent asset and deduplicate
   const result = await cmmsDataService.getData({ org_id: org, location_ids: [root, root] }, org);
   assert.equal(result.locations.length, 1);
   const train = result.locations[0].asset_data[0];
-  assert.equal(train.summary.pm_planned, 1);
+  assert.equal(train.summary.planner_wos, 1);
+  assert.equal(train.summary.completed_wos, 1);
   assert.equal(train.summary.spare_qty_used, 2);
   assert.equal(train.summary.spare_cost_inr, 2500);
   assert.equal(train.summary.peak_endpoint_rms_mm_s, 16.75);
@@ -164,8 +165,9 @@ test('flat summary excludes location-only rows and uses each asset actual locati
     [['train', 'Train', root, 'Plant'], ['pump', 'Pump', 'grandchild', 'Room']]);
   assert.ok(result.cmms_summary.every(row => !('asset_location' in row) && row.open_overdue_wos === 0));
   assert.equal(result.locations[0].summary.open_overdue_wos, 1);
-  assert.equal(result.week_total_snapshot.open_overdue_wos, 1);
-  assert.equal(result.week_total_snapshot.overdue_wos, 1);
+  assert.equal(result.week_total_snapshot.open_overdue_wos, 0);
+  assert.equal(result.week_total_snapshot.planner_wos, 0);
+  assert.equal(result.week_total_snapshot.completed_wos, 0);
 });
 
 test('shared spare associations are deduplicated per asset and never multiply stock totals', async t => {
@@ -206,5 +208,45 @@ test('an empty location returns no synthetic asset summary row', async t => {
   const result = await cmmsDataService.getData({ org_id: org, location_ids: [root] }, org);
   assert.deepEqual(result.cmms_summary, []);
   assert.equal(result.locations[0].summary.open_overdue_wos, 1);
-  assert.equal(result.week_total_snapshot.open_overdue_wos, 1);
+  assert.equal(result.week_total_snapshot.open_overdue_wos, 0);
+  assert.equal(result.week_total_snapshot.planner_wos, 0);
+  assert.equal(result.week_total_snapshot.completed_wos, 0);
+});
+
+test('all WO totals sum displayed asset rows, excluding location-only WOs', async t => {
+  const orders = [
+    ...Array.from({ length: 261 }, (_, index) => ({ _id: `train-${index}`, wo_asset_id: 'motor', createdFrom: 'Preventive', status: 'Open', end_date: '2020-01-01' })),
+    ...Array.from({ length: 4 }, (_, index) => ({ _id: `pump-${index}`, wo_asset_id: 'pump', status: 'In-Progress', end_date: '2999-01-01' })),
+    ...Array.from({ length: 19 }, (_, index) => ({ _id: `location-${index}`, wo_location_id: root, createdFrom: 'Preventive', status: 'Open', end_date: '2020-01-01' })),
+    { _id: 'completed', wo_asset_id: 'motor', nature_of_work: 'Breakdown', status: 'Completed', end_date: '2020-01-01' },
+    { _id: 'rejected', wo_asset_id: 'pump', nature_of_work: 'Breakdown', status: 'Rejected', end_date: '2020-01-01' },
+    { _id: 'location-breakdown', wo_location_id: root, nature_of_work: 'Breakdown', status: 'Completed' }
+  ];
+  for (const [model, records] of [[LocationModel, locations], [AssetModel, assets], [WorkOrderModel, orders],
+    [PartsModel, []], [PartsTypeModel, []], [ReportAssetModel, []]] as const) {
+    t.mock.method(model, 'find', (() => {
+      const query: any = { select: () => query, sort: () => query, lean: async () => records };
+      return query;
+    }) as any);
+  }
+  const result = await cmmsDataService.getData({ org_id: org, location_ids: [root, root] }, org);
+  assert.deepEqual(result.cmms_summary.map(row => row.open_overdue_wos), [261, 4]);
+  assert.equal(result.week_total_snapshot.open_overdue_wos, 265);
+  assert.equal(result.week_total_snapshot.planner_wos, 261);
+  assert.equal(result.week_total_snapshot.completed_wos, 1);
+  assert.equal(result.week_total_snapshot.breakdown_wos, 1);
+  for (const field of ['planner_wos', 'completed_wos', 'open_overdue_wos', 'breakdown_wos'] as const) {
+    assert.equal(result.week_total_snapshot[field], result.cmms_summary.reduce((sum, row) => sum + row[field], 0));
+  }
+  for (const summary of [result.week_total_snapshot, ...result.cmms_summary,
+    result.locations[0].summary, ...result.locations[0].asset_data.map(asset => asset.summary)]) {
+    for (const field of ['pm_planned', 'pm_completed', 'pm_overdue', 'overdue_wos']) {
+      assert.equal(field in summary, false);
+    }
+  }
+  assert.equal('pm_basis' in result.metadata, false);
+  assert.equal(result.locations[0].summary.open_overdue_wos, 284);
+  assert.equal(result.locations[0].summary.planner_wos, 280);
+  assert.equal(result.locations[0].summary.completed_wos, 2);
+  assert.equal(result.locations[0].summary.breakdown_wos, 2);
 });

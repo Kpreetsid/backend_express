@@ -11,14 +11,14 @@ Requires the normal authenticated session, CSRF handling, and `location.create_r
 }
 ```
 
-Optional `from_date` and `to_date` accept `YYYY-MM-DD` (IST day boundaries) or full ISO timestamps with an explicit timezone. By default the interval is Monday 00:00 IST through the request time. Optional `stale_after_hours` is a positive number, default 24.
+Optional `from_date` and `to_date` accept `YYYY-MM-DD` (IST day boundaries) or full ISO timestamps with an explicit timezone. By default the interval is Monday 00:00 IST through the request time. These dates apply to consumption and cost cohorts, not the current work-order counters. Optional `stale_after_hours` is a positive number, default 24.
 
 The response uses `{ "status": true, "message": "Data fetched successfully", "data": { ... } }`. Data contains:
 
 - `report_period`, `snapshot_at`: effective interval and current snapshot time.
 - `locations`: each selected top-level location, all visible descendant IDs, a location summary, and `asset_data`. Each top-level asset retains its master fields, `child_assets`, and a `summary` including those components' work and RMS data.
-- `cmms_summary`: flat rows for top-level assets only, with `asset_id` (the asset document `_id`), `asset_name`, `location_id`, and `location_name`. Location fields identify the asset's actual location, including descendant locations. WOs without an asset remain in the location summary and overall totals; they do not create blank-asset rows. An empty location produces no flat asset rows.
-- `week_total_snapshot`: calculated across unique scoped records, rather than by summing rows which may share stock.
+- `cmms_summary`: flat rows for top-level assets only, with `asset_id` (the asset document `_id`), `asset_name`, `location_id`, and `location_name`. Location fields identify the asset's actual location, including descendant locations. WOs without an asset remain in location summaries; they do not create blank-asset rows. An empty location produces no flat asset rows.
+- `week_total_snapshot`: `planner_wos`, `completed_wos`, `open_overdue_wos` and `breakdown_wos` sum the displayed `cmms_summary` asset rows, excluding location-only WOs. For example, displayed open counts of 261 and 4 total 265, even if the location summary also includes 19 location-only WOs. An empty asset list gives zero for all four counts. Other totals continue to use unique scoped records, including location-only work and deduplicated stock.
 - `critical_spares_stock_replenishment`: current spare stock rows, including general spares as in the supplied example.
 - `metadata`: sources, calculation definitions, missing-data explanations and freshness flags.
 
@@ -30,12 +30,11 @@ Summary metrics (location, asset, flat rows and overall totals) and replenishmen
 | --- | --- | --- |
 | Asset | `asset_name` | Top-level asset name |
 | Location | `location_name` | Asset's actual location name |
-| PM planned | `pm_planned` | Non-rejected preventive WOs due within the interval; start date used when no due date is stored |
-| PM completed | `pm_completed` | Completed WOs from that planned cohort |
-| PM overdue | `pm_overdue` | Non-completed/non-rejected WOs from that planned cohort with due date before snapshot time |
-| Breakdown WOs | `breakdown_wos` | Breakdown WOs starting in the interval; creation date fallback |
+| Planner WO | `planner_wos` | Visible, non-rejected WOs with `createdFrom` exactly `"Preventive"`, across all dates, including completed work; `type` and `nature_of_work` do not establish Planner membership |
+| Breakdown WO | `breakdown_wos` | Visible, non-rejected WOs with `nature_of_work` exactly `"Breakdown"`, across all dates and statuses; totals sum displayed asset rows |
+| Complete WO | `completed_wos` | All scoped WOs with status Completed, across all creation sources and dates |
+| Open / Overdue WO | `open_overdue_wos` | All scoped WOs except Completed and Rejected, across all creation sources and dates, including Open, In-Progress, On-Hold, Blocked, waiting statuses and overdue work; each counted once |
 | Downtime (h) | `downtime_h` | Zero; equipment downtime is not recorded |
-| Open / overdue WOs | `open_overdue_wos` | Current non-completed/non-rejected WOs, including overdue WOs once. `overdue_wos` is also returned for the overdue subset |
 | Spare qty used | `spare_qty_used` | Actual quantity; net issued minus returned fallback; never estimated/planned quantity |
 | Spare cost (INR) | `spare_cost_inr` | Quantity consumed multiplied by recorded WO unit cost |
 | Labor cost (INR) | `labor_cost_inr` | Zero fallback when labor hours exist because rates are not stored; otherwise zero recorded cost |
@@ -45,7 +44,9 @@ Summary metrics (location, asset, flat rows and overall totals) and replenishmen
 | Oldest sensor reading | `oldest_sensor_reading` | Oldest timestamp among the latest saved snapshots of each endpoint axis; IST `dd/mm/yyyy hh:mm:ss` using a 24-hour clock, or `"N/A"` when unavailable. Applies to all summaries |
 | Data quality flag | `data_quality_flag` | `RECENT`, `STALE`, `MISSING`, or `NO_DATA` |
 
-Spare consumption/cost figures are cumulative actual usage for the WOs starting in the selected interval. They are not a dated issue/return ledger. Open WOs, stock, and status counts use current persisted state; a past interval does not reconstruct past stock or WO status. Only materialized preventive WOs count; future scheduler occurrences that have not produced WOs are not projected.
+The response exposes four work-order counters: `planner_wos`, `completed_wos`, `open_overdue_wos`, and `breakdown_wos`. Planner is a creation-source subset and does not equal completed plus open work. A General order with `createdFrom: "Preventive"` counts as Planner; an order with `type` or `nature_of_work` Preventive but `createdFrom: "Work Order"` does not. Completed and open counts continue to include all creation sources. PM fields and the separate overdue subset are removed. `breakdown_wos` counts visible, non-rejected work orders with `nature_of_work` exactly `"Breakdown"`, across all dates and statuses; `type` alone does not establish a breakdown. The same rules apply to child work orders rolled up into a top-level asset. Only persisted work orders count; future scheduler occurrences that have not produced WOs are not projected.
+
+Spare consumption/cost figures are cumulative actual usage for the WOs starting in the selected interval. They are not a dated issue/return ledger. Work-order counters and stock use current persisted state; a past interval does not reconstruct past stock or WO status. Downtime still uses breakdown work starting in the selected interval internally, with zero as the unavailable-value response default.
 
 ## Spare columns
 
@@ -87,4 +88,4 @@ Reports are fetched from `assets-report` with the authenticated `accountId`, `vi
 
 `node --require ts-node/register/transpile-only --test src/reports/location/cmms-data.test.ts src/reports/location/cmms-report.test.ts`
 
-Tests cover hierarchy expansion and cycles, child rollups, tenant/visibility query scoping, duplicate location IDs, empty results, PM cohorts, actual consumption, unknown costs, stock policy, historical RMS versus freshness, timestamps and date validation. Database access is mocked; no production records are changed.
+Tests cover hierarchy expansion and cycles, child rollups, tenant/visibility query scoping, duplicate location IDs, empty results, category/date-independent work-order counts, completed/open partitioning, displayed-row totals, actual consumption, unknown costs, stock policy, historical RMS versus freshness, timestamps and date validation. Database access is mocked; no production records are changed.

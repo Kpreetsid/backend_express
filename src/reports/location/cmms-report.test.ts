@@ -10,7 +10,7 @@ const metrics = (orders: CmmsOrder[], reports: CmmsSensorReport[] = []) =>
   cmmsMetrics(orders, [], reports, assetIds, org, period, now);
 
 test('summary response defaults unknown numbers to zero and dates to N/A without changing source quality', () => {
-  const raw = metrics([{ _id: 'wo', start_date: '2026-10-21T12:00:00Z', type: 'Breakdown', actual_time: 2,
+  const raw = metrics([{ _id: 'wo', start_date: '2026-10-21T12:00:00Z', nature_of_work: 'Breakdown', actual_time: 2,
     parts: [{ actualQuantity: 2 }] }]);
   const result = cmmsSummaryResponse(raw);
   assert.equal(raw.downtime_h, null);
@@ -19,7 +19,7 @@ test('summary response defaults unknown numbers to zero and dates to N/A without
     assert.equal(result[field], 0);
     assert.equal(typeof result[field], 'number');
   }
-  assert.equal(result.breakdown_wos, 1);
+  assert.equal(result.planner_wos, 0);
   assert.equal(result.spare_qty_used, 2);
   assert.equal(result.oldest_sensor_reading, 'N/A');
   assert.equal(result.data_quality_flag, 'NO_DATA');
@@ -50,20 +50,46 @@ test('spare response defaults missing fields by type and preserves known text an
   assert.equal(raw.max_stock, null);
 });
 
-test('PM cohort counts due work and excludes rejected work; open count includes future-due work once', () => {
+test('planner requires exact Preventive creation source; completed and open include all sources and dates', () => {
   const orders: CmmsOrder[] = [
     { _id: 'pm1', createdFrom: 'Preventive', end_date: '2026-10-20T00:00:00Z', status: 'Completed' },
     { _id: 'pm2', type: 'Preventive Maintenance', end_date: '2026-10-21T00:00:00Z', status: 'Completed' },
     { _id: 'pm3', type: 'PM', end_date: '2026-10-22T00:00:00Z', status: 'Open' },
-    { _id: 'rejected', type: 'PM', end_date: '2026-10-22T00:00:00Z', status: 'Rejected' },
-    { _id: 'future', type: 'PM', end_date: '2026-10-29T00:00:00Z', status: 'Open' }
+    { _id: 'rejected', createdFrom: 'Preventive', type: 'PM', end_date: '2026-10-22T00:00:00Z', status: 'Rejected' },
+    { _id: 'future', type: 'General', end_date: '2026-10-29T00:00:00Z', status: 'In-Progress' },
+    { _id: 'old-completed', type: 'General', start_date: '2026-01-01', status: 'Completed' },
+    { _id: 'nature', type: 'General', nature_of_work: 'Preventive', status: 'On-Hold' },
+    { _id: 'blocked', status: 'Blocked' },
+    { _id: 'parts', status: 'Waiting-on-Parts' },
+    { _id: 'permit', status: 'Waiting-on-Permit' },
+    { _id: 'planner-future', createdFrom: 'Preventive', type: 'General', end_date: '2027-01-01', status: 'Open' },
+    { _id: 'different-case', createdFrom: 'preventive', status: 'Open' }
   ];
   const result = metrics(orders);
-  assert.equal(result.pm_planned, 3);
-  assert.equal(result.pm_completed, 2);
-  assert.equal(result.pm_overdue, 1);
-  assert.equal(result.open_overdue_wos, 2);
-  assert.equal(result.overdue_wos, 1);
+  assert.equal(result.planner_wos, 2);
+  assert.equal(result.completed_wos, 3);
+  assert.equal(result.open_overdue_wos, 8);
+  for (const field of ['pm_planned', 'pm_completed', 'pm_overdue', 'overdue_wos']) {
+    assert.equal(field in result, false);
+  }
+  const differentPeriod = cmmsMetrics(orders, [], [], assetIds, org,
+    cmmsPeriod({ from_date: '2025-01-01', to_date: '2025-01-02' }, now), now);
+  assert.equal(differentPeriod.planner_wos, 2);
+  assert.equal(differentPeriod.completed_wos, 3);
+  assert.equal(differentPeriod.open_overdue_wos, 8);
+});
+
+test('breakdown requires exact nature_of_work, excludes rejected work and ignores report dates', () => {
+  const orders: CmmsOrder[] = [
+    { _id: 'old', nature_of_work: 'Breakdown', type: 'General', status: 'Completed', start_date: '2020-01-01' },
+    { _id: 'future', nature_of_work: 'Breakdown', createdFrom: 'Preventive', status: 'Open', start_date: '2027-01-01' },
+    { _id: 'rejected', nature_of_work: 'Breakdown', status: 'Rejected' },
+    { _id: 'type-only', type: 'Breakdown', nature_of_work: 'General', status: 'Open' },
+    { _id: 'different-case', nature_of_work: 'breakdown', status: 'Open' },
+    { _id: 'prefix', nature_of_work: 'Breakdown Maintenance', status: 'Open' }
+  ];
+  assert.equal(metrics(orders).breakdown_wos, 2);
+  assert.equal(metrics([]).breakdown_wos, 0);
 });
 
 test('actual consumption uses unit cost and net issued quantities, never planned quantities', () => {
@@ -79,9 +105,9 @@ test('actual consumption uses unit cost and net issued quantities, never planned
 });
 
 test('missing labor rates, downtime, part price and foreign currency are not reported as known zero costs', () => {
-  const result = metrics([{ _id: 'wo', start_date: '2026-10-21T12:00:00Z', type: 'Breakdown', actual_time: 6.3,
+  const result = metrics([{ _id: 'wo', start_date: '2026-10-21T12:00:00Z', nature_of_work: 'Breakdown', actual_time: 6.3,
     parts: [{ actualQuantity: 2, cost: 100, currency: 'USD' }], labor_entries: [{ hours: 2 }] }]);
-  assert.equal(result.breakdown_wos, 1);
+  assert.equal(result.planner_wos, 0);
   assert.equal(result.downtime_h, null);
   assert.equal(result.labor_cost_inr, null);
   assert.equal(result.spare_cost_inr, null);
