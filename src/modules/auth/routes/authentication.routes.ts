@@ -19,7 +19,7 @@ export default (router: express.Router) => {
         if (!/^Bearer\s+\S+$/i.test(String(req.get('authorization') || ''))) {
             return res.status(405).json({ status: false, message: 'Use POST to log out' });
         }
-        next();
+        return next();
     }, isLogOutAuthenticated, userLogOut);
     userRouter.post('/logout', isLogOutAuthenticated, userLogOut);
     userRouter.get('/me', isAuthenticated, getMe);
