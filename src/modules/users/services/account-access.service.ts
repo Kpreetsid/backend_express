@@ -214,18 +214,39 @@ class AccountAccessService {
   }
 
   async getEffectivePermissionsForUser(
-    user: { isFirstUser?: boolean } | null | undefined,
+    user: { user_role?: string; isFirstUser?: boolean } | null | undefined,
     userRoleData: any,
     account: IAccount | any
   ): Promise<{ platformControl: PlatformControl; roleMenu: RoleMenu }> {
-    if (user?.isFirstUser === true) {
-      const ownerRoleData = {
-        data: await PlatformControlManager.getRoleMenuData("admin"),
-        roleMenu: UserRoleManager.getAdminRoleMenu()
-      };
-      return this.getEffectivePermissions(ownerRoleData, account);
+    const role = user?.isFirstUser === true ? "admin" : String(user?.user_role || "user");
+    const defaultRoleData = {
+      data: await PlatformControlManager.getRoleMenuData(role),
+      roleMenu: await UserRoleManager.getRoleMenuData(role)
+    };
+
+    const sourceRoleData = user?.isFirstUser === true
+      ? defaultRoleData
+      : {
+          data: this.mergePermissionDefaults(defaultRoleData.data, userRoleData?.data),
+          roleMenu: this.mergePermissionDefaults(defaultRoleData.roleMenu, userRoleData?.roleMenu)
+        };
+
+    return this.getEffectivePermissions(sourceRoleData, account);
+  }
+
+  private mergePermissionDefaults(defaults: any, stored: any): any {
+    const merged = clone(defaults);
+    if (!isRecord(stored)) {
+      return merged;
     }
-    return this.getEffectivePermissions(userRoleData, account);
+    for (const [moduleName, storedValue] of Object.entries(stored)) {
+      if (isRecord(storedValue) && isRecord(merged[moduleName])) {
+        merged[moduleName] = { ...merged[moduleName], ...storedValue };
+      } else {
+        merged[moduleName] = clone(storedValue);
+      }
+    }
+    return merged;
   }
 
   applyRoleMenuCap(userRoleMenu: any, accountRoleMenu: RoleMenu): RoleMenu {
