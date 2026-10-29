@@ -130,7 +130,7 @@ export const authenticateTokenContext = async (token: string, accountId: string)
     throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
   }
 
-  const effectivePermissions = accountAccessService.getEffectivePermissions(userRole, companyData);
+  const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(userData, userRole, companyData);
   const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: companyID })
 
   return {
