@@ -223,7 +223,7 @@ class AccountAccessService {
       roleMenu: await UserRoleManager.getRoleMenuData(role)
     };
 
-    if (user?.isFirstUser === true) {
+    if (user?.isFirstUser === true || role === "admin") {
       return defaultRoleData;
     }
 
