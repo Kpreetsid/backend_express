@@ -96,3 +96,25 @@ test('custom observation and work-order comment actions obey their child account
   assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'workOrder', 'edit_comment_work_order'), false);
   assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'workOrder', 'delete_comment_work_order'), false);
 });
+
+
+test('legacy role documents inherit newly introduced defaults without overriding explicit choices', async () => {
+  const account: any = { experience_profile: 'standard_account', account_role_menu: {} };
+
+  const admin = await accountAccessService.getEffectivePermissionsForUser(
+    { user_role: 'admin', isFirstUser: false },
+    { data: { inventory: { delete: false } }, roleMenu: {} },
+    account
+  );
+  assert.equal(admin.platformControl.inspections.view, true);
+  assert.equal(admin.platformControl.work_order_templates.add, true);
+  assert.equal(admin.platformControl.inventory.delete, false);
+
+  const manager = await accountAccessService.getEffectivePermissionsForUser(
+    { user_role: 'manager', isFirstUser: false },
+    { data: {}, roleMenu: {} },
+    account
+  );
+  assert.equal(manager.platformControl.inspections.view, true);
+  assert.equal(manager.platformControl.inspections.add, false);
+});
