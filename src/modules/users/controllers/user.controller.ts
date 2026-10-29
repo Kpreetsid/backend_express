@@ -13,7 +13,7 @@ import { subscriptionLimitService } from '../../company/services/subscriptionLim
 import { validateNewPassword } from '../../auth/services/verification-challenge.service';
 import { clearAuthCookies } from '../../../core/auth/auth-cookie.service';
 import { refreshTokenService } from '../../auth/services/refreshToken.service';
-import { canAssignUserRole, isProtectedFirstUserMutation, pickUserCreateFields, pickUserUpdateFields } from '../services/user-update-policy';
+import { canAssignUserRole, canModifyUserRecord, isProtectedFirstUserMutation, pickUserCreateFields, pickUserUpdateFields } from '../services/user-update-policy';
 
 class UserController {
 
@@ -114,6 +114,7 @@ class UserController {
       const user = get(req, "user", {}) as IUser;
       const { params: { id } } = req;
       const body = pickUserUpdateFields(req.body);
+      if (!Object.keys(body).length) throw Object.assign(new Error('No permitted fields provided'), { status: 400 });
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)), user_status: 'active' };
       if (user.user_role === 'admin') {
         delete baseFilter.user_status;
@@ -123,6 +124,9 @@ class UserController {
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length) {
         throw Object.assign(new Error("User not found"), { status: 404 });
+      }
+      if (!canModifyUserRecord(user, userData[0], body)) {
+        throw Object.assign(new Error('User modification not authorized'), { status: 403 });
       }
       if (isProtectedFirstUserMutation(userData[0], body)) {
         throw Object.assign(new Error("First account user role and status are immutable"), { status: 403 });
