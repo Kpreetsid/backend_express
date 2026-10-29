@@ -8,10 +8,9 @@ const root = path.resolve(__dirname, '..');
 const dist = path.join(root, 'dist');
 fs.rmSync(dist, { recursive: true, force: true });
 
-const tsc = process.platform === 'win32'
-  ? path.join(root, 'node_modules', '.bin', 'tsc.cmd')
-  : path.join(root, 'node_modules', '.bin', 'tsc');
-const result = spawnSync(tsc, [], { cwd: root, stdio: 'inherit' });
+// Run the local compiler with Node; Windows .cmd shims require a shell.
+const tsc = require.resolve('typescript/bin/tsc');
+const result = spawnSync(process.execPath, [tsc], { cwd: root, stdio: 'inherit' });
 if (result.error) throw result.error;
 if (result.status !== 0) process.exit(result.status || 1);
 
