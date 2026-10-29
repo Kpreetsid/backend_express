@@ -38,7 +38,7 @@ export const upload = multer({ storage, limits: { files: 12, fileSize: 5 * 1024 
 
 export default (): express.Router => {
     router.use(rateLimiter.uploadLimiter);
-    router.post('/', upload.array('files', 12), enforceUploadSignatures, payloadCryptoMultipartMiddleware, uploadController.uploadController);
+    router.post('/', enforceUploadPermission, upload.array('files', 12), enforceUploadSignatures, payloadCryptoMultipartMiddleware, uploadController.uploadController);
     router.post('/baseImage', enforceUploadPermission, uploadController.uploadBaseImage);
     router.post('/baseImage/:folderName', enforceUploadPermission, uploadController.uploadBaseImage);
     router.post('/:folderName', enforceUploadPermission, upload.array('files', 12), enforceUploadSignatures, payloadCryptoMultipartMiddleware, uploadController.uploadController);
