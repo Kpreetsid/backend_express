@@ -1,6 +1,7 @@
 import { IAccount } from "../../company/models/account.model";
 import { Permission, RoleManager, RoleMenu } from "../constants/account-role-menu.constant";
 import { RoleManager as UserRoleManager } from "../../../common/constants/new-user-roles.constant";
+import { PlatformControlManager } from "../../../common/constants/roles.constant";
 import { normalizeExperienceProfile } from "../../../common/constants/experience-profile.constant";
 
 export type AccountAction = "view" | "add" | "edit" | "delete" | "import" | "export";
@@ -178,6 +179,21 @@ class AccountAccessService {
       platformControl: this.applyPlatformControlCap(userRoleData?.data || {}, accountRoleMenu),
       roleMenu: this.applyRoleMenuCap(userRoleData?.roleMenu || {}, accountRoleMenu)
     };
+  }
+
+  async getEffectivePermissionsForUser(
+    user: { isFirstUser?: boolean } | null | undefined,
+    userRoleData: any,
+    account: IAccount | any
+  ): Promise<{ platformControl: PlatformControl; roleMenu: RoleMenu }> {
+    if (user?.isFirstUser === true) {
+      const ownerRoleData = {
+        data: await PlatformControlManager.getRoleMenuData("admin"),
+        roleMenu: UserRoleManager.getAdminRoleMenu()
+      };
+      return this.getEffectivePermissions(ownerRoleData, account);
+    }
+    return this.getEffectivePermissions(userRoleData, account);
   }
 
   applyRoleMenuCap(userRoleMenu: any, accountRoleMenu: RoleMenu): RoleMenu {
