@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, canAssignUserRole, pickUserCreateFields, pickUserUpdateFields, shouldRevokeUserSessionsAfterUpdate } from './user-update-policy';
+import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, canAssignUserRole, isProtectedFirstUserMutation, pickUserCreateFields, pickUserUpdateFields, shouldRevokeUserSessionsAfterUpdate } from './user-update-policy';
 
 test('user mutation filter is bound to account and active visibility', () => {
   assert.deepEqual(buildUserAccountFilter('user-1', 'account-1'), {
@@ -93,4 +93,13 @@ test('authorization-sensitive profile changes require session revocation', () =>
   assert.equal(shouldRevokeUserSessionsAfterUpdate(current, { user_status: 'inactive' }), true);
   assert.equal(shouldRevokeUserSessionsAfterUpdate(current, { email: 'b@example.com' }), true);
   assert.equal(shouldRevokeUserSessionsAfterUpdate(current, { username: 'b' }), true);
+});
+
+
+test('first account user cannot be demoted or deactivated through profile mutation', () => {
+  const owner = { isFirstUser: true, user_role: 'admin', user_status: 'active' };
+  assert.equal(isProtectedFirstUserMutation(owner, { user_role: 'manager' }), true);
+  assert.equal(isProtectedFirstUserMutation(owner, { user_status: 'inactive' }), true);
+  assert.equal(isProtectedFirstUserMutation(owner, { firstName: 'Owner' } as any), false);
+  assert.equal(isProtectedFirstUserMutation({ isFirstUser: false }, { user_role: 'manager' }), false);
 });
