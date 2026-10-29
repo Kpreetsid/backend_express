@@ -4,6 +4,11 @@ export class PlatformControlManager {
   private static readonly ADMIN_ROLES: RoleMenu = {
       asset: {
         view: true,
+        add: true,
+        edit: true,
+        delete: true,
+        import: true,
+        export: true,
         add_asset: true,
         delete_asset: true,
         add_child_asset: true,
@@ -24,6 +29,11 @@ export class PlatformControlManager {
       },
       location: {
         view: true,
+        add: true,
+        edit: true,
+        delete: true,
+        import: true,
+        export: true,
         add_location: true,
         delete_location: true,
         add_child_location: true,
@@ -35,6 +45,11 @@ export class PlatformControlManager {
       },
       workOrder: {
         view: true,
+        add: true,
+        edit: true,
+        delete: true,
+        import: true,
+        export: true,
         create_work_order: true,
         edit_work_order: true,
         delete_work_order: true,
