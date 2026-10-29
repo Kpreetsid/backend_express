@@ -181,3 +181,16 @@ For every discovered module:
   2. Generic upload route: apply the existing upload permission policy to the root upload endpoint, not only folder-specific variants.
   3. Re-scan all remaining private routes for explicit role permission or documented authenticated-self/all-user policy.
 - Runtime verification remains mandatory after each module. Do not mark a module complete from source inspection alone.
+
+
+### Resume checkpoint — verified authorization modules (2026-10-29)
+- Backend live HEAD before this checkpoint document commit: `583c81e27a515bd7ac2f73f7a5a07b67355ee20f` on `priority/bugs`.
+- Floor-map authorization: `3f9caf713b02226d2b6b9610b1de5fce649185ea` — coordinate/detail reads use `floorMap.view_floor_map`; coordinate mutation uses `floorMap.upload_floor_map`; delete remains `floorMap.delete_kpi`.
+- Scoped upload authorization: `f41c5db5280399ab6b0a46b35631b936b14185b9` — authorization executes before Multer, unknown/missing contexts fail closed, account feature and user action are both required, profile image remains authenticated self-service.
+- Observation authorization: `b6b6a8c2524dba5c49feafa09de17abe11026d6a` — observation PUT/PATCH require `asset.edit_observation`.
+- Lower-role compatibility TDD RED: `1518b70f53278328c31470095632536f667706ed`, `796a54e398216b466a2f98f00793d5f02e5ac354`.
+- Lower-role catalogue GREEN: `583c81e27a515bd7ac2f73f7a5a07b67355ee20f` — manager/employee/customer/user carry the full routed action-key shape for asset/location/workOrder/floorMap; core read defaults are enabled while mutation defaults remain denied.
+- CI for `583c81e2`: CMMS priority validation **success** and dependency remediation **success**. The successful validation includes application/test typecheck, password-security tests, asset-train tests, full `test:cmms`, and production build.
+- Intentionally permission-free authenticated routes reviewed: notification operations are user-owned; Knowledge Base is authenticated read-only; user password change and role self-read are self-service.
+- Company list/detail are authenticated and tenant-scoped through `applyRoleFilter`; API-key operations remain first-user-only; company mutation remains permission/first-user restricted.
+- Remaining work: finish Angular action-control inventory, confirm backend/frontend permission-key parity for every routed/action key, add any missing frontend action guards/tests, then run both full CI workflows and final whole-branch review.
