@@ -89,3 +89,22 @@ test('lower-role defaults preserve read access for core routed modules while mut
     assert.equal(role.floorMap.upload_floor_map, false, `${roleName} should not edit floor maps by default`);
   }
 });
+
+
+test('lower roles expose every routed core action key so permissions remain delegatable', async () => {
+  const admin: any = await PlatformControlManager.getRoleMenuData('admin');
+  const modules = ['asset', 'location', 'workOrder', 'floorMap'];
+
+  for (const roleName of ['manager', 'employee', 'customer', 'user']) {
+    const role: any = await PlatformControlManager.getRoleMenuData(roleName);
+    for (const moduleName of modules) {
+      assert.ok(role[moduleName], `${roleName} missing module ${moduleName}`);
+      for (const action of Object.keys(admin[moduleName])) {
+        assert.ok(
+          Object.prototype.hasOwnProperty.call(role[moduleName], action),
+          `${roleName} must expose ${moduleName}.${action} for delegation`
+        );
+      }
+    }
+  }
+});
