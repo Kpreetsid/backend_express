@@ -16,9 +16,28 @@ const getAccountRoleMenuOrThrow = async (accountId: unknown) => {
   return accountAccessService.getAccountRoleMenu(account);
 };
 
+const getRoleTargetUserOrThrow = async (accountId: unknown, role: any) => {
+  const users = await usersService.getAllUsers({ _id: role?.user_id, account_id: accountId });
+  if (!users || users.length === 0) {
+    throw Object.assign(new Error('Role target user not found'), { status: 404 });
+  }
+  return users[0];
+};
+
 const getConfigurableRoles = async (accountId: unknown, roles: any[]) => {
   const accountRoleMenu = await getAccountRoleMenuOrThrow(accountId);
-  return roles.map((role: any) => accountAccessService.toConfigurableRole(role, accountRoleMenu));
+  const userIds = roles.map((role: any) => role?.user_id).filter(Boolean);
+  const users = userIds.length
+    ? await usersService.getAllUsers({ _id: { $in: userIds }, account_id: accountId })
+    : [];
+  const usersById = new Map(users.map((user: any) => [String(user._id), user]));
+
+  return await Promise.all(roles.map(async (role: any) => {
+    const targetUser = usersById.get(String(role?.user_id || ''));
+    return targetUser
+      ? await accountAccessService.toConfigurableRoleForUser(targetUser, role, accountRoleMenu)
+      : accountAccessService.toConfigurableRole(role, accountRoleMenu);
+  }));
 };
 
 class RolesController {
@@ -102,17 +121,31 @@ class RolesController {
 
   async updateRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const actor = get(req, "user", {}) as IUser;
+      const { account_id, _id: user_id } = actor;
       const { params: { id } } = req;
       const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
       const existingData = await rolesService.getRoles(match);
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('Role not found'), { status: 404 });
       }
+
+      const targetUser: any = await getRoleTargetUserOrThrow(account_id, existingData[0]);
+      if (targetUser.isFirstUser === true) {
+        throw Object.assign(new Error('First user permissions cannot be modified'), { status: 403 });
+      }
+      if (targetUser.user_role === 'admin' && actor.user_role !== 'admin') {
+        throw Object.assign(new Error('You cannot modify an administrator permission profile'), { status: 403 });
+      }
+      if (!accountAccessService.canDelegatePlatformControl((req as any).role || {}, req.body?.data || {})) {
+        throw Object.assign(new Error('You cannot grant permissions outside your effective access'), { status: 403 });
+      }
+
       const accountRoleMenu = await getAccountRoleMenuOrThrow(account_id);
+      const roleDataWithDefaults = await accountAccessService.getRoleDataWithDefaultsForUser(targetUser, existingData[0]);
       const data = await rolesService.updateById(id, {
         data: accountAccessService.mergeConfigurablePlatformControl(
-          existingData[0].data,
+          roleDataWithDefaults.data,
           req.body.data,
           accountRoleMenu
         )
@@ -120,6 +153,8 @@ class RolesController {
       if (!data) {
         throw Object.assign(new Error('Role not updated'), { status: 404 });
       }
+
+      await usersService.revokeAuthorizationSessions(targetUser._id, account_id);
       res.status(200).json({ status: true, message: "Role updated successfully", data });
     } catch (error) {
       next(error);
@@ -128,18 +163,29 @@ class RolesController {
 
   async removeRole(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const actor = get(req, "user", {}) as IUser;
+      const { account_id, _id: user_id } = actor;
       const { params: { id } } = req;
       const match: any = { account_id: account_id, _id: helperService.validateObjectId(String(id)) };
       const existingData = await rolesService.getRoles(match);
       if (!existingData || existingData.length === 0) {
         throw Object.assign(new Error('Role not found'), { status: 404 });
       }
+
+      const targetUser: any = await getRoleTargetUserOrThrow(account_id, existingData[0]);
+      if (targetUser.isFirstUser === true) {
+        throw Object.assign(new Error('First user permissions cannot be removed'), { status: 403 });
+      }
+      if (targetUser.user_role === 'admin' && actor.user_role !== 'admin') {
+        throw Object.assign(new Error('You cannot modify an administrator permission profile'), { status: 403 });
+      }
+
       const data = await rolesService.removeById(id, user_id);
       if (!data) {
         throw Object.assign(new Error('Role not deleted'), { status: 404 });
       }
-      res.status(200).json({ status: true, message: "Role deleted successfully" });
+      await usersService.revokeAuthorizationSessions(targetUser._id, account_id);
+      res.status(200).json({ status: true, message: "Role deleted successfully", data });
     } catch (error) {
       next(error);
     }
