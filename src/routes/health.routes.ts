@@ -1,4 +1,5 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import { isIP } from 'node:net';
 import mongoose from 'mongoose';
 import { redisConfig } from '../core/config/env.config';
 import { isRedisReady } from '../core/cache/redis.client';
@@ -12,6 +13,19 @@ const mongoState = () => {
     case 3: return 'disconnecting';
     default: return 'unknown';
   }
+};
+
+// Detailed infrastructure status is available only through a trusted local
+// reverse proxy or an explicitly configured monitor address.
+export const isMonitoringClient = (address: string | undefined, allowlist = process.env.CMMS_MONITOR_IPS || ''): boolean => {
+  const ip = String(address || '').replace(/^::ffff:/, '');
+  const permitted = allowlist.split(',').map(s => s.trim()).filter(Boolean);
+  return isIP(ip) !== 0 && permitted.includes(ip);
+};
+export const requireMonitoringClient = (req: Request, res: Response, next: NextFunction): void => {
+  // req.socket.remoteAddress is the direct peer, not user-controlled X-Forwarded-For.
+  if (isMonitoringClient(req.socket.remoteAddress)) return next();
+  res.status(404).json({ status: false, message: 'Not found' });
 };
 
 export const healthRouter = Router();
@@ -37,7 +51,7 @@ healthRouter.get('/startup', (_req: Request, res: Response) => {
   });
 });
 
-healthRouter.get('/ready', (_req: Request, res: Response) => {
+healthRouter.get('/ready', requireMonitoringClient, (_req: Request, res: Response) => {
   const mongodb = mongoState();
   const redis = redisConfig.enabled ? (isRedisReady() ? 'connected' : 'degraded') : 'disabled';
   const ready = mongodb === 'connected';
@@ -52,7 +66,7 @@ healthRouter.get('/ready', (_req: Request, res: Response) => {
   });
 });
 
-metricsRouter.get('/', (_req: Request, res: Response) => {
+metricsRouter.get('/', requireMonitoringClient, (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
   res.status(200).send([
     '# HELP cmms_process_uptime_seconds Process uptime in seconds.',
