@@ -131,11 +131,11 @@ test('inventory, posts and mappings enforce action permissions', () => {
     "hasRolePermission('posts', 'delete')"
   ]);
   expectAll('src/modules/mappings/routes/userAsset.routes.ts', [
-    "router.use(hasRolePermission('users', 'view'))",
+    "router.get('/userToAssets', hasRolePermission('users', 'view')",
     "hasRolePermission('users', 'edit')"
   ]);
   expectAll('src/modules/mappings/routes/userLocation.routes.ts', [
-    "router.use(hasRolePermission('users', 'view'))",
+    "router.get('/userToLocations', hasRolePermission('users', 'view')",
     "hasRolePermission('users', 'edit')"
   ]);
   expectAll('src/modules/mappings/routes/userWorkOrder.routes.ts', [
