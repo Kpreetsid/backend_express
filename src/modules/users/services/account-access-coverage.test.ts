@@ -118,3 +118,17 @@ test('legacy role documents inherit newly introduced defaults without overriding
   assert.equal(manager.platformControl.inspections.view, true);
   assert.equal(manager.platformControl.inspections.add, false);
 });
+
+
+test('permission delegation cannot exceed the actor effective platform control', () => {
+  const actor: any = {
+    inventory: { view: true, add: false, edit: true, delete: false },
+    users: { view: true, edit: false }
+  };
+
+  assert.equal(accountAccessService.canDelegatePlatformControl(actor, { inventory: { edit: true } }), true);
+  assert.equal(accountAccessService.canDelegatePlatformControl(actor, { inventory: { add: true } }), false);
+  assert.equal(accountAccessService.canDelegatePlatformControl(actor, { inventory: { delete: false } }), false);
+  assert.equal(accountAccessService.canDelegatePlatformControl(actor, { users: { edit: true } }), false);
+  assert.equal(accountAccessService.canDelegatePlatformControl(actor, { unknown: { view: true } }), false);
+});
