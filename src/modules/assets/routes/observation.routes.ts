@@ -11,8 +11,8 @@ export default (router: express.Router) => {
     observationRouter.get('/', observationController.getObservations);
     observationRouter.get('/:id', validateParamId, observationController.getObservation);
     observationRouter.post('/', hasRolePermission('asset', 'add_observation'), observationValidator, validate, observationController.createObservation);
-    observationRouter.put('/:id', validateParamId, observationValidator, observationController.updateObservation);
-    observationRouter.patch('/:id', validateParamId, observationValidator, observationController.updateObservation);
+    observationRouter.put('/:id', validateParamId, hasRolePermission('asset', 'edit_observation'), observationValidator, observationController.updateObservation);
+    observationRouter.patch('/:id', validateParamId, hasRolePermission('asset', 'edit_observation'), observationValidator, observationController.updateObservation);
     observationRouter.delete('/:id', validateParamId, hasRolePermission('asset', 'delete_observation'), observationController.removeObservation);
     router.use('/observations', observationRouter);
 }
