@@ -42,3 +42,25 @@ export const buildMappedUserFilter = (userIds: any[], accountId: any) => ({
   account_id: accountId,
   visible: { $ne: false }
 });
+
+
+const MANAGER_ASSIGNABLE_ROLES = new Set(['employee', 'customer', 'user']);
+
+export const canAssignUserRole = (
+  actorRole: string | undefined,
+  requestedRole: string | undefined,
+  existingTargetRole?: string
+): boolean => {
+  if (!requestedRole) return true;
+  if (actorRole === 'admin') return true;
+  if (actorRole !== 'manager') return false;
+  if (existingTargetRole && !MANAGER_ASSIGNABLE_ROLES.has(existingTargetRole)) return false;
+  return MANAGER_ASSIGNABLE_ROLES.has(requestedRole);
+};
+
+export const shouldRevokeUserSessionsAfterUpdate = (
+  existing: Partial<Record<'user_role' | 'user_status' | 'email' | 'username', any>> = {},
+  updates: Partial<Record<'user_role' | 'user_status' | 'email' | 'username', any>> = {}
+): boolean => ['user_role', 'user_status', 'email', 'username'].some(
+  (key) => updates[key] !== undefined && String(updates[key]) !== String(existing[key])
+);
