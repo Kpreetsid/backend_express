@@ -6,16 +6,22 @@ import { PlatformControlManager } from '../constants/roles.constant';
 const run = async (middleware: any, req: any): Promise<any> =>
   await new Promise(resolve => middleware(req, {}, (error: any) => resolve(error || null)));
 
-test('first account user bypasses stored role permissions but still requires an authenticated user', async () => {
-  const firstUserError = await run(
+test('role middleware consumes effective permissions and never bypasses account-capped authorization', async () => {
+  const deniedWithoutEffectivePermission = await run(
     hasRolePermission('asset', 'delete_asset'),
     { user: { user_role: 'employee', isFirstUser: true }, role: {} }
   );
-  assert.equal(firstUserError, null);
+  assert.equal(deniedWithoutEffectivePermission?.status, 403);
+
+  const allowedWithEffectivePermission = await run(
+    hasRolePermission('asset', 'delete_asset'),
+    { user: { user_role: 'employee', isFirstUser: true }, role: { asset: { delete_asset: true } } }
+  );
+  assert.equal(allowedWithEffectivePermission, null);
 
   const missingUserError = await run(
     hasRolePermission('asset', 'delete_asset'),
-    { user: {}, role: {} }
+    { user: {}, role: { asset: { delete_asset: true } } }
   );
   assert.equal(missingUserError?.status, 403);
 });
