@@ -8,11 +8,12 @@ import { ASSET_TRAIN_CATALOG } from '../catalog/asset-train-catalog';
 
 export default (router: express.Router) => {
     const assetRouter = express.Router();
+    assetRouter.use(hasRolePermission('asset', 'view'));
     assetRouter.get('/catalog', (_req, res) => {
         res.status(200).json({ status: true, data: ASSET_TRAIN_CATALOG });
     });
     assetRouter.get('/buzzer', assetController.getBuzzerAssetList);
-    assetRouter.patch('/buzzer/:location_id', validateParam("location_id"), assetController.setBuzzerAssetList);
+    assetRouter.patch('/buzzer/:location_id', validateParam("location_id"), hasRolePermission('asset', 'edit_asset'), assetController.setBuzzerAssetList);
     assetRouter.get('/', assetController.getAssets);
     assetRouter.get('/sensor-list', assetController.getAssetSensorList);
     assetRouter.get('/tree', assetController.getAssetTree);
