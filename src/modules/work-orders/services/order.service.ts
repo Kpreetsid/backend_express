@@ -778,6 +778,7 @@ class OrderService {
             vendor_name: entry?.vendor_name || '',
             work_date: entry?.work_date || null,
             hours: entry?.hours === '' || entry?.hours === null || entry?.hours === undefined ? null : Number(entry.hours),
+            labor_cost: entry?.labor_cost === '' || entry?.labor_cost === null || entry?.labor_cost === undefined ? null : Number(entry.labor_cost),
             notes: entry?.notes || ''
           }))
           .filter((entry: any) => entry.hours !== null && Number.isFinite(entry.hours) && (entry.user_id || entry.vendor_name))

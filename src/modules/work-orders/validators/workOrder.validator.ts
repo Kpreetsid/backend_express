@@ -108,6 +108,11 @@ const commonWorkOrderFields = [
     .if(body('labor_entries').exists())
     .isNumeric().withMessage('Labor hours must be a number'),
 
+  body('labor_entries.*.labor_cost')
+    .optional({ nullable: true })
+    .isFloat({ min: 0 }).withMessage('Labor cost must be a non-negative number')
+    .custom(value => Number.isFinite(Number(value))).withMessage('Labor cost must be finite'),
+
   body('labor_entries.*.notes')
     .optional({ nullable: true, checkFalsy: true })
     .isString().withMessage('Labor notes must be a string')
