@@ -168,3 +168,16 @@ For every discovered module:
 - Company ruling: list/detail remain authenticated + tenant-scoped; account update requires `admin_panel.edit`; account create/delete are first-user-only; delete additionally validates target account equals authenticated account.
 - Troubleshooting guides and work instructions use the existing `procedures` permission because they are shared procedure/library content and no separate account feature exists.
 - Runtime verification remains pending because the sandbox cannot resolve github.com for a local checkout and commit status checks are empty. Required backend verification when executable: `npm run typecheck && npm run test:cmms && npm run build`.
+
+
+### Resume checkpoint — current execution (2026-10-29)
+- Backend live HEAD at resume: `d566392297d814205f70e21ba88a2d8e554dd76c` (`priority/bugs`).
+- Frontend live HEAD at resume: `11f3510467d910e7b1d586128317a26ac09cdb2d` (`priority/bugs`).
+- Revalidated: owner/first-user effective permissions are generated from current admin defaults server-side and still capped by account features; role middleware itself does not bypass account caps.
+- Revalidated: role administration protects first-user permission rows, prevents privilege delegation above actor effective access, and revokes sessions after permission changes.
+- Revalidated frontend: one central `AuthorizationService.can(...)`, guarded routes, shared permission directive, and permission-aware navigation are already present.
+- Newly identified backend gaps to close next, in order:
+  1. Floor-map routes: protect coordinate create/read/detail endpoints with the existing `floorMap` action permissions.
+  2. Generic upload route: apply the existing upload permission policy to the root upload endpoint, not only folder-specific variants.
+  3. Re-scan all remaining private routes for explicit role permission or documented authenticated-self/all-user policy.
+- Runtime verification remains mandatory after each module. Do not mark a module complete from source inspection alone.
