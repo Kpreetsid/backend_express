@@ -169,3 +169,14 @@ test('admin settings, logs and reports use matching action keys', () => {
     "hasRolePermission('location', 'edit_report'), locationReportController.updateReport"
   ]);
 });
+
+
+test('floor map coordinate and detail routes enforce floor-map actions', () => {
+  expectAll('src/modules/locations/routes/floorMap.routes.ts', [
+    "floorMapRouter.get('/coordinate', hasRolePermission('floorMap', 'view_floor_map')",
+    "floorMapRouter.post('/coordinate', hasRolePermission('floorMap', 'upload_floor_map')",
+    "floorMapRouter.get('/coordinate/asset/:id', validateParamId, hasRolePermission('floorMap', 'view_floor_map')",
+    "floorMapRouter.get('/:id', validateParamId, hasRolePermission('floorMap', 'view_floor_map')",
+    "floorMapRouter.delete('/coordinate/:id', validateParamId, hasRolePermission('floorMap', 'delete_kpi')"
+  ]);
+});
