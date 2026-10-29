@@ -34,12 +34,9 @@ const csrfTtlSeconds = (accessTtlSeconds: number): number => Math.max(
   parseTtlSeconds(refreshToken.expiresIn, 7 * 24 * 60 * 60)
 );
 
-const withDomain = <T extends CookieOptions>(options: T): T => {
-  if (cookieAuth.domain) {
-    return { ...options, domain: cookieAuth.domain };
-  }
-  return options;
-};
+// Authentication cookies are deliberately host-only. Never widen them to
+// sibling applications through AUTH_COOKIE_DOMAIN or a parent domain.
+const withDomain = <T extends CookieOptions>(options: T): T => options;
 
 const httpOnlyCookie = (ttlSeconds: number): CookieOptions => withDomain({
   httpOnly: true,
