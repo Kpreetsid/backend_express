@@ -4,6 +4,7 @@ import { validateParamId } from '../../../common/middlewares/validate.middleware
 import { companyValidator } from '../validators/company.validator';
 import { validate } from '../../../common/middlewares/validator.middleware';
 import { requireFirstUser } from '../../../common/middlewares/firstUser.middleware';
+import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
 
 export default (router: express.Router) => {
     const companyRouter = express.Router();
@@ -15,9 +16,9 @@ export default (router: express.Router) => {
 
     companyRouter.get('/', companyController.getCompanies);
     companyRouter.get('/:id', validateParamId, companyController.getCompany);
-    companyRouter.post('/', companyValidator, validate, companyController.create);
-    companyRouter.put('/:id', validateParamId, companyValidator, validate, companyController.updateCompany);
-    companyRouter.patch('/:id', validateParamId, companyController.updateImageCompany);
-    companyRouter.delete('/:id', validateParamId, companyController.removeCompany);
+    companyRouter.post('/', requireFirstUser, companyValidator, validate, companyController.create);
+    companyRouter.put('/:id', validateParamId, hasRolePermission('admin_panel', 'edit'), companyValidator, validate, companyController.updateCompany);
+    companyRouter.patch('/:id', validateParamId, hasRolePermission('admin_panel', 'edit'), companyController.updateImageCompany);
+    companyRouter.delete('/:id', validateParamId, requireFirstUser, companyController.removeCompany);
     router.use('/companies', companyRouter);
 }
