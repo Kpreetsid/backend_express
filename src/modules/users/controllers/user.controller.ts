@@ -13,7 +13,7 @@ import { subscriptionLimitService } from '../../company/services/subscriptionLim
 import { validateNewPassword } from '../../auth/services/verification-challenge.service';
 import { clearAuthCookies } from '../../../core/auth/auth-cookie.service';
 import { refreshTokenService } from '../../auth/services/refreshToken.service';
-import { pickUserCreateFields, pickUserUpdateFields } from '../services/user-update-policy';
+import { canAssignUserRole, pickUserCreateFields, pickUserUpdateFields } from '../services/user-update-policy';
 
 class UserController {
 
@@ -73,8 +73,12 @@ class UserController {
 
   async createUser(req: Request, res: Response, next: NextFunction) {
     try {
-      const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
+      const actor = get(req, "user", {}) as IUser;
+      const { account_id, _id: user_id } = actor;
       const body = pickUserCreateFields(req.body);
+      if (!canAssignUserRole(actor.user_role, body.user_role)) {
+        throw Object.assign(new Error("You cannot assign the requested user role"), { status: 403 });
+      }
       const emailExists = await usersService.getAllUsers({ email: body.email });
       if (emailExists.length) throw Object.assign(new Error("Email already exists"), { status: 400 });
 
@@ -119,6 +123,9 @@ class UserController {
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length) {
         throw Object.assign(new Error("User not found"), { status: 404 });
+      }
+      if (!canAssignUserRole(user.user_role, body.user_role, userData[0].user_role)) {
+        throw Object.assign(new Error("You cannot assign the requested user role"), { status: 403 });
       }
       if (userData[0].user_status !== 'active' && body.user_status === 'active') {
         await subscriptionLimitService.assertCanCreate(user.account_id, 'user');
