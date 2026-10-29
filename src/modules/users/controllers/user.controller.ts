@@ -13,7 +13,7 @@ import { subscriptionLimitService } from '../../company/services/subscriptionLim
 import { validateNewPassword } from '../../auth/services/verification-challenge.service';
 import { clearAuthCookies } from '../../../core/auth/auth-cookie.service';
 import { refreshTokenService } from '../../auth/services/refreshToken.service';
-import { canAssignUserRole, pickUserCreateFields, pickUserUpdateFields } from '../services/user-update-policy';
+import { canAssignUserRole, isProtectedFirstUserMutation, pickUserCreateFields, pickUserUpdateFields } from '../services/user-update-policy';
 
 class UserController {
 
@@ -124,6 +124,9 @@ class UserController {
       if (!userData.length) {
         throw Object.assign(new Error("User not found"), { status: 404 });
       }
+      if (isProtectedFirstUserMutation(userData[0], body)) {
+        throw Object.assign(new Error("First account user role and status are immutable"), { status: 403 });
+      }
       if (!canAssignUserRole(user.user_role, body.user_role, userData[0].user_role)) {
         throw Object.assign(new Error("You cannot assign the requested user role"), { status: 403 });
       }
@@ -205,6 +208,9 @@ class UserController {
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length)
         throw Object.assign(new Error("User not found or already deleted"), { status: 404 });
+      if (userData[0].isFirstUser === true) {
+        throw Object.assign(new Error("First account user cannot be deleted"), { status: 403 });
+      }
       const removed = await usersService.removeById(String(id), user.account_id);
       if (!removed) {
         throw Object.assign(new Error("User not found or outside account"), { status: 404 });
