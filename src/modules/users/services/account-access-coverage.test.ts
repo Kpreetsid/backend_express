@@ -64,3 +64,35 @@ test('first account user receives full role defaults before account caps are app
   assert.equal(effective.platformControl.users.add, false);
   assert.equal(effective.roleMenu.users.view, false);
 });
+
+
+test('parent account features fail closed across all child platform actions', () => {
+  const accountMenu: any = {
+    master_asset: disabled(),
+    master_location: disabled(),
+    master_work_order: disabled(),
+    master_library: disabled(),
+    master_inventory: disabled(),
+    master_admin_panel: disabled()
+  };
+
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'asset', 'add_asset'), false);
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'location', 'edit_location'), false);
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'workOrder', 'edit_work_order'), false);
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'procedures', 'edit'), false);
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'inventory', 'delete'), false);
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'users', 'edit'), false);
+});
+
+test('custom observation and work-order comment actions obey their child account permissions', () => {
+  const accountMenu: any = {
+    master_asset: full(),
+    observation: disabled('master_asset'),
+    master_work_order: full(),
+    comment_work_order: disabled('master_work_order')
+  };
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'asset', 'edit_observation'), false);
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'asset', 'delete_observation'), false);
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'workOrder', 'edit_comment_work_order'), false);
+  assert.equal(accountAccessService.isPlatformActionAllowed(accountMenu, 'workOrder', 'delete_comment_work_order'), false);
+});
