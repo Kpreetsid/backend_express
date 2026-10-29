@@ -182,8 +182,9 @@ test('floor map coordinate and detail routes enforce floor-map actions', () => {
 });
 
 
-test('mail preference mutation uses the dedicated asset-mail permission', () => {
+test('mail preference routes use the dedicated asset-mail permissions', () => {
   expectAll('src/modules/mappings/routes/userAsset.routes.ts', [
+    "router.get('/userToAssets', hasAnyRolePermission([['users', 'view'], ['asset_mail', 'view']])",
     "router.post('/updateAssetsFlags', hasRolePermission('asset_mail', 'edit')"
   ]);
 });
