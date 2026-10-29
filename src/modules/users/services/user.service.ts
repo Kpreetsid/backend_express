@@ -138,11 +138,14 @@ class UsersService {
       if (body.user_role && body.user_role !== existing.user_role) {
         const roleMenu = await RoleManager.getRoleMenuData(body.user_role);
         const data = await PlatformControlManager.getRoleMenuData(body.user_role);
-        await RoleMenuModel.findOneAndUpdate(
+        const roleDetails = await RoleMenuModel.findOneAndUpdate(
           { user_id: user._id, account_id: accountId },
           { $set: { roleMenu, data, updatedBy: body.updatedBy } },
           { returnDocument: 'after', session }
         );
+        if (!roleDetails) {
+          throw Object.assign(new Error('User authorization profile not found'), { status: 409 });
+        }
       }
       return user;
     });
@@ -159,7 +162,7 @@ class UsersService {
   }
 
   async removeById(id: string, accountId: any) {
-    return await withTransaction(async (session) => {
+    const removed = await withTransaction(async (session) => {
       const user = await UserModel.findOneAndUpdate(
         buildUserAccountFilter(id, accountId),
         { $set: { visible: false, user_status: 'inactive' } },
@@ -169,6 +172,15 @@ class UsersService {
       await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
       return user;
     });
+
+    if (removed) {
+      await TokenModel.deleteMany({ userId: id, $or: [
+        { principalType: { $in: ['user', 'refresh_token'] } },
+        { principalType: { $exists: false } }
+      ] });
+      await tokenSessionStore.deleteUserSessions(String(accountId), String(id));
+    }
+    return removed;
   };
 }
 
