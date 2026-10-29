@@ -180,3 +180,10 @@ test('floor map coordinate and detail routes enforce floor-map actions', () => {
     "floorMapRouter.delete('/coordinate/:id', validateParamId, hasRolePermission('floorMap', 'delete_kpi')"
   ]);
 });
+
+
+test('mail preference mutation uses the dedicated asset-mail permission', () => {
+  expectAll('src/modules/mappings/routes/userAsset.routes.ts', [
+    "router.post('/updateAssetsFlags', hasRolePermission('asset_mail', 'edit')"
+  ]);
+});
