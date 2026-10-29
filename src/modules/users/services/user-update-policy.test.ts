@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, pickUserCreateFields, pickUserUpdateFields } from './user-update-policy';
+import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, canAssignUserRole, pickUserCreateFields, pickUserUpdateFields, shouldRevokeUserSessionsAfterUpdate } from './user-update-policy';
 
 test('user mutation filter is bound to account and active visibility', () => {
   assert.deepEqual(buildUserAccountFilter('user-1', 'account-1'), {
@@ -75,4 +75,22 @@ test('location-wise users require both location and returned users to match the 
     account_id: 'account-1',
     visible: { $ne: false }
   });
+});
+
+
+test('only administrators may assign privileged roles', () => {
+  assert.equal(canAssignUserRole('admin', 'admin', 'employee'), true);
+  assert.equal(canAssignUserRole('manager', 'manager', 'employee'), false);
+  assert.equal(canAssignUserRole('manager', 'employee', 'employee'), true);
+  assert.equal(canAssignUserRole('manager', 'employee', 'admin'), false);
+  assert.equal(canAssignUserRole('employee', 'employee', 'employee'), false);
+});
+
+test('authorization-sensitive profile changes require session revocation', () => {
+  const current = { user_role: 'employee', user_status: 'active', email: 'a@example.com', username: 'a' };
+  assert.equal(shouldRevokeUserSessionsAfterUpdate(current, { firstName: 'B' } as any), false);
+  assert.equal(shouldRevokeUserSessionsAfterUpdate(current, { user_role: 'manager' }), true);
+  assert.equal(shouldRevokeUserSessionsAfterUpdate(current, { user_status: 'inactive' }), true);
+  assert.equal(shouldRevokeUserSessionsAfterUpdate(current, { email: 'b@example.com' }), true);
+  assert.equal(shouldRevokeUserSessionsAfterUpdate(current, { username: 'b' }), true);
 });
