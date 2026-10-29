@@ -138,7 +138,7 @@ For every discovered module:
 | P0 | CMMS-Angular | a7e14c77821ca7a3e501636367c94de0cd9b1fc1 | Previous auth guard/interceptor checkpoint | baseline |
 | P1 | both | pending | Inventory + canonical permission catalogue | pending |
 | P2 | backend | 6d3b4129ad0b8e71ae40d38d94bb3400b7c16250 | Source invariants inspected; local test execution blocked by sandbox DNS; GitHub status checks not exposed | code complete / runtime verification pending |
-| P3 | backend | pending | Module route/service authorization | pending |
+| P3 | backend | 3298f4e90f4e204b172f4a78c46207abb4de2a81 | Source coverage verified for core, maintenance, work-order, inventory, communications, mappings, admin settings, company and reports; runtime test/build pending | code complete / runtime verification pending |
 | P4 | frontend | pending | Route/menu/action authorization | pending |
 | P5 | both | pending | Full verification and final review | pending |
 
@@ -158,3 +158,13 @@ For every discovered module:
 - Trusted first-user bypass exists only in `hasRolePermission`; account-feature checks are unchanged.
 - Admin platform-control now includes missing routed modules/actions; lower roles receive the same keys with denied defaults.
 - Verification limitation: this harness cannot resolve github.com for local checkout, and connector status checks are currently empty. Re-run `npm run typecheck && npm run test:cmms && npm run build` when executable CI/local access is available.
+
+
+### Resume note — backend module authorization
+- Current backend checkpoint: `3298f4e90f4e204b172f4a78c46207abb4de2a81`.
+- Owner model: first user receives current admin defaults during authentication, then normal account feature caps are applied; route middleware has no unconditional owner bypass.
+- Legacy role documents inherit missing current-role defaults while preserving explicit stored overrides.
+- Assets/Locations, Maintenance/Library, Work Orders/Requests, Inventory, Posts/Comments, mappings, analysis settings, user logs, company lifecycle, and location report updates now declare function-level permissions.
+- Company ruling: list/detail remain authenticated + tenant-scoped; account update requires `admin_panel.edit`; account create/delete are first-user-only; delete additionally validates target account equals authenticated account.
+- Troubleshooting guides and work instructions use the existing `procedures` permission because they are shared procedure/library content and no separate account feature exists.
+- Runtime verification remains pending because the sandbox cannot resolve github.com for a local checkout and commit status checks are empty. Required backend verification when executable: `npm run typecheck && npm run test:cmms && npm run build`.
