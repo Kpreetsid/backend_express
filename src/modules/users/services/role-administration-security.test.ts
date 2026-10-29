@@ -9,6 +9,8 @@ test('role administration protects first user permissions', () => {
   const source = read('src/modules/users/controllers/roles.controller.ts');
   assert.match(source, /First user permissions cannot be modified/);
   assert.match(source, /First user permissions cannot be removed/);
+  assert.match(source, /You cannot modify an administrator permission profile/);
+  assert.match(source, /canDelegatePlatformControl/);
 });
 
 test('permission changes revoke affected user sessions', () => {
