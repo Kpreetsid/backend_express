@@ -84,9 +84,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     const token_id = new mongoose.Types.ObjectId();
     const userTokenPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id), jti: String(token_id), sessionStartedAt };
     const token = generateAccessToken(userTokenPayload);
-    let userRoleData: any = await rolesService.verifyUserRole(String(user._id), String(user.account_id));
-    if (!userRoleData) {
-      userRoleData = await rolesService.createUserRole(user.user_role, user);
+    if (!await rolesService.verifyUserRole(String(user._id), String(user.account_id))) {
+      await rolesService.createUserRole(user.user_role, user);
     }
     const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
     const expiresAt = new Date(Date.now() + accessTtlSeconds * 1000);
@@ -103,9 +102,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     });
     await userTokenData.save();
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
-    const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id, new Date(sessionStartedAt));
-    const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(user, userRoleData, userAccount[0]);
-    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
+    await refreshTokenService.issueForUser(req, res, user, token_id, new Date(sessionStartedAt));
 
     // Cookie-backed browser login is mandatory for every eligible account.
     // Keep the legacy response token temporarily for existing clients until the
@@ -279,15 +276,12 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     if (!userDetails) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
-    const { password: _, ...safeUser } = userDetails.toObject();
-    const newSafeUserValue: any = { id: safeUser._id, ...safeUser }
     const accountDetails = await companyService.getAllCompanies({ _id: userDetails.account_id });
     if (!accountDetails || accountDetails.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
-    let userRoleMenu: any = await rolesService.verifyUserRole(String(userDetails._id), String(userDetails.account_id));
-    if (!userRoleMenu) {
-      userRoleMenu = await rolesService.createUserRole(userDetails.user_role, userDetails);
+    if (!await rolesService.verifyUserRole(String(userDetails._id), String(userDetails.account_id))) {
+      await rolesService.createUserRole(userDetails.user_role, userDetails);
     }
     const token_id = new mongoose.Types.ObjectId();
     const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id), jti: String(token_id) };
@@ -309,9 +303,8 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     });
     await userTokenData.save();
     await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal: true, isInternal: true });
-    const refreshSession = await refreshTokenService.issueForUser(req, res, userDetails, token_id);
+    await refreshTokenService.issueForUser(req, res, userDetails, token_id);
     const safeRedirectPath = '/dashboard';
-    const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(userDetails, userRoleMenu, accountDetails[0]);
     const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id });
 
     setAccessCookies(res, {
