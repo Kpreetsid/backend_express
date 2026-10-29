@@ -19,9 +19,9 @@ const EXCLUDED_PATHS = [
  * or suffixes contain a public endpoint name.
  */
 export const isCsrfExemptRequestPath = (rawPath: string): boolean => {
-  const path = String(rawPath || '').split('?')[0].replace(/\\/+$/, '').toLowerCase();
+  const path = String(rawPath || '').split('?')[0].replace(new RegExp('/+$'), '').toLowerCase();
   const prefix = path.indexOf('/api/');
-  const scoped = prefix >= 0 ? path.slice(prefix).replace(/^\\/api\\/v[0-9]+\\//, '/api/') : path;
+  const scoped = prefix >= 0 ? path.slice(prefix).replace(new RegExp('^/api/v[0-9]+/'), '/api/') : path;
   return EXCLUDED_PATHS.some((excluded) => scoped === excluded.toLowerCase());
 };
 const isExcludedPath = (req: Request): boolean =>
