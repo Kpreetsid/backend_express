@@ -14,10 +14,18 @@ const EXCLUDED_PATHS = [
   '/api/reset-password'
 ];
 
-const isExcludedPath = (req: Request): boolean => {
-  const path = (req.originalUrl || req.path || '').toLowerCase();
-  return EXCLUDED_PATHS.some((excluded) => path.includes(excluded.toLowerCase()));
+/**
+ * Exempt only exact known routes, not arbitrary URLs whose query parameters
+ * or suffixes contain a public endpoint name.
+ */
+export const isCsrfExemptRequestPath = (rawPath: string): boolean => {
+  const path = String(rawPath || '').split('?')[0].replace(/\\/+$/, '').toLowerCase();
+  const prefix = path.indexOf('/api/');
+  const scoped = prefix >= 0 ? path.slice(prefix).replace(/^\\/api\\/v[0-9]+\\//, '/api/') : path;
+  return EXCLUDED_PATHS.some((excluded) => scoped === excluded.toLowerCase());
 };
+const isExcludedPath = (req: Request): boolean =>
+  isCsrfExemptRequestPath(req.originalUrl || req.path || '');
 
 const isCookieAuthenticatedRequest = (req: Request): boolean => {
   return cookieService.has(req, [cookieAuth.accessCookieName, LEGACY_ACCESS_COOKIE_NAME, refreshToken.cookieName]);
