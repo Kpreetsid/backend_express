@@ -55,6 +55,28 @@ export const hasRolePermission = (moduleName: string, action: string) => {
   };
 };
 
+
+export const hasAnyRolePermission = (rules: ReadonlyArray<readonly [string, string]>) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const roleMenu: any = get(req, "role", {}) as IUserRoleMenu;
+      if (!user?.user_role) {
+        throw Object.assign(new Error("Unauthorized access"), { status: 403 });
+      }
+      if (!USER_ROLES.includes(user.user_role)) {
+        throw Object.assign(new Error("Invalid user role"), { status: 403 });
+      }
+      if (!rules.some(([moduleName, action]) => roleMenu?.[moduleName]?.[action] === true)) {
+        throw Object.assign(new Error("You do not have permission to access."), { status: 403 });
+      }
+      return next();
+    } catch (err) {
+      next(err);
+    }
+  };
+};
+
 export const hasAccountFeature = (menuKey: string, action: AccountAction = "view") => {
   validateFeatureRule(menuKey, action);
   return (req: Request, res: Response, next: NextFunction) => {
