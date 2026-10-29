@@ -5,7 +5,7 @@ import { WorkOrderModel } from '../../modules/work-orders/models/workOrder.model
 import { PartsModel } from '../../modules/inventory/models/part.model';
 import { PartsTypeModel } from '../../modules/inventory/models/parts-types.model';
 import { ReportAssetModel } from '../../modules/reports/models/assetReport.model';
-import { cmmsMetrics, cmmsPeriod, cmmsSpareRows } from './cmms-report';
+import { cmmsMetrics, cmmsPeriod, cmmsSpareRows, cmmsSpareResponse, cmmsSummaryResponse } from './cmms-report';
 
 interface LocationRecord {
   _id: unknown;
@@ -152,13 +152,13 @@ export const cmmsDataService = {
       const locationSpares = spareRows.filter(part => locationSet.has(part.location_id));
       return {
         ...location,
-        summary: cmmsMetrics(locationOrders, locationSpares, reports, locationAssets, request.org_id, period, now),
+        summary: cmmsSummaryResponse(cmmsMetrics(locationOrders, locationSpares, reports, locationAssets, request.org_id, period, now)),
         asset_data: location.asset_data.map(asset => {
           const train = new Set([asset._id, ...asset.child_assets.map(child => child._id)]);
           const trainOrders = locationOrders.filter(order => train.has(id(order.wo_asset_id)));
           const usedParts = new Set(trainOrders.flatMap(order => (order.parts || []).map(part => id(part.part_id))));
           return { ...asset,
-            summary: cmmsMetrics(trainOrders, locationSpares.filter(part => usedParts.has(part.part_id)), reports, train, request.org_id, period, now)
+            summary: cmmsSummaryResponse(cmmsMetrics(trainOrders, locationSpares.filter(part => usedParts.has(part.part_id)), reports, train, request.org_id, period, now))
           };
         })
       };
@@ -168,11 +168,11 @@ export const cmmsDataService = {
       snapshot_at: now.toISOString(),
       locations: locationsData,
       cmms_summary: locationsData.flatMap(location => location.asset_data.map(asset => ({
-        asset_id: asset._id, asset_name: asset.asset_name,
-        location_id: asset.locationId, location_name: asset.location_name, ...asset.summary
+        asset_id: asset._id, asset_name: asset.asset_name || 'N/A',
+        location_id: asset.locationId || 'N/A', location_name: asset.location_name || 'N/A', ...asset.summary
       }))),
-      week_total_snapshot: cmmsMetrics(scopedOrders, spareRows, reports, allAssetIds, request.org_id, period, now),
-      critical_spares_stock_replenishment: replenishmentRows,
+      week_total_snapshot: cmmsSummaryResponse(cmmsMetrics(scopedOrders, spareRows, reports, allAssetIds, request.org_id, period, now)),
+      critical_spares_stock_replenishment: replenishmentRows.map(cmmsSpareResponse),
       metadata: {
         currency: 'INR', stale_after_hours: period.staleAfterHours,
         pm_basis: 'Visible, non-rejected preventive WOs due in the period (start date fallback); completed and overdue use this same cohort.',
@@ -183,8 +183,9 @@ export const cmmsDataService = {
         sensor_basis: 'Peak is the historical maximum in saved reports as of snapshot_at; oldest is the oldest reading in the most recent saved snapshot for each endpoint axis.',
         sensor_reading_timezone: 'Asia/Kolkata', sensor_reading_format: 'dd/mm/yyyy hh:mm:ss (24-hour)',
         summary_basis: 'cmms_summary contains top-level assets only; location-only WOs remain in location summaries and week_total_snapshot.',
-        asset_spare_basis: 'Asset stock association is inferred from WO part references. Replenishment has one row per part and associated asset, or null asset fields if unlinked; shared stock is repeated per asset and location/global stock counts deduplicate part IDs.',
-        null_fields: ['downtime_h when breakdowns exist: equipment downtime is not recorded',
+        asset_spare_basis: 'Asset stock association is inferred from WO part references. Replenishment has one row per part and associated asset, or N/A asset fields if unlinked; shared stock is repeated per asset and location/global stock counts deduplicate part IDs.',
+        response_defaults: 'Missing numeric report values are returned as 0; missing text/date report values as N/A. These defaults do not establish recorded measurements or costs; data quality flags retain source-data status.',
+        unavailable_source_fields: ['downtime_h when breakdowns exist: equipment downtime is not recorded',
           'labor_cost_inr when labor is logged: labor rates are not recorded',
           'total_cost_inr when either cost component is unavailable',
           'max_stock, reorder_to_max_qty and replenishment_inr for low stock: maximum stock is not recorded',

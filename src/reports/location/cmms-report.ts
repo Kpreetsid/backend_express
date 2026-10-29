@@ -149,6 +149,37 @@ export function cmmsSpareRows(parts: CmmsPart[], partTypes: { _id: unknown; name
 }
 
 type SpareRow = ReturnType<typeof cmmsSpareRows>[number];
+
+// Apply API display defaults after calculations so missing source data still
+// participates in quality checks and is never treated as a recorded zero.
+export function cmmsSummaryResponse(summary: ReturnType<typeof cmmsMetrics>) {
+  return {
+    ...summary,
+    downtime_h: summary.downtime_h ?? 0,
+    spare_cost_inr: summary.spare_cost_inr ?? 0,
+    labor_cost_inr: summary.labor_cost_inr ?? 0,
+    total_cost_inr: summary.total_cost_inr ?? 0,
+    low_critical_spares: summary.low_critical_spares ?? 0,
+    peak_endpoint_rms_mm_s: summary.peak_endpoint_rms_mm_s ?? 0,
+    oldest_sensor_reading: summary.oldest_sensor_reading || 'N/A'
+  };
+}
+
+export function cmmsSpareResponse(row: SpareRow & { asset_id: string | null; asset_name: string | null }) {
+  return {
+    ...row,
+    asset_id: row.asset_id || 'N/A', asset_name: row.asset_name || 'N/A',
+    location_id: row.location_id || 'N/A', location_name: row.location_name || 'N/A',
+    spare_part_name: row.spare_part_name || 'N/A', spare_part_code: row.spare_part_code || 'N/A',
+    classification: row.classification || 'N/A', supplier: row.supplier || 'N/A',
+    responsible_group: row.responsible_group || 'N/A',
+    on_hand_stock: row.on_hand_stock ?? 0, min_stock: row.min_stock ?? 0,
+    max_stock: row.max_stock ?? 0, reorder_to_max_qty: row.reorder_to_max_qty ?? 0,
+    lead_time_days: row.lead_time_days ?? 0, unit_cost_inr: row.unit_cost_inr ?? 0,
+    replenishment_inr: row.replenishment_inr ?? 0
+  };
+}
+
 export function cmmsMetrics(orders: CmmsOrder[], spares: SpareRow[], reports: CmmsSensorReport[],
   assetIds: Set<string>, orgId: string, period: CmmsPeriod, asOf: Date) {
   const inPeriod = (value: unknown) => {

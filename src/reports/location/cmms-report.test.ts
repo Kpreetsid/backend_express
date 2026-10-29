@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cmmsMetrics, cmmsPeriod, cmmsSpareRows, reportDate, CmmsOrder, CmmsSensorReport } from './cmms-report';
+import { cmmsMetrics, cmmsPeriod, cmmsSpareRows, cmmsSummaryResponse, cmmsSpareResponse, reportDate, CmmsOrder, CmmsSensorReport } from './cmms-report';
 
 const now = new Date('2026-10-26T08:00:00.000Z');
 const period = cmmsPeriod({ from_date: '2026-10-19', to_date: '2026-10-25' }, now);
@@ -8,6 +8,47 @@ const org = '68aff3fb2517f347390f5f01';
 const assetIds = new Set(['train', 'motor']);
 const metrics = (orders: CmmsOrder[], reports: CmmsSensorReport[] = []) =>
   cmmsMetrics(orders, [], reports, assetIds, org, period, now);
+
+test('summary response defaults unknown numbers to zero and dates to N/A without changing source quality', () => {
+  const raw = metrics([{ _id: 'wo', start_date: '2026-10-21T12:00:00Z', type: 'Breakdown', actual_time: 2,
+    parts: [{ actualQuantity: 2 }] }]);
+  const result = cmmsSummaryResponse(raw);
+  assert.equal(raw.downtime_h, null);
+  assert.equal(raw.spare_cost_inr, null);
+  for (const field of ['downtime_h', 'spare_cost_inr', 'labor_cost_inr', 'total_cost_inr', 'peak_endpoint_rms_mm_s'] as const) {
+    assert.equal(result[field], 0);
+    assert.equal(typeof result[field], 'number');
+  }
+  assert.equal(result.breakdown_wos, 1);
+  assert.equal(result.spare_qty_used, 2);
+  assert.equal(result.oldest_sensor_reading, 'N/A');
+  assert.equal(result.data_quality_flag, 'NO_DATA');
+  const known = cmmsSummaryResponse(metrics([], [{ createdOn: now, assetId: 'motor', endpointRMSData: [{
+    velocity: { Axial: { rms: 1.81, timestamp: '2026-10-26T06:00:00Z' } }
+  }] }]));
+  assert.equal(known.peak_endpoint_rms_mm_s, 1.81);
+  assert.equal(known.oldest_sensor_reading, '26/10/2026 11:30:00');
+});
+
+test('spare response defaults missing fields by type and preserves known text and numbers', () => {
+  const [raw] = cmmsSpareRows([{ _id: 'part', part_name: 'Bearing', part_number: 'BRG',
+    quantity: 1, min_quantity: 3, cost: 1250, lead_time_days: 0 }], [], new Map());
+  const row = cmmsSpareResponse({ ...raw, asset_id: null, asset_name: null });
+  assert.equal(row.asset_id, 'N/A');
+  assert.equal(row.asset_name, 'N/A');
+  assert.equal(row.location_name, 'N/A');
+  assert.equal(row.supplier, 'N/A');
+  assert.equal(row.classification, 'N/A');
+  assert.equal(row.responsible_group, 'N/A');
+  assert.equal(row.spare_part_name, 'Bearing');
+  assert.equal(row.unit_cost_inr, 1250);
+  assert.equal(row.lead_time_days, 0);
+  assert.equal(row.max_stock, 0);
+  assert.equal(row.reorder_to_max_qty, 0);
+  assert.equal(row.replenishment_inr, 0);
+  assert.equal(row.stock_status, 'LOW');
+  assert.equal(raw.max_stock, null);
+});
 
 test('PM cohort counts due work and excludes rejected work; open count includes future-due work once', () => {
   const orders: CmmsOrder[] = [

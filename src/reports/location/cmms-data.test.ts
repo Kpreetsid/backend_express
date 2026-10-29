@@ -88,6 +88,13 @@ test('all database reads enforce tenant and visibility and invalid requests neve
   assert.equal(data.locations[0].asset_data.length, 2);
   assert.equal(data.cmms_summary.length, 2);
   assert.equal(data.week_total_snapshot.pm_planned, 0);
+  for (const summary of [data.locations[0].summary, data.locations[0].asset_data[0].summary,
+    data.cmms_summary[0], data.week_total_snapshot]) {
+    assert.equal(summary.peak_endpoint_rms_mm_s, 0);
+    assert.equal(summary.oldest_sensor_reading, 'N/A');
+    assert.equal(summary.data_quality_flag, 'NO_DATA');
+    assert.ok(Object.values(summary).every(value => value !== null && value !== undefined));
+  }
 });
 
 test('controller returns the standard envelope and forwards validation errors', async t => {
@@ -180,10 +187,11 @@ test('shared spare associations are deduplicated per asset and never multiply st
   }
   const result = await cmmsDataService.getData({ org_id: org, location_ids: [root] }, org);
   assert.deepEqual(result.critical_spares_stock_replenishment.map(row => [row.part_id, row.asset_id, row.asset_name]),
-    [['shared', 'motor', 'Motor'], ['shared', 'pump', 'Pump'], ['unlinked', null, null]]);
+    [['shared', 'motor', 'Motor'], ['shared', 'pump', 'Pump'], ['unlinked', 'N/A', 'N/A']]);
   assert.ok(result.critical_spares_stock_replenishment.every(row => row.location_name === 'Plant' && !('asset_location' in row)));
   assert.equal(result.week_total_snapshot.low_critical_spares, 2);
   assert.equal(result.locations[0].summary.low_critical_spares, 2);
+  assert.ok(result.critical_spares_stock_replenishment.every(row => Object.values(row).every(value => value !== null && value !== undefined)));
 });
 
 test('an empty location returns no synthetic asset summary row', async t => {
