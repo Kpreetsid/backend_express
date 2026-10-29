@@ -13,7 +13,15 @@ export default (router: express.Router) => {
     userRouter.post('/external_auth', rateLimiter.authLimiter, authenticationByToken);
     userRouter.post('/refresh', rateLimiter.authLimiter, refreshAccessToken);
     userRouter.post('/updatePassword', rateLimiter.passwordResetValidateLimiter, resetPassword);
-    userRouter.get('/logout', isLogOutAuthenticated, userLogOut);
+    // Browser cookies require a CSRF-protected state-changing POST. Keep
+    // bearer-only GET for integrations during the bounded migration.
+    userRouter.get('/logout', (req, res, next) => {
+        if (!/^Bearer\s+\S+$/i.test(String(req.get('authorization') || ''))) {
+            return res.status(405).json({ status: false, message: 'Use POST to log out' });
+        }
+        next();
+    }, isLogOutAuthenticated, userLogOut);
+    userRouter.post('/logout', isLogOutAuthenticated, userLogOut);
     userRouter.get('/me', isAuthenticated, getMe);
     userRouter.post('/authorize-feature', isAuthenticated, authorizeFeature);
     router.post('/auth/refresh', rateLimiter.authLimiter, refreshAccessToken);
