@@ -78,3 +78,28 @@ export const isProtectedFirstUserMutation = (
   if (updates.user_status !== undefined && String(updates.user_status) !== 'active') return true;
   return false;
 };
+
+/**
+ * Account user administration is not a substitute for unrestricted identity
+ * management. A manager may edit non-security profile data only.
+ */
+export const canModifyUserRecord = (
+  actor: { _id?: unknown; user_role?: string; isFirstUser?: boolean },
+  target: { _id?: unknown; user_role?: string; isFirstUser?: boolean },
+  changes: Record<string, unknown> = {}
+): boolean => {
+  const keys = Object.keys(changes);
+  if (!keys.length) return false;
+  const isSelf = String(actor._id || '') === String(target._id || '');
+  const sensitive = keys.some(key => ['user_role', 'user_status', 'email', 'username'].includes(key));
+  if (target.isFirstUser && actor.isFirstUser !== true && sensitive) return false;
+  if (isSelf && sensitive) return false;
+  if (actor.isFirstUser === true && actor.user_role === 'admin') return true;
+  if (actor.user_role === 'admin') return true;
+  if (actor.user_role === 'manager') {
+    return !target.isFirstUser && target.user_role !== 'admin' && !sensitive;
+  }
+  return isSelf && !sensitive && keys.every(key =>
+    ['firstName', 'lastName', 'phone_no', 'user_profile_img', 'isTourCompleted'].includes(key)
+  );
+};
