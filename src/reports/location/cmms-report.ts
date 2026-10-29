@@ -14,7 +14,7 @@ export interface CmmsOrder {
   actual_end_date?: unknown;
   actual_time?: number;
   parts?: { part_id?: unknown; actualQuantity?: number; issuedQuantity?: number; returnedQuantity?: number; cost?: number; currency?: string }[];
-  labor_entries?: { hours: number }[];
+  labor_entries?: { hours: number; labor_cost?: number | null }[];
 }
 
 export interface CmmsPart {
@@ -206,10 +206,16 @@ export function cmmsMetrics(orders: CmmsOrder[], spares: SpareRow[], reports: Cm
       }
     }
   }
+  // labor_cost is the total amount for an entry, not an hourly rate. Sum
+  // recorded amounts even when other entries have no cost; never infer rates.
+  const recordedLaborCosts = cohort.flatMap(order => (order.labor_entries || [])
+    .map(entry => number(entry.labor_cost)).filter((cost): cost is number => cost !== null));
   const laborUnpriced = cohort.some(order => (number(order.actual_time) || 0) > 0 ||
     (order.labor_entries || []).some(entry => (number(entry.hours) || 0) > 0));
   const breakdownCount = cohort.filter(breakdown).length;
-  const laborCost = laborUnpriced ? null : 0;
+  const laborCost = recordedLaborCosts.length
+    ? round(recordedLaborCosts.reduce((total, cost) => total + cost, 0))
+    : laborUnpriced ? null : 0;
   return {
     planner_wos: plannerCount,
     completed_wos: completedCount,

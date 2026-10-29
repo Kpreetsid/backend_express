@@ -104,7 +104,7 @@ test('actual consumption uses unit cost and net issued quantities, never planned
   assert.equal(result.total_cost_inr, 3460);
 });
 
-test('missing labor rates, downtime, part price and foreign currency are not reported as known zero costs', () => {
+test('missing labor costs, downtime, part price and foreign currency are not reported as known zero costs', () => {
   const result = metrics([{ _id: 'wo', start_date: '2026-10-21T12:00:00Z', nature_of_work: 'Breakdown', actual_time: 6.3,
     parts: [{ actualQuantity: 2, cost: 100, currency: 'USD' }], labor_entries: [{ hours: 2 }] }]);
   assert.equal(result.planner_wos, 0);
@@ -195,4 +195,47 @@ test('defaults to Monday IST week to now and validates explicit date ranges and 
     assert.throws(() => cmmsPeriod(input, now), { status: 400 });
   }
   assert.equal(reportDate('1793001600')?.toISOString(), new Date(1793001600000).toISOString());
+});
+
+test('recorded labor entry totals are summed once and included in total cost', () => {
+  const result = metrics([{ _id: 'wo', start_date: '2026-10-21', actual_time: 33,
+    labor_entries: [{ hours: 10, labor_cost: 2500 }, { hours: 2, labor_cost: 125.50 }],
+    parts: [{ actualQuantity: 2, cost: 100, currency: 'INR' }] }]);
+  assert.equal(result.labor_cost_inr, 2625.50);
+  assert.equal(result.total_cost_inr, 2825.50);
+  assert.equal(cmmsSummaryResponse(result).labor_cost_inr, 2625.50);
+});
+
+test('recorded labor costs survive unpriced labor elsewhere in the cohort', () => {
+  const result = metrics([
+    { _id: 'priced', start_date: '2026-10-21', labor_entries: [{ hours: 10, labor_cost: 2500 }, { hours: 1 }] },
+    { _id: 'unpriced', start_date: '2026-10-21', actual_time: 2, labor_entries: [{ hours: 2, labor_cost: null }] }
+  ]);
+  assert.equal(result.labor_cost_inr, 2500);
+  assert.equal(result.total_cost_inr, 2500);
+});
+
+test('labor costs honor the report cohort, creation-date fallback and rejected status', () => {
+  const result = metrics([
+    { _id: 'in-period', start_date: '2026-10-21', labor_entries: [{ hours: 2, labor_cost: 100 }] },
+    { _id: 'creation-fallback', createdAt: '2026-10-22', labor_entries: [{ hours: 2, labor_cost: 200 }] },
+    { _id: 'old', start_date: '2026-10-01', labor_entries: [{ hours: 2, labor_cost: 1000 }] },
+    { _id: 'future', start_date: '2026-11-01', labor_entries: [{ hours: 2, labor_cost: 1000 }] },
+    { _id: 'rejected', start_date: '2026-10-21', status: 'Rejected', labor_entries: [{ hours: 2, labor_cost: 1000 }] }
+  ]);
+  assert.equal(result.labor_cost_inr, 300);
+  assert.equal(result.total_cost_inr, 300);
+});
+
+test('explicit zero labor cost is recorded, invalid amounts are ignored and sums round to cents', () => {
+  const zero = metrics([{ _id: 'wo', start_date: '2026-10-21', actual_time: 10,
+    labor_entries: [{ hours: 10, labor_cost: 0 }] }]);
+  assert.equal(zero.labor_cost_inr, 0);
+  assert.equal(zero.total_cost_inr, 0);
+  const result = metrics([{ _id: 'wo', start_date: '2026-10-21', labor_entries: [
+    { hours: 1, labor_cost: 0.1 }, { hours: 1, labor_cost: 0.2 },
+    { hours: 1, labor_cost: -1 }, { hours: 1, labor_cost: NaN }, { hours: 1, labor_cost: Infinity }
+  ] }]);
+  assert.equal(result.labor_cost_inr, 0.3);
+  assert.equal(result.total_cost_inr, 0.3);
 });

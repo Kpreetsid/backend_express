@@ -250,3 +250,33 @@ test('all WO totals sum displayed asset rows, excluding location-only WOs', asyn
   assert.equal(result.locations[0].summary.completed_wos, 2);
   assert.equal(result.locations[0].summary.breakdown_wos, 2);
 });
+
+test('Test Planner - 1 labor cost reaches asset, location and unique report totals', async t => {
+  const orders = [
+    { _id: '6ae2f54dbe43e0c284289b3c', title: 'Test Planner - 1', wo_asset_id: 'motor', wo_location_id: root,
+      createdFrom: 'Work Order', status: 'In-Progress', start_date: '2026-10-29T00:00:00Z',
+      actual_start_date: '2026-10-30T16:00:00Z', actual_time: 33,
+      labor_entries: [{ hours: 10, labor_cost: 2500 }] },
+    { _id: 'unpriced', wo_asset_id: 'motor', start_date: '2026-10-29', actual_time: 2 },
+    { _id: 'location-only', wo_location_id: root, start_date: '2026-10-29', labor_entries: [{ hours: 2, labor_cost: 500 }] }
+  ];
+  for (const [model, records] of [[LocationModel, locations], [AssetModel, assets], [WorkOrderModel, orders],
+    [PartsModel, []], [PartsTypeModel, []], [ReportAssetModel, []]] as const) {
+    t.mock.method(model, 'find', (() => {
+      const query: any = { select: () => query, sort: () => query, lean: async () => records };
+      return query;
+    }) as any);
+  }
+  const result = await cmmsDataService.getData({ org_id: org, location_ids: [root, root],
+    from_date: '2026-10-26', to_date: '2026-10-29' }, org);
+  for (const summary of [result.locations[0].asset_data[0].summary, result.cmms_summary[0]]) {
+    assert.equal(summary.labor_cost_inr, 2500);
+    assert.equal(summary.total_cost_inr, 2500);
+  }
+  assert.equal(result.cmms_summary[1].labor_cost_inr, 0);
+  for (const summary of [result.locations[0].summary, result.week_total_snapshot]) {
+    assert.equal(summary.labor_cost_inr, 3000);
+    assert.equal(summary.total_cost_inr, 3000);
+  }
+  assert.match(result.metadata.labor_cost_basis, /without multiplying by hours/);
+});

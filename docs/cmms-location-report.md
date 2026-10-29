@@ -37,7 +37,7 @@ Summary metrics (location, asset, flat rows and overall totals) and replenishmen
 | Downtime (h) | `downtime_h` | Zero; equipment downtime is not recorded |
 | Spare qty used | `spare_qty_used` | Actual quantity; net issued minus returned fallback; never estimated/planned quantity |
 | Spare cost (INR) | `spare_cost_inr` | Quantity consumed multiplied by recorded WO unit cost |
-| Labor cost (INR) | `labor_cost_inr` | Zero fallback when labor hours exist because rates are not stored; otherwise zero recorded cost |
+| Labor cost (INR) | `labor_cost_inr` | Sum of recorded `labor_entries[].labor_cost` entry totals in INR for the period cohort; never multiplied by hours. Unpriced entries are excluded; zero fallback if labor is logged with no recorded costs |
 | Total cost (INR) | `total_cost_inr` | Spare plus labor cost; zero fallback if either is unknown |
 | Low critical spares | `low_critical_spares` | Unique critical parts below minimum or out of stock; zero fallback if low stock has unknown criticality |
 | Peak endpoint RMS (mm/s) | `peak_endpoint_rms_mm_s` | Historical maximum saved velocity RMS across the asset and its child components |
