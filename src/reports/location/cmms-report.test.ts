@@ -59,7 +59,7 @@ test('historical peak differs from newest reading and sensor age uses latest sav
   ];
   const result = metrics([], reports);
   assert.equal(result.peak_endpoint_rms_mm_s, 16.75);
-  assert.equal(result.oldest_sensor_reading, '26 10 2026 11 30 00');
+  assert.equal(result.oldest_sensor_reading, '26/10/2026 11:30:00');
   assert.equal(result.data_quality_flag, 'RECENT');
 });
 
@@ -72,7 +72,7 @@ test('a stale component makes the train stale and readings from other assets do 
   const result = metrics([], reports);
   assert.equal(result.data_quality_flag, 'STALE');
   assert.equal(result.peak_endpoint_rms_mm_s, 2);
-  assert.equal(result.oldest_sensor_reading, '20 10 2026 11 30 00');
+  assert.equal(result.oldest_sensor_reading, '20/10/2026 11:30:00');
 });
 
 test('missing, zero, future and absent velocity data produce explicit quality flags', () => {
@@ -91,7 +91,7 @@ test('sensor timestamp formatting uses IST date rollover and padded 24-hour comp
   const result = metrics([], [{ createdOn: now, assetId: 'motor', endpointRMSData: [{
     velocity: { Axial: { rms: 1, timestamp: '2025-12-31T18:35:09Z' } }
   }] }]);
-  assert.equal(result.oldest_sensor_reading, '01 01 2026 00 05 09');
+  assert.equal(result.oldest_sensor_reading, '01/01/2026 00:05:09');
   assert.equal(result.data_quality_flag, 'STALE');
 });
 

@@ -181,7 +181,7 @@ export const cmmsDataService = {
         open_work_order_basis: 'open_overdue_wos counts all non-completed/non-rejected WOs once, including overdue ones; overdue_wos provides the overdue subset.',
         sensor_source: 'Persisted asset report endpointRMSData.velocity, not a live processor query.',
         sensor_basis: 'Peak is the historical maximum in saved reports as of snapshot_at; oldest is the oldest reading in the most recent saved snapshot for each endpoint axis.',
-        sensor_reading_timezone: 'Asia/Kolkata', sensor_reading_format: 'dd mm yyyy hh mm ss (24-hour)',
+        sensor_reading_timezone: 'Asia/Kolkata', sensor_reading_format: 'dd/mm/yyyy hh:mm:ss (24-hour)',
         summary_basis: 'cmms_summary contains top-level assets only; location-only WOs remain in location summaries and week_total_snapshot.',
         asset_spare_basis: 'Asset stock association is inferred from WO part references. Replenishment has one row per part and associated asset, or null asset fields if unlinked; shared stock is repeated per asset and location/global stock counts deduplicate part IDs.',
         null_fields: ['downtime_h when breakdowns exist: equipment downtime is not recorded',

@@ -61,8 +61,9 @@ export function reportDate(value: unknown): Date | null {
 function formatIst(date: Date): string {
   const local = new Date(date.getTime() + 330 * 60000);
   const pad = (value: number) => String(value).padStart(2, '0');
-  return [pad(local.getUTCDate()), pad(local.getUTCMonth() + 1), local.getUTCFullYear(),
-    pad(local.getUTCHours()), pad(local.getUTCMinutes()), pad(local.getUTCSeconds())].join(' ');
+  const day = [pad(local.getUTCDate()), pad(local.getUTCMonth() + 1), local.getUTCFullYear()].join('/');
+  const time = [pad(local.getUTCHours()), pad(local.getUTCMinutes()), pad(local.getUTCSeconds())].join(':');
+  return `${day} ${time}`;
 }
 
 export function cmmsPeriod(body: unknown, now = new Date()): CmmsPeriod {
