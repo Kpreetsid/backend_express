@@ -98,7 +98,7 @@ test('custom observation and work-order comment actions obey their child account
 });
 
 
-test('legacy role documents inherit newly introduced defaults without overriding explicit choices', async () => {
+test('legacy role documents give administrators the complete current catalogue while lower roles keep explicit choices', async () => {
   const account: any = { experience_profile: 'standard_account', account_role_menu: {} };
 
   const admin = await accountAccessService.getEffectivePermissionsForUser(
@@ -108,7 +108,7 @@ test('legacy role documents inherit newly introduced defaults without overriding
   );
   assert.equal(admin.platformControl.inspections.view, true);
   assert.equal(admin.platformControl.work_order_templates.add, true);
-  assert.equal(admin.platformControl.inventory.delete, false);
+  assert.equal(admin.platformControl.inventory.delete, true);
 
   const manager = await accountAccessService.getEffectivePermissionsForUser(
     { user_role: 'manager', isFirstUser: false },
