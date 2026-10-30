@@ -47,7 +47,7 @@ test('spare response defaults missing fields by type and preserves known text an
   assert.equal(raw.max_stock, null);
 });
 
-test('planner requires exact Preventive creation source; completed and open include all sources and dates', () => {
+test('planner requires exact Preventive source and all WO counters strictly follow report dates', () => {
   const orders: CmmsOrder[] = [
     { _id: 'pm1', createdFrom: 'Preventive', end_date: '2026-10-20T00:00:00Z', status: 'Completed' },
     { _id: 'pm2', type: 'Preventive Maintenance', end_date: '2026-10-21T00:00:00Z', status: 'Completed' },
@@ -62,20 +62,21 @@ test('planner requires exact Preventive creation source; completed and open incl
     { _id: 'planner-future', createdFrom: 'Preventive', type: 'General', end_date: '2027-01-01', status: 'Open' },
     { _id: 'different-case', createdFrom: 'preventive', status: 'Open' }
   ];
-  const result = metrics(orders);
+  const datedOrders = orders.map(order => ({ ...order, start_date: order.start_date || '2026-10-21T12:00:00Z' }));
+  const result = metrics(datedOrders);
   assert.equal(result.planner_wos, 2);
-  assert.equal(result.completed_wos, 3);
+  assert.equal(result.completed_wos, 2);
+  assert.equal(result.total_wos, 8);
   assert.equal(result.open_wos, 7);
   assert.equal(result.overdue_wos, 1);
   for (const field of ['pm_planned', 'pm_completed', 'pm_overdue', 'open_overdue_wos']) {
     assert.equal(field in result, false);
   }
-  const differentPeriod = cmmsMetrics(orders, [], [], assetIds, org,
+  const differentPeriod = cmmsMetrics(datedOrders, [], [], assetIds, org,
     cmmsPeriod({ from_date: '2025-01-01', to_date: '2025-01-02' }, now), now);
-  assert.equal(differentPeriod.planner_wos, 2);
-  assert.equal(differentPeriod.completed_wos, 3);
-  assert.equal(differentPeriod.open_wos, 7);
-  assert.equal(differentPeriod.overdue_wos, 1);
+  for (const field of ['total_wos', 'planner_wos', 'completed_wos', 'open_wos', 'overdue_wos', 'breakdown_wos'] as const) {
+    assert.equal(differentPeriod[field], 0);
+  }
 });
 
 test('open and overdue partition pending work at snapshot time without double counting', () => {
@@ -89,7 +90,7 @@ test('open and overdue partition pending work at snapshot time without double co
     { _id: 'completed', status: 'Completed', end_date: '2020-01-01' },
     { _id: 'rejected', status: 'Rejected', end_date: '2020-01-01' }
   ];
-  const result = metrics(orders);
+  const result = metrics(orders.map(order => ({ ...order, start_date: '2026-10-21T12:00:00Z' })));
   assert.equal(result.open_wos, 4);
   assert.equal(result.overdue_wos, 2);
   assert.equal(result.completed_wos, 1);
@@ -99,16 +100,40 @@ test('open and overdue partition pending work at snapshot time without double co
   assert.equal(metrics([]).overdue_wos, 0);
 });
 
-test('breakdown requires exact nature_of_work, excludes rejected work and ignores report dates', () => {
+test('strict WO date range includes IST boundaries, uses creation fallback and counts overlapping categories once', () => {
+  const orders: CmmsOrder[] = [
+    { _id: 'from', start_date: period.from, createdFrom: 'Preventive', nature_of_work: 'Breakdown', status: 'Open', end_date: '2020-01-01' },
+    { _id: 'to', start_date: period.to, status: 'Completed' },
+    { _id: 'fallback', createdAt: '2026-10-21T12:00:00Z', status: 'Open', end_date: '2027-01-01' },
+    { _id: 'before', start_date: new Date(period.from.getTime() - 1), createdAt: period.from, status: 'Open' },
+    { _id: 'after', start_date: new Date(period.to.getTime() + 1), status: 'Completed' },
+    { _id: 'invalid', start_date: 'invalid', createdAt: period.from, status: 'Open' },
+    { _id: 'missing', status: 'Open' },
+    { _id: 'rejected', start_date: period.from, status: 'Rejected' }
+  ];
+  const result = metrics(orders);
+  assert.equal(result.total_wos, 2);
+  assert.equal(result.planner_wos, 1);
+  assert.equal(result.breakdown_wos, 1);
+  assert.equal(result.completed_wos, 1);
+  assert.equal(result.open_wos, 1);
+  assert.equal(result.overdue_wos, 1);
+  assert.equal(result.total_wos, result.open_wos + result.overdue_wos);
+  assert.equal(period.from.toISOString(), '2026-10-18T18:30:00.000Z');
+  assert.equal(period.to.toISOString(), '2026-10-25T18:29:59.999Z');
+});
+
+test('breakdown requires exact nature_of_work and excludes rejected and out-of-period work', () => {
   const orders: CmmsOrder[] = [
     { _id: 'old', nature_of_work: 'Breakdown', type: 'General', status: 'Completed', start_date: '2020-01-01' },
     { _id: 'future', nature_of_work: 'Breakdown', createdFrom: 'Preventive', status: 'Open', start_date: '2027-01-01' },
     { _id: 'rejected', nature_of_work: 'Breakdown', status: 'Rejected' },
     { _id: 'type-only', type: 'Breakdown', nature_of_work: 'General', status: 'Open' },
     { _id: 'different-case', nature_of_work: 'breakdown', status: 'Open' },
-    { _id: 'prefix', nature_of_work: 'Breakdown Maintenance', status: 'Open' }
+    { _id: 'prefix', nature_of_work: 'Breakdown Maintenance', status: 'Open' },
+    { _id: 'current', nature_of_work: 'Breakdown', start_date: '2026-10-21', status: 'Open' }
   ];
-  assert.equal(metrics(orders).breakdown_wos, 2);
+  assert.equal(metrics(orders).breakdown_wos, 1);
   assert.equal(metrics([]).breakdown_wos, 0);
 });
 

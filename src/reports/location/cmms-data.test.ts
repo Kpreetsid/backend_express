@@ -163,7 +163,7 @@ test('child WO consumption and RMS roll up into the parent asset and deduplicate
 });
 
 test('flat summary excludes location-only rows and uses each asset actual location', async t => {
-  const orders = [{ _id: 'location-work', wo_location_id: root, status: 'Open', end_date: '2020-01-01T00:00:00Z' }];
+  const orders = [{ _id: 'location-work', createdAt: new Date(), wo_location_id: root, status: 'Open', end_date: '2020-01-01T00:00:00Z' }];
   for (const [model, records] of [[LocationModel, locations], [AssetModel, assets], [WorkOrderModel, orders],
     [PartsModel, []], [PartsTypeModel, []], [ReportAssetModel, []]] as const) {
     t.mock.method(model, 'find', (() => {
@@ -216,7 +216,7 @@ test('shared spare associations are deduplicated per asset and never multiply st
 
 test('an empty location returns no synthetic asset summary row', async t => {
   for (const [model, records] of [[LocationModel, locations], [AssetModel, []],
-    [WorkOrderModel, [{ _id: 'location-work', wo_location_id: root, status: 'Open' }]],
+    [WorkOrderModel, [{ _id: 'location-work', createdAt: new Date(), wo_location_id: root, status: 'Open' }]],
     [PartsModel, []], [PartsTypeModel, []], [ReportAssetModel, []]] as const) {
     t.mock.method(model, 'find', (() => {
       const query: any = { select: () => query, sort: () => query, lean: async () => records };
@@ -239,8 +239,11 @@ test('all WO totals sum displayed asset rows, excluding location-only WOs', asyn
     { _id: 'completed', wo_asset_id: 'motor', nature_of_work: 'Breakdown', status: 'Completed', end_date: '2020-01-01' },
     { _id: 'rejected', wo_asset_id: 'pump', nature_of_work: 'Breakdown', status: 'Rejected', end_date: '2020-01-01' },
     { _id: 'location-breakdown', wo_location_id: root, nature_of_work: 'Breakdown', status: 'Completed' }
-  ];
-  for (const [model, records] of [[LocationModel, locations], [AssetModel, assets], [WorkOrderModel, orders],
+  ].map(order => ({ ...order, createdAt: new Date() }));
+  const scopedTestOrders = [...orders,
+    { _id: 'outside-period', wo_asset_id: 'motor', createdFrom: 'Preventive', nature_of_work: 'Breakdown',
+      status: 'Open', start_date: '2020-01-01', createdAt: new Date(), end_date: '2020-01-02' }];
+  for (const [model, records] of [[LocationModel, locations], [AssetModel, assets], [WorkOrderModel, scopedTestOrders],
     [PartsModel, []], [PartsTypeModel, []], [ReportAssetModel, []]] as const) {
     t.mock.method(model, 'find', (() => {
       const query: any = { select: () => query, sort: () => query, lean: async () => records };
@@ -255,11 +258,13 @@ test('all WO totals sum displayed asset rows, excluding location-only WOs', asyn
   assert.equal(result.week_total_snapshot.planner_wos, 261);
   assert.equal(result.week_total_snapshot.completed_wos, 1);
   assert.equal(result.week_total_snapshot.breakdown_wos, 1);
-  for (const field of ['planner_wos', 'completed_wos', 'open_wos', 'overdue_wos', 'breakdown_wos'] as const) {
+  assert.equal(result.week_total_snapshot.total_wos, 265);
+  for (const field of ['total_wos', 'planner_wos', 'completed_wos', 'open_wos', 'overdue_wos', 'breakdown_wos'] as const) {
     assert.equal(result.week_total_snapshot[field], result.cmms_summary.reduce((sum, row) => sum + row[field], 0));
   }
   for (const summary of [result.week_total_snapshot, ...result.cmms_summary,
     result.locations[0].summary, ...result.locations[0].asset_data.map(asset => asset.summary)]) {
+    assert.equal(summary.total_wos, summary.open_wos + summary.overdue_wos);
     for (const field of ['pm_planned', 'pm_completed', 'pm_overdue', 'open_overdue_wos']) {
       assert.equal(field in summary, false);
     }
@@ -270,6 +275,7 @@ test('all WO totals sum displayed asset rows, excluding location-only WOs', asyn
   assert.equal(result.locations[0].summary.planner_wos, 280);
   assert.equal(result.locations[0].summary.completed_wos, 2);
   assert.equal(result.locations[0].summary.breakdown_wos, 2);
+  assert.equal(result.locations[0].summary.total_wos, 284);
 });
 
 test('Test Planner - 1 labor cost reaches asset, location and unique report totals', async t => {
