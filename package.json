@@ -8,6 +8,7 @@
     "build": "node scripts/build.cjs",
     "start": "npm run build && node dist/server.js",
     "typecheck": "npx tsc --noEmit",
+    "test:cmms-report": "node --require ts-node/register/transpile-only -e \"require('./src/modules/reports/cmms-data/cmms-data.test.ts'); require('./src/modules/reports/cmms-data/cmms-report.test.ts');\"",
     "test:password-security": "node --require ts-node/register/transpile-only --test src/modules/auth/services/verification-challenge.service.test.ts src/modules/auth/services/verification-mail.test.ts src/modules/auth/services/password-recovery.test.ts src/modules/auth/services/password-flow.test.ts src/modules/auth/services/password-session.test.ts src/modules/auth/services/password-expiry.test.ts src/core/auth/support-login.middleware.test.ts src/modules/auth/services/external-login-security.test.ts src/modules/auth/services/support-login-actor.test.ts src/core/config/release-tooling.test.ts src/modules/auth/services/effective-permissions-flow.test.ts src/core/auth/auth-cookie.service.test.ts src/modules/company/models/account.model.test.ts src/common/middlewares/csrf.middleware.test.ts src/modules/auth/routes/logout-method.test.ts",
     "catalog:generate": "node scripts/generate-asset-train-catalog.cjs",
     "catalog:check": "node scripts/generate-asset-train-catalog.cjs --check",
