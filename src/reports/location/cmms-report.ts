@@ -165,18 +165,22 @@ export function cmmsSummaryResponse(summary: ReturnType<typeof cmmsMetrics>) {
   };
 }
 
-export function cmmsSpareResponse(row: SpareRow & { asset_id: string | null; asset_name: string | null }) {
+export function cmmsTabSummary(summary: ReturnType<typeof cmmsSummaryResponse>) {
+  const { peak_endpoint_rms_mm_s: _peak, oldest_sensor_reading: _oldest,
+    data_quality_flag: _quality, ...maintenance } = summary;
+  return maintenance;
+}
+
+export function cmmsSpareResponse(row: SpareRow & { asset_id: string | null }) {
   return {
-    ...row,
-    asset_id: row.asset_id || 'N/A', asset_name: row.asset_name || 'N/A',
+    part_id: row.part_id,
+    asset_id: row.asset_id || 'N/A',
     location_id: row.location_id || 'N/A', location_name: row.location_name || 'N/A',
     spare_part_name: row.spare_part_name || 'N/A', spare_part_code: row.spare_part_code || 'N/A',
-    classification: row.classification || 'N/A', supplier: row.supplier || 'N/A',
-    responsible_group: row.responsible_group || 'N/A',
+    supplier: row.supplier || 'N/A',
     on_hand_stock: row.on_hand_stock ?? 0, min_stock: row.min_stock ?? 0,
-    max_stock: row.max_stock ?? 0, reorder_to_max_qty: row.reorder_to_max_qty ?? 0,
     lead_time_days: row.lead_time_days ?? 0, unit_cost_inr: row.unit_cost_inr ?? 0,
-    replenishment_inr: row.replenishment_inr ?? 0
+    stock_status: row.stock_status, action_alert: row.action_alert
   };
 }
 

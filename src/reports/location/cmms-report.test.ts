@@ -33,19 +33,16 @@ test('summary response defaults unknown numbers to zero and dates to N/A without
 test('spare response defaults missing fields by type and preserves known text and numbers', () => {
   const [raw] = cmmsSpareRows([{ _id: 'part', part_name: 'Bearing', part_number: 'BRG',
     quantity: 1, min_quantity: 3, cost: 1250, lead_time_days: 0 }], [], new Map());
-  const row = cmmsSpareResponse({ ...raw, asset_id: null, asset_name: null });
+  const row = cmmsSpareResponse({ ...raw, asset_id: null });
   assert.equal(row.asset_id, 'N/A');
-  assert.equal(row.asset_name, 'N/A');
   assert.equal(row.location_name, 'N/A');
   assert.equal(row.supplier, 'N/A');
-  assert.equal(row.classification, 'N/A');
-  assert.equal(row.responsible_group, 'N/A');
   assert.equal(row.spare_part_name, 'Bearing');
   assert.equal(row.unit_cost_inr, 1250);
   assert.equal(row.lead_time_days, 0);
-  assert.equal(row.max_stock, 0);
-  assert.equal(row.reorder_to_max_qty, 0);
-  assert.equal(row.replenishment_inr, 0);
+  for (const field of ['asset_name', 'classification', 'max_stock', 'reorder_to_max_qty', 'replenishment_inr', 'responsible_group']) {
+    assert.equal(field in row, false);
+  }
   assert.equal(row.stock_status, 'LOW');
   assert.equal(raw.max_stock, null);
 });

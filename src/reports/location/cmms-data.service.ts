@@ -5,7 +5,7 @@ import { WorkOrderModel } from '../../modules/work-orders/models/workOrder.model
 import { PartsModel } from '../../modules/inventory/models/part.model';
 import { PartsTypeModel } from '../../modules/inventory/models/parts-types.model';
 import { ReportAssetModel } from '../../modules/reports/models/assetReport.model';
-import { cmmsMetrics, cmmsPeriod, cmmsSpareRows, cmmsSpareResponse, cmmsSummaryResponse } from './cmms-report';
+import { cmmsMetrics, cmmsPeriod, cmmsSpareRows, cmmsSpareResponse, cmmsSummaryResponse, cmmsTabSummary } from './cmms-report';
 
 interface LocationRecord {
   _id: unknown;
@@ -128,7 +128,6 @@ export const cmmsDataService = {
     const scopedOrders = orders.filter(order => !order.wo_asset_id || allAssetIds.has(id(order.wo_asset_id)));
     // A part has location stock, but no direct asset/BOM field. Preserve every
     // distinct association evidenced by scoped WOs without multiplying totals.
-    const assetsById = new Map(assets.map(asset => [id(asset._id), asset]));
     const partAssets = new Map<string, Set<string>>();
     for (const order of scopedOrders) {
       const assetId = id(order.wo_asset_id);
@@ -142,8 +141,7 @@ export const cmmsDataService = {
     const replenishmentRows = spareRows.flatMap(part => {
       const linkedAssets = [...(partAssets.get(part.part_id) || [])];
       const associations: (string | null)[] = linkedAssets.length ? linkedAssets : [null];
-      return associations.map(assetId => ({ ...part, asset_id: assetId,
-        asset_name: assetId ? assetsById.get(assetId)?.asset_name ?? null : null }));
+      return associations.map(assetId => ({ ...part, asset_id: assetId }));
     });
     const locationsData = hierarchy.map(location => {
       const locationSet = new Set([location.location_id, ...location.child_location_ids]);
@@ -163,12 +161,15 @@ export const cmmsDataService = {
         })
       };
     });
-    const cmmsSummary = locationsData.flatMap(location => location.asset_data.map(asset => ({
-      asset_id: asset._id, asset_name: asset.asset_name || 'N/A',
-      location_id: asset.locationId || 'N/A', location_name: asset.location_name || 'N/A', ...asset.summary
-    })));
+    const cmmsSummary = locationsData.flatMap(location => location.asset_data.map(asset => {
+      const { low_critical_spares: _lowCriticalSpares, ...summary } = cmmsTabSummary(asset.summary);
+      return {
+        asset_id: asset._id, asset_name: asset.asset_name || 'N/A',
+        location_id: asset.locationId || 'N/A', location_name: asset.location_name || 'N/A', ...summary
+      };
+    }));
     const weekTotalSnapshot = {
-      ...cmmsSummaryResponse(cmmsMetrics(scopedOrders, spareRows, reports, allAssetIds, request.org_id, period, now)),
+      ...cmmsTabSummary(cmmsSummaryResponse(cmmsMetrics(scopedOrders, spareRows, reports, allAssetIds, request.org_id, period, now))),
       // WO counters match the displayed asset rows.
       planner_wos: cmmsSummary.reduce((total, row) => total + row.planner_wos, 0),
       completed_wos: cmmsSummary.reduce((total, row) => total + row.completed_wos, 0),
@@ -193,14 +194,11 @@ export const cmmsDataService = {
         sensor_basis: 'Peak is the historical maximum in saved reports as of snapshot_at; oldest is the oldest reading in the most recent saved snapshot for each endpoint axis.',
         sensor_reading_timezone: 'Asia/Kolkata', sensor_reading_format: 'dd/mm/yyyy hh:mm:ss (24-hour)',
         summary_basis: 'cmms_summary contains top-level assets only. Location summaries include location-only WOs. week_total_snapshot planner_wos, completed_wos, open_overdue_wos and breakdown_wos sum displayed asset rows; other totals use unique scoped records including location-only WOs.',
-        asset_spare_basis: 'Asset stock association is inferred from WO part references. Replenishment has one row per part and associated asset, or N/A asset fields if unlinked; shared stock is repeated per asset and location/global stock counts deduplicate part IDs.',
+        asset_spare_basis: 'Asset stock association is inferred from WO part references. Spare rows have one row per part and associated asset_id, or N/A asset_id if unlinked; shared stock is repeated per asset and location/global stock counts deduplicate part IDs.',
         response_defaults: 'Missing numeric report values are returned as 0; missing text/date report values as N/A. These defaults do not establish recorded measurements or costs; data quality flags retain source-data status.',
         unavailable_source_fields: ['downtime_h when breakdowns exist: equipment downtime is not recorded',
           'labor_cost_inr when labor is logged but no valid entry cost is recorded; unpriced labor is excluded from recorded-cost totals',
           'total_cost_inr when either cost component is unavailable',
-          'max_stock, reorder_to_max_qty and replenishment_inr for low stock: maximum stock is not recorded',
-          'responsible_group: not recorded',
-          'classification when the part type is neither Critical nor General',
           'low_critical_spares when low-stock parts have unknown criticality',
           'INR amounts when the source currency differs; no exchange rate is assumed'],
         data_quality_flags: { RECENT: 'All saved readings are within stale_after_hours', STALE: 'At least one saved reading is older than the threshold',

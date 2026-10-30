@@ -87,13 +87,21 @@ test('all database reads enforce tenant and visibility and invalid requests neve
   assert.equal(reads, 6);
   assert.equal(data.locations[0].asset_data.length, 2);
   assert.equal(data.cmms_summary.length, 2);
+  assert.ok(data.cmms_summary.every(row => !('low_critical_spares' in row)));
+  assert.equal(data.locations[0].summary.low_critical_spares, 0);
+  assert.equal(data.locations[0].asset_data[0].summary.low_critical_spares, 0);
+  assert.equal(data.week_total_snapshot.low_critical_spares, 0);
   assert.equal(data.week_total_snapshot.planner_wos, 0);
-  for (const summary of [data.locations[0].summary, data.locations[0].asset_data[0].summary,
-    data.cmms_summary[0], data.week_total_snapshot]) {
+  for (const summary of [data.locations[0].summary, data.locations[0].asset_data[0].summary]) {
     assert.equal(summary.peak_endpoint_rms_mm_s, 0);
     assert.equal(summary.oldest_sensor_reading, 'N/A');
     assert.equal(summary.data_quality_flag, 'NO_DATA');
     assert.ok(Object.values(summary).every(value => value !== null && value !== undefined));
+  }
+  for (const summary of [...data.cmms_summary, data.week_total_snapshot]) {
+    for (const field of ['peak_endpoint_rms_mm_s', 'oldest_sensor_reading', 'data_quality_flag']) {
+      assert.equal(field in summary, false);
+    }
   }
 });
 
@@ -144,10 +152,14 @@ test('child WO consumption and RMS roll up into the parent asset and deduplicate
   assert.equal(result.week_total_snapshot.low_critical_spares, 1);
   assert.equal(result.critical_spares_stock_replenishment.length, 1);
   assert.equal(result.critical_spares_stock_replenishment[0].asset_id, 'motor');
-  assert.equal(result.critical_spares_stock_replenishment[0].asset_name, 'Motor');
+  assert.equal('asset_name' in result.critical_spares_stock_replenishment[0], false);
   assert.equal(result.critical_spares_stock_replenishment[0].location_name, 'Line');
-  assert.equal(train.summary.oldest_sensor_reading, result.cmms_summary[0].oldest_sensor_reading);
-  assert.equal(train.summary.oldest_sensor_reading, result.week_total_snapshot.oldest_sensor_reading);
+  assert.equal(train.summary.oldest_sensor_reading, result.locations[0].summary.oldest_sensor_reading);
+  for (const summary of [...result.cmms_summary, result.week_total_snapshot]) {
+    for (const field of ['peak_endpoint_rms_mm_s', 'oldest_sensor_reading', 'data_quality_flag']) {
+      assert.equal(field in summary, false);
+    }
+  }
 });
 
 test('flat summary excludes location-only rows and uses each asset actual location', async t => {
@@ -188,8 +200,13 @@ test('shared spare associations are deduplicated per asset and never multiply st
     }) as any);
   }
   const result = await cmmsDataService.getData({ org_id: org, location_ids: [root] }, org);
-  assert.deepEqual(result.critical_spares_stock_replenishment.map(row => [row.part_id, row.asset_id, row.asset_name]),
-    [['shared', 'motor', 'Motor'], ['shared', 'pump', 'Pump'], ['unlinked', 'N/A', 'N/A']]);
+  assert.deepEqual(result.critical_spares_stock_replenishment.map(row => [row.part_id, row.asset_id]),
+    [['shared', 'motor'], ['shared', 'pump'], ['unlinked', 'N/A']]);
+  for (const row of result.critical_spares_stock_replenishment) {
+    for (const field of ['asset_name', 'classification', 'max_stock', 'reorder_to_max_qty', 'replenishment_inr', 'responsible_group']) {
+      assert.equal(field in row, false);
+    }
+  }
   assert.ok(result.critical_spares_stock_replenishment.every(row => row.location_name === 'Plant' && !('asset_location' in row)));
   assert.equal(result.week_total_snapshot.low_critical_spares, 2);
   assert.equal(result.locations[0].summary.low_critical_spares, 2);
