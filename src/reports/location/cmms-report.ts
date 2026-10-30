@@ -226,7 +226,7 @@ export function cmmsMetrics(orders: CmmsOrder[], spares: SpareRow[], reports: Cm
     ? round(recordedLaborCosts.reduce((total, cost) => total + cost, 0))
     : laborUnpriced ? null : 0;
   return {
-    total_wos: pendingOrders.length,
+    total_wos: orders.filter(order => order.status !== 'Completed' && order.status !== 'Rejected').length,
     planner_wos: plannerCount,
     completed_wos: completedCount,
     open_wos: pendingOrders.length - overdueCount,

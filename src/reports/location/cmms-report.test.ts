@@ -74,7 +74,8 @@ test('planner requires exact Preventive source and all WO counters strictly foll
   }
   const differentPeriod = cmmsMetrics(datedOrders, [], [], assetIds, org,
     cmmsPeriod({ from_date: '2025-01-01', to_date: '2025-01-02' }, now), now);
-  for (const field of ['total_wos', 'planner_wos', 'completed_wos', 'open_wos', 'overdue_wos', 'breakdown_wos'] as const) {
+  assert.equal(differentPeriod.total_wos, 8);
+  for (const field of ['planner_wos', 'completed_wos', 'open_wos', 'overdue_wos', 'breakdown_wos'] as const) {
     assert.equal(differentPeriod[field], 0);
   }
 });
@@ -112,15 +113,31 @@ test('strict WO date range includes IST boundaries, uses creation fallback and c
     { _id: 'rejected', start_date: period.from, status: 'Rejected' }
   ];
   const result = metrics(orders);
-  assert.equal(result.total_wos, 2);
+  assert.equal(result.total_wos, 5);
   assert.equal(result.planner_wos, 1);
   assert.equal(result.breakdown_wos, 1);
   assert.equal(result.completed_wos, 1);
   assert.equal(result.open_wos, 1);
   assert.equal(result.overdue_wos, 1);
-  assert.equal(result.total_wos, result.open_wos + result.overdue_wos);
+  assert.equal(result.open_wos + result.overdue_wos, 2);
   assert.equal(period.from.toISOString(), '2026-10-18T18:30:00.000Z');
   assert.equal(period.to.toISOString(), '2026-10-25T18:29:59.999Z');
+});
+
+test('AST March backlog remains in total_wos when the October period counters are zero', () => {
+  const orders: CmmsOrder[] = [
+    { _id: 'WO-20260006', status: 'Open', start_date: '2026-03-16T06:12:46.626Z', end_date: '2026-03-18T06:12:46.626Z' },
+    { _id: 'WO-20260012', status: 'In-Progress', start_date: '2026-03-16T00:00:00Z', end_date: '2026-03-18T00:00:00Z' },
+    { _id: 'done', status: 'Completed', start_date: '2026-03-16' },
+    { _id: 'rejected', status: 'Rejected', start_date: '2026-03-16' }
+  ];
+  const snapshot = new Date('2026-10-30T09:51:28Z');
+  const result = cmmsMetrics(orders, [], [], assetIds, org,
+    cmmsPeriod({ from_date: '2026-10-26', to_date: '2026-10-30' }, snapshot), snapshot);
+  assert.equal(result.total_wos, 2);
+  assert.equal(result.open_wos, 0);
+  assert.equal(result.overdue_wos, 0);
+  assert.equal(result.completed_wos, 0);
 });
 
 test('breakdown requires exact nature_of_work and excludes rejected and out-of-period work', () => {
