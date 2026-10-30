@@ -173,7 +173,8 @@ export const cmmsDataService = {
       // WO counters match the displayed asset rows.
       planner_wos: cmmsSummary.reduce((total, row) => total + row.planner_wos, 0),
       completed_wos: cmmsSummary.reduce((total, row) => total + row.completed_wos, 0),
-      open_overdue_wos: cmmsSummary.reduce((total, row) => total + row.open_overdue_wos, 0),
+      open_wos: cmmsSummary.reduce((total, row) => total + row.open_wos, 0),
+      overdue_wos: cmmsSummary.reduce((total, row) => total + row.overdue_wos, 0),
       breakdown_wos: cmmsSummary.reduce((total, row) => total + row.breakdown_wos, 0),
     };
     return {
@@ -185,15 +186,16 @@ export const cmmsDataService = {
       critical_spares_stock_replenishment: replenishmentRows.map(cmmsSpareResponse),
       metadata: {
         currency: 'INR', stale_after_hours: period.staleAfterHours,
-        planner_work_order_basis: 'planner_wos counts visible, non-rejected WOs with createdFrom exactly Preventive, regardless of type or nature_of_work. completed_wos counts Completed WOs from all creation sources; open_overdue_wos counts all other non-rejected statuses from all creation sources once, including overdue work. These are current snapshot counts, independent of report dates. Planner is a source-based subset, not the sum of completed and open WOs.',
+        planner_work_order_basis: 'planner_wos counts visible, non-rejected WOs with createdFrom exactly Preventive, regardless of type or nature_of_work. completed_wos counts Completed WOs from all creation sources. These are current snapshot counts, independent of report dates.',
+        open_work_order_basis: 'Pending means status is neither Completed nor Rejected, across all creation sources and dates. overdue_wos counts pending WOs with a valid end_date strictly before snapshot_at. open_wos counts the remaining pending WOs, including missing/invalid due dates and due dates at or after snapshot_at. Counts are mutually exclusive.',
         breakdown_work_order_basis: 'breakdown_wos counts visible, non-rejected WOs with nature_of_work exactly Breakdown, across all creation sources, statuses and dates. The total sums displayed asset rows.',
         work_order_basis: 'Actual consumption uses WOs starting in the period (creation date fallback). Quantities and costs are cumulative for that cohort.',
         labor_cost_basis: 'Labor cost sums recorded labor_entries.labor_cost amounts for that cohort as INR entry totals, without multiplying by hours. Unpriced entries are excluded; totals reflect recorded costs only. If labor is logged but no cost is recorded, the unavailable-value response default is 0.',
-        snapshot_basis: 'Planner, completed and open/overdue WOs and inventory use current stored state; date filters do not reconstruct historical state.',
+        snapshot_basis: 'Planner, completed, open and overdue WOs and inventory use current stored state; date filters do not reconstruct historical state.',
         sensor_source: 'Persisted asset report endpointRMSData.velocity, not a live processor query.',
         sensor_basis: 'Peak is the historical maximum in saved reports as of snapshot_at; oldest is the oldest reading in the most recent saved snapshot for each endpoint axis.',
         sensor_reading_timezone: 'Asia/Kolkata', sensor_reading_format: 'dd/mm/yyyy hh:mm:ss (24-hour)',
-        summary_basis: 'cmms_summary contains top-level assets only. Location summaries include location-only WOs. week_total_snapshot planner_wos, completed_wos, open_overdue_wos and breakdown_wos sum displayed asset rows; other totals use unique scoped records including location-only WOs.',
+        summary_basis: 'cmms_summary contains top-level assets only. Location summaries include location-only WOs. week_total_snapshot planner_wos, completed_wos, open_wos, overdue_wos and breakdown_wos sum displayed asset rows; other totals use unique scoped records including location-only WOs.',
         asset_spare_basis: 'Asset stock association is inferred from WO part references. Spare rows have one row per part and associated asset_id, or N/A asset_id if unlinked; shared stock is repeated per asset and location/global stock counts deduplicate part IDs.',
         response_defaults: 'Missing numeric report values are returned as 0; missing text/date report values as N/A. These defaults do not establish recorded measurements or costs; data quality flags retain source-data status.',
         unavailable_source_fields: ['downtime_h when breakdowns exist: equipment downtime is not recorded',

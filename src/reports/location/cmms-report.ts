@@ -195,6 +195,11 @@ export function cmmsMetrics(orders: CmmsOrder[], spares: SpareRow[], reports: Cm
   // Planner is identified by its creation source, not its type or nature of work.
   const plannerCount = eligibleOrders.filter(order => order.createdFrom === 'Preventive').length;
   const completedCount = eligibleOrders.filter(order => order.status === 'Completed').length;
+  const pendingOrders = eligibleOrders.filter(order => order.status !== 'Completed');
+  const overdueCount = pendingOrders.filter(order => {
+    const due = reportDate(order.end_date);
+    return due !== null && due < asOf;
+  }).length;
   const cohort = orders.filter(order => order.status !== 'Rejected' && inPeriod(order.start_date || order.createdAt));
   let spareQty = 0;
   let spareCost: number | null = 0;
@@ -223,7 +228,8 @@ export function cmmsMetrics(orders: CmmsOrder[], spares: SpareRow[], reports: Cm
   return {
     planner_wos: plannerCount,
     completed_wos: completedCount,
-    open_overdue_wos: eligibleOrders.length - completedCount,
+    open_wos: pendingOrders.length - overdueCount,
+    overdue_wos: overdueCount,
     breakdown_wos: eligibleOrders.filter(breakdown).length,
     downtime_h: breakdownCount ? null : 0,
     spare_qty_used: round(spareQty), spare_cost_inr: spareCost === null ? null : round(spareCost),

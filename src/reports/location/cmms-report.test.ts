@@ -65,15 +65,38 @@ test('planner requires exact Preventive creation source; completed and open incl
   const result = metrics(orders);
   assert.equal(result.planner_wos, 2);
   assert.equal(result.completed_wos, 3);
-  assert.equal(result.open_overdue_wos, 8);
-  for (const field of ['pm_planned', 'pm_completed', 'pm_overdue', 'overdue_wos']) {
+  assert.equal(result.open_wos, 7);
+  assert.equal(result.overdue_wos, 1);
+  for (const field of ['pm_planned', 'pm_completed', 'pm_overdue', 'open_overdue_wos']) {
     assert.equal(field in result, false);
   }
   const differentPeriod = cmmsMetrics(orders, [], [], assetIds, org,
     cmmsPeriod({ from_date: '2025-01-01', to_date: '2025-01-02' }, now), now);
   assert.equal(differentPeriod.planner_wos, 2);
   assert.equal(differentPeriod.completed_wos, 3);
-  assert.equal(differentPeriod.open_overdue_wos, 8);
+  assert.equal(differentPeriod.open_wos, 7);
+  assert.equal(differentPeriod.overdue_wos, 1);
+});
+
+test('open and overdue partition pending work at snapshot time without double counting', () => {
+  const orders: CmmsOrder[] = [
+    { _id: 'past', status: 'Open', end_date: new Date(now.getTime() - 1) },
+    { _id: 'blocked', status: 'Blocked', end_date: '2020-01-01' },
+    { _id: 'exact', status: 'In-Progress', end_date: now },
+    { _id: 'future', status: 'On-Hold', end_date: '2027-01-01' },
+    { _id: 'missing', status: 'Waiting-on-Parts' },
+    { _id: 'invalid', status: 'Waiting-on-Permit', end_date: 'invalid' },
+    { _id: 'completed', status: 'Completed', end_date: '2020-01-01' },
+    { _id: 'rejected', status: 'Rejected', end_date: '2020-01-01' }
+  ];
+  const result = metrics(orders);
+  assert.equal(result.open_wos, 4);
+  assert.equal(result.overdue_wos, 2);
+  assert.equal(result.completed_wos, 1);
+  assert.equal(result.open_wos + result.overdue_wos, 6);
+  assert.equal('open_overdue_wos' in result, false);
+  assert.equal(metrics([]).open_wos, 0);
+  assert.equal(metrics([]).overdue_wos, 0);
 });
 
 test('breakdown requires exact nature_of_work, excludes rejected work and ignores report dates', () => {
