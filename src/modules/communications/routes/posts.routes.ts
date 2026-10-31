@@ -1,10 +1,10 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { postController } from '../controllers/posts.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { postController } from '@modules/communications/controllers/posts.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
 import commentsRoutes from './comments.routes';
-import { postValidator } from '../validators/post.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { postValidator } from '@modules/communications/validators/post.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const postRouter = express.Router();

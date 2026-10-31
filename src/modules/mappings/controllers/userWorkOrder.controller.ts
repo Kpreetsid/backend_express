@@ -1,11 +1,11 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { userWorkOrderService } from '../services/userWorkOrder.service';
+import { userWorkOrderService } from '@modules/mappings/services/userWorkOrder.service';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/helper';
-import { orderService } from '../../work-orders/services/order.service';
-import { notificationService } from '../../communications/services/notification-sender.service';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
+import { orderService } from '@modules/work-orders/services/order.service';
+import { notificationService } from '@modules/communications/services/notification-sender.service';
 
 class UserWorkOrderController {
   async getUserWorkOrders(req: Request, res: Response, next: NextFunction): Promise<any> {

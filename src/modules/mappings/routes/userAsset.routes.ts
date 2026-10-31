@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasAnyRolePermission, hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { userAssetController } from '../controllers/userAsset.controller';
-import { validateParam } from '../../../common/middlewares/validate.middleware';
-import { userAssetValidator, userAssetUpdateValidator } from '../validators/userAsset.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasAnyRolePermission, hasRolePermission } from '@common/middlewares/permission.middleware';
+import { userAssetController } from '@modules/mappings/controllers/userAsset.controller';
+import { validateParam } from '@common/middlewares/validate.middleware';
+import { userAssetValidator, userAssetUpdateValidator } from '@modules/mappings/validators/userAsset.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     router.get('/userToAssets', hasAnyRolePermission([['users', 'view'], ['asset_mail', 'view']]), userAssetController.getUserAssets);

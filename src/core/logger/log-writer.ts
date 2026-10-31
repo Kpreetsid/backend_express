@@ -1,5 +1,5 @@
-import { getRedisClient, isRedisReady } from '../cache/redis.client';
-import { UserLogModel, IUserLog } from '../../modules/users/models/userLogs.model';
+import { getRedisClient, isRedisReady } from '@core/cache/redis.client';
+import { UserLogModel, IUserLog } from '@modules/users/models/userLogs.model';
 
 export const USER_LOGS_STREAM_KEY = 'cmms:user:logs:stream';
 

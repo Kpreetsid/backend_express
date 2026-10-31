@@ -1,10 +1,10 @@
 import express from 'express';
-import { assetController } from '../controllers/asset.controller';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId, validateParam } from '../../../common/middlewares/validate.middleware';
-import { assetTrainValidator, assetValidator } from '../validators/asset.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
-import { ASSET_TRAIN_CATALOG } from '../catalog/asset-train-catalog';
+import { assetController } from '@modules/assets/controllers/asset.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId, validateParam } from '@common/middlewares/validate.middleware';
+import { assetTrainValidator, assetValidator } from '@modules/assets/validators/asset.validator';
+import { validate } from '@common/middlewares/validator.middleware';
+import { ASSET_TRAIN_CATALOG } from '@modules/assets/catalog/asset-train-catalog';
 
 export default (router: express.Router) => {
     const assetRouter = express.Router();

@@ -1,11 +1,11 @@
 import express from 'express';
-import { userController } from '../controllers/user.controller';
+import { userController } from '@modules/users/controllers/user.controller';
 import rolesRoutes from './roles.routes';
 import userLogRouters from './logs.routes';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { userValidator } from '../validators/user.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { userValidator } from '@modules/users/validators/user.validator';
+import { validate } from '@common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
 
 export default (router: express.Router) => {
     const userRouter = express.Router();

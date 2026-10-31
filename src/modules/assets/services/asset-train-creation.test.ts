@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { AssetModel } from '../models/asset.model';
-import { MapUserAssetLocationModel } from '../../mappings/models/mapUserLocation.model';
-import { buildComponentTemplates } from '../catalog/asset-train-catalog';
+import { AssetModel } from '@modules/assets/models/asset.model';
+import { MapUserAssetLocationModel } from '@modules/mappings/models/mapUserLocation.model';
+import { buildComponentTemplates } from '@modules/assets/catalog/asset-train-catalog';
 import { buildAssetTrainCreationPlan, createReviewedAssetTrain, validateReviewedComponents } from './asset-train-creation';
-import { requireProcessorBaseUrl } from '../../../common/utils/processor-url';
+import { requireProcessorBaseUrl } from '@common/utils/processor-url';
 import mongoose from 'mongoose';
 
 const accountId = '64a000000000000000000001';
@@ -139,12 +139,12 @@ test('missing processor URLs produce a clear configuration error', () => {
 
 test('the database adapter maps active and inactive users while checking ownership, capacity and compensation', async t => {
   const { assetService } = require('./asset.service');
-  const { LocationModel } = require('../../locations/models/location.model');
-  const { UserModel } = require('../../users/models/user.model');
-  const { subscriptionLimitService } = require('../../company/services/subscriptionLimit.service');
-  const { mapUserToAssetService } = require('../../mappings/services/userAsset.service');
+  const { LocationModel } = require('@modules/locations/models/location.model');
+  const { UserModel } = require('@modules/users/models/user.model');
+  const { subscriptionLimitService } = require('@modules/company/services/subscriptionLimit.service');
+  const { mapUserToAssetService } = require('@modules/mappings/services/userAsset.service');
   const { processorAPIService } = require('./processor-api.service');
-  const { externalAPI } = require('../../../core/config/env.config');
+  const { externalAPI } = require('@core/config/env.config');
   const savedUrl = externalAPI.URL;
   externalAPI.URL = 'http://processor.test';
   t.after(() => { externalAPI.URL = savedUrl; });

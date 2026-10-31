@@ -1,8 +1,8 @@
 import puppeteer from 'puppeteer';
 import * as fs from 'fs';
 import * as path from 'path';
-import { storageConfig } from '../../../core/config/env.config';
-import { processorAPIService } from '../../assets/services/processor-api.service';
+import { storageConfig } from '@core/config/env.config';
+import { processorAPIService } from '@modules/assets/services/processor-api.service';
 
 export class PdfService {
   private twfChartProto = {

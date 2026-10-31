@@ -12,8 +12,8 @@
  * vs. blocking all authenticated requests during a Redis outage.
  */
 
-import { getRedisClient } from '../cache/redis.client';
-import { CacheKeys } from '../cache/cache.keys';
+import { getRedisClient } from '@core/cache/redis.client';
+import { CacheKeys } from '@core/cache/cache.keys';
 
 export const TokenBlacklist = {
   /**

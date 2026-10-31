@@ -1,12 +1,12 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { get } from "lodash";
-import { USER_ROLES, IUser } from "../../users/models/user.model";
+import { USER_ROLES, IUser } from "@modules/users/models/user.model";
 import { NextFunction, Request, Response } from "express";
-import { companyService } from "../services/company.service";
-import { helperService } from "../../../common/utils/helper";
-import { applyRoleFilter } from "../../../common/utils/role-filter.helper";
-import { accountFeatureService } from "../services/accountFeature.service";
-import { subscriptionLimitService } from "../services/subscriptionLimit.service";
+import { companyService } from "@modules/company/services/company.service";
+import { helperService } from "@common/utils/helper";
+import { applyRoleFilter } from "@common/utils/role-filter.helper";
+import { accountFeatureService } from "@modules/company/services/accountFeature.service";
+import { subscriptionLimitService } from "@modules/company/services/subscriptionLimit.service";
 
 class CompanyController {
 

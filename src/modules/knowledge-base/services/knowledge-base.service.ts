@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { Types } from 'mongoose';
-import { KnowledgeBaseGuide, KnowledgeBaseGuideModel } from '../models/knowledge-base.model';
+import { KnowledgeBaseGuide, KnowledgeBaseGuideModel } from '@modules/knowledge-base/models/knowledge-base.model';
 
 export const guideFilesDirectory = (): string => path.resolve(path.join(__dirname, '../../../../uploadFiles/knowledge_base'));
 

@@ -3,18 +3,18 @@ import test from 'node:test';
 import fs from 'node:fs';
 import path from 'node:path';
 import mongoose from 'mongoose';
-import { VerificationCodeModel } from '../models/userVerification.model';
-import { UserModel } from '../../users/models/user.model';
+import { VerificationCodeModel } from '@modules/auth/models/userVerification.model';
+import { UserModel } from '@modules/users/models/user.model';
 import { verificationChallenges } from './verification-challenge.service';
-import { resetPasswordController } from '../controllers/resetPassword.controller';
-import { userController } from '../../users/controllers/user.controller';
-import { usersService } from '../../users/services/user.service';
+import { resetPasswordController } from '@modules/auth/controllers/resetPassword.controller';
+import { userController } from '@modules/users/controllers/user.controller';
+import { usersService } from '@modules/users/services/user.service';
 import { userResetPassword } from './authentication.service';
 import { registrationService } from './registration.service';
-import { verificationController } from '../controllers/verification.controller';
-import { companyService } from '../../company/services/company.service';
-import { MailerService } from '../../../core/mailer/mailer.service';
-import { passwordService } from '../../../common/utils/bcrypt.helper';
+import { verificationController } from '@modules/auth/controllers/verification.controller';
+import { companyService } from '@modules/company/services/company.service';
+import { MailerService } from '@core/mailer/mailer.service';
+import { passwordService } from '@common/utils/bcrypt.helper';
 
 const user: any = { _id: '64a000000000000000000001', account_id: '64a000000000000000000002', email: 'test@example.com', firstName: 'Test', user_status: 'active' };
 function persistence(t: any) {

@@ -1,5 +1,5 @@
-import { WorkRequestModel, IWorkRequest, WORK_REQUEST_ORDER_SLA_HOURS, WORK_REQUEST_REVIEW_SLA_HOURS } from "../models/workRequest.model";
-import { createSyncConflict } from "../../../common/utils/sync-concurrency.helper";
+import { WorkRequestModel, IWorkRequest, WORK_REQUEST_ORDER_SLA_HOURS, WORK_REQUEST_REVIEW_SLA_HOURS } from "@modules/work-orders/models/workRequest.model";
+import { createSyncConflict } from "@common/utils/sync-concurrency.helper";
 
 class RequestService {
   private getReviewSlaHours(priority: string): number {

@@ -1,8 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
-import { historyPlugin } from '../../../core/database/plugins/history.plugin';
+import { historyPlugin } from '@core/database/plugins/history.plugin';
 import { HistoryWorkOrderModel } from './history-work-order.model';
-import { syncVersionPlugin } from '../../../core/database/plugins/sync-version.plugin';
+import { syncVersionPlugin } from '@core/database/plugins/sync-version.plugin';
 
 export const WORK_ORDER_COLLECTION_NAME = 'work_orders';
 

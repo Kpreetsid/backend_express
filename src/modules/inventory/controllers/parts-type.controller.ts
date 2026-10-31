@@ -1,10 +1,10 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { NextFunction, Request, Response } from "express";
-import { partsTypeService } from "../services/parts-type.service";
-import { IUser } from "../../users/models/user.model";
+import { partsTypeService } from "@modules/inventory/services/parts-type.service";
+import { IUser } from "@modules/users/models/user.model";
 import { get } from "lodash";
-import { helperService } from "../../../common/utils/helper";
-import { applyRoleFilter } from "../../../common/utils/role-filter.helper";
+import { helperService } from "@common/utils/helper";
+import { applyRoleFilter } from "@common/utils/role-filter.helper";
 
 class PartsTypeController {
 

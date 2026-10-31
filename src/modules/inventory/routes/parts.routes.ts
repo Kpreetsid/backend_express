@@ -1,15 +1,15 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { partsController } from '../controllers/parts.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { partValidator } from '../validators/part.validator';
-import { transferValidator } from '../validators/transfer.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { partsController } from '@modules/inventory/controllers/parts.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { partValidator } from '@modules/inventory/validators/part.validator';
+import { transferValidator } from '@modules/inventory/validators/transfer.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 import multer from 'multer';
 import path from 'path';
-import { uploadFilesService } from '../../upload/middlewares/upload.multer';
-import { payloadCryptoMultipartMiddleware } from '../../../common/middlewares/payload-crypto.middleware';
-import { idempotencyMiddleware } from '../../../common/middlewares/idempotency.middleware';
+import { uploadFilesService } from '@modules/upload/middlewares/upload.multer';
+import { payloadCryptoMultipartMiddleware } from '@common/middlewares/payload-crypto.middleware';
+import { idempotencyMiddleware } from '@common/middlewares/idempotency.middleware';
 
 const importStorage = multer.diskStorage({
     destination: function (req, file, cb) {

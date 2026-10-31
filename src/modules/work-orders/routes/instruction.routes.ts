@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { instructionController } from '../controllers/instruction.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { instructionValidator } from '../validators/instruction.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { instructionController } from '@modules/work-orders/controllers/instruction.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { instructionValidator } from '@modules/work-orders/validators/instruction.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const instructionRouter = express.Router();

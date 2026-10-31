@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
-import { storageProvider } from "../../../core/config/storage.config";
+import { storageProvider } from "@core/config/storage.config";
 import { isAllowedUploadSignature } from "./upload-signature";
 
 const ALLOWED_FOLDERS = new Set([

@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
-import { IUpload } from '../../upload/models/upload.model';
+import { IUpload } from '@modules/upload/models/upload.model';
 export const WORK_INSTRUCTIONS_COLLECTION_NAME = 'work_instructions';
 
 

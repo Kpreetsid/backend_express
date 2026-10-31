@@ -1,8 +1,8 @@
-import { IAccount } from "../../company/models/account.model";
-import { Permission, RoleManager, RoleMenu } from "../constants/account-role-menu.constant";
-import { RoleManager as UserRoleManager } from "../../../common/constants/new-user-roles.constant";
-import { PlatformControlManager } from "../../../common/constants/roles.constant";
-import { normalizeExperienceProfile } from "../../../common/constants/experience-profile.constant";
+import { IAccount } from "@modules/company/models/account.model";
+import { Permission, RoleManager, RoleMenu } from "@modules/users/constants/account-role-menu.constant";
+import { RoleManager as UserRoleManager } from "@common/constants/new-user-roles.constant";
+import { PlatformControlManager } from "@common/constants/roles.constant";
+import { normalizeExperienceProfile } from "@common/constants/experience-profile.constant";
 
 export type AccountAction = "view" | "add" | "edit" | "delete" | "import" | "export";
 type PlatformControl = Record<string, Record<string, boolean>>;

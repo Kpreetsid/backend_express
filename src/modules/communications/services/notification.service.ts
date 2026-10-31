@@ -1,4 +1,4 @@
-import { Notification, INotification, NotificationStatus } from '../models/notification.model';
+import { Notification, INotification, NotificationStatus } from '@modules/communications/models/notification.model';
 import { Types } from 'mongoose';
 
 const previousStatuses: Record<Exclude<NotificationStatus, 'Sent'>, NotificationStatus[]> = {

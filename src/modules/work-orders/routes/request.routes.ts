@@ -1,10 +1,10 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { requestController } from '../controllers/request.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { workRequestValidator } from '../validators/workRequest.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
-import { idempotencyMiddleware } from '../../../common/middlewares/idempotency.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { requestController } from '@modules/work-orders/controllers/request.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { workRequestValidator } from '@modules/work-orders/validators/workRequest.validator';
+import { validate } from '@common/middlewares/validator.middleware';
+import { idempotencyMiddleware } from '@common/middlewares/idempotency.middleware';
 
 export default (router: express.Router) => {
     const requestRouter = express.Router();

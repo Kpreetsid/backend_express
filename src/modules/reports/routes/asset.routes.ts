@@ -1,9 +1,9 @@
 import express from 'express';
 import multer from 'multer';
-import { assetReportController } from '../controllers/asset.controller';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { payloadCryptoMultipartMiddleware } from '../../../common/middlewares/payload-crypto.middleware';
+import { assetReportController } from '@modules/reports/controllers/asset.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { payloadCryptoMultipartMiddleware } from '@common/middlewares/payload-crypto.middleware';
 
 const pdfChartUpload = multer({
     storage: multer.memoryStorage(),

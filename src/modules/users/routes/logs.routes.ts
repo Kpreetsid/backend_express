@@ -1,6 +1,6 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { userLogsController } from '../controllers/logs.controller';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { userLogsController } from '@modules/users/controllers/logs.controller';
 
 export default (router: express.Router) => {
     const userLogRouter = express.Router();

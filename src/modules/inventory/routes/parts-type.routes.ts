@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { partsTypeController } from '../controllers/parts-type.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { partTypeValidator } from '../validators/part-type.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { partsTypeController } from '@modules/inventory/controllers/parts-type.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { partTypeValidator } from '@modules/inventory/validators/part-type.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const partTypeRouter = express.Router();

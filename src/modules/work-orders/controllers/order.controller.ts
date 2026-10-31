@@ -1,11 +1,11 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { orderService } from '../services/order.service';
+import { orderService } from '@modules/work-orders/services/order.service';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/helper';
-import { storageProvider } from '../../../core/config/storage.config';
-import { getExpectedSyncVersion, setSyncVersionEtag } from '../../../common/utils/sync-concurrency.helper';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
+import { storageProvider } from '@core/config/storage.config';
+import { getExpectedSyncVersion, setSyncVersionEtag } from '@common/utils/sync-concurrency.helper';
 
 class OrderController {
 

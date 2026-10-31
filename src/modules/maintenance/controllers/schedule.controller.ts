@@ -1,10 +1,10 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { scheduleService } from '../services/schedule.service';
-import { IUser } from '../../users/models/user.model';
+import { scheduleService } from '@modules/maintenance/services/schedule.service';
+import { IUser } from '@modules/users/models/user.model';
 import { get } from 'lodash';
-import { helperService } from '../../../common/utils/helper';
-import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
+import { helperService } from '@common/utils/helper';
+import { applyRoleFilter } from '@common/utils/role-filter.helper';
 
 class ScheduleController {
 

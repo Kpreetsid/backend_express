@@ -1,6 +1,6 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response } from 'express';
-import { notificationRepository } from '../services/notification.service';
+import { notificationRepository } from '@modules/communications/services/notification.service';
 
 // Extend Request type to include user property from auth middleware
 interface AuthRequest extends Request {
@@ -84,7 +84,7 @@ export class NotificationController {
       const userId = authRequest.user.id || authRequest.user._id;
       const companyId = authRequest.user.account_id;
       const { type, message } = req.body;
-      const { notificationService } = require('../services/notification-sender.service');
+      const { notificationService } = require('@modules/communications/services/notification-sender.service');
 
       await notificationService.notifyUser(
         userId,

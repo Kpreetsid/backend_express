@@ -1,10 +1,10 @@
 import express from 'express';
-import { companyController } from '../controllers/company.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { companyValidator } from '../validators/company.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
-import { requireFirstUser } from '../../../common/middlewares/firstUser.middleware';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
+import { companyController } from '@modules/company/controllers/company.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { companyValidator } from '@modules/company/validators/company.validator';
+import { validate } from '@common/middlewares/validator.middleware';
+import { requireFirstUser } from '@common/middlewares/firstUser.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
 
 export default (router: express.Router) => {
     const companyRouter = express.Router();

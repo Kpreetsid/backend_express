@@ -1,11 +1,11 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from "express";
 import { get } from "lodash";
-import { floorMapService } from '../services/floorMap.service';
-import { IUser } from '../../users/models/user.model';
-import { mapUserToLocationService } from "../../mappings/services/userLocation.service";
-import { helperService } from "../../../common/utils/helper";
-import { applyRoleFilter } from "../../../common/utils/role-filter.helper";
+import { floorMapService } from '@modules/locations/services/floorMap.service';
+import { IUser } from '@modules/users/models/user.model';
+import { mapUserToLocationService } from "@modules/mappings/services/userLocation.service";
+import { helperService } from "@common/utils/helper";
+import { applyRoleFilter } from "@common/utils/role-filter.helper";
 
 class FloorMapController {
 

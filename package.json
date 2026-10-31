@@ -4,16 +4,16 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only --exit-child --inspect=127.0.0.1:9229 src/server.ts --host 127.0.0.1",
+    "dev": "ts-node-dev --require tsconfig-paths/register --respawn --transpile-only --exit-child --inspect=127.0.0.1:9229 src/server.ts --host 127.0.0.1",
     "build": "node scripts/build.cjs",
     "start": "npm run build && node dist/server.js",
     "typecheck": "npx tsc --noEmit",
-    "test:password-security": "node --require ts-node/register/transpile-only --test src/modules/auth/services/verification-challenge.service.test.ts src/modules/auth/services/verification-mail.test.ts src/modules/auth/services/password-recovery.test.ts src/modules/auth/services/password-flow.test.ts src/modules/auth/services/password-session.test.ts src/modules/auth/services/password-expiry.test.ts src/core/auth/support-login.middleware.test.ts src/modules/auth/services/external-login-security.test.ts src/modules/auth/services/support-login-actor.test.ts src/core/config/release-tooling.test.ts src/modules/auth/services/effective-permissions-flow.test.ts src/core/auth/auth-cookie.service.test.ts src/modules/company/models/account.model.test.ts src/common/middlewares/csrf.middleware.test.ts src/modules/auth/routes/logout-method.test.ts",
+    "test:password-security": "node --require tsconfig-paths/register --require ts-node/register/transpile-only --test src/modules/auth/services/verification-challenge.service.test.ts src/modules/auth/services/verification-mail.test.ts src/modules/auth/services/password-recovery.test.ts src/modules/auth/services/password-flow.test.ts src/modules/auth/services/password-session.test.ts src/modules/auth/services/password-expiry.test.ts src/core/auth/support-login.middleware.test.ts src/modules/auth/services/external-login-security.test.ts src/modules/auth/services/support-login-actor.test.ts src/core/config/release-tooling.test.ts src/modules/auth/services/effective-permissions-flow.test.ts src/core/auth/auth-cookie.service.test.ts src/modules/company/models/account.model.test.ts src/common/middlewares/csrf.middleware.test.ts src/modules/auth/routes/logout-method.test.ts",
     "catalog:generate": "node scripts/generate-asset-train-catalog.cjs",
     "catalog:check": "node scripts/generate-asset-train-catalog.cjs --check",
-    "test:catalog": "node --require ts-node/register/transpile-only --test src/modules/assets/catalog/asset-train-catalog.test.ts",
-    "test:asset-train": "node --require ts-node/register/transpile-only --test src/modules/assets/catalog/asset-train-catalog.test.ts src/modules/assets/services/asset-train-creation.test.ts src/modules/assets/services/asset-component-management.test.ts",
-    "test:cmms": "node --require ts-node/register/transpile-only --test src/core/scheduler/scheduler-recurrence.test.ts src/modules/inventory/services/work-order-quantities.test.ts src/modules/inventory/services/inventory-lifecycle.test.ts src/modules/work-orders/controllers/request-boundaries.test.ts src/modules/work-orders/services/cmms-regression.test.ts src/modules/work-orders/services/request-conversion.test.ts src/modules/maintenance/services/inspection-corrective.test.ts src/modules/reports/services/report-scope.test.ts src/modules/users/routes/user-route-order.test.ts src/modules/users/services/user-update-policy.test.ts src/modules/users/routes/user-route-permissions.test.ts src/common/middlewares/static-file-scope.test.ts src/modules/upload/middlewares/upload-signature.test.ts src/modules/users/services/user-authorization-sync.test.ts src/common/middlewares/permission.middleware.test.ts src/modules/users/services/account-access-coverage.test.ts src/common/middlewares/route-authorization-coverage.test.ts src/modules/users/services/role-administration-security.test.ts src/common/middlewares/upload-permission.middleware.test.ts src/common/middlewares/route-permission-catalogue.test.ts src/routes/health.routes.test.ts"
+    "test:catalog": "node --require tsconfig-paths/register --require ts-node/register/transpile-only --test src/modules/assets/catalog/asset-train-catalog.test.ts",
+    "test:asset-train": "node --require tsconfig-paths/register --require ts-node/register/transpile-only --test src/modules/assets/catalog/asset-train-catalog.test.ts src/modules/assets/services/asset-train-creation.test.ts src/modules/assets/services/asset-component-management.test.ts",
+    "test:cmms": "node --require tsconfig-paths/register --require ts-node/register/transpile-only --test src/core/scheduler/scheduler-recurrence.test.ts src/modules/inventory/services/work-order-quantities.test.ts src/modules/inventory/services/inventory-lifecycle.test.ts src/modules/work-orders/controllers/request-boundaries.test.ts src/modules/work-orders/services/cmms-regression.test.ts src/modules/work-orders/services/request-conversion.test.ts src/modules/maintenance/services/inspection-corrective.test.ts src/modules/reports/services/report-scope.test.ts src/modules/users/routes/user-route-order.test.ts src/modules/users/services/user-update-policy.test.ts src/modules/users/routes/user-route-permissions.test.ts src/common/middlewares/static-file-scope.test.ts src/modules/upload/middlewares/upload-signature.test.ts src/modules/users/services/user-authorization-sync.test.ts src/common/middlewares/permission.middleware.test.ts src/modules/users/services/account-access-coverage.test.ts src/common/middlewares/route-authorization-coverage.test.ts src/modules/users/services/role-administration-security.test.ts src/common/middlewares/upload-permission.middleware.test.ts src/common/middlewares/route-permission-catalogue.test.ts src/routes/health.routes.test.ts"
   },
   "keywords": [],
   "author": "Pawan Kumar Gautam",
@@ -56,6 +56,8 @@
     "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^8.0.2",
     "ts-node-dev": "^2.0.0",
+    "tsc-alias": "^1.9.9",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^6.0.3"
   }
 }

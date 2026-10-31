@@ -1,15 +1,15 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { assetReportService } from '../services/asset.service';
+import { assetReportService } from '@modules/reports/services/asset.service';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/helper';
-import { processorAPIService } from '../../assets/services/processor-api.service';
-import { ASSET_REPORT_STATUS } from '../models/assetReport.model';
-import { observationService } from '../../assets/services/observation.service';
-import { PdfService } from '../services/asset-pdf.service';
-import { storageConfig } from '../../../core/config/env.config';
-import { buildAssetReportScope } from '../services/report-scope';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
+import { processorAPIService } from '@modules/assets/services/processor-api.service';
+import { ASSET_REPORT_STATUS } from '@modules/reports/models/assetReport.model';
+import { observationService } from '@modules/assets/services/observation.service';
+import { PdfService } from '@modules/reports/services/asset-pdf.service';
+import { storageConfig } from '@core/config/env.config';
+import { buildAssetReportScope } from '@modules/reports/services/report-scope';
 
 class AssetReportController {
   private pdfService = new PdfService();

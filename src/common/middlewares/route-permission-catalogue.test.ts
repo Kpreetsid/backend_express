@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
-import { PlatformControlManager } from '../constants/roles.constant';
+import { PlatformControlManager } from '@common/constants/roles.constant';
 
 const ROUTE_ROOTS = [
   path.join(process.cwd(), 'src', 'modules'),

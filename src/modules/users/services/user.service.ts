@@ -1,29 +1,29 @@
-import { UserModel, IUser, UserLoginPayload } from "../models/user.model";
-import { MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation.model";
-import { LocationModel } from '../../locations/models/location.model';
+import { UserModel, IUser, UserLoginPayload } from "@modules/users/models/user.model";
+import { MapUserAssetLocationModel } from "@modules/mappings/models/mapUserLocation.model";
+import { LocationModel } from '@modules/locations/models/location.model';
 import { Request, Response, NextFunction } from 'express';
-import { passwordService } from '../../../common/utils/bcrypt.helper';
+import { passwordService } from '@common/utils/bcrypt.helper';
 import { rolesService } from './roles.service';
-import { helperService } from '../../../common/utils/helper';
-import { MailerService } from "../../../core/mailer/mailer.service";
-import { TokenModel } from '../../auth/models/userToken.model';
-import { tokenSessionStore } from '../../../core/auth/token-session-store';
-import { validateNewPassword } from '../../auth/services/verification-challenge.service';
-import { nextPasswordExpiry } from '../../auth/services/password-expiry';
-import { RoleManager } from "../../../common/constants/new-user-roles.constant";
-import { PlatformControlManager } from "../../../common/constants/roles.constant";
-import { RoleMenuModel } from "../models/userRoleMenu.model";
+import { helperService } from '@common/utils/helper';
+import { MailerService } from "@core/mailer/mailer.service";
+import { TokenModel } from '@modules/auth/models/userToken.model';
+import { tokenSessionStore } from '@core/auth/token-session-store';
+import { validateNewPassword } from '@modules/auth/services/verification-challenge.service';
+import { nextPasswordExpiry } from '@modules/auth/services/password-expiry';
+import { RoleManager } from "@common/constants/new-user-roles.constant";
+import { PlatformControlManager } from "@common/constants/roles.constant";
+import { RoleMenuModel } from "@modules/users/models/userRoleMenu.model";
 import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, shouldRevokeUserSessionsAfterUpdate } from './user-update-policy';
 
-import { withTransaction } from "../../../common/utils/transaction.helper";
-import { subscriptionLimitService } from "../../company/services/subscriptionLimit.service";
+import { withTransaction } from "@common/utils/transaction.helper";
+import { subscriptionLimitService } from "@modules/company/services/subscriptionLimit.service";
 
 class UsersService {
 
   private _mailerService?: MailerService;
   private get mailerService(): MailerService {
     if (!this._mailerService) {
-      const { MailerService } = require("../../../core/mailer/mailer.service");
+      const { MailerService } = require("@core/mailer/mailer.service");
       this._mailerService = new MailerService();
     }
     return this._mailerService!;

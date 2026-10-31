@@ -1,11 +1,11 @@
 import nodemailer, { Transporter } from 'nodemailer';
-import { mailCredential } from '../config/env.config';
-import { generateExternalAccessToken } from '../auth/auth.middleware';
+import { mailCredential } from '@core/config/env.config';
+import { generateExternalAccessToken } from '@core/auth/auth.middleware';
 import fs from 'fs';
 import path from 'path';
-import { IMailLog, MailLogModel, createMailLog } from '../../modules/communications/models/mailLog.model';
-import { VERIFICATION_CODE_EXPIRY_SECONDS } from '../../modules/auth/models/userVerification.model';
-import { verificationChallenges, VerificationPurpose } from '../../modules/auth/services/verification-challenge.service';
+import { IMailLog, MailLogModel, createMailLog } from '@modules/communications/models/mailLog.model';
+import { VERIFICATION_CODE_EXPIRY_SECONDS } from '@modules/auth/models/userVerification.model';
+import { verificationChallenges, VerificationPurpose } from '@modules/auth/services/verification-challenge.service';
 
 interface MailPayload {
   to: string;

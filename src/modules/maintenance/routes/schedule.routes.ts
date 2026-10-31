@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { scheduleController } from '../controllers/schedule.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { scheduleValidator, scheduleUpdateValidator } from '../validators/schedule.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { scheduleController } from '@modules/maintenance/controllers/schedule.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { scheduleValidator, scheduleUpdateValidator } from '@modules/maintenance/validators/schedule.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const scheduleRouter = express.Router();

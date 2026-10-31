@@ -1,13 +1,13 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { requestService } from '../services/request.service';
+import { requestService } from '@modules/work-orders/services/request.service';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '../models/workRequest.model';
-import { helperService } from '../../../common/utils/helper';
-import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
-import { notificationService } from '../../communications/services/notification-sender.service';
-import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '../../../common/utils/sync-concurrency.helper';
+import { IUser } from '@modules/users/models/user.model';
+import { WORK_REQUEST_PRIORITIES, WORK_REQUEST_STATUSES } from '@modules/work-orders/models/workRequest.model';
+import { helperService } from '@common/utils/helper';
+import { applyRoleFilter } from '@common/utils/role-filter.helper';
+import { notificationService } from '@modules/communications/services/notification-sender.service';
+import { assertSyncVersion, getExpectedSyncVersion, setSyncVersionEtag } from '@common/utils/sync-concurrency.helper';
 
 const editableRequestFields = ['title', 'description', 'problemType', 'priority', 'location_id', 'asset_id', 'files', 'status', 'tags', 'remarks', 'review_sla_hours', 'order_sla_hours'] as const;
 function editableRequestPayload(value: any): Record<string, any> {

@@ -1,9 +1,9 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
-import { commentService } from '../services/comments.service';
-import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/helper';
+import { commentService } from '@modules/communications/services/comments.service';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
 
 class CommentController {
 

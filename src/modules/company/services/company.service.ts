@@ -1,8 +1,8 @@
 import crypto from 'crypto';
-import { helperService } from "../../../common/utils/helper";
-import { AccountModel, IAccount } from "../models/account.model";
-import { RoleManager } from "../../users/constants/account-role-menu.constant";
-import { AccountApiKeyModel } from "../models/accountApiKey.model";
+import { helperService } from "@common/utils/helper";
+import { AccountModel, IAccount } from "@modules/company/models/account.model";
+import { RoleManager } from "@modules/users/constants/account-role-menu.constant";
+import { AccountApiKeyModel } from "@modules/company/models/accountApiKey.model";
 
 class CompanyService {
 

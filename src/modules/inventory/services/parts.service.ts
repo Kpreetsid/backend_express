@@ -1,16 +1,16 @@
 import mongoose from "mongoose";
-import { helperService } from "../../../common/utils/helper";
-import { PartsModel, IPart } from "../models/part.model";
-import { withTransaction } from "../../../common/utils/transaction.helper";
-import { InventoryMovementModel, InventoryMovementType } from "../models/inventoryMovement.model";
-import { CycleCountModel } from "../models/cycleCount.model";
-import { ProcedureModel } from "../../work-orders/models/procedure.model";
-import { WorkOrderModel } from "../../work-orders/models/workOrder.model";
-import { PartsTypeModel } from "../models/parts-types.model";
-import { PartHistoryAction, PartHistoryModel } from "../models/partHistory.model";
-import { LocationModel } from "../../locations/models/location.model";
-import { UserModel } from "../../users/models/user.model";
-import { assertSyncVersion, createSyncConflict } from "../../../common/utils/sync-concurrency.helper";
+import { helperService } from "@common/utils/helper";
+import { PartsModel, IPart } from "@modules/inventory/models/part.model";
+import { withTransaction } from "@common/utils/transaction.helper";
+import { InventoryMovementModel, InventoryMovementType } from "@modules/inventory/models/inventoryMovement.model";
+import { CycleCountModel } from "@modules/inventory/models/cycleCount.model";
+import { ProcedureModel } from "@modules/work-orders/models/procedure.model";
+import { WorkOrderModel } from "@modules/work-orders/models/workOrder.model";
+import { PartsTypeModel } from "@modules/inventory/models/parts-types.model";
+import { PartHistoryAction, PartHistoryModel } from "@modules/inventory/models/partHistory.model";
+import { LocationModel } from "@modules/locations/models/location.model";
+import { UserModel } from "@modules/users/models/user.model";
+import { assertSyncVersion, createSyncConflict } from "@common/utils/sync-concurrency.helper";
 
 interface InventoryAdjustmentResult {
   warnings: {

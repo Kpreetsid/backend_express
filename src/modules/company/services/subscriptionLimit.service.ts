@@ -1,8 +1,8 @@
 import { ClientSession } from 'mongoose';
-import { AccountModel } from '../models/account.model';
-import { AssetModel } from '../../assets/models/asset.model';
-import { LocationModel } from '../../locations/models/location.model';
-import { UserModel } from '../../users/models/user.model';
+import { AccountModel } from '@modules/company/models/account.model';
+import { AssetModel } from '@modules/assets/models/asset.model';
+import { LocationModel } from '@modules/locations/models/location.model';
+import { UserModel } from '@modules/users/models/user.model';
 
 export const SUBSCRIPTION_LIMIT_CODE = 'SUBSCRIPTION_LIMIT_REACHED';
 export const SUBSCRIPTION_RESOURCES = ['user', 'location', 'asset'] as const;

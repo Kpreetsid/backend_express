@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { inspectionController } from '../controllers/inspection.controller';
-import { validateParamId } from "../../../common/middlewares/validate.middleware";
-import { inspectionCorrectiveWorkOrderValidator, inspectionValidator } from '../validators/inspection.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { inspectionController } from '@modules/maintenance/controllers/inspection.controller';
+import { validateParamId } from "@common/middlewares/validate.middleware";
+import { inspectionCorrectiveWorkOrderValidator, inspectionValidator } from '@modules/maintenance/validators/inspection.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (outer: express.Router) => {
   const inspectionRouter = express.Router();

@@ -1,6 +1,6 @@
 import express from 'express';
-import { verificationController } from '../controllers/verification.controller';
-import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
+import { verificationController } from '@modules/auth/controllers/verification.controller';
+import { rateLimiter } from '@common/middlewares/rate-limit.middleware';
 
 export default (router: express.Router) => {
     const userVerificationRouter = express.Router();

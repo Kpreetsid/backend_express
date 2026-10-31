@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { createAuthenticationByToken, userAuthentication, userAuthenticationByToken, userAuthenticationToken, userLogOutService, userResetPassword, userGetMeService } from '../services/authentication.service';
-import { refreshTokenService } from '../services/refreshToken.service';
+import { createAuthenticationByToken, userAuthentication, userAuthenticationByToken, userAuthenticationToken, userLogOutService, userResetPassword, userGetMeService } from '@modules/auth/services/authentication.service';
+import { refreshTokenService } from '@modules/auth/services/refreshToken.service';
 import { get } from 'lodash';
-import { accountAccessService } from '../../users/services/account-access.service';
+import { accountAccessService } from '@modules/users/services/account-access.service';
 
 export const authentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     await userAuthentication(req, res, next);

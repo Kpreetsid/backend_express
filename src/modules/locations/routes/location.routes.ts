@@ -1,9 +1,9 @@
 import express from 'express';
-import { locationController } from '../controllers/location.controller';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { locationValidator } from '../validators/location.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { locationController } from '@modules/locations/controllers/location.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { locationValidator } from '@modules/locations/validators/location.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 
 export default (router: express.Router) => {

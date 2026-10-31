@@ -1,10 +1,10 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { formCategoryService } from '../services/formCategory.service';
-import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/helper';
-import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
+import { formCategoryService } from '@modules/maintenance/services/formCategory.service';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
+import { applyRoleFilter } from '@common/utils/role-filter.helper';
 
 class FormCategoryController {
 

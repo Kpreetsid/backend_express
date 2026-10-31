@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
-import { rolesService } from '../services/roles.service';
-import { IUser } from '../models/user.model';
-import { usersService } from '../services/user.service';
+import { rolesService } from '@modules/users/services/roles.service';
+import { IUser } from '@modules/users/models/user.model';
+import { usersService } from '@modules/users/services/user.service';
 import { get } from 'lodash';
-import { helperService } from '../../../common/utils/helper';
-import { RoleManager } from '../../../common/constants/new-user-roles.constant';
-import { companyService } from '../../company/services/company.service';
-import { accountAccessService } from '../services/account-access.service';
+import { helperService } from '@common/utils/helper';
+import { RoleManager } from '@common/constants/new-user-roles.constant';
+import { companyService } from '@modules/company/services/company.service';
+import { accountAccessService } from '@modules/users/services/account-access.service';
 
 const getAccountRoleMenuOrThrow = async (accountId: unknown) => {
   const account = await companyService.verifyCompany(String(accountId));

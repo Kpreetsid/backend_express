@@ -1,4 +1,4 @@
-import { WorkInstructions } from '../models/workInstructions.model';
+import { WorkInstructions } from '@modules/work-orders/models/workInstructions.model';
 
 class InstructionsService {
   async getInstructions (match: any): Promise<any> {

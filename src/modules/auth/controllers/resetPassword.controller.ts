@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
-import { usersService } from '../../users/services/user.service';
-import { resetPasswordService } from '../services/resetPassword.service';
-import { verificationEmail } from '../services/verification-challenge.service';
+import { usersService } from '@modules/users/services/user.service';
+import { resetPasswordService } from '@modules/auth/services/resetPassword.service';
+import { verificationEmail } from '@modules/auth/services/verification-challenge.service';
 
 class ResetPasswordController {
 

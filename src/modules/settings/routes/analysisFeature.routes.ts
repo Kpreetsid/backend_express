@@ -1,6 +1,6 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { analysisFeatureController } from '../controllers/analysisFeature.controller';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { analysisFeatureController } from '@modules/settings/controllers/analysisFeature.controller';
 
 export default (router: express.Router) => {
     const analysisFeatureRouter = express.Router();

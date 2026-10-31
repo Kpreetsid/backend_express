@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
-import { usersService } from '../../users/services/user.service';
-import { verificationService } from '../services/verification.service';
+import { usersService } from '@modules/users/services/user.service';
+import { verificationService } from '@modules/auth/services/verification.service';
 
 class VerificationController {
 

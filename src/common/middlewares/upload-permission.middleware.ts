@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { accountAccessService } from '../../modules/users/services/account-access.service';
+import { accountAccessService } from '@modules/users/services/account-access.service';
 
 type UploadRoleAction = { module: string; action: string };
 type UploadPermissionPolicy = {

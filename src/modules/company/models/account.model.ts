@@ -1,9 +1,9 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { ACCOUNT_ROLE_MENU_SCHEMA_VERSION, RoleManager } from '../../users/constants/account-role-menu.constant';
-import { EXPERIENCE_PROFILES, ExperienceProfile } from '../../../common/constants/experience-profile.constant';
+import { ACCOUNT_ROLE_MENU_SCHEMA_VERSION, RoleManager } from '@modules/users/constants/account-role-menu.constant';
+import { EXPERIENCE_PROFILES, ExperienceProfile } from '@common/constants/experience-profile.constant';
 export const COMPANY_COLLECTION_NAME = `account_master`;
 export const STATUS_ENUM = ['active', 'inactive'];
-export { EXPERIENCE_PROFILES } from '../../../common/constants/experience-profile.constant';
+export { EXPERIENCE_PROFILES } from '@common/constants/experience-profile.constant';
 export const COOKIES_ENUM = ['enabled', 'disabled'];
 export const SUBSCRIPTION_TYPES = ['free', 'trial', 'monthly', 'yearly', 'one_time', 'lifetime'] as const;
 export const SUBSCRIPTION_STATUSES = ['active', 'inactive', 'expired', 'cancelled', 'suspended'] as const;

@@ -1,7 +1,7 @@
 import express from 'express';
 import assetRoutes from './asset.routes';
 import locationRoutes from './location.routes';
-import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
+import { rateLimiter } from '@common/middlewares/rate-limit.middleware';
 const router = express.Router();
 
 export default (): express.Router => {

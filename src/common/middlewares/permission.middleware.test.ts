@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { hasAnyRolePermission, hasRolePermission } from './permission.middleware';
-import { PlatformControlManager } from '../constants/roles.constant';
+import { PlatformControlManager } from '@common/constants/roles.constant';
 
 const run = async (middleware: any, req: any): Promise<any> =>
   await new Promise(resolve => middleware(req, {}, (error: any) => resolve(error || null)));

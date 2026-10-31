@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { userWorkOrderController } from '../controllers/userWorkOrder.controller';
-import { validateParam } from '../../../common/middlewares/validate.middleware';
-import { userWorkOrderValidator } from '../validators/userWorkOrder.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { userWorkOrderController } from '@modules/mappings/controllers/userWorkOrder.controller';
+import { validateParam } from '@common/middlewares/validate.middleware';
+import { userWorkOrderValidator } from '@modules/mappings/validators/userWorkOrder.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const workOrderRouter = express.Router();

@@ -1,7 +1,7 @@
 import express, { NextFunction, Request, RequestHandler, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { isAuthenticated } from '../../core/auth/auth.middleware';
+import { isAuthenticated } from '@core/auth/auth.middleware';
 import { isStaticFileOwnedByAccount } from './static-file-scope';
 
 const isInside = (root: string, candidate: string): boolean => (

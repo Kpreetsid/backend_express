@@ -1,6 +1,6 @@
 import express from 'express';
-import { registrationController } from '../controllers/registration.controller';
-import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
+import { registrationController } from '@modules/auth/controllers/registration.controller';
+import { rateLimiter } from '@common/middlewares/rate-limit.middleware';
 
 export default (router: express.Router) => {
     const registrationRouter = express.Router();

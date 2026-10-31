@@ -1,6 +1,6 @@
-import { PostModel, IPost } from "../models/post.model";
-import { LocationModel } from "../../locations/models/location.model";
-import { UserModel } from "../../users/models/user.model";
+import { PostModel, IPost } from "@modules/communications/models/post.model";
+import { LocationModel } from "@modules/locations/models/location.model";
+import { UserModel } from "@modules/users/models/user.model";
 
 class PostService {
   async getAllPosts(match: any): Promise<IPost[]> {

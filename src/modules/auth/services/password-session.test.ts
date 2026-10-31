@@ -1,21 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { generateAccessToken, authenticateTokenContext } from '../../../core/auth/auth.middleware';
-import { tokenSessionStore } from '../../../core/auth/token-session-store';
-import { TokenBlacklist } from '../../../core/auth/token-blacklist';
-import { usersService } from '../../users/services/user.service';
-import { companyService } from '../../company/services/company.service';
-import { rolesService } from '../../users/services/roles.service';
+import { generateAccessToken, authenticateTokenContext } from '@core/auth/auth.middleware';
+import { tokenSessionStore } from '@core/auth/token-session-store';
+import { TokenBlacklist } from '@core/auth/token-blacklist';
+import { usersService } from '@modules/users/services/user.service';
+import { companyService } from '@modules/company/services/company.service';
+import { rolesService } from '@modules/users/services/roles.service';
 import jwt from 'jsonwebtoken';
-import { TokenModel } from '../models/userToken.model';
-import { UserModel } from '../../users/models/user.model';
+import { TokenModel } from '@modules/auth/models/userToken.model';
+import { UserModel } from '@modules/users/models/user.model';
 import { refreshTokenService } from './refreshToken.service';
-import { accountFeatureService } from '../../company/services/accountFeature.service';
+import { accountFeatureService } from '@modules/company/services/accountFeature.service';
 import { userAuthentication, userAuthenticationToken } from './authentication.service';
-import { passwordService } from '../../../common/utils/bcrypt.helper';
-import { analysisFeatureService } from '../../settings/services/analysisFeature.service';
-import { accountAccessService } from '../../users/services/account-access.service';
-import { refreshToken as refreshConfig } from '../../../core/config/env.config';
+import { passwordService } from '@common/utils/bcrypt.helper';
+import { analysisFeatureService } from '@modules/settings/services/analysisFeature.service';
+import { accountAccessService } from '@modules/users/services/account-access.service';
+import { refreshToken as refreshConfig } from '@core/config/env.config';
 
 test('deleted persistent sessions cannot be resurrected by a stale cache', async t => {
   const id = '64a000000000000000000001';

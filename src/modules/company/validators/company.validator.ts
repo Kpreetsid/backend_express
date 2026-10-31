@@ -1,5 +1,5 @@
 import { body } from 'express-validator';
-import { COOKIES_ENUM } from '../models/account.model';
+import { COOKIES_ENUM } from '@modules/company/models/account.model';
 
 export const companyValidator = [
   body('account_name')

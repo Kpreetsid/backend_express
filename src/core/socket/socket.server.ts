@@ -1,11 +1,11 @@
 import { Server, Socket } from 'socket.io';
 import { Server as HttpServer } from 'http';
-import { cookieAuth } from '../config/env.config';
-import { notificationService } from '../../modules/communications/services/notification-sender.service';
-import { isOriginAllowed } from '../config/cors.config';
-import { authenticateTokenContext } from '../auth/auth.middleware';
-import { LEGACY_ACCESS_COOKIE_NAME, LEGACY_ACCOUNT_COOKIE_NAME } from '../auth/auth-cookie.service';
-import { cookieService } from '../../common/utils/cookie.helper';
+import { cookieAuth } from '@core/config/env.config';
+import { notificationService } from '@modules/communications/services/notification-sender.service';
+import { isOriginAllowed } from '@core/config/cors.config';
+import { authenticateTokenContext } from '@core/auth/auth.middleware';
+import { LEGACY_ACCESS_COOKIE_NAME, LEGACY_ACCOUNT_COOKIE_NAME } from '@core/auth/auth-cookie.service';
+import { cookieService } from '@common/utils/cookie.helper';
 
 export const notificationSocketMetrics = {
   activeConnections: 0,

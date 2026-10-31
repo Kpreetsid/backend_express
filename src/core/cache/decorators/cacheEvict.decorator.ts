@@ -14,7 +14,7 @@
  * (i.e., does not throw) it invalidates the specified keys.
  */
 
-import { CacheManager } from '../cache.manager';
+import { CacheManager } from '@core/cache/cache.manager';
 
 type KeysResolver = (args: any[], result: any) => (string | null | undefined)[];
 

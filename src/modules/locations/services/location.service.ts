@@ -1,20 +1,20 @@
-import { LocationModel, ILocationMaster } from "../models/location.model";
-import { IMapUserLocation, MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation.model";
-import { AssetModel } from "../../assets/models/asset.model";
-import { WorkOrderModel } from "../../work-orders/models/workOrder.model";
-import { ObservationModel } from "../../assets/models/observation.model";
-import { PartsModel } from "../../inventory/models/part.model";
-import { WorkRequestModel } from "../../work-orders/models/workRequest.model";
-import { InspectionModel } from "../../maintenance/models/inspection.model";
-import { SOPsModel } from "../../maintenance/models/sops.model";
-import { SchedulerModel } from "../../maintenance/models/scheduleMaster.model";
-import { helperService } from "../../../common/utils/helper";
+import { LocationModel, ILocationMaster } from "@modules/locations/models/location.model";
+import { IMapUserLocation, MapUserAssetLocationModel } from "@modules/mappings/models/mapUserLocation.model";
+import { AssetModel } from "@modules/assets/models/asset.model";
+import { WorkOrderModel } from "@modules/work-orders/models/workOrder.model";
+import { ObservationModel } from "@modules/assets/models/observation.model";
+import { PartsModel } from "@modules/inventory/models/part.model";
+import { WorkRequestModel } from "@modules/work-orders/models/workRequest.model";
+import { InspectionModel } from "@modules/maintenance/models/inspection.model";
+import { SOPsModel } from "@modules/maintenance/models/sops.model";
+import { SchedulerModel } from "@modules/maintenance/models/scheduleMaster.model";
+import { helperService } from "@common/utils/helper";
 import mongoose from "mongoose";
-import { mapUserToLocationService } from '../../mappings/services/userLocation.service';
-import { mapUserToAssetService, updateLocationAssetMapping } from '../../mappings/services/userAsset.service';
+import { mapUserToLocationService } from '@modules/mappings/services/userLocation.service';
+import { mapUserToAssetService, updateLocationAssetMapping } from '@modules/mappings/services/userAsset.service';
 
-import { withTransaction } from "../../../common/utils/transaction.helper";
-import { subscriptionLimitService } from "../../company/services/subscriptionLimit.service";
+import { withTransaction } from "@common/utils/transaction.helper";
+import { subscriptionLimitService } from "@modules/company/services/subscriptionLimit.service";
 
 class LocationService {
   async getLocationsList(match: any) {

@@ -1,5 +1,5 @@
-import { PartsTypeModel } from "../models/parts-types.model";
-import { UserModel } from "../../users/models/user.model";
+import { PartsTypeModel } from "@modules/inventory/models/parts-types.model";
+import { UserModel } from "@modules/users/models/user.model";
 
 class PartsTypeService {
   async getPartTypes(match: any) {

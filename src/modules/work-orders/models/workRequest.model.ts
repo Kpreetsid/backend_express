@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
-import { IUpload } from '../../upload/models/upload.model';
-import { syncVersionPlugin } from '../../../core/database/plugins/sync-version.plugin';
+import { IUpload } from '@modules/upload/models/upload.model';
+import { syncVersionPlugin } from '@core/database/plugins/sync-version.plugin';
 
 export const WORK_REQUEST_COLLECTION_NAME = 'work_request';
 

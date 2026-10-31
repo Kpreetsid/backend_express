@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import { supportLogin } from '../config/env.config';
+import { supportLogin } from '@core/config/env.config';
 
 export const isValidSupportServiceKey = (provided: string | undefined, expected: string | undefined): boolean => {
   const left = Buffer.from(String(provided || ''));

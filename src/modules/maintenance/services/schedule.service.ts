@@ -1,9 +1,9 @@
-import { SchedulerModel, IScheduleMaster } from "../models/scheduleMaster.model";
-import { UserModel } from "../../users/models/user.model";
-import { PartsTypeModel } from "../../inventory/models/parts-types.model";
-import { helperService } from "../../../common/utils/helper";
-import { AssetModel } from "../../assets/models/asset.model";
-import { LocationModel } from "../../locations/models/location.model";
+import { SchedulerModel, IScheduleMaster } from "@modules/maintenance/models/scheduleMaster.model";
+import { UserModel } from "@modules/users/models/user.model";
+import { PartsTypeModel } from "@modules/inventory/models/parts-types.model";
+import { helperService } from "@common/utils/helper";
+import { AssetModel } from "@modules/assets/models/asset.model";
+import { LocationModel } from "@modules/locations/models/location.model";
 
 class ScheduleService {
     private normalizeSchedulePayload(body: any): any {

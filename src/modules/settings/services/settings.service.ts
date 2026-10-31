@@ -1,4 +1,4 @@
-import { SettingsModel } from "../models/settings.model";
+import { SettingsModel } from "@modules/settings/models/settings.model";
 
 class SettingsService {
   async getAll(filter: any = {}): Promise<any> {

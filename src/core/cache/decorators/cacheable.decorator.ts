@@ -13,7 +13,7 @@
  * Key resolver receives the method's arguments array.
  */
 
-import { CacheManager } from '../cache.manager';
+import { CacheManager } from '@core/cache/cache.manager';
 
 type KeyResolver = (args: any[]) => string | null;
 

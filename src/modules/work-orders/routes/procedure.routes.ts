@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { procedureController } from '../controllers/procedure.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { procedureValidator, updateProcedureValidator } from '../validators/procedure.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { procedureController } from '@modules/work-orders/controllers/procedure.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { procedureValidator, updateProcedureValidator } from '@modules/work-orders/validators/procedure.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
   const procedureRouter = express.Router();

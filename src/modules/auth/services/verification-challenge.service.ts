@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import { auth } from '../../../core/config/env.config';
-import { VerificationCodeModel, VERIFICATION_CODE_EXPIRY_SECONDS } from '../models/userVerification.model';
+import { auth } from '@core/config/env.config';
+import { VerificationCodeModel, VERIFICATION_CODE_EXPIRY_SECONDS } from '@modules/auth/models/userVerification.model';
 
 export type VerificationPurpose = 'registration' | 'email-verification' | 'password-reset';
 const RESET_GRANT_SECONDS = 5 * 60;

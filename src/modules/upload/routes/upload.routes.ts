@@ -1,13 +1,13 @@
 import express from 'express';
-import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
+import { rateLimiter } from '@common/middlewares/rate-limit.middleware';
 const router = express.Router();
-import { uploadController } from '../controllers/upload.controller';
+import { uploadController } from '@modules/upload/controllers/upload.controller';
 import multer from 'multer';
 import path from 'path';
-import { uploadFilesService } from '../middlewares/upload.multer';
-import { payloadCryptoMultipartMiddleware } from '../../../common/middlewares/payload-crypto.middleware';
-import { enforceUploadPermission } from '../../../common/middlewares/upload-permission.middleware';
-import { enforceUploadSignatures } from '../middlewares/upload-signature';
+import { uploadFilesService } from '@modules/upload/middlewares/upload.multer';
+import { payloadCryptoMultipartMiddleware } from '@common/middlewares/payload-crypto.middleware';
+import { enforceUploadPermission } from '@common/middlewares/upload-permission.middleware';
+import { enforceUploadSignatures } from '@modules/upload/middlewares/upload-signature';
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {

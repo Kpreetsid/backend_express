@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { UserModel } from '../../users/models/user.model';
+import { UserModel } from '@modules/users/models/user.model';
 export const EQUIPMENT_COLLECTION_NAME = 'equipment_set';
 
 

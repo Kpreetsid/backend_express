@@ -1,8 +1,8 @@
 import fs from 'fs';
 import { NextFunction, Request, Response } from 'express';
-import { payloadCryptoService, PayloadCryptoKeyRecord } from '../utils/crypto.helper';
-import { cookieAuth } from '../../core/config/env.config';
-import { accountFeatureService } from '../../modules/company/services/accountFeature.service';
+import { payloadCryptoService, PayloadCryptoKeyRecord } from '@common/utils/crypto.helper';
+import { cookieAuth } from '@core/config/env.config';
+import { accountFeatureService } from '@modules/company/services/accountFeature.service';
 
 const ENCRYPTION_HEADER = 'x-cmms-payload-encrypted';
 const KEY_ID_HEADER = 'x-cmms-crypto-key-id';

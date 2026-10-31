@@ -1,4 +1,4 @@
-import { AssetModel } from "../../modules/assets/models/asset.model";
+import { AssetModel } from "@modules/assets/models/asset.model";
 
 class SnoozeAlarmService {
     public async runSnoozeAlarm(): Promise<void> {

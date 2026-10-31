@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { validate } from '../../../common/middlewares/validator.middleware';
-import { orderTemplateController } from '../controllers/orderTemplate.controller';
-import { orderTemplateValidator } from '../validators/orderTemplate.validator';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { validate } from '@common/middlewares/validator.middleware';
+import { orderTemplateController } from '@modules/work-orders/controllers/orderTemplate.controller';
+import { orderTemplateValidator } from '@modules/work-orders/validators/orderTemplate.validator';
 
 export default (router: express.Router) => {
   const orderTemplateRouter = express.Router();

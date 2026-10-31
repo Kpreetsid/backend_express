@@ -1,9 +1,9 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { userLogsService } from '../services/logs.service';
+import { userLogsService } from '@modules/users/services/logs.service';
 import { get } from 'lodash';
-import { IUser } from '../models/user.model';
-import { helperService } from '../../../common/utils/helper';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
 
 class UserLogsController {
   async userLogs (req: Request, res: Response, next: NextFunction): Promise<any> {

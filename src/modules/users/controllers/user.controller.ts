@@ -1,19 +1,19 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
-import { usersService } from '../services/user.service';
-import { IUser } from '../models/user.model';
-import { resetPasswordService } from '../../auth/services/resetPassword.service';
-import { passwordService } from '../../../common/utils/bcrypt.helper';
-import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
-import { mailerService } from '../../../core/mailer/mailer.service';
-import { helperService } from '../../../common/utils/helper';
-import { notificationService } from '../../communications/services/notification-sender.service';
-import { subscriptionLimitService } from '../../company/services/subscriptionLimit.service';
-import { validateNewPassword } from '../../auth/services/verification-challenge.service';
-import { clearAuthCookies } from '../../../core/auth/auth-cookie.service';
-import { refreshTokenService } from '../../auth/services/refreshToken.service';
-import { canAssignUserRole, canModifyUserRecord, isProtectedFirstUserMutation, pickUserCreateFields, pickUserUpdateFields } from '../services/user-update-policy';
+import { usersService } from '@modules/users/services/user.service';
+import { IUser } from '@modules/users/models/user.model';
+import { resetPasswordService } from '@modules/auth/services/resetPassword.service';
+import { passwordService } from '@common/utils/bcrypt.helper';
+import { applyRoleFilter } from '@common/utils/role-filter.helper';
+import { mailerService } from '@core/mailer/mailer.service';
+import { helperService } from '@common/utils/helper';
+import { notificationService } from '@modules/communications/services/notification-sender.service';
+import { subscriptionLimitService } from '@modules/company/services/subscriptionLimit.service';
+import { validateNewPassword } from '@modules/auth/services/verification-challenge.service';
+import { clearAuthCookies } from '@core/auth/auth-cookie.service';
+import { refreshTokenService } from '@modules/auth/services/refreshToken.service';
+import { canAssignUserRole, canModifyUserRecord, isProtectedFirstUserMutation, pickUserCreateFields, pickUserUpdateFields } from '@modules/users/services/user-update-policy';
 
 class UserController {
 

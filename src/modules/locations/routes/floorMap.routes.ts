@@ -1,9 +1,9 @@
 import express from 'express';
-import { floorMapController } from '../controllers/floorMap.controller';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { floorMapValidator } from '../validators/floorMap.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { floorMapController } from '@modules/locations/controllers/floorMap.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { floorMapValidator } from '@modules/locations/validators/floorMap.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const floorMapRouter = express.Router();

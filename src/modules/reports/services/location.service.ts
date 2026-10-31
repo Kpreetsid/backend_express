@@ -1,7 +1,7 @@
-import { AssetModel } from '../../assets/models/asset.model';
-import { ReportAssetModel } from '../models/assetReport.model';
-import { LocationModel } from '../../locations/models/location.model';
-import { ILocationReport, ReportLocationModel } from '../models/locationReport.model';
+import { AssetModel } from '@modules/assets/models/asset.model';
+import { ReportAssetModel } from '@modules/reports/models/assetReport.model';
+import { LocationModel } from '@modules/locations/models/location.model';
+import { ILocationReport, ReportLocationModel } from '@modules/reports/models/locationReport.model';
 
 class LocationReportService {
 

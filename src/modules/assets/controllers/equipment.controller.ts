@@ -1,17 +1,17 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { equipmentService } from '../services/equipment.service';
-import { IUser } from '../../users/models/user.model';
-import { mapUserToLocationService } from '../../mappings/services/userLocation.service';
-import { mapUserToAssetService } from '../../mappings/services/userAsset.service';
-import { uploadFilesService } from '../../upload/middlewares/upload.multer';
-import { locationService } from '../../locations/services/location.service';
-import { processorAPIService } from '../services/processor-api.service';
-import { helperService } from '../../../common/utils/helper';
-import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
-import { notificationService } from '../../communications/services/notification-sender.service';
-import { withTransaction } from "../../../common/utils/transaction.helper";
+import { equipmentService } from '@modules/assets/services/equipment.service';
+import { IUser } from '@modules/users/models/user.model';
+import { mapUserToLocationService } from '@modules/mappings/services/userLocation.service';
+import { mapUserToAssetService } from '@modules/mappings/services/userAsset.service';
+import { uploadFilesService } from '@modules/upload/middlewares/upload.multer';
+import { locationService } from '@modules/locations/services/location.service';
+import { processorAPIService } from '@modules/assets/services/processor-api.service';
+import { helperService } from '@common/utils/helper';
+import { applyRoleFilter } from '@common/utils/role-filter.helper';
+import { notificationService } from '@modules/communications/services/notification-sender.service';
+import { withTransaction } from "@common/utils/transaction.helper";
 
 class EquipmentController {
 

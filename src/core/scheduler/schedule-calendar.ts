@@ -1,4 +1,4 @@
-import type { IScheduleMaster } from '../../modules/maintenance/models/scheduleMaster.model';
+import type { IScheduleMaster } from '@modules/maintenance/models/scheduleMaster.model';
 
 type Schedule = IScheduleMaster['schedule'];
 const DAY_MS = 86400000;

@@ -1,7 +1,7 @@
 import express from 'express';
-import { equipmentController } from '../controllers/equipment.controller';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
+import { equipmentController } from '@modules/assets/controllers/equipment.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
 
 export default (router: express.Router) => {
     const equipmentRouter = express.Router();

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { requestService } from './request.service';
-import { WorkRequestModel } from '../models/workRequest.model';
+import { WorkRequestModel } from '@modules/work-orders/models/workRequest.model';
 
 const requestId = '111111111111111111111111';
 const workOrderId = '222222222222222222222222';

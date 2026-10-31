@@ -1,4 +1,4 @@
-import { WorkOrderAssigneeModel } from "../models/mapUserWorkOrder.model";
+import { WorkOrderAssigneeModel } from "@modules/mappings/models/mapUserWorkOrder.model";
 
 class UserWorkOrderService {
   async mapUsersWorkOrder (body: any, session?: any) {

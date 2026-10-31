@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { UserModel } from '../../users/models/user.model';
-import { TokenModel } from '../models/userToken.model';
-import { tokenSessionStore } from '../../../core/auth/token-session-store';
-import { passwordService } from '../../../common/utils/bcrypt.helper';
-import { usersService } from '../../users/services/user.service';
-import { MailerService } from '../../../core/mailer/mailer.service';
+import { UserModel } from '@modules/users/models/user.model';
+import { TokenModel } from '@modules/auth/models/userToken.model';
+import { tokenSessionStore } from '@core/auth/token-session-store';
+import { passwordService } from '@common/utils/bcrypt.helper';
+import { usersService } from '@modules/users/services/user.service';
+import { MailerService } from '@core/mailer/mailer.service';
 import { resetPasswordService } from './resetPassword.service';
 import { verificationChallenges } from './verification-challenge.service';
 import { userResetPassword } from './authentication.service';

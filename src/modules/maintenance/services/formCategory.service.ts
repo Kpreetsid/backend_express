@@ -1,5 +1,5 @@
-import { CategoryModel, ICategory } from "../models/formCategory.model";
-import { IUser } from "../../users/models/user.model";
+import { CategoryModel, ICategory } from "@modules/maintenance/models/formCategory.model";
+import { IUser } from "@modules/users/models/user.model";
 
 class FormCategoryService {
 

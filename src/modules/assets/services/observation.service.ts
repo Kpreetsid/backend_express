@@ -1,7 +1,7 @@
-import { ObservationModel } from "../models/observation.model";
-import { AssetModel } from "../models/asset.model";
-import { LocationModel } from "../../locations/models/location.model";
-import { UserModel } from "../../users/models/user.model";
+import { ObservationModel } from "@modules/assets/models/observation.model";
+import { AssetModel } from "@modules/assets/models/asset.model";
+import { LocationModel } from "@modules/locations/models/location.model";
+import { UserModel } from "@modules/users/models/user.model";
 
 class ObservationService {
   async getAllObservation (match: any): Promise<any> {

@@ -1,9 +1,9 @@
 import express from 'express';
-import { rolesController } from '../controllers/roles.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { createRoleValidator, updateRoleValidator } from '../validators/roles.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
+import { rolesController } from '@modules/users/controllers/roles.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { createRoleValidator, updateRoleValidator } from '@modules/users/validators/roles.validator';
+import { validate } from '@common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
 
 export default (router: express.Router) => {
     const roleRouter = express.Router();

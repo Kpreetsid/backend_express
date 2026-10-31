@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { getComponentDefinition, getEquipmentDefinition } from '../catalog/asset-train-catalog';
+import { getComponentDefinition, getEquipmentDefinition } from '@modules/assets/catalog/asset-train-catalog';
 
 // Django's train inventory allows 2,000 assets, including the parent.
 export const MAX_CREATED_COMPONENTS = 1999;

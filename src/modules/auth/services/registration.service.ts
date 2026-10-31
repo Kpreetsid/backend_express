@@ -1,9 +1,9 @@
-import { MailerService } from "../../../core/mailer/mailer.service";
-import { companyService } from "../../company/services/company.service";
-import { usersService } from "../../users/services/user.service";
-import { IAccount } from "../../company/models/account.model";
+import { MailerService } from "@core/mailer/mailer.service";
+import { companyService } from "@modules/company/services/company.service";
+import { usersService } from "@modules/users/services/user.service";
+import { IAccount } from "@modules/company/models/account.model";
 import { verificationChallenges, verificationEmail, validateNewPassword } from './verification-challenge.service';
-import { withTransaction } from "../../../common/utils/transaction.helper";
+import { withTransaction } from "@common/utils/transaction.helper";
 
 class RegistrationService {
   private mailerService: MailerService;

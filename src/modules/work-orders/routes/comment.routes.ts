@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { commentController } from '../controllers/comment.controller';
-import { validateParam, validateParamId } from '../../../common/middlewares/validate.middleware';
-import { commentValidator } from '../validators/comment.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { commentController } from '@modules/work-orders/controllers/comment.controller';
+import { validateParam, validateParamId } from '@common/middlewares/validate.middleware';
+import { commentValidator } from '@modules/work-orders/validators/comment.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: Router) => {
   router.use(validateParamId); // Validate inherited order id

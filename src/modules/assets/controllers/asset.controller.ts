@@ -1,17 +1,17 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from "lodash";
-import { assetService } from '../services/asset.service';
-import { IUser } from '../../users/models/user.model';
-import { mapUserToAssetService } from '../../mappings/services/userAsset.service';
-import { mapUserToLocationService } from '../../mappings/services/userLocation.service';
-import { locationService } from '../../locations/services/location.service';
-import { helperService } from '../../../common/utils/helper';
-import { processorAPIService } from '../services/processor-api.service';
-import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
-import { notificationService } from '../../communications/services/notification-sender.service';
-import { withTransaction } from "../../../common/utils/transaction.helper";
-import { getComponentDefinition } from '../catalog/asset-train-catalog';
+import { assetService } from '@modules/assets/services/asset.service';
+import { IUser } from '@modules/users/models/user.model';
+import { mapUserToAssetService } from '@modules/mappings/services/userAsset.service';
+import { mapUserToLocationService } from '@modules/mappings/services/userLocation.service';
+import { locationService } from '@modules/locations/services/location.service';
+import { helperService } from '@common/utils/helper';
+import { processorAPIService } from '@modules/assets/services/processor-api.service';
+import { applyRoleFilter } from '@common/utils/role-filter.helper';
+import { notificationService } from '@modules/communications/services/notification-sender.service';
+import { withTransaction } from "@common/utils/transaction.helper";
+import { getComponentDefinition } from '@modules/assets/catalog/asset-train-catalog';
 
 class AssetController {
 

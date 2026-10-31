@@ -1,11 +1,11 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { inspectionService } from '../services/inspection.service';
-import { mapInspectionService } from '../../mappings/services/userInspection.service';
-import { helperService } from '../../../common/utils/helper';
-import { notificationService } from '../../communications/services/notification-sender.service';
+import { IUser } from '@modules/users/models/user.model';
+import { inspectionService } from '@modules/maintenance/services/inspection.service';
+import { mapInspectionService } from '@modules/mappings/services/userInspection.service';
+import { helperService } from '@common/utils/helper';
+import { notificationService } from '@modules/communications/services/notification-sender.service';
 
 class InspectionController {
  private async assertInspectionAccess(accountId: any, userId: any, userRole: string, inspectionId: any): Promise<void> {

@@ -1,11 +1,11 @@
 import mongoose from 'mongoose';
-import { AssetModel } from '../../assets/models/asset.model';
-import { LocationModel } from '../../locations/models/location.model';
-import { PartsModel } from '../../inventory/models/part.model';
-import { ProcedureModel } from '../models/procedure.model';
-import { UserModel } from '../../users/models/user.model';
-import { WorkOrderTemplateModel } from '../models/workOrderTemplate.model';
-import { helperService } from '../../../common/utils/helper';
+import { AssetModel } from '@modules/assets/models/asset.model';
+import { LocationModel } from '@modules/locations/models/location.model';
+import { PartsModel } from '@modules/inventory/models/part.model';
+import { ProcedureModel } from '@modules/work-orders/models/procedure.model';
+import { UserModel } from '@modules/users/models/user.model';
+import { WorkOrderTemplateModel } from '@modules/work-orders/models/workOrderTemplate.model';
+import { helperService } from '@common/utils/helper';
 
 class OrderTemplateService {
   async getAllTemplates(match: any): Promise<any[]> {

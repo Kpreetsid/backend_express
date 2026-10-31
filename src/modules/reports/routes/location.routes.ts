@@ -1,7 +1,7 @@
 import express from 'express';
-import { locationReportController } from '../controllers/location.controller';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
+import { locationReportController } from '@modules/reports/controllers/location.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
 
 export default (router: express.Router) => {
     const locationReportRouter = express.Router();

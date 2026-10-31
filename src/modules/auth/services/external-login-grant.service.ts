@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import mongoose from 'mongoose';
-import { ExternalLoginGrantModel, IExternalLoginGrant } from '../models/external-login-grant.model';
-import { supportLogin } from '../../../core/config/env.config';
+import { ExternalLoginGrantModel, IExternalLoginGrant } from '@modules/auth/models/external-login-grant.model';
+import { supportLogin } from '@core/config/env.config';
 
 export const EXTERNAL_LOGIN_GRANT_TTL_SECONDS = 60;
 export const EXTERNAL_LOGIN_ISSUER = 'internal-admin' as const;

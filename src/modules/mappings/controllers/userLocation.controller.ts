@@ -1,10 +1,10 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { mapUserToLocationService } from '../services/userLocation.service';
+import { mapUserToLocationService } from '@modules/mappings/services/userLocation.service';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/helper';
-import { locationService } from '../../locations/services/location.service';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
+import { locationService } from '@modules/locations/services/location.service';
 
 class MapUserLocationController {
 

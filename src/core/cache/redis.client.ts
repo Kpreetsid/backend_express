@@ -1,5 +1,5 @@
 import Redis from 'ioredis';
-import { redisConfig } from '../config/env.config';
+import { redisConfig } from '@core/config/env.config';
 
 let redisClient: Redis | null = null;
 

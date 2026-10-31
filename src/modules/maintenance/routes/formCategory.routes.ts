@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { formCategoryController } from "../controllers/formCategory.controller";
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { categoryValidator } from '../validators/formCategory.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { formCategoryController } from "@modules/maintenance/controllers/formCategory.controller";
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { categoryValidator } from '@modules/maintenance/validators/formCategory.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const formCategoryRouter = express.Router();

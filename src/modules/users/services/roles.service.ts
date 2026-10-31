@@ -1,8 +1,8 @@
-import { RoleMenuModel, IUserRoleMenu } from "../models/userRoleMenu.model";
-import { IUser } from "../models/user.model";
-import { PlatformControlManager } from "../../../common/constants/roles.constant";
-import { RoleManager } from "../../../common/constants/new-user-roles.constant";
-import { helperService } from "../../../common/utils/helper";
+import { RoleMenuModel, IUserRoleMenu } from "@modules/users/models/userRoleMenu.model";
+import { IUser } from "@modules/users/models/user.model";
+import { PlatformControlManager } from "@common/constants/roles.constant";
+import { RoleManager } from "@common/constants/new-user-roles.constant";
+import { helperService } from "@common/utils/helper";
 
 class RolesService {
   async getRoles(match: any): Promise<any> {

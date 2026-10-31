@@ -1,26 +1,26 @@
-import { AssetModel } from '../models/asset.model';
-import { MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation.model";
-import { mapUserToAssetService } from "../../mappings/services/userAsset.service";
+import { AssetModel } from '@modules/assets/models/asset.model';
+import { MapUserAssetLocationModel } from "@modules/mappings/models/mapUserLocation.model";
+import { mapUserToAssetService } from "@modules/mappings/services/userAsset.service";
 import { processorAPIService } from './processor-api.service';
-import { helperService } from '../../../common/utils/helper';
-import { WorkOrderModel } from '../../work-orders/models/workOrder.model';
-import { ObservationModel } from '../models/observation.model';
-import { ReportAssetModel } from '../../reports/models/assetReport.model';
-import { InspectionModel } from '../../maintenance/models/inspection.model';
-import { WorkRequestModel } from '../../work-orders/models/workRequest.model';
-import { LocationModel } from '../../locations/models/location.model';
+import { helperService } from '@common/utils/helper';
+import { WorkOrderModel } from '@modules/work-orders/models/workOrder.model';
+import { ObservationModel } from '@modules/assets/models/observation.model';
+import { ReportAssetModel } from '@modules/reports/models/assetReport.model';
+import { InspectionModel } from '@modules/maintenance/models/inspection.model';
+import { WorkRequestModel } from '@modules/work-orders/models/workRequest.model';
+import { LocationModel } from '@modules/locations/models/location.model';
 
-import { withTransaction } from "../../../common/utils/transaction.helper";
-import { Cacheable } from '../../../core/cache/decorators/cacheable.decorator';
-import { CacheKeys, CacheTTL } from '../../../core/cache/cache.keys';
-import { generateDeterministicObjectKey } from '../../../core/cache/cache-helper';
-import { subscriptionLimitService } from '../../company/services/subscriptionLimit.service';
+import { withTransaction } from "@common/utils/transaction.helper";
+import { Cacheable } from '@core/cache/decorators/cacheable.decorator';
+import { CacheKeys, CacheTTL } from '@core/cache/cache.keys';
+import { generateDeterministicObjectKey } from '@core/cache/cache-helper';
+import { subscriptionLimitService } from '@modules/company/services/subscriptionLimit.service';
 import { createReviewedAssetTrain } from './asset-train-creation';
-import { UserModel } from '../../users/models/user.model';
-import { externalAPI } from '../../../core/config/env.config';
-import { requireProcessorBaseUrl } from '../../../common/utils/processor-url';
+import { UserModel } from '@modules/users/models/user.model';
+import { externalAPI } from '@core/config/env.config';
+import { requireProcessorBaseUrl } from '@common/utils/processor-url';
 import { buildChildComponent, componentIdentityForUpdate, deleteConfirmedChild } from './asset-component-management';
-import { getComponentDefinition } from '../catalog/asset-train-catalog';
+import { getComponentDefinition } from '@modules/assets/catalog/asset-train-catalog';
 class AssetService {
   async createChildComponent(rootId: string, body: any, accountId: any, userId: any, token: string) {
     requireProcessorBaseUrl(externalAPI.URL);

@@ -1,9 +1,9 @@
 import express from 'express';
-import { observationController } from '../controllers/observation.controller';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { observationValidator } from '../validators/observation.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { observationController } from '@modules/assets/controllers/observation.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { observationValidator } from '@modules/assets/validators/observation.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const observationRouter = express.Router();

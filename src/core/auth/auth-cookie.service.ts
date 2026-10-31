@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import { CookieOptions, Request, Response } from 'express';
-import { auth, cookieAuth, refreshToken } from '../config/env.config';
-import { parseTtlSeconds } from '../../common/utils/ttl.helper';
-import { cookieService } from '../../common/utils/cookie.helper';
+import { auth, cookieAuth, refreshToken } from '@core/config/env.config';
+import { parseTtlSeconds } from '@common/utils/ttl.helper';
+import { cookieService } from '@common/utils/cookie.helper';
 
 export const LEGACY_ACCESS_COOKIE_NAME = 'access_token';
 export const LEGACY_ACCOUNT_COOKIE_NAME = 'account_id';

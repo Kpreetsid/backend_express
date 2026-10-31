@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { sopsController } from '../controllers/sops.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { sopsValidator } from '../validators/sops.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { sopsController } from '@modules/maintenance/controllers/sops.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { sopsValidator } from '@modules/maintenance/validators/sops.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const sopRouter = express.Router();

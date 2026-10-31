@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 export const PART_COLLECTION_NAME = 'parts';
 
-import { syncVersionPlugin } from '../../../core/database/plugins/sync-version.plugin';
+import { syncVersionPlugin } from '@core/database/plugins/sync-version.plugin';
 
 export interface IPart extends Document {
   sync_version: number;

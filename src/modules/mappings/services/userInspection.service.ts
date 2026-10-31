@@ -1,4 +1,4 @@
-import { MapUserInspectionModel } from "../models/mapUserInspection.model";
+import { MapUserInspectionModel } from "@modules/mappings/models/mapUserInspection.model";
 
 class MapInspectionService {
   async getInspectionByUserId (account_id: any, user_id: any) {

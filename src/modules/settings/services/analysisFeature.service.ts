@@ -1,7 +1,7 @@
-import { AccountModel } from "../../company/models/account.model";
-import { AnalysisFeatureModel } from "../../company/models/analysisFeature.model";
-import { DEFAULT_ANALYSIS_FEATURES } from "../constants/default-analysis-features.constant";
-import { mergeDefaultFeatureSelections, sanitizeAnalysisFeatureSelection } from "../constants/selectionPolicy";
+import { AccountModel } from "@modules/company/models/account.model";
+import { AnalysisFeatureModel } from "@modules/company/models/analysisFeature.model";
+import { DEFAULT_ANALYSIS_FEATURES } from "@modules/settings/constants/default-analysis-features.constant";
+import { mergeDefaultFeatureSelections, sanitizeAnalysisFeatureSelection } from "@modules/settings/constants/selectionPolicy";
 
 class AnalysisFeatureService {
 

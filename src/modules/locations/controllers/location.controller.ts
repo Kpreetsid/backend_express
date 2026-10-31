@@ -1,15 +1,15 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { locationService } from '../services/location.service';
-import { assetService } from '../../assets/services/asset.service';
+import { locationService } from '@modules/locations/services/location.service';
+import { assetService } from '@modules/assets/services/asset.service';
 import { get } from "lodash";
-import { IUser } from "../../users/models/user.model";
-import { mapUserToLocationService } from '../../mappings/services/userLocation.service';
-import { helperService } from '../../../common/utils/helper';
-import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
-import { withTransaction } from "../../../common/utils/transaction.helper";
-import { LocationModel } from "../models/location.model";
-import { notificationService } from '../../communications/services/notification-sender.service';
+import { IUser } from "@modules/users/models/user.model";
+import { mapUserToLocationService } from '@modules/mappings/services/userLocation.service';
+import { helperService } from '@common/utils/helper';
+import { applyRoleFilter } from '@common/utils/role-filter.helper';
+import { withTransaction } from "@common/utils/transaction.helper";
+import { LocationModel } from "@modules/locations/models/location.model";
+import { notificationService } from '@modules/communications/services/notification-sender.service';
 
 class LocationController {
 

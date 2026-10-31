@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { partsService } from './parts.service';
-import { PartsModel } from '../models/part.model';
-import { InventoryMovementModel } from '../models/inventoryMovement.model';
+import { PartsModel } from '@modules/inventory/models/part.model';
+import { InventoryMovementModel } from '@modules/inventory/models/inventoryMovement.model';
 
 const partId = '111111111111111111111111';
 const accountId = '222222222222222222222222';

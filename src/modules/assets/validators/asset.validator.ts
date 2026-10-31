@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
-import { SUPPORTED_ASSET_TYPES } from '../catalog/asset-train-catalog';
-import { validateReviewedComponents } from '../services/asset-train-creation';
+import { SUPPORTED_ASSET_TYPES } from '@modules/assets/catalog/asset-train-catalog';
+import { validateReviewedComponents } from '@modules/assets/services/asset-train-creation';
 
 export const assetValidator = [
   body('asset_name')

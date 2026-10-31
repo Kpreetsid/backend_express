@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
-import { redisConfig } from '../../../core/config/env.config';
-import { AccountModel } from '../models/account.model';
+import { redisConfig } from '@core/config/env.config';
+import { AccountModel } from '@modules/company/models/account.model';
 
 const ENABLED_STATUS = 'enabled';
 

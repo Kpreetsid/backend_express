@@ -1,8 +1,8 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { userLocationController } from '../controllers/userLocation.controller';
-import { userLocationValidator, userLocationUpdateValidator } from '../validators/userLocation.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { userLocationController } from '@modules/mappings/controllers/userLocation.controller';
+import { userLocationValidator, userLocationUpdateValidator } from '@modules/mappings/validators/userLocation.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     router.get('/userToLocations', hasRolePermission('users', 'view'), userLocationController.getUserLocations);

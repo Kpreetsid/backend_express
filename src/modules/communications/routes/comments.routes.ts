@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { commentController } from '../controllers/comments.controller';
-import { validateParam, validateParamId } from '../../../common/middlewares/validate.middleware';
-import { commentValidator } from '../validators/comments.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { commentController } from '@modules/communications/controllers/comments.controller';
+import { validateParam, validateParamId } from '@common/middlewares/validate.middleware';
+import { commentValidator } from '@modules/communications/validators/comments.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     router.use(validateParam("postId"));

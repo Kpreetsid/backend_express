@@ -1,13 +1,13 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { observationService } from '../services/observation.service';
+import { observationService } from '@modules/assets/services/observation.service';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/helper';
-import { assetService } from '../services/asset.service';
-import { processorAPIService } from '../services/processor-api.service';
-import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
-import { notificationService } from '../../communications/services/notification-sender.service';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
+import { assetService } from '@modules/assets/services/asset.service';
+import { processorAPIService } from '@modules/assets/services/processor-api.service';
+import { applyRoleFilter } from '@common/utils/role-filter.helper';
+import { notificationService } from '@modules/communications/services/notification-sender.service';
 
 class ObservationController {
 

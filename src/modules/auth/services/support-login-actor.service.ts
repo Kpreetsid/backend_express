@@ -1,4 +1,4 @@
-import { supportLogin } from '../../../core/config/env.config';
+import { supportLogin } from '@core/config/env.config';
 
 export const isAuthorizedSupportActorResponse = (payload: any): boolean =>
   payload?.status === true && payload?.authorized === true;

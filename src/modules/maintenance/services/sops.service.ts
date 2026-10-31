@@ -1,4 +1,4 @@
-import { SOPsModel, ISopsMaster } from '../models/sops.model';
+import { SOPsModel, ISopsMaster } from '@modules/maintenance/models/sops.model';
 
 class SOPsService {
 

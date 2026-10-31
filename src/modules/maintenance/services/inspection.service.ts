@@ -1,13 +1,13 @@
-import { InspectionModel } from "../models/inspection.model";
-import { AssetModel } from "../../assets/models/asset.model";
-import { CategoryModel } from "../models/formCategory.model";
-import { LocationModel } from "../../locations/models/location.model";
-import { MapUserInspectionModel } from "../../mappings/models/mapUserInspection.model";
-import { SOPsModel } from "../models/sops.model";
-import { UserModel } from "../../users/models/user.model";
-import { mapInspectionService } from "../../mappings/services/userInspection.service";
-import { withTransaction } from "../../../common/utils/transaction.helper";
-import { orderService } from "../../work-orders/services/order.service";
+import { InspectionModel } from "@modules/maintenance/models/inspection.model";
+import { AssetModel } from "@modules/assets/models/asset.model";
+import { CategoryModel } from "@modules/maintenance/models/formCategory.model";
+import { LocationModel } from "@modules/locations/models/location.model";
+import { MapUserInspectionModel } from "@modules/mappings/models/mapUserInspection.model";
+import { SOPsModel } from "@modules/maintenance/models/sops.model";
+import { UserModel } from "@modules/users/models/user.model";
+import { mapInspectionService } from "@modules/mappings/services/userInspection.service";
+import { withTransaction } from "@common/utils/transaction.helper";
+import { orderService } from "@modules/work-orders/services/order.service";
 
 class InspectionService {
  async getAllInspection (filter: any) {

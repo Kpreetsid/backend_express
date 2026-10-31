@@ -1,4 +1,4 @@
-import { CommentsModel } from "../../work-orders/models/comment.model";
+import { CommentsModel } from "@modules/work-orders/models/comment.model";
 
 class CommentService {
   async getAllComments (match: any) {

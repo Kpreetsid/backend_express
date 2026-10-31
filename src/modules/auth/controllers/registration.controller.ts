@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
-import { registrationService } from '../services/registration.service';
-import { usersService } from '../../users/services/user.service';
-import { companyService } from '../../company/services/company.service';
+import { registrationService } from '@modules/auth/services/registration.service';
+import { usersService } from '@modules/users/services/user.service';
+import { companyService } from '@modules/company/services/company.service';
 
 class RegistrationController {
     async userRegister (req: Request, res: Response, next: NextFunction): Promise<any> {

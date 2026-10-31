@@ -1,6 +1,6 @@
 import { body } from 'express-validator';
-import { WORK_ORDER_PRIORITIES } from '../models/workOrder.model';
-import { WORK_ORDER_TEMPLATE_MAINTENANCE_TYPES, WORK_ORDER_TEMPLATE_TIME_UNITS } from '../models/workOrderTemplate.model';
+import { WORK_ORDER_PRIORITIES } from '@modules/work-orders/models/workOrder.model';
+import { WORK_ORDER_TEMPLATE_MAINTENANCE_TYPES, WORK_ORDER_TEMPLATE_TIME_UNITS } from '@modules/work-orders/models/workOrderTemplate.model';
 
 const optionalTimeUnit = [...WORK_ORDER_TEMPLATE_TIME_UNITS];
 

@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { get } from "lodash";
-import { IUserRoleMenu } from "../../modules/users/models/userRoleMenu.model";
-import { IUser, USER_ROLES } from "../../modules/users/models/user.model";
-import { AccountAction, accountAccessService } from "../../modules/users/services/account-access.service";
+import { IUserRoleMenu } from "@modules/users/models/userRoleMenu.model";
+import { IUser, USER_ROLES } from "@modules/users/models/user.model";
+import { AccountAction, accountAccessService } from "@modules/users/services/account-access.service";
 
 const denyAccountFeature = (
   req: Request,

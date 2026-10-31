@@ -1,6 +1,6 @@
-import { MailerService } from "../../../core/mailer/mailer.service";
-import { UserModel } from '../../users/models/user.model';
-import { usersService } from '../../users/services/user.service';
+import { MailerService } from "@core/mailer/mailer.service";
+import { UserModel } from '@modules/users/models/user.model';
+import { usersService } from '@modules/users/services/user.service';
 import { verificationChallenges, validateNewPassword } from './verification-challenge.service';
 
 class ResetPasswordService {

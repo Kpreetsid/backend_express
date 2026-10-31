@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { getRequestAccountId } from '../../modules/settings/services/redis-status.service';
+import { getRequestAccountId } from '@modules/settings/services/redis-status.service';
 import { RedisUtils } from './redis.utils';
 import { __controllerCacheTestUtils } from './controller-cache.service';
 

@@ -1,6 +1,6 @@
-import { usersService } from "../../modules/users/services/user.service";
-import { IScheduleMaster, SchedulerModel } from "../../modules/maintenance/models/scheduleMaster.model";
-import { orderService } from "../../modules/work-orders/services/order.service";
+import { usersService } from "@modules/users/services/user.service";
+import { IScheduleMaster, SchedulerModel } from "@modules/maintenance/models/scheduleMaster.model";
+import { orderService } from "@modules/work-orders/services/order.service";
 import crypto from "crypto";
 import { isScheduleDue } from "./schedule-calendar";
 

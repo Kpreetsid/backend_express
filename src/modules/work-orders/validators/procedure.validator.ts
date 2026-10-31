@@ -1,5 +1,5 @@
 import { body } from 'express-validator';
-import { PROCEDURE_FIELD_TYPES, PROCEDURE_ITEM_TYPES } from '../models/procedure.model';
+import { PROCEDURE_FIELD_TYPES, PROCEDURE_ITEM_TYPES } from '@modules/work-orders/models/procedure.model';
 
 function validateProcedureItems(items: any[], path: string = 'steps'): true {
   if (!Array.isArray(items)) {

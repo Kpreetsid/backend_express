@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { inspectionService } from './inspection.service';
-import { InspectionModel } from '../models/inspection.model';
-import { orderService } from '../../work-orders/services/order.service';
-const transactions = require('../../../common/utils/transaction.helper');
+import { InspectionModel } from '@modules/maintenance/models/inspection.model';
+import { orderService } from '@modules/work-orders/services/order.service';
+const transactions = require('@common/utils/transaction.helper');
 
 const inspectionId = '111111111111111111111111';
 const accountId = '222222222222222222222222';

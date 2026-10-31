@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { schedulerService } from './scheduler.service';
-import { SchedulerModel } from '../../modules/maintenance/models/scheduleMaster.model';
+import { SchedulerModel } from '@modules/maintenance/models/scheduleMaster.model';
 import { isScheduleDue } from './schedule-calendar';
 const service = schedulerService as any;
 afterEach(() => { mock.restoreAll(); mock.timers.reset(); });

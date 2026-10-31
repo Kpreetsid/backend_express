@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
-import { cookieAuth, refreshToken } from '../../core/config/env.config';
-import { LEGACY_ACCESS_COOKIE_NAME, verifyCsrfToken } from '../../core/auth/auth-cookie.service';
-import { cookieService } from '../utils/cookie.helper';
+import { cookieAuth, refreshToken } from '@core/config/env.config';
+import { LEGACY_ACCESS_COOKIE_NAME, verifyCsrfToken } from '@core/auth/auth-cookie.service';
+import { cookieService } from '@common/utils/cookie.helper';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 

@@ -1,4 +1,4 @@
-import { TroubleshootGuideModel } from "../models/troubleshootGuide.model";
+import { TroubleshootGuideModel } from "@modules/maintenance/models/troubleshootGuide.model";
 
 class TroubleshootGuideService {
     async getAllTroubleshootGuide (match: any): Promise<any> {

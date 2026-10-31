@@ -1,10 +1,10 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { mapUserToAssetService } from '../services/userAsset.service';
+import { mapUserToAssetService } from '@modules/mappings/services/userAsset.service';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/helper';
-import { AssetModel } from '../../assets/models/asset.model';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
+import { AssetModel } from '@modules/assets/models/asset.model';
 
 class MapUserAssetController {
 

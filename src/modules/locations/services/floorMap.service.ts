@@ -1,8 +1,8 @@
-import { EndpointLocationModel } from "../models/floorMap.model";
-import { LocationModel } from "../models/location.model";
-import { AssetModel } from "../../assets/models/asset.model";
-import { mapUserToLocationService } from "../../mappings/services/userLocation.service";
-import { mapUserToAssetService } from "../../mappings/services/userAsset.service";
+import { EndpointLocationModel } from "@modules/locations/models/floorMap.model";
+import { LocationModel } from "@modules/locations/models/location.model";
+import { AssetModel } from "@modules/assets/models/asset.model";
+import { mapUserToLocationService } from "@modules/mappings/services/userLocation.service";
+import { mapUserToAssetService } from "@modules/mappings/services/userAsset.service";
 
 class FloorMapService {
   async getFloorMaps(match: any) {

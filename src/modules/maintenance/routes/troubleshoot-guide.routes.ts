@@ -1,9 +1,9 @@
 import express from 'express';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
-import { troubleshootGuideController } from '../controllers/troubleshoot-guide.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { troubleshootGuideValidator } from '../validators/troubleshoot-guide.validator';
-import { validate } from '../../../common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { troubleshootGuideController } from '@modules/maintenance/controllers/troubleshoot-guide.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { troubleshootGuideValidator } from '@modules/maintenance/validators/troubleshoot-guide.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const troubleshootGuideRouter = express.Router();
