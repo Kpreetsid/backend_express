@@ -1,3 +1,4 @@
+import { emailLoginService } from '../../user/email-login/email-login.service';
 import { UserModel, IUser, UserLoginPayload } from "../../models/user.model";
 import { MapUserAssetLocationModel } from "../../models/mapUserLocation.model";
 import { Request, Response, NextFunction } from 'express';
@@ -110,10 +111,16 @@ class UsersService {
   };
 
   async updateUserDetails(id: string, body: IUser) {
+    if (body.user_status === 'inactive' || (body as any).visible === false) {
+      const current = await UserModel.findById(id);
+      if (current) await emailLoginService.revokeUser(String(id), String(current.account_id), 'system', 'user-disabled');
+    }
     return await UserModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
   }
 
   async removeById(id: string) {
+    const current = await UserModel.findById(id);
+    if (current) await emailLoginService.revokeUser(id, String(current.account_id), 'system', 'user-disabled');
     return await withTransaction(async (session) => {
       await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
       return await UserModel.findByIdAndUpdate(id, { visible: false, user_status: 'inactive' }, { returnDocument: 'after', session });
