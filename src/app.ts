@@ -1,3 +1,4 @@
+import { supportLoginRoutes } from './modules/auth/support-login/support-login.service';
 import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -84,6 +85,7 @@ app.use('/metrics', metricsRouter);
 const apiRouter: Router = Router();
 apiRouter.use('/crypto', cryptoRouter);
 apiRouter.use('/internal/account-permissions', accountPermissionEventRoutes());
+apiRouter.use('/internal/support-login-tokens', supportLoginRoutes());
 apiRouter.use('/', routerIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
 apiRouter.use('/master', isAuthenticated, masterRoutes());

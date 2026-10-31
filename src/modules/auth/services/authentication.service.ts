@@ -1,3 +1,4 @@
+import { consumeSupportLoginToken } from '../support-login/support-login.service';
 import mongoose from "mongoose";
 import { IUser, UserModel, UserLoginPayload } from "../../users/models/user.model";
 import { Request, Response, NextFunction } from 'express';
@@ -268,11 +269,27 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
 
 export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { body: { external_token } } = req;
-    if (!external_token) {
-      throw Object.assign(new Error('Bad request'), { status: 404 });
+    const token = req.body?.external_token;
+    if (!token) throw Object.assign(new Error('Invalid token'), { status: 401 });
+    if (String(token).startsWith('spt_')) {
+      return establishExternalSession(req, res, next, await consumeSupportLoginToken(token));
     }
-    const decoded = decryptToken(external_token);
+    const decoded = decryptToken(token);
+    const cutoff = process.env.LEGACY_EXTERNAL_AUTH_CUTOFF;
+    if (cutoff) {
+      const end = Date.parse(cutoff), now = Math.floor(Date.now() / 1000);
+      if (!Number.isFinite(end) || Date.now() >= end || !Number.isFinite(decoded.iat) || !Number.isFinite(decoded.exp)
+        || decoded.exp <= now || decoded.iat >= (end / 1000 - 604800)) {
+        throw Object.assign(new Error('Legacy login link expired'), { status: 401 });
+      }
+    }
+    return establishExternalSession(req, res, next, decoded);
+  } catch (error) { next(error); }
+};
+
+// Call only after credential validation and current-principal checks.
+export const establishExternalSession = async (req: Request, res: Response, next: NextFunction, decoded: any): Promise<any> => {
+  try {
     const { email, org_id, isExternal, isInternal, isDownloadData, redirectPath } = decoded;
     if (!email && !org_id) {
       throw Object.assign(new Error('Invalid token'), { status: 401 });
@@ -280,7 +297,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
     if (true === !!isDownloadData) {
       throw Object.assign(new Error(`User can't access this application resource.`), { status: 401 });
     }
-    const userDetails = await UserModel.findOne({ email, account_id: helperService.validateObjectId(org_id), user_status: 'active' });
+    const userDetails = await UserModel.findOne({ ...(decoded.userId ? { _id: decoded.userId } : { email }), account_id: helperService.validateObjectId(org_id), user_status: 'active' });
     if (!userDetails) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
@@ -306,6 +323,7 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       token_id,
       userId: userDetails._id,
       account_id: userDetails.account_id,
+      supportActor: decoded.supportActor,
       principalType: 'user',
       isExternal,
       isInternal,

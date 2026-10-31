@@ -5,11 +5,23 @@ import { LocationModel } from '../../modules/locations/models/location.model';
 import { AssetModel } from '../../modules/assets/models/asset.model';
 import { getCmmsLocationData } from './cmms-data.controller';
 import { WorkOrderModel } from '../../modules/work-orders/models/workOrder.model';
+import { HistoryWorkOrderModel } from '../../modules/work-orders/models/history-work-order.model';
 import { PartsModel } from '../../modules/inventory/models/part.model';
 import { PartsTypeModel } from '../../modules/inventory/models/parts-types.model';
 import { ReportAssetModel } from '../../modules/reports/models/assetReport.model';
 
 const org = '68aff3fb2517f347390f5f01';
+
+test('master work-order and history models retain labor entry costs and reject invalid amounts', () => {
+  const work = new WorkOrderModel({ labor_entries: [{ hours: 2, labor_cost: 2500 }, { hours: 1, labor_cost: 0 }] });
+  const history = new HistoryWorkOrderModel({ labor_entries: [{ hours: 2, labor_cost: 2500 }, { hours: 1, labor_cost: 0 }] });
+  assert.deepEqual(work.toObject().labor_entries.map(entry => entry.labor_cost), [2500, 0]);
+  assert.deepEqual(history.toObject().labor_entries.map(entry => entry.labor_cost), [2500, 0]);
+  for (const cost of [-1, Infinity]) {
+    const invalid = new WorkOrderModel({ labor_entries: [{ hours: 1, labor_cost: cost }] });
+    assert.ok(invalid.validateSync()?.errors['labor_entries.0.labor_cost']);
+  }
+});
 const root = '68aff4762517f347390f5f04';
 const locations = [
   { _id: root, location_name: 'Plant', top_level: true },
