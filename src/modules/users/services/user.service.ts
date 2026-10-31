@@ -1,3 +1,4 @@
+import { emailLoginService } from '../../auth/email-login/email-login.service';
 import { UserModel, IUser, UserLoginPayload } from "@modules/users/models/user.model";
 import { MapUserAssetLocationModel } from "@modules/mappings/models/mapUserLocation.model";
 import { LocationModel } from '@modules/locations/models/location.model';
@@ -132,6 +133,7 @@ class UsersService {
   };
 
   async updateUserDetails(id: string, body: Partial<IUser>, accountId: any) {
+    if (body.user_status === 'inactive' || (body as any).visible === false) await emailLoginService.revokeUser(id, String(accountId), 'system', 'user-disabled');
     const existing = await UserModel.findOne(buildUserAccountFilter(id, accountId)).lean();
     if (!existing) return null;
 
@@ -170,6 +172,7 @@ class UsersService {
   }
 
   async removeById(id: string, accountId: any) {
+    await emailLoginService.revokeUser(id, String(accountId), 'system', 'user-disabled');
     const removed = await withTransaction(async (session) => {
       const user = await UserModel.findOneAndUpdate(
         buildUserAccountFilter(id, accountId),

@@ -333,6 +333,69 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
   }
 };
 
+export const establishExternalSession = async (req: Request, res: Response, next: NextFunction, decoded: any): Promise<any> => {
+  try {
+    const userDetails = await UserModel.findOne({ _id: decoded.userId, account_id: decoded.org_id, user_status: 'active', visible: { $ne: false } });
+    if (!userDetails) {
+      throw Object.assign(new Error('User data not found'), { status: 404 });
+    }
+    const accountDetails = await companyService.getAllCompanies({ _id: userDetails.account_id });
+    if (!accountDetails || accountDetails.length === 0) {
+      throw Object.assign(new Error('User account not found'), { status: 404 });
+    }
+    if (!await rolesService.verifyUserRole(String(userDetails._id), String(userDetails.account_id))) {
+      await rolesService.createUserRole(userDetails.user_role, userDetails);
+    }
+    const token_id = new mongoose.Types.ObjectId();
+    const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id), jti: String(token_id) };
+    const newToken = generateAccessToken(userTokenPayload);
+    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const expiresAt = new Date(Date.now() + accessTtlSeconds * 1000);
+    const userTokenData = new TokenModel({
+      _id: newToken,
+      tokenType: 'access',
+      token_id,
+      userId: userDetails._id,
+      account_id: userDetails.account_id,
+      principalType: 'user',
+      isExternal: false,
+      isInternal: true,
+      ttl: ttlSeconds,
+      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+    });
+    await userTokenData.save();
+    await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal: false, isInternal: true });
+    await refreshTokenService.issueForUser(req, res, userDetails, token_id);
+    const safeRedirectPath = decoded.redirectPath;
+    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id });
+
+    setAccessCookies(res, {
+      token: newToken,
+      tokenId: String(token_id),
+      userId: String(userDetails._id),
+      accountId: String(userDetails.account_id),
+      ttlSeconds: accessTtlSeconds
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: 'Login successful',
+      data: {
+        authMethod: 'cookie',
+        token_id,
+        token: newToken,
+        isExternal: false,
+        isInternal: true,
+        redirectPath: safeRedirectPath,
+        analysisFeature
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const userResetPassword = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
     const { token, password, email, confirmNewPassword } = req.body;
