@@ -11,11 +11,7 @@ import { processorAPIService } from '../services/processor-api.service';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 import { notificationService } from '../../communications/services/notification-sender.service';
 import { withTransaction } from "../../../common/utils/transaction.helper";
-<<<<<<< HEAD
-import { getComponentDefinition } from '../../catalog/asset-train-catalog';
-=======
 import { getComponentDefinition } from '../catalog/asset-train-catalog';
->>>>>>> origin/feature/pwa
 
 class AssetController {
 
@@ -227,8 +223,6 @@ class AssetController {
     }
   };
 
-<<<<<<< HEAD
-=======
   private buildMappedAssetFilter = async (user: IUser, baseFilter: Record<string, any>): Promise<Record<string, any>> => {
     const match: Record<string, any> = { ...baseFilter, account_id: user.account_id, visible: true };
     if (user.user_role === 'admin') return match;
@@ -249,7 +243,6 @@ class AssetController {
     return match;
   };
 
->>>>>>> origin/feature/pwa
   createTrain = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, 'user', {}) as IUser;
@@ -269,29 +262,6 @@ class AssetController {
     } catch (error) {
       next(error);
     }
-<<<<<<< HEAD
-  };
-
-  private buildMappedAssetFilter = async (user: IUser, baseFilter: Record<string, any>): Promise<Record<string, any>> => {
-    const match: Record<string, any> = { ...baseFilter, account_id: user.account_id, visible: true };
-    if (user.user_role === 'admin') return match;
-
-    const mappedData = await mapUserToAssetService.getAssetsMappedData(user._id);
-    const mappedAssetIds = (mappedData || []).map((doc: any) => doc.assetId).filter(Boolean);
-    const requestedScope = match._id;
-    if (requestedScope) {
-      match.$and = [
-        ...(Array.isArray(match.$and) ? match.$and : []),
-        { _id: requestedScope },
-        { _id: { $in: mappedAssetIds } }
-      ];
-      delete match._id;
-    } else {
-      match._id = { $in: mappedAssetIds };
-    }
-    return match;
-=======
->>>>>>> origin/feature/pwa
   };
 
   createOld = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

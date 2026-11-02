@@ -26,6 +26,7 @@ class ProcessorAPIService {
         const payload: any = { "asset_id": body.assetId, health_created_from: 'observation', "asset_status": body.status, "org_id": account_id };
         if (body.alarmId) {
             payload.alarm_id = body.alarmId;
+            payload.alarm_status = body.alarmStatus;
         }
         await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);
     }

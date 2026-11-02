@@ -18,9 +18,9 @@ import { generateDeterministicObjectKey } from '../../../core/cache/cache-helper
 import { subscriptionLimitService } from '../../company/services/subscriptionLimit.service';
 import { createReviewedAssetTrain } from './asset-train-creation';
 import { buildChildComponent, componentIdentityForUpdate, deleteConfirmedChild } from './asset-component-management';
-import { requireProcessorBaseUrl } from '@common/utils/processor-url';
-import { externalAPI } from '@core/config';
-import { UserModel } from '@modules/users';
+import { requireProcessorBaseUrl } from '../../../common/utils/processor-url';
+import { externalAPI } from '../../../core/config';
+import { UserModel } from '../../users/models/user.model';
 import { getComponentDefinition } from '../catalog/asset-train-catalog';
 
 class AssetService {

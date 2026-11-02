@@ -1,10 +1,12 @@
 import { Router } from 'express';
+import { userNotificationRoutes } from './userNotifications.routes';
 import userAssetRoutes from './userAsset.routes';
 import userLocationRoutes from './userLocation.routes';
 import userWorkOrderRoutes from './userWorkOrder.routes';
 
 export const createMappingsRouter = (): Router => {
   const router = Router();
+  userNotificationRoutes(router);
   const assetRouter = Router();
   userAssetRoutes(assetRouter);
   router.use(assetRouter);

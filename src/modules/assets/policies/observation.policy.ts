@@ -30,6 +30,7 @@ export interface SanitizedObservationCreatePayload {
   top_level_asset_id: string;
   report_id?: string;
   alarmId?: number;
+  alarmStatus?: boolean;
 }
 
 export type SanitizedObservationUpdatePayload = Pick<
@@ -65,6 +66,10 @@ export function sanitizeObservationCreatePayload(
   const alarmId = optionalPositiveInteger(body.alarmId, 'Alarm ID', OBSERVATION_LIMITS.alarmId);
   if (reportId) payload.report_id = reportId;
   if (alarmId !== undefined) payload.alarmId = alarmId;
+  if (body.alarmStatus !== undefined) {
+    if (typeof body.alarmStatus !== 'boolean') throw badRequest('Alarm status must be a boolean');
+    payload.alarmStatus = body.alarmStatus;
+  }
   return payload;
 }
 
