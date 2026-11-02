@@ -2,6 +2,17 @@ import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
 export const MAP_USER_LOCATION_COLLECTION_NAME = 'location_user_mapping';
 
+export interface INotificationLevel {
+  alert: boolean;
+  danger: boolean;
+  critical: boolean;
+};
+
+const notificationLevelSchema = new Schema<INotificationLevel>({
+  alert: { type: Boolean, default: false },
+  danger: { type: Boolean, default: false },
+  critical: { type: Boolean, default: false }
+}, { _id: false });
 
 export interface IMapUserLocation extends Document {
   account_id?: ObjectId;
@@ -12,7 +23,12 @@ export interface IMapUserLocation extends Document {
   alert?: boolean;
   danger?: boolean;
   critical?: boolean;
-
+  notifications: {
+    email: INotificationLevel;
+    push: INotificationLevel;
+    sms: INotificationLevel;
+    whatsapp: INotificationLevel;
+  }
 }
 
 const MapUserLocationSchema = new Schema<IMapUserLocation>({
@@ -23,7 +39,13 @@ const MapUserLocationSchema = new Schema<IMapUserLocation>({
   sendMail: { type: Boolean, default: true },
   alert: { type: Boolean, default: true },
   danger: { type: Boolean, default: true },
-  critical: { type: Boolean, default: true }
+  critical: { type: Boolean, default: true },
+  notifications: {
+    email: { type: notificationLevelSchema, default: () => ({}) },
+    push: { type: notificationLevelSchema, default: () => ({}) },
+    sms: { type: notificationLevelSchema, default: () => ({}) },
+    whatsapp: { type: notificationLevelSchema, default: () => ({}) }
+  }
 }, {
   collection: MAP_USER_LOCATION_COLLECTION_NAME,
   timestamps: true,
