@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { UserModel } from '../../users/models/user.model';
 export const EQUIPMENT_COLLECTION_NAME = 'equipment_set';
 
 
@@ -11,7 +10,7 @@ const EquipmentSchema = new mongoose.Schema({
     powUnit: { type: String },
     descr: { type: String },
     location_id: mongoose.Schema.Types.ObjectId,
-    userList: [UserModel]
+    userList: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Schema_User' }]
 }, { _id: false });
 
 const MotorSchema = new mongoose.Schema({

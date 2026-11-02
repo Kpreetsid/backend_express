@@ -3,7 +3,7 @@ import { get } from "lodash";
 import { USER_ROLES, IUser } from "../../users/models/user.model";
 import { NextFunction, Request, Response } from "express";
 import { companyService } from "../services/company.service";
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 import { applyRoleFilter } from "../../../common/utils/role-filter.helper";
 import { accountFeatureService } from "../services/accountFeature.service";
 import { subscriptionLimitService } from "../services/subscriptionLimit.service";

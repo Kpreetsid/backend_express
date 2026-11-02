@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 import { PartsModel, IPart } from "../models/part.model";
 import { withTransaction } from "../../../common/utils/transaction.helper";
 import { InventoryMovementModel, InventoryMovementType } from "../models/inventoryMovement.model";
@@ -76,8 +76,12 @@ class PartsService {
   }
 
   private getIssuedQuantity(part: any, status?: string): number {
-    const explicitActual = Number(part?.actualQuantity);
-    if (Number.isFinite(explicitActual) && explicitActual > 0) {
+    const rawActual = part?.actualQuantity;
+    const hasActual = rawActual !== null && rawActual !== undefined
+      && !(typeof rawActual === 'string' && rawActual.trim() === '');
+    const explicitActual = Number(rawActual);
+    // Explicit zero means no consumption. Only absent values use the legacy estimate.
+    if (hasActual && Number.isFinite(explicitActual) && explicitActual >= 0) {
       return explicitActual;
     }
     return this.isCompletedStatus(status) ? this.getEstimatedQuantity(part) : 0;

@@ -3,7 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import { partsTypeService } from "../services/parts-type.service";
 import { IUser } from "../../users/models/user.model";
 import { get } from "lodash";
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 import { applyRoleFilter } from "../../../common/utils/role-filter.helper";
 import { sanitizePartTypePayload } from "../policies/part-type.policy";
 

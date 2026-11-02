@@ -1,5 +1,5 @@
 import { CommentsModel } from '../../work-orders/models/comment.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { COMMENT_MAX_LENGTH } from '../validators/comments.validator';
 
 const MAX_COMMENT_DEPTH = 8;

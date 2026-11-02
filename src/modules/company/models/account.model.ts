@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
-import { ACCOUNT_ROLE_MENU_SCHEMA_VERSION, RoleManager } from '../../users/contracts';
+import { ACCOUNT_ROLE_MENU_SCHEMA_VERSION, RoleManager } from '../../users/contracts/index';
 import { EXPERIENCE_PROFILES, ExperienceProfile } from '../../../common/constants/experience-profile.constant';
 export const COMPANY_COLLECTION_NAME = `account_master`;
 export const STATUS_ENUM = ['active', 'inactive'];

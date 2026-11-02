@@ -1,6 +1,6 @@
 import { WorkOrderModel } from "../models/workOrder.model";
 import { WorkOrderActivityAction, WorkOrderActivityModel } from "../models/workOrderActivity.model";
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 
 interface WorkOrderActivityPayload {
   account_id: any;

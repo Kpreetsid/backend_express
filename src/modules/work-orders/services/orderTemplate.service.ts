@@ -5,7 +5,7 @@ import { PartsModel } from '../../inventory/models/part.model';
 import { ProcedureModel } from '../models/procedure.model';
 import { UserModel } from '../../users/models/user.model';
 import { WorkOrderTemplateModel } from '../models/workOrderTemplate.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 
 class OrderTemplateService {
   async getAllTemplates(match: any): Promise<any[]> {

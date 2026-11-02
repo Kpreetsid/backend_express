@@ -10,7 +10,7 @@ const backendRoot = path.resolve(__dirname, '..');
 const workspaceRoot = path.resolve(backendRoot, '..');
 const sourcePath = path.join(backendRoot, 'catalog', 'asset_train.csv');
 const outputPaths = [
-  path.join(backendRoot, 'src/catalog/asset-train-catalog.data.json'),
+  path.join(backendRoot, 'src/modules/assets/catalog/asset-train-catalog.data.json'),
   path.join(workspaceRoot, 'cmmsF/src/app/shared/catalog/asset-train-catalog.data.json'),
   path.join(workspaceRoot, 'data_processors/app/diagnostic_metadata/asset-train-catalog.data.json'),
 ];
@@ -222,7 +222,7 @@ for (const output of outputPaths) {
   }
 }
 console.log(`${catalog.equipment.length} equipment definitions; ${catalog.component_types.length} component families; ${outputPaths.length} catalog copies.`);
-const moduleSource = path.join(backendRoot, 'src/catalog/asset-train-catalog.ts');
+const moduleSource = path.join(backendRoot, 'src/modules/assets/catalog/asset-train-catalog.ts');
 const moduleCopy = path.join(workspaceRoot, 'cmmsF/src/app/shared/catalog/asset-train-catalog.ts');
 if (process.argv.includes('--check')) {
   if (fs.readFileSync(moduleSource, 'utf8') !== fs.readFileSync(moduleCopy, 'utf8')) {

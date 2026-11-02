@@ -6,7 +6,7 @@ import {
   getCatalogTrainType, getComponentDefinition, getEquipmentDefinition,
   normalizeCatalogName, SUPPORTED_ASSET_TYPES
 } from './asset-train-catalog';
-import { assetValidator } from '../masters/asset/asset.validator';
+import { assetValidator } from '../validators/asset.validator';
 import { AssetModel } from '../models/asset.model';
 
 test('all CSV equipment is represented once, with the chosen Boiler Feed Pump definition', () => {
@@ -82,7 +82,7 @@ test('request validation and the Mongo asset schema accept catalog types and rej
   for (const type of [...SUPPORTED_ASSET_TYPES, 'Unrecognized Machine']) {
     const req: any = { body: {
       asset_name: 'Catalog validation', asset_type: type,
-      locationId: '63c8eb45ff7b8f5a8f49a682', alarmType: ['alert']
+      locationId: '63c8eb45ff7b8f5a8f49a682', alarmType: ['alert'], userIdList: ['63c8eb45ff7b8f5a8f49a682']
     } };
     for (const rule of assetValidator) await rule.run(req);
     const errors = validationResult(req);

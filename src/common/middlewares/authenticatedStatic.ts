@@ -1,4 +1,4 @@
-import { isAuthenticated } from '@core/auth';
+import { isAuthenticated } from '../../core/auth/index';
 import express, { NextFunction, Request, RequestHandler, Response } from 'express';
 import fs from 'fs';
 import path from 'path';

@@ -1,3 +1,4 @@
+import { enforceUploadPermission } from '../../../common/middlewares/upload-permission.middleware';
 import express from 'express';
 import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
 const router = express.Router();
@@ -95,9 +96,9 @@ export default (): express.Router => {
     router.use(rateLimiter.uploadLimiter);
 
     router.post('/', processUploadedFiles, payloadCryptoMultipartMiddleware, uploadController.uploadController);
-    router.post('/baseImage', requireFolderUploadPermission, uploadController.uploadBaseImage);
-    router.post('/baseImage/:folderName', requireFolderUploadPermission, uploadController.uploadBaseImage);
-    router.post('/:folderName', requireFolderUploadPermission, processUploadedFiles, payloadCryptoMultipartMiddleware, uploadController.uploadController);
+    router.post('/baseImage', enforceUploadPermission, requireFolderUploadPermission, uploadController.uploadBaseImage);
+    router.post('/baseImage/:folderName', enforceUploadPermission, requireFolderUploadPermission, uploadController.uploadBaseImage);
+    router.post('/:folderName', enforceUploadPermission, requireFolderUploadPermission, processUploadedFiles, payloadCryptoMultipartMiddleware, uploadController.uploadController);
 
     return router;
 }

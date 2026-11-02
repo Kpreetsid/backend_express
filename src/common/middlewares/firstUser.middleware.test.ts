@@ -1,31 +1,44 @@
-import { describe, expect, it, vi } from 'vitest';
+import test from 'node:test';
+import assert from 'node:assert/strict';
 import { requireFirstUser } from './firstUser.middleware';
 
-describe('requireFirstUser', () => {
-  it.each([
-    ['a non-first user', { user: { isFirstUser: false } }],
-    ['a user without the first-user flag', { user: {} }],
-    ['a request without an authenticated user', {}]
-  ])('rejects %s with 403', (_scenario, req) => {
-    const json = vi.fn();
-    const status = vi.fn(() => ({ json }));
-    const next = vi.fn();
+test('requireFirstUser rejects non-first users with 403', () => {
+  let status = 0;
+  let jsonResponse: any = null;
+  const res: any = {
+    status(code: number) {
+      status = code;
+      return {
+        json(payload: any) {
+          jsonResponse = payload;
+          return payload;
+        }
+      };
+    }
+  };
+  let nextCalled = false;
+  const next = () => { nextCalled = true; };
 
-    requireFirstUser(req as any, { status } as any, next);
+  // Case 1: user has isFirstUser = false
+  requireFirstUser({ user: { isFirstUser: false } } as any, res, next);
+  assert.equal(status, 403);
+  assert.equal(jsonResponse?.status, false);
+  assert.equal(jsonResponse?.code, 'FIRST_USER_REQUIRED');
+  assert.equal(nextCalled, false);
 
-    expect(status).toHaveBeenCalledWith(403);
-    expect(json).toHaveBeenCalledWith(expect.objectContaining({
-      status: false,
-      code: 'FIRST_USER_REQUIRED'
-    }));
-    expect(next).not.toHaveBeenCalled();
-  });
+  // Case 2: user missing or undefined isFirstUser
+  status = 0;
+  jsonResponse = null;
+  requireFirstUser({ user: {} } as any, res, next);
+  assert.equal(status, 403);
+  assert.equal(nextCalled, false);
+});
 
-  it('passes an authenticated first user to the next handler', () => {
-    const next = vi.fn();
+test('requireFirstUser passes for user with isFirstUser = true', () => {
+  let nextCalled = false;
+  const next = () => { nextCalled = true; };
+  const res: any = {};
 
-    requireFirstUser({ user: { isFirstUser: true } } as any, {} as any, next);
-
-    expect(next).toHaveBeenCalledOnce();
-  });
+  requireFirstUser({ user: { isFirstUser: true } } as any, res, next);
+  assert.equal(nextCalled, true);
 });

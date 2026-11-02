@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_ANALYSIS_FEATURES } from './defaultAnalysisFeatures';
+import { DEFAULT_ANALYSIS_FEATURES } from './default-analysis-features.constant';
 import { PA_FAN_ANALYSIS_FEATURES } from './paFanAnalysisFeatures';
 import { mergeDefaultFeatureSelections, sanitizeAnalysisFeatureSelection } from './selectionPolicy';
 

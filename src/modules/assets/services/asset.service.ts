@@ -2,7 +2,7 @@ import { AssetModel } from '../models/asset.model';
 import { MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../mappings/services/userAsset.service";
 import { processorAPIService } from './processor-api.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { WorkOrderModel } from '../../work-orders/models/workOrder.model';
 import { ObservationModel } from '../models/observation.model';
 import { ReportAssetModel } from '../../reports/models/assetReport.model';
@@ -17,11 +17,12 @@ import { CacheKeys, CacheTTL } from '../../../core/cache/cache.keys';
 import { generateDeterministicObjectKey } from '../../../core/cache/cache-helper';
 import { subscriptionLimitService } from '../../company/services/subscriptionLimit.service';
 import { createReviewedAssetTrain } from './asset-train-creation';
-import { UserModel } from '../../models/user.model';
-import { externalAPI } from '../../configDB';
-import { requireProcessorBaseUrl } from '../../utils/processor-url';
 import { buildChildComponent, componentIdentityForUpdate, deleteConfirmedChild } from './asset-component-management';
-import { getComponentDefinition } from '../../catalog/asset-train-catalog';
+import { requireProcessorBaseUrl } from '@common/utils/processor-url';
+import { externalAPI } from '@core/config';
+import { UserModel } from '@modules/users';
+import { getComponentDefinition } from '../catalog/asset-train-catalog';
+
 class AssetService {
   async createChildComponent(rootId: string, body: any, accountId: any, userId: any, token: string) {
     requireProcessorBaseUrl(externalAPI.URL);

@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { commentService } from '../services/comments.service';
 import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 import { postService } from '../services/posts.service';
 

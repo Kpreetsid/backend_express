@@ -18,7 +18,7 @@ export interface IStorageProvider {
 }
 
 export class LocalDiskStorageProvider implements IStorageProvider {
-  private uploadRoot = path.resolve(process.cwd(), 'uploadFiles');
+  private uploadRoot = path.resolve(__dirname, '../../../uploadFiles');
 
   private ensureDirectory(folderName?: string) {
     const target = folderName ? path.join(this.uploadRoot, folderName) : this.uploadRoot;

@@ -6,13 +6,13 @@ import { userWorkOrderService } from "../../mappings/services/userWorkOrder.serv
 import { partsService } from "../../inventory/services/parts.service";
 import { commentService } from "./comment.service";
 import { requestService } from "./request.service";
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 import { notificationService } from "../../communications/services/notification-sender.service";
 import { withTransaction } from "../../../common/utils/transaction.helper";
 import { ProcedureModel } from "../models/procedure.model";
 import { WorkOrderAssigneeModel } from "../../mappings/models/mapUserWorkOrder.model";
 import { workOrderActivityService } from "./workOrderActivity.service";
-import { WorkRequestModel } from "../models/workRequest.model";
+import { WorkRequestModel, WORK_REQUEST_EDITABLE_STATUSES } from "../models/workRequest.model";
 import { SchedulerModel } from "../../maintenance/models/scheduleMaster.model";
 import { AssetModel } from "../../assets/models/asset.model";
 import { InventoryMovementModel } from "../../inventory/models/inventoryMovement.model";
@@ -4168,7 +4168,7 @@ class OrderService {
       const workRequestMatch: any = {
         account_id: workOrderMatch.account_id,
         visible: true,
-        status: { $in: ['Open', 'Approved'] },
+        status: { $in: [...WORK_REQUEST_EDITABLE_STATUSES, 'Approved'] },
         $or: [
           { converted_work_order_id: { $exists: false } },
           { converted_work_order_id: null }
@@ -4510,7 +4510,10 @@ class OrderService {
         }
       }
       
-      let updatedData = { ...existingOrder.toObject(), ...body };
+      let updatedData = { ...existingOrder.toObject(), ...body,
+        _id: existingOrder._id, account_id: existingOrder.account_id,
+        createdBy: existingOrder.createdBy, created_by: existingOrder.created_by,
+        createdAt: existingOrder.createdAt, order_no: existingOrder.order_no, visible: existingOrder.visible }; 
       if (body.hasOwnProperty('parts')) {
         this.validateIncomingParts(body.parts || []);
       }
@@ -4578,6 +4581,7 @@ class OrderService {
       
       updatedData = this.normalizeNatureOfWorkPayload(this.normalizeTimingFields(this.sanitizeWorkOrder(updatedData)));
       updatedData = this.syncStatusDetailAuditFields(this.syncCompletionAuditFields(updatedData, existingOrder.status, user), user);
+      delete updatedData.sync_version;
       const updateFilter: any = { _id: id, account_id: user.account_id, visible: true };
       if (expectedVersion !== undefined) updateFilter.sync_version = expectedVersion;
       delete updatedData.sync_version;
@@ -4699,7 +4703,7 @@ class OrderService {
       if (existingOrder.parts?.length > 0) {
         existingOrder.parts = existingOrder.parts.map((part: any) => ({
           ...part,
-          actualQuantity: part.actualQuantity ?? part.estimatedQuantity
+          actualQuantity: part.actualQuantity === null || part.actualQuantity === undefined || part.actualQuantity === '' ? part.estimatedQuantity : part.actualQuantity
         }));
       }
       if (!existingOrder.actual_start_date) {

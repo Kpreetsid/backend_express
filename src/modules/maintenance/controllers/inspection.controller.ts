@@ -4,7 +4,7 @@ import { get } from 'lodash';
 import { IUser } from '../../users/models/user.model';
 import { inspectionService } from '../services/inspection.service';
 import { mapInspectionService } from '../../mappings/services/userInspection.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { notificationService } from '../../communications/services/notification-sender.service';
 
 class InspectionController {

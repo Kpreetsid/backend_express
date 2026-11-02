@@ -2,10 +2,10 @@ import express, { NextFunction, Request, Response } from 'express';
 import axios from 'axios';
 import { get } from 'lodash';
 import { Types } from 'mongoose';
-import { hasRolePermission, hasAccountFeature } from '@common/middlewares';
-import { applyRoleFilter } from '@common/utils/role-filter.helper';
-import { AssetModel } from '@modules/assets';
-import { IUser } from '@modules/users';
+import { hasRolePermission, hasAccountFeature } from '../common/middlewares/index';
+import { applyRoleFilter } from '../common/utils/role-filter.helper';
+import { AssetModel } from '../modules/assets/index';
+import { IUser } from '../modules/users/index';
 
 const fail = (message: string, status: number): Error => Object.assign(new Error(message), { status });
 const principal = (req: Request): IUser => get(req, 'user') as unknown as IUser;

@@ -2,7 +2,7 @@ import { AssetModel } from '../models/asset.model';
 import { MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation.model";
 import { mapUserToAssetService } from "../../mappings/services/userAsset.service";
 import { processorAPIService } from './processor-api.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { withTransaction } from "../../../common/utils/transaction.helper";
 import mongoose from 'mongoose';
 import { LocationModel } from '../../locations/models/location.model';

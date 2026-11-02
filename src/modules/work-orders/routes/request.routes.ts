@@ -1,3 +1,4 @@
+import { idempotencyMiddleware } from '../../../common/middlewares/idempotency.middleware';
 import express from 'express';
 import { requestController } from '../controllers/request.controller';
 import { validateParamId } from '../../../common/middlewares/validate.middleware';
@@ -8,6 +9,7 @@ import { hasRolePermission } from '../../../common/middlewares/permission.middle
 
 export default (router: express.Router) => {
     const requestRouter = express.Router();
+    requestRouter.use(idempotencyMiddleware);
     requestRouter.get('/', hasRolePermission('work_request', 'view'), requestController.getAll);
     requestRouter.get('/:id', validateParamId, hasRolePermission('work_request', 'view'), requestController.getById);
     requestRouter.post('/', hasRolePermission('work_request', 'add'), workRequestValidator, validate, requestController.create);

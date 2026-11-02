@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { userLogsService } from '../services/logs.service';
 import { get } from 'lodash';
 import { IUser } from '../models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 
 class UserLogsController {
   async userLogs (req: Request, res: Response, next: NextFunction): Promise<any> {

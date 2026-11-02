@@ -25,22 +25,15 @@ export class MongoConnection {
         ? `${encodeURIComponent(database.userName!)}:${encodeURIComponent(database.password!)}@`
         : "";
       const query = new URLSearchParams({ retryWrites: "false" });
-      query.set("retryWrites", String(database.retryWrites));
-      query.set("directConnection", String(database.directConnection));
 
       if (hasCredentials && database.authSource) {
         query.set("authSource", database.authSource);
       }
       const mongoUri = `mongodb://${credentials}${buildHostList()}/${database.databaseName}?${query.toString()}`;
       await mongoose.connect(mongoUri, {
-        autoIndex: database.autoIndex,
         autoCreate: true,
-        connectTimeoutMS: database.connectTimeoutMS,
         maxPoolSize: database.maxPoolSize,
-        minPoolSize: database.minPoolSize,
-        serverSelectionTimeoutMS: database.serverSelectionTimeoutMS,
-        socketTimeoutMS: database.socketTimeoutMS,
-        maxIdleTimeMS: database.maxIdleTimeMS,
+        minPoolSize: database.minPoolSize
       });
       console.log("✅ MongoDB connected (pooled connection)");
       this.instance = mongoose;

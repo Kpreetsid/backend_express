@@ -5,7 +5,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../users/models/user.model';
 import { instructionService } from '../services/instruction.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 
 import { sanitizeInstructionPayload } from '../../maintenance/services/guide-payload.service';
 import {

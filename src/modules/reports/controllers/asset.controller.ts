@@ -4,11 +4,14 @@ import { Request, Response, NextFunction } from 'express';
 import { assetReportService } from '../services/asset.service';
 import { get } from 'lodash';
 import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { processorAPIService } from '../../assets/services/processor-api.service';
 import { ASSET_REPORT_STATUS } from '../models/assetReport.model';
 import { observationService } from '../../assets/services/observation.service';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
+import { PdfService } from '../services/asset-pdf.service';
+import { storageConfig } from '../../../core/config/env.config';
+import sanitizeHtml from 'sanitize-html';
 import { AssetModel } from '../../assets/models/asset.model';
 import {
   sanitizeAssetReportCreatePayload,
@@ -17,6 +20,49 @@ import {
 } from '../policies/asset.policy';
 
 class AssetReportController {
+  private pdfService = new PdfService();
+
+  private parseJsonField<T>(value: any, fallback: T): T {
+    if (value === undefined || value === null || value === '') {
+      return fallback;
+    }
+    if (typeof value !== 'string') {
+      return value as T;
+    }
+    try {
+      return JSON.parse(value) as T;
+    } catch (_error) {
+      throw Object.assign(new Error('Invalid PDF request payload'), { status: 400 });
+    }
+  }
+
+  private getFrontendChartImages(req: Request): any[] {
+    const files = Array.isArray(req.files) ? req.files as Express.Multer.File[] : [];
+    const manifest = this.parseJsonField<any[]>(req.body?.chartManifest, []);
+
+    if (!files.length && Array.isArray(manifest) && !manifest.length) {
+      return [];
+    }
+    if (!Array.isArray(manifest) || manifest.length !== files.length || files.length > 25) {
+      throw Object.assign(new Error('Chart image manifest does not match uploaded files'), { status: 400 });
+    }
+
+    return files.map((file, index) => {
+      const item = manifest[index] || {};
+      const imageBuffer = this.safeChartBuffer(file);
+      return {
+        key: typeof item.key === 'string' ? item.key : `chart-${index + 1}`,
+        title: typeof item.title === 'string' ? item.title : '',
+        order: Number.isFinite(Number(item.order)) ? Number(item.order) : index,
+        width: Number.isFinite(Number(item.width)) ? Number(item.width) : undefined,
+        height: Number.isFinite(Number(item.height)) ? Number(item.height) : undefined,
+        mimeType: file.mimetype,
+        size: file.size,
+        dataUri: `data:${file.mimetype};base64,${imageBuffer.toString('base64')}`
+      };
+    }).sort((a, b) => a.order - b.order);
+  }
+
   private assetHealthArray: any = { 1: "Critical", 2: "Danger", 3: "Alert", 4: "Healthy", 5: "Not Defined" };
 
   getAssetsReport = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
@@ -230,6 +276,137 @@ class AssetReportController {
       next(error);
     }
   };
+
+  generateAssetReportPdf = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    try {
+      const { params: { id } } = req;
+      const user = get(req, "user", {}) as IUser;
+      const body = req.is('multipart/form-data')
+        ? this.parseJsonField<any>(req.body?.payload, {})
+        : (req.body || {});
+      const frontendChartImages = this.getFrontendChartImages(req);
+      const reportId = helperService.validateObjectId(String(id));
+      const reports: any[] = await assetReportService.getAllAssetReports(await this.getReportScope(user, { _id: reportId }), user.account_id);
+
+      if (!reports || reports.length === 0) {
+        throw Object.assign(new Error('Asset report not found'), { status: 404 });
+      }
+
+      const report = reports[0];
+
+      const {
+        labels,
+        timezone,
+        locale,
+        assetCondition,
+        faultData,
+        chartOptions,
+        chartStates
+      } = body || {};
+
+      // Reconstruct the PDF payload from DB data and only the frontend fields needed for rendering.
+      const payload: any = {
+        labels: this.safePdfLabels(labels),
+        timezone,
+        locale: locale || labels?.locale,
+        assetCondition: this.safePdfText(assetCondition),
+        faultData: Array.isArray(faultData) ? faultData.slice(0, 25).map((row: any) => ({ name: typeof row?.name === 'string' && /^[a-zA-Z0-9 _-]{1,100}$/.test(row.name) ? row.name : 'Other', translatedName: this.safePdfText(row?.translatedName), value: [1, 2, 3, 4].includes(row?.value) ? row.value : 0 })) : [],
+        chartOptions: chartOptions || {},
+        chartStates: chartStates || {},
+        assetName: report.assetId?.asset_name || report.assetName || 'NA',
+        assetImage: report.assetId?.image_path || report.assetImage || null,
+        analysisDate: report.createdOn,
+        location: report.locationId?.location_name || report.locationName || 'NA',
+        sensorsMapped: report.endpointRMSData?.length || 0,
+        conditionClass: report.EquipmentHealth,
+        observations: report.Observations && report.Observations.trim() ? report.Observations : null,
+        recommendations: report.Recommendations && report.Recommendations.trim() ? report.Recommendations : null,
+        iso: report.ISO,
+        healthHistory: report.asset_health_history || [],
+        createdFrom: report.createdFrom || 'Asset Report',
+        // Pass chartDetail for backend chart fetching
+        chartDetail: report.chartDetail || [],
+        harmonicIndex: report.harmonicIndex || [],
+        frontendChartImages,
+
+        // Construct readings from endpointRMSData — try all axes for timestamp
+        readings: (report.endpointRMSData || []).map((point: any) => {
+          const getTimestamp = (src: any) =>
+            src?.Axial?.timestamp || src?.Horizontal?.timestamp || src?.Vertical?.timestamp;
+          return {
+            point: `${point.asset_name} > ${point.point_name}-${point.mount_location}`,
+            compositeId: point.composite_id || '',
+            timestamp: getTimestamp(point?.acceleration) || getTimestamp(point?.velocity) || null,
+            acceleration: {
+              h: point?.acceleration?.Horizontal?.rms ?? '-',
+              v: point?.acceleration?.Vertical?.rms ?? '-',
+              a: point?.acceleration?.Axial?.rms ?? '-'
+            },
+            velocity: {
+              h: point?.velocity?.Horizontal?.rms ?? '-',
+              v: point?.velocity?.Vertical?.rms ?? '-',
+              a: point?.velocity?.Axial?.rms ?? '-'
+            }
+          };
+        }),
+
+        // Map attachments (files)
+        attachments: (report.files || []).map((img: any) =>
+          img.folderName ? `${storageConfig.baseUrl}/${img.folderName}/${img.fileName}` : `${storageConfig.baseUrl}/${img.fileName}`
+        )
+      };
+
+      // Handle assetImage if not in body
+      if (!payload.assetImage && report.assetId?.image_path) {
+        payload.assetImage = `${storageConfig.baseUrl}/${report.assetId.image_path}`;
+      }
+
+      const userToken = get(req, "userToken", "") as string;
+      const pdfBuffer = await this.pdfService.generateAssetReportPdf(payload, userToken, String(user._id));
+      const assetName = payload.assetName || 'Asset';
+      const cleanName = assetName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `Asset_Report_${cleanName}_${dateStr}.pdf`;
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+      res.send(pdfBuffer);
+    } catch (error: any) {
+      console.error('PDF Generation Error:', error);
+      next(error);
+    }
+  };
+
+  private safeChartBuffer(file: Express.Multer.File): Buffer {
+    const buffer = file.buffer;
+    const invalid = () => Object.assign(new Error('Invalid chart snapshot'), { status: 400 });
+    if (!Buffer.isBuffer(buffer) || buffer.length === 0 || buffer.length > 5 * 1024 * 1024) throw invalid();
+    if (file.mimetype === 'image/png' && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) return buffer;
+    if (file.mimetype === 'image/jpeg' && buffer[0] === 255 && buffer[1] === 216 && buffer[2] === 255) return buffer;
+    if (file.mimetype !== 'image/svg+xml') throw invalid();
+    const source = buffer.toString('utf8');
+    if (!/<svg[\s>]/i.test(source) || /<!DOCTYPE|<!ENTITY|<\?xml-stylesheet/i.test(source)) throw invalid();
+    const clean = sanitizeHtml(source, {
+      allowedTags: ['svg', 'g', 'path', 'rect', 'circle', 'ellipse', 'line', 'polyline', 'polygon', 'text', 'tspan', 'defs', 'clipPath', 'linearGradient', 'radialGradient', 'stop', 'title', 'desc'],
+      allowedAttributes: { '*': ['xmlns', 'viewBox', 'width', 'height', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'cx', 'cy', 'r', 'rx', 'ry', 'd', 'points', 'fill', 'fill-opacity', 'fill-rule', 'stroke', 'stroke-width', 'stroke-opacity', 'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin', 'opacity', 'transform', 'font-size', 'font-family', 'font-weight', 'text-anchor', 'dominant-baseline', 'id', 'clip-path', 'offset', 'stop-color', 'stop-opacity', 'gradientUnits', 'gradientTransform'] },
+      parser: { xmlMode: true, lowerCaseTags: false, lowerCaseAttributeNames: false }
+    });
+    if (!/<svg[\s>]/.test(clean) || /url\(\s*['"]?(?!#)/i.test(clean)) throw invalid();
+    return Buffer.from(clean);
+  }
+
+  private safePdfText(value: unknown): string {
+    return typeof value === 'string' ? value.slice(0, 1000) : '';
+  }
+
+  private safePdfLabels(value: unknown): Record<string, string> {
+    const result: Record<string, string> = {};
+    if (!value || typeof value !== "object" || Array.isArray(value)) return result;
+    for (const [key, label] of Object.entries(value)) {
+      if (/^[a-zA-Z][a-zA-Z0-9]*Label$/.test(key) || key === "locale") result[key] = this.safePdfText(label);
+    }
+    return result;
+  }
 
   private getReportScope = async (user: IUser, baseFilter: Record<string, any> = {}): Promise<Record<string, any>> => {
     return await applyRoleFilter({

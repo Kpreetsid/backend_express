@@ -5,7 +5,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { postService } from '../services/posts.service';
 import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 
 import { POST_TOPICS, POST_TYPES } from '../policies/post.policy';

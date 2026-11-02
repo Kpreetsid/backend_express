@@ -6,7 +6,7 @@ import { floorMapService } from '../services/floorMap.service';
 import { IUser } from '../../users/models/user.model';
 import { mapUserToLocationService } from "../../mappings/services/userLocation.service";
 import { mapUserToAssetService } from "../../mappings/services/userAsset.service";
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 import { LocationModel } from "../models/location.model";
 import { AssetModel } from "../../assets/models/asset.model";
 

@@ -8,13 +8,17 @@ import { resetPasswordService } from '../../auth/services/resetPassword.service'
 import { passwordService } from '../../../common/utils/bcrypt.helper';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 import { mailerService } from '../../../core/mailer/mailer.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { notificationService } from '../../communications/services/notification-sender.service';
 import { TokenModel } from '../../auth/models/userToken.model';
 import { clearAuthSessionCacheForUser } from '../../../core/auth/auth.middleware';
 import { assertStrongPassword } from '../../../common/utils/password-policy.helper';
 import { rolesService } from '../services/roles.service';
 import { withTransaction } from '../../../common/utils/transaction.helper';
+import { subscriptionLimitService } from '../../company/services/subscriptionLimit.service';
+import { validateNewPassword } from '../../auth/services/verification-challenge.service';
+import { clearAuthCookies } from '../../../core/auth/auth-cookie.service';
+import { refreshTokenService } from '../../auth/services/refreshToken.service';
 
 class UserController {
   constructor() {
@@ -149,6 +153,9 @@ class UserController {
         throw Object.assign(new Error('No permitted user fields were provided'), { status: 400 });
       }
       const previousUser = userData[0];
+      if (previousUser.user_status !== 'active' && safeUpdates.user_status === 'active') {
+        await subscriptionLimitService.assertCanCreate(user.account_id, 'user');
+      }
       if (previousUser.isFirstUser
         && ((safeUpdates.user_role && safeUpdates.user_role !== 'admin')
           || (safeUpdates.user_status && safeUpdates.user_status !== 'active')
@@ -211,10 +218,11 @@ class UserController {
 
       const isCorrect = await passwordService.comparePassword(password, userData.password);
       if (!isCorrect) throw Object.assign(new Error("Incorrect current password"), { status: 400 });
-      await usersService.updateUserPassword(user_id, newPassword);
-      await TokenModel.deleteMany({ userId: user_id });
-      clearAuthSessionCacheForUser(String(user_id));
-      res.status(200).json({ status: true, message: "User password updated successfully. Please sign in again." });
+      validateNewPassword(newPassword, confirmNewPassword);
+      await usersService.updateUserPassword(user_id, newPassword, account_id);
+      clearAuthCookies(res);
+      refreshTokenService.clearCookie(res);
+      res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
       next(error);
     }
@@ -229,18 +237,9 @@ class UserController {
         throw Object.assign(new Error("Passwords do not match"), { status: 400 });
       assertStrongPassword(newPassword);
 
-      const normalizedEmail = String(email).trim().toLowerCase();
-      const resetProofConsumed = await resetPasswordService.consumeResetProof(normalizedEmail, String(resetToken));
-      if (!resetProofConsumed) {
-        throw Object.assign(new Error("Password reset verification has expired or was already used."), { status: 401 });
-      }
-      const userData = await usersService.getAllUsers({ email: normalizedEmail, user_status: "active" });
-      if (!userData.length) {
-        throw Object.assign(new Error("Password reset verification has expired or was already used."), { status: 401 });
-      }
-      await usersService.updateUserPassword(`${userData[0]._id}`, newPassword);
-      await TokenModel.deleteMany({ userId: userData[0]._id });
-      clearAuthSessionCacheForUser(String(userData[0]._id));
+      await resetPasswordService.completeReset({ email, token: resetToken, password: newPassword, confirmation: confirmNewPassword });
+      clearAuthCookies(res);
+      refreshTokenService.clearCookie(res);
       res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
       next(error);

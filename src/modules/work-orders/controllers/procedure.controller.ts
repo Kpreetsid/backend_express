@@ -3,7 +3,7 @@ import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
 import { IUser } from '../../users/models/user.model';
 import { procedureService } from '../services/procedure.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 
 class ProcedureController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {

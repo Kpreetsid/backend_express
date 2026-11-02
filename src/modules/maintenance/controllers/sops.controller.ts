@@ -5,7 +5,7 @@ import { sopsService } from '../services/sops.service';
 import { IUser } from '../../users/models/user.model';
 import { get } from 'lodash';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 
 class SOPsController {
 

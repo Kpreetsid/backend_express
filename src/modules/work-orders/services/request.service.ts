@@ -1,4 +1,4 @@
-import { WorkRequestModel, IWorkRequest, WORK_REQUEST_ORDER_SLA_HOURS, WORK_REQUEST_REVIEW_SLA_HOURS } from "../models/workRequest.model";
+import { WorkRequestModel, IWorkRequest, WORK_REQUEST_EDITABLE_STATUSES, WORK_REQUEST_ORDER_SLA_HOURS, WORK_REQUEST_REVIEW_SLA_HOURS } from "../models/workRequest.model";
 import { createSyncConflict } from "../../../common/utils/sync-concurrency.helper";
 import { AssetModel } from "../../assets/models/asset.model";
 import { LocationModel } from "../../locations/models/location.model";
@@ -129,7 +129,7 @@ class RequestService {
         _id: id,
         account_id,
         visible: true,
-        status: 'Open',
+        status: { $in: WORK_REQUEST_EDITABLE_STATUSES },
         $or: [
           { converted_work_order_id: { $exists: false } },
           { converted_work_order_id: null }
@@ -152,7 +152,7 @@ class RequestService {
     }, user_id, session, {
       account_id,
       visible: true,
-      status: 'Open',
+      status: { $in: WORK_REQUEST_EDITABLE_STATUSES },
       $or: [
         { converted_work_order_id: { $exists: false } },
         { converted_work_order_id: null }
@@ -169,7 +169,7 @@ class RequestService {
     }, user_id, session, {
       account_id,
       visible: true,
-      status: 'Open',
+      status: { $in: WORK_REQUEST_EDITABLE_STATUSES },
       $or: [
         { converted_work_order_id: { $exists: false } },
         { converted_work_order_id: null }

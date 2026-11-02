@@ -1,6 +1,6 @@
 import express from 'express';
 import { locationController } from '../controllers/location.controller';
-import { hasAnyRolePermission, hasRolePermission } from '../../../common/middlewares';
+import { hasAnyRolePermission, hasRolePermission } from '../../../common/middlewares/index';
 import { validateParamId, validate } from '../../../common/middlewares/validate.middleware';
 import { locationValidator } from '../validators/location.validator';
 

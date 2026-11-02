@@ -46,7 +46,9 @@ class VerificationController {
             if (emailCheck.length === 0) {
                 throw Object.assign(new Error('Email not found'), { status: 404 });
             }
-            const data = await verificationService.consumeUserOTP(emailCheck[0].email, String(verificationCode));
+            const match: any = { email: emailCheck[0].email };
+            match.code = verificationCode;
+            const data = await verificationService.verifyUserOTP(match);
             if (!data) {
                 throw Object.assign(new Error('Invalid or expired verification code'), { status: 400 });
             }

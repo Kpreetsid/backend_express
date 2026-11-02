@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import mongoose, { Types } from 'mongoose';
 import { buildChildComponent, componentIdentityForUpdate, deleteConfirmedChild } from './asset-component-management';
-import { AssetModel } from '../../models/asset.model';
-import { MapUserAssetLocationModel } from '../../models/mapUserLocation.model';
+import { AssetModel } from '../models/asset.model';
+import { MapUserAssetLocationModel } from '../../mappings/models/mapUserLocation.model';
 
 const accountId = new Types.ObjectId('64a000000000000000000001');
 const userId = new Types.ObjectId('64a000000000000000000002');
@@ -86,7 +86,7 @@ test('editing a component preserves identity and hierarchy and updates the diagn
 
 test('deletion requires explicit confirmation and a direct leaf in the account', async t => {
   const { assetService } = require('./asset.service');
-  const { processorAPIService } = require('../../api-processor');
+  const { processorAPIService } = require('./processor-api.service');
   let child: any = { _id: childId, parent_id: rootId, account_id: accountId, asset_type: 'Motor', diagnostic_component_key: 'key' };
   const reads = t.mock.method(AssetModel, 'findOne', ((query: any) => ({ lean: async () => String(query._id) === String(rootId) ? root : child })) as any);
   const descendants = t.mock.method(AssetModel, 'exists', async () => null as any);
@@ -110,10 +110,10 @@ test('deletion requires explicit confirmation and a direct leaf in the account',
 
 test('manual creation enforces capacity and sibling names and compensates only its new ID', async t => {
   const { assetService } = require('./asset.service');
-  const { processorAPIService } = require('../../api-processor');
-  const { subscriptionLimitService } = require('../company/subscriptionLimit.service');
-  const { mapUserToAssetService } = require('../../transaction/mapUserAsset/userAsset.service');
-  const { externalAPI } = require('../../configDB');
+  const { processorAPIService } = require('./processor-api.service');
+  const { subscriptionLimitService } = require('../../company/services/subscriptionLimit.service');
+  const { mapUserToAssetService } = require('../../mappings/services/userAsset.service');
+  const { externalAPI } = require('../../../core/config/env.config');
   const previousUrl = externalAPI.URL;
   externalAPI.URL = 'http://processor.test';
   t.after(() => { externalAPI.URL = previousUrl; });

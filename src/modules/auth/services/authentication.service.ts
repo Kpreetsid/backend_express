@@ -5,10 +5,9 @@ import { passwordService } from '../../../common/utils/bcrypt.helper';
 import { decryptToken, generateAccessToken, generateExternalAccessToken } from '../../../core/auth/auth.middleware';
 import { getAccessTokenTypeFilter, TokenModel } from "../models/userToken.model";
 import { rolesService } from "../../users/services/roles.service";
-import { MailerService } from "../../../core/mailer/mailer.service";
-import { VerificationCodeModel } from "../models/userVerification.model";
+import { resetPasswordService } from './resetPassword.service';
 import { auth } from "../../../core/config/env.config";
-import { helperService } from "../../../common/utils/object-id.helper";
+import { helperService } from "../../../common/utils/helper";
 import { IAccount } from "../../company/models/account.model";
 import { companyService } from "../../company/services/company.service";
 import { get } from "lodash";
@@ -20,6 +19,7 @@ import { accountAccessService } from "../../users/services/account-access.servic
 import { tokenSessionStore } from "../../../core/auth/token-session-store";
 import { clearAuthCookies, setAccessCookies } from "../../../core/auth/auth-cookie.service";
 import { analysisFeatureService } from "../../settings/services/analysisFeature.service";
+import { passwordExpiryNotice } from './password-expiry';
 
 const persistAccessSession = async (
   token: string,
@@ -44,6 +44,7 @@ const persistAccessSession = async (
 
 export const userAuthentication = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    const sessionStartedAt = Date.now();
     const restrictedRoles = ['manager', 'employee', 'customer', 'user'];
     const { username, password } = req.body;
     if (!username || !password) {
@@ -79,7 +80,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     const { password: _, ...safeUser } = user.toObject();
     safeUser.id = safeUser._id;
     const token_id = new mongoose.Types.ObjectId();
-    const userTokenPayload: UserLoginPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id), jti: String(token_id) };
+    const userTokenPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id), jti: String(token_id), sessionStartedAt };
     const token = generateAccessToken(userTokenPayload);
     let userRoleData: any = await rolesService.verifyUserRole(String(user._id), String(user.account_id));
     if (!userRoleData) {
@@ -100,7 +101,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     });
     await userTokenData.save();
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
-    const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id);
+    const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id, new Date(sessionStartedAt));
     const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, userAccount[0]);
     const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
 
@@ -118,6 +119,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
         status: true,
         message: 'Login successful',
         data: {
+          ...passwordExpiryNotice(user.passwordExpiredAt),
           authMethod: 'cookie',
           token_id,
           token
@@ -129,6 +131,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
         status: true,
         message: 'Login successful',
         data: {
+          ...passwordExpiryNotice(user.passwordExpiredAt),
           authMethod: 'localStorage',
           token,
           token_id,
@@ -149,6 +152,7 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
 
 export const userAuthenticationToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
+    const sessionStartedAt = Date.now();
     const { username, password } = req.body;
     if (!username || !password) {
       throw Object.assign(new Error('Bad request'), { status: 400 });
@@ -176,7 +180,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     const { password: _, ...safeUser } = user.toObject();
     safeUser.id = safeUser._id;
     const token_id = new mongoose.Types.ObjectId();
-    const userTokenPayload: UserLoginPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id), jti: String(token_id) };
+    const userTokenPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id), jti: String(token_id), sessionStartedAt };
     const token = generateAccessToken(userTokenPayload);
     let userRoleData: any = await rolesService.verifyUserRole(String(user._id), String(user.account_id));
     if (!userRoleData) {
@@ -197,12 +201,13 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     });
     await userTokenData.save();
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
-    const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id);
+    const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id, new Date(sessionStartedAt));
     const isCookieAuth = userAccount[0].cookie_status === 'enabled';
     res.status(200).json({
       status: true,
       message: 'Login successful',
       data: {
+        ...passwordExpiryNotice(user.passwordExpiredAt),
         token,
         token_id,
         ...(!isCookieAuth ? { refreshToken: refreshSession.rawToken } : {}),
@@ -367,27 +372,11 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
 };
 
 export const userResetPassword = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
-  const mailerService = new MailerService();
   try {
-    const { token, password } = req.body;
-    if (!token) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const userToken = await TokenModel.findOne({
-      _id: token,
-      ...getAccessTokenTypeFilter()
-    });
-    if (!userToken) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const user = await UserModel.findOne({ _id: userToken.userId });
-    if (!user) {
-      throw Object.assign(new Error('No data found'), { status: 404 });
-    }
-    const hashNewPassword = await passwordService.hashPassword(password);
-    await UserModel.updateOne({ _id: user._id, account_id: user.account_id }, { $set: { password: hashNewPassword } });
-    await mailerService.sendPasswordChangeConfirmation(user);
-    await VerificationCodeModel.deleteOne({ email: user.email, code: token.toString() });
+    const { token, password, email, confirmNewPassword } = req.body;
+    await resetPasswordService.completeReset({ token, password, email, confirmation: confirmNewPassword });
+    clearAuthCookies(res);
+    refreshTokenService.clearCookie(res);
     return res.status(200).json({ status: true, message: 'Password reset successful' });
 
   } catch (error) {

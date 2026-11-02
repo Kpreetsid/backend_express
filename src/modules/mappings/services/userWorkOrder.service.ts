@@ -1,7 +1,7 @@
 import { WorkOrderAssigneeModel } from "../models/mapUserWorkOrder.model";
 import { WorkOrderModel } from '../../work-orders/models/workOrder.model';
 import { UserModel } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 
 class UserWorkOrderService {
   async mapUsersWorkOrder (body: any, session?: any) {

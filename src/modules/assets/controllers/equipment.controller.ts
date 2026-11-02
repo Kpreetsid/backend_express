@@ -8,7 +8,7 @@ import { mapUserToAssetService } from '../../mappings/services/userAsset.service
 import { uploadFilesService } from '../../upload/middlewares/upload.multer';
 import { locationService } from '../../locations/services/location.service';
 import { processorAPIService } from '../services/processor-api.service';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 import { notificationService } from '../../communications/services/notification-sender.service';
 import { withTransaction } from "../../../common/utils/transaction.helper";

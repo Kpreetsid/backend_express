@@ -4,7 +4,7 @@ import { Request, Response, NextFunction } from 'express';
 import { commentService } from '../services/comment.service';
 import { IUser } from '../../users/models/user.model';
 import { get } from 'lodash';
-import { helperService } from '../../../common/utils/object-id.helper';
+import { helperService } from '../../../common/utils/helper';
 import { WorkOrderModel } from '../models/workOrder.model';
 
 class CommentController {
