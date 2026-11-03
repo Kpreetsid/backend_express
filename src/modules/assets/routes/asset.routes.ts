@@ -8,6 +8,7 @@ import { ASSET_TRAIN_CATALOG } from '../catalog/asset-train-catalog';
 
 export default (router: express.Router) => {
     const assetRouter = express.Router();
+    assetRouter.use(hasRolePermission('asset', 'view'));
     const requireAssetCreatePermission = (req: express.Request, res: express.Response, next: express.NextFunction): void => {
         const action = req.body?.parent_id ? 'add_child_asset' : 'add_asset';
         hasRolePermission('asset', action)(req, res, next);
@@ -16,8 +17,7 @@ export default (router: express.Router) => {
         res.status(200).json({ status: true, data: ASSET_TRAIN_CATALOG });
     });
     assetRouter.get('/buzzer', assetController.getBuzzerAssetList);
-    assetRouter.patch('/buzzer/:location_id', validateParam("location_id"),
-        hasRolePermission('asset', 'edit_asset'), assetController.setBuzzerAssetList);
+    assetRouter.patch('/buzzer/:location_id', validateParam("location_id"), hasRolePermission('asset', 'edit_asset'), assetController.setBuzzerAssetList);
     assetRouter.get('/', assetController.getAssets);
     assetRouter.get('/sensor-list', hasRolePermission('peripheral_sensors', 'view'), assetController.getAssetSensorList);
     assetRouter.get('/tree', assetController.getAssetTree);

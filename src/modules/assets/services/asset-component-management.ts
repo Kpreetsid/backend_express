@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { getComponentDefinition } from '../catalog/asset-train-catalog';
+import { getComponentDefinition } from '@modules/assets/catalog/asset-train-catalog';
 
 /** Manual additions create one direct child and never regenerate a train. */
 export function buildChildComponent(root: any, body: any, accountId: any, userId: any, mappings: any[]) {

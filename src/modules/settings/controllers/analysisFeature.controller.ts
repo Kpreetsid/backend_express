@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
-import { IUser } from '../../users/models/user.model';
+import { IUser } from '@modules/users/models/user.model';
 import { get } from "lodash";
-import { analysisFeatureService } from '../services/analysisFeature.service';
+import { analysisFeatureService } from '@modules/settings/services/analysisFeature.service';
 
 class AnalysisFeatureController {
     getFeatureData = async (req: Request, res: Response, next: NextFunction): Promise<any> => {

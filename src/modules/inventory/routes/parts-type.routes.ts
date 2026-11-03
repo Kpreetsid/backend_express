@@ -1,14 +1,15 @@
 import express from 'express';
-import { partsTypeController } from '../controllers/parts-type.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { partTypeValidator } from '../validators/part-type.validator';
-import { validate } from '../../../common/middlewares/validate.middleware';
-import { hasRolePermission } from '../../../common/middlewares/index';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { partsTypeController } from '@modules/inventory/controllers/parts-type.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { partTypeValidator } from '@modules/inventory/validators/part-type.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const partTypeRouter = express.Router();
-    partTypeRouter.get('/', hasRolePermission('inventory', 'view'), partsTypeController.getPartsTypes);
-    partTypeRouter.get('/:id', validateParamId, hasRolePermission('inventory', 'view'), partsTypeController.getPartType);
+    partTypeRouter.use(hasRolePermission('inventory', 'view'));
+    partTypeRouter.get('/', partsTypeController.getPartsTypes);
+    partTypeRouter.get('/:id', validateParamId, partsTypeController.getPartType);
     partTypeRouter.post('/', hasRolePermission('inventory', 'add'), partTypeValidator, validate, partsTypeController.createPartType);
     partTypeRouter.put('/:id', validateParamId, hasRolePermission('inventory', 'edit'), partTypeValidator, validate, partsTypeController.updatePartType);
     partTypeRouter.patch('/:id', validateParamId, hasRolePermission('inventory', 'edit'), partTypeValidator, validate, partsTypeController.updatePartType);

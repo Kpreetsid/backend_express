@@ -1,24 +1,42 @@
-import { UserModel, IUser, UserLoginPayload } from "../models/user.model";
-import { MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation.model";
+import { emailLoginService } from '../../auth/email-login/email-login.service';
+import { UserModel, IUser, UserLoginPayload } from "@modules/users/models/user.model";
+import { MapUserAssetLocationModel } from "@modules/mappings/models/mapUserLocation.model";
+import { LocationModel } from '@modules/locations/models/location.model';
 import { Request, Response, NextFunction } from 'express';
-import { passwordService } from '../../../common/utils/bcrypt.helper';
+import { passwordService } from '@common/utils/bcrypt.helper';
 import { rolesService } from './roles.service';
-import { helperService } from '../../../common/utils/helper';
-import { MailerService } from "../../../core/mailer/mailer.service";
-import { TokenModel } from '../../auth/models/userToken.model';
-import { tokenSessionStore } from '../../../core/auth/token-session-store';
-import { validateNewPassword } from '../../auth/services/verification-challenge.service';
-import { nextPasswordExpiry } from '../../auth/services/password-expiry';
-import { RoleManager } from "../../../common/constants/new-user-roles.constant";
-import { RoleMenuModel } from "../models/userRoleMenu.model";
+import { helperService } from '@common/utils/helper';
+import { MailerService } from "@core/mailer/mailer.service";
+import { TokenModel } from '@modules/auth/models/userToken.model';
+import { tokenSessionStore } from '@core/auth/token-session-store';
+import { validateNewPassword } from '@modules/auth/services/verification-challenge.service';
+import { nextPasswordExpiry } from '@modules/auth/services/password-expiry';
+import { RoleManager } from "@common/constants/new-user-roles.constant";
+import { PlatformControlManager } from "@common/constants/roles.constant";
+import { RoleMenuModel } from "@modules/users/models/userRoleMenu.model";
+import { buildLocationAccountFilter, buildMappedUserFilter, buildUserAccountFilter, shouldRevokeUserSessionsAfterUpdate } from './user-update-policy';
 
-import { withTransaction } from "../../../common/utils/transaction.helper";
-import { subscriptionLimitService } from "../../company/services/subscriptionLimit.service";
+import { withTransaction } from "@common/utils/transaction.helper";
+import { subscriptionLimitService } from "@modules/company/services/subscriptionLimit.service";
+
 import { assertStrongPassword } from '../../../common/utils/password-policy.helper';
 
 class UsersService {
 
-  constructor(private mailerService: MailerService) {}
+  private _mailerService?: MailerService;
+  private get mailerService(): MailerService {
+    if (!this._mailerService) {
+      const { MailerService } = require("@core/mailer/mailer.service");
+      this._mailerService = new MailerService();
+    }
+    return this._mailerService!;
+  }
+
+  constructor(mailerService?: MailerService) {
+    if (mailerService) {
+      this._mailerService = mailerService;
+    }
+  }
 
   async getAllUsers(match: any) {
     return await UserModel.find(match).select('-password');
@@ -57,19 +75,22 @@ class UsersService {
 
   async getLocationWiseUser(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
-      const { params: { locationID } } = req;
-      const currentUser = (req as any).user as IUser;
-      if (!currentUser?.account_id) {
-        throw Object.assign(new Error('Unauthorized access'), { status: 401 });
+      const user = (req as any).user as IUser;
+      const locationParam = String(req.params.id || req.params.locationID || '');
+      const locationId = helperService.validateObjectId(locationParam);
+      const accountId = user?.account_id;
+      if (!accountId) {
+        throw Object.assign(new Error('Account context is required'), { status: 403 });
       }
-      const locationId = helperService.validateObjectId(String(locationID));
-      const data = await MapUserAssetLocationModel.find({ locationId: locationId }).select('userId -_id');
+
+      const location = await LocationModel.findOne(buildLocationAccountFilter(locationId, accountId)).select('_id').lean();
+      if (!location) {
+        throw Object.assign(new Error('Location not found'), { status: 404 });
+      }
+
+      const data = await MapUserAssetLocationModel.find({ locationId }).select('userId -_id').lean();
       const userIDList = data.map((doc: any) => doc.userId);
-      const userData = await this.getAllUsers({
-        _id: { $in: userIDList },
-        account_id: currentUser.account_id,
-        user_status: 'active'
-      });
+      const userData = await this.getAllUsers({ ...buildMappedUserFilter(userIDList, accountId), user_status: 'active' });
       if (userData.length === 0) {
         throw Object.assign(new Error('No records found'), { status: 404 });
       }
@@ -100,6 +121,14 @@ class UsersService {
     }
   };
 
+  async revokeAuthorizationSessions(userId: any, accountId: any): Promise<void> {
+    await TokenModel.deleteMany({ userId, $or: [
+      { principalType: { $in: ['user', 'refresh_token'] } },
+      { principalType: { $exists: false } }
+    ] });
+    await tokenSessionStore.deleteUserSessions(String(accountId), String(userId));
+  }
+
   async updateUserPassword(user_id: any, password: string, account_id: any): Promise<void> {
     validateNewPassword(password);
     const hashedPassword = await passwordService.hashPassword(password);
@@ -121,23 +150,66 @@ class UsersService {
     }
   };
 
-  async updateUserDetails(id: string, accountId: any, body: Partial<IUser>) {
-    return await UserModel.findOneAndUpdate(
-      { _id: id, account_id: accountId },
-      { $set: body },
-      { returnDocument: 'after', runValidators: true }
-    );
+  async updateUserDetails(id: string, body: Partial<IUser>, accountId: any) {
+    if (body.user_status === 'inactive' || (body as any).visible === false) await emailLoginService.revokeUser(id, String(accountId), 'system', 'user-disabled');
+    const existing = await UserModel.findOne(buildUserAccountFilter(id, accountId)).lean();
+    if (!existing) return null;
+
+    const updated = await withTransaction(async (session) => {
+      const user = await UserModel.findOneAndUpdate(
+        buildUserAccountFilter(id, accountId),
+        { $set: body },
+        { returnDocument: 'after', runValidators: true, session }
+      );
+      if (!user) return null;
+
+      if (body.user_role && body.user_role !== existing.user_role) {
+        const roleMenu = await RoleManager.getRoleMenuData(body.user_role);
+        const data = await PlatformControlManager.getRoleMenuData(body.user_role);
+        const roleDetails = await RoleMenuModel.findOneAndUpdate(
+          { user_id: user._id, account_id: accountId },
+          { $set: { roleMenu, data, updatedBy: body.updatedBy } },
+          { returnDocument: 'after', session }
+        );
+        if (!roleDetails) {
+          throw Object.assign(new Error('User authorization profile not found'), { status: 409 });
+        }
+      }
+      return user;
+    });
+
+    if (updated && shouldRevokeUserSessionsAfterUpdate(existing as any, body as any)) {
+      await TokenModel.deleteMany({ userId: id, $or: [
+        { principalType: { $in: ['user', 'refresh_token'] } },
+        { principalType: { $exists: false } }
+      ] });
+      await tokenSessionStore.deleteUserSessions(String(accountId), String(id));
+    }
+
+    return updated;
   }
 
   async removeById(id: string, accountId: any) {
-    return await withTransaction(async (session) => {
-      await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
-      return await UserModel.findOneAndUpdate(
-        { _id: id, account_id: accountId },
-        { $set: { user_status: 'inactive' } },
-        { returnDocument: 'after', session, runValidators: true }
+    await emailLoginService.revokeUser(id, String(accountId), 'system', 'user-disabled');
+    const removed = await withTransaction(async (session) => {
+      const user = await UserModel.findOneAndUpdate(
+        buildUserAccountFilter(id, accountId),
+        { $set: { visible: false, user_status: 'inactive' } },
+        { returnDocument: 'after', session }
       );
+      if (!user) return null;
+      await MapUserAssetLocationModel.deleteMany({ userId: id }, { session });
+      return user;
     });
+
+    if (removed) {
+      await TokenModel.deleteMany({ userId: id, $or: [
+        { principalType: { $in: ['user', 'refresh_token'] } },
+        { principalType: { $exists: false } }
+      ] });
+      await tokenSessionStore.deleteUserSessions(String(accountId), String(id));
+    }
+    return removed;
   };
 }
-export const usersService = new UsersService(new MailerService());
+export const usersService = new UsersService();

@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { requestController } from './request.controller';
-import { requestService } from '../services/request.service';
-import { notificationService } from '../../communications/services/notification-sender.service';
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { requestService } from '@modules/work-orders/services/request.service';
+import { notificationService } from '@modules/communications/services/notification-sender.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 const id = '111111111111111111111111', account = '222222222222222222222222';
 const actor = { _id: '333333333333333333333333', account_id: account, user_role: 'admin', firstName: 'Test', lastName: 'Planner' };
 const record = { _id: id, account_id: account, status: 'Open', remarks: 'Existing note', priority: 'Low', sync_version: 2 };

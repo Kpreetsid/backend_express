@@ -1,12 +1,14 @@
 import express from 'express';
-import { userWorkOrderController } from '../controllers/userWorkOrder.controller';
-import { validateParam } from '../../../common/middlewares/validate.middleware';
-import { updateUserWorkOrderValidator, userWorkOrderValidator } from '../validators/userWorkOrder.validator';
-import { validate } from '../../../common/middlewares/validate.middleware';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { userWorkOrderController } from '@modules/mappings/controllers/userWorkOrder.controller';
+import { validateParam } from '@common/middlewares/validate.middleware';
+import { userWorkOrderValidator } from '@modules/mappings/validators/userWorkOrder.validator';
+import { validate } from '@common/middlewares/validator.middleware';
+import { updateUserWorkOrderValidator } from '../validators/userWorkOrder.validator';
 
 export default (router: express.Router) => {
     const workOrderRouter = express.Router();
+    workOrderRouter.use(hasRolePermission('workOrder', 'view'));
     workOrderRouter.get('/', userWorkOrderController.getUserWorkOrders);
     workOrderRouter.get('/:workOrderId', validateParam("workOrderId"), userWorkOrderController.getMappedData);
     workOrderRouter.post('/', hasRolePermission('workOrder', 'edit_work_order'), userWorkOrderValidator, validate, userWorkOrderController.create);

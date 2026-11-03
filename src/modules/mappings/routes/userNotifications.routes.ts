@@ -1,9 +1,10 @@
 import { NextFunction, Request, Response, Router } from 'express';
 import { Types } from 'mongoose';
-import { accountAccessService } from '../../users/services/account-access.service';
-import { AssetModel } from '../../assets/models/asset.model';
-import { MapUserAssetLocationModel } from '../models/mapUserLocation.model';
-import { UserModel } from '../../users/models/user.model';
+import { accountAccessService } from '@modules/users/services/account-access.service';
+import { AssetModel } from '@modules/assets/models/asset.model';
+import { MapUserAssetLocationModel } from '@modules/mappings/models/mapUserLocation.model';
+import { UserModel } from '@modules/users/models/user.model';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
 
 const channels = ['email', 'push', 'sms', 'whatsapp'] as const;
 const severities = ['alert', 'danger', 'critical'] as const;
@@ -125,13 +126,13 @@ export const notificationPermission = (action: 'view' | 'edit') =>
   };
 
 export function userNotificationRoutes(router: Router): void {
-  router.get('/user-notifications', notificationPermission('view'), async (req, res, next) => {
+  router.get('/user-notifications', notificationPermission('view'), hasRolePermission('asset_mail', 'view'), async (req, res, next) => {
     try {
       const result = await getUserNotifications(String((req as any).user.account_id), req.query.userId);
       res.status(200).json({ status: true, ...result });
     } catch (error) { next(error); }
   });
-  router.patch('/user-notifications/:mappingId', notificationPermission('edit'), async (req, res, next) => {
+  router.patch('/user-notifications/:mappingId', notificationPermission('edit'), hasRolePermission('asset_mail', 'edit'), async (req, res, next) => {
     try {
       const data = await patchUserNotifications(String((req as any).user.account_id), req.params.mappingId, req.body);
       res.status(200).json({ status: true, data });

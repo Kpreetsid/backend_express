@@ -1,12 +1,10 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
-
-
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
-import { postService } from '../services/posts.service';
-import { IUser } from '../../users/models/user.model';
-import { helperService } from '../../../common/utils/helper';
-import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
+import { postService } from '@modules/communications/services/posts.service';
+import { IUser } from '@modules/users/models/user.model';
+import { helperService } from '@common/utils/helper';
+import { applyRoleFilter } from '@common/utils/role-filter.helper';
 
 import { POST_TOPICS, POST_TYPES } from '../policies/post.policy';
 

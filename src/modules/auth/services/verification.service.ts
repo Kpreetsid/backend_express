@@ -1,4 +1,4 @@
-import { MailerService } from "../../../core/mailer/mailer.service";
+import { MailerService } from "@core/mailer/mailer.service";
 import { verificationChallenges } from './verification-challenge.service';
 
 class VerificationService {

@@ -10,7 +10,7 @@
  */
 
 import mongoose from 'mongoose';
-import { cacheConfig } from '../../config/env.config';
+import { cacheConfig } from '@core/config/env.config';
 import { watchAssets } from './asset.stream';
 import { watchLocations } from './location.stream';
 import { watchUsers } from './user.stream';

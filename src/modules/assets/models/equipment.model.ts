@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 export const EQUIPMENT_COLLECTION_NAME = 'equipment_set';
 
-
 const EquipmentSchema = new mongoose.Schema({
     equipmentName: { type: { type: String, required: true } },
     equipmentType: { type: String },

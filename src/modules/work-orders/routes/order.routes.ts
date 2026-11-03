@@ -1,17 +1,18 @@
 import express from 'express';
-import { orderController } from '../controllers/order.controller';
+import { orderController } from '@modules/work-orders/controllers/order.controller';
 import commentsRoutes from './comment.routes';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { processUploadedFiles } from '../../upload/routes/upload.routes';
-import { workOrderStatusValidator, workOrderValidator, updateWorkOrderValidator } from '../validators/workOrder.validator';
-import { validate } from '../../../common/middlewares/validate.middleware';
-import { payloadCryptoMultipartMiddleware } from '../../../common/middlewares/payload-crypto.middleware';
-import { idempotencyMiddleware } from '../../../common/middlewares/idempotency.middleware';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { processUploadedFiles } from '@modules/upload/routes/upload.routes';
+import { workOrderValidator, updateWorkOrderValidator, workOrderStatusValidator } from '@modules/work-orders/validators/workOrder.validator';
+import { validate } from '@common/middlewares/validator.middleware';
+import { payloadCryptoMultipartMiddleware } from '@common/middlewares/payload-crypto.middleware';
+import { idempotencyMiddleware } from '@common/middlewares/idempotency.middleware';
 
 export default (router: express.Router) => {
     const orderRouter = express.Router();
     orderRouter.use(idempotencyMiddleware);
+    orderRouter.use(hasRolePermission('workOrder', 'view'));
     orderRouter.get('/', orderController.getAll);
     orderRouter.get('/get-work-order', orderController.getAllWorkOrders);
     orderRouter.get('/activity/:id', validateParamId, orderController.getActivity);
@@ -48,4 +49,3 @@ export default (router: express.Router) => {
     orderRouter.use("/:id/comments", commentsRoutes(commentRouter));
     router.use('/orders', orderRouter);
 };
-

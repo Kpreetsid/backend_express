@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
-import { IUpload } from '../../upload/models/upload.model';
+import { IUpload } from '@modules/upload/models/upload.model';
 export const TROUBLESHOOT_GUIDE_COLLECTION_NAME = 'troubleshoot_guide';
 
 

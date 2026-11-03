@@ -1,8 +1,8 @@
 import { createHash } from 'crypto';
 import { NextFunction, Request, Response } from 'express';
 import { get } from 'lodash';
-import { IdempotencyRecordModel } from '../../modules/settings/models/idempotency-record.model';
-import { IUser } from '../../modules/users/models/user.model';
+import { IdempotencyRecordModel } from '@modules/settings/models/idempotency-record.model';
+import { IUser } from '@modules/users/models/user.model';
 
 const RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const PROCESSING_LEASE_MS = 5 * 60 * 1000;

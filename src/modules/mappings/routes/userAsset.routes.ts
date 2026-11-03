@@ -1,14 +1,14 @@
 import express from 'express';
-import { userAssetController } from '../controllers/userAsset.controller';
-import { validateParam } from '../../../common/middlewares/validate.middleware';
-import { userAssetMailFlagsValidator, userAssetValidator, userAssetUpdateValidator } from '../validators/userAsset.validator';
-import { validate } from '../../../common/middlewares/validate.middleware';
-import { hasAnyRolePermission, hasRolePermission } from '../../../common/middlewares/index';
+import { hasAnyRolePermission, hasRolePermission } from '@common/middlewares/permission.middleware';
+import { userAssetController } from '@modules/mappings/controllers/userAsset.controller';
+import { validateParam } from '@common/middlewares/validate.middleware';
+import { userAssetValidator, userAssetUpdateValidator, userAssetMailFlagsValidator } from '@modules/mappings/validators/userAsset.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
-    router.get('/userToAssets', userAssetController.getUserAssets);
-    router.post('/userToAssets', hasAnyRolePermission('asset', ['add_asset', 'edit_asset']), userAssetValidator, validate, userAssetController.setUserAssets);
-    router.put('/userToAssets/:assetId', validateParam("assetId"), hasRolePermission('asset', 'edit_asset'), userAssetUpdateValidator, validate, userAssetController.updateUserAssets);
-    router.patch('/userToAssets', hasRolePermission('asset', 'edit_asset'), userAssetUpdateValidator, validate, userAssetController.updateUserAssets);
-    router.post('/updateAssetsFlags', userAssetMailFlagsValidator, validate, userAssetController.updateSendMailFlag);
+    router.get('/userToAssets', hasAnyRolePermission([['users', 'view'], ['asset_mail', 'view']]), userAssetController.getUserAssets);
+    router.post('/userToAssets', hasRolePermission('users', 'edit'), userAssetValidator, validate, userAssetController.setUserAssets);
+    router.put('/userToAssets/:assetId', validateParam("assetId"), hasRolePermission('users', 'edit'), userAssetUpdateValidator, validate, userAssetController.updateUserAssets);
+    router.patch('/userToAssets', hasRolePermission('users', 'edit'), userAssetUpdateValidator, validate, userAssetController.updateUserAssets);
+    router.post('/updateAssetsFlags', hasRolePermission('asset_mail', 'edit'), userAssetMailFlagsValidator, validate, userAssetController.updateSendMailFlag);
 }

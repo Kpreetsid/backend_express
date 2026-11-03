@@ -1,4 +1,4 @@
-import { externalAPI } from "../../core/config/env.config";
+import { externalAPI } from "@core/config/env.config";
 import axios, { AxiosRequestConfig } from "axios";
 import { requireProcessorBaseUrl } from './processor-url';
 

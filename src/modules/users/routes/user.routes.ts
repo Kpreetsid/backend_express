@@ -1,27 +1,24 @@
 import express from 'express';
-import { userController } from '../controllers/user.controller';
+import { userController } from '@modules/users/controllers/user.controller';
 import rolesRoutes from './roles.routes';
 import userLogRouters from './logs.routes';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-
-import { userUpdateValidator, userValidator } from '../validators/user.validator';
-import { validate } from '../../../common/middlewares/validate.middleware';
-
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { userValidator, userUpdateValidator } from '@modules/users/validators/user.validator';
+import { validate } from '@common/middlewares/validator.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
 
 export default (router: express.Router) => {
     const userRouter = express.Router();
     rolesRoutes(userRouter);
     userLogRouters(userRouter);
-
-    userRouter.get('/', userController.getUsers);
-    userRouter.get('/location/:locationID', userController.getLocationWiseUsers);
-    userRouter.get('/:id', validateParamId, userController.getUser);
-    userRouter.post('/', userValidator, validate, userController.createUser);
+    userRouter.get('/', hasRolePermission('users', 'view'), userController.getUsers);
+    userRouter.get('/location/:id', hasRolePermission('users', 'view'), validateParamId, userController.getLocationWiseUsers);
+    userRouter.get('/:id', hasRolePermission('users', 'view'), validateParamId, userController.getUser);
+    userRouter.post('/', hasRolePermission('users', 'add'), userValidator, validate, userController.createUser);
     userRouter.post('/change-password', userController.updatePasswordUser);
-    userRouter.put('/:id', validateParamId, userUpdateValidator, validate, userController.updateUser);
-    userRouter.patch('/:id', validateParamId, userUpdateValidator, validate, userController.updateUser);
-    userRouter.delete('/:id', validateParamId, userController.removeUser);
-
+    userRouter.put('/:id', hasRolePermission('users', 'edit'), validateParamId, userUpdateValidator, validate, userController.updateUser);
+    userRouter.patch('/:id', hasRolePermission('users', 'edit'), validateParamId, userUpdateValidator, validate, userController.updateUser);
+    userRouter.delete('/:id', hasRolePermission('users', 'delete'), validateParamId, userController.removeUser);
     router.use('/users', userRouter);
 }
 

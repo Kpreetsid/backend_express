@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { userTokenService } from '../services/userToken.service';
+import { userTokenService } from '@modules/auth/services/userToken.service';
 
 class UserTokenController {
   async getUserByToken (req: Request, res: Response, next: NextFunction): Promise<any> {

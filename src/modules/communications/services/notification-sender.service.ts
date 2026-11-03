@@ -1,8 +1,8 @@
 import { Server } from 'socket.io';
 import { notificationRepository } from './notification.service';
 import { Types } from 'mongoose';
-import { UserModel } from '../../users/models/user.model';
-import { globalEmitter, Events } from '../../../core/messaging/event-bus';
+import { UserModel } from '@modules/users/models/user.model';
+import { globalEmitter, Events } from '@core/messaging/event-bus';
 
 export type NotificationEvent = 'created' | 'updated';
 

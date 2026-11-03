@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from "express";
-import { decodedAccessToken } from "../../../core/auth/auth.middleware";
-import { rolesService } from "../../users/services/roles.service";
-import { companyService } from "../../company/services/company.service";
-import { accountAccessService } from "../../users/services/account-access.service";
-import { usersService } from "../../users/services/user.service";
-import { getAccessTokenTypeFilter, TokenModel } from "../models/userToken.model";
+import { decodedAccessToken } from "@core/auth/auth.middleware";
+import { rolesService } from "@modules/users/services/roles.service";
+import { companyService } from "@modules/company/services/company.service";
+import { accountAccessService } from "@modules/users/services/account-access.service";
+import { usersService } from "@modules/users/services/user.service";
+import { getAccessTokenTypeFilter, TokenModel } from "@modules/auth/models/userToken.model";
 
 class UserTokenService {
   async getAllUserTokens (req: Request, res: Response, next: NextFunction): Promise<any> {

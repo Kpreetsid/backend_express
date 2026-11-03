@@ -1,17 +1,18 @@
 import express from 'express';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
 import { instructionController } from '../controllers/instruction.controller';
 import { validateParamId } from '../../../common/middlewares/validate.middleware';
 import { instructionQueryValidator, instructionValidator } from '../validators/instruction.validator';
 import { validate } from '../../../common/middlewares/validate.middleware';
-import { hasGuideMutationPermission } from '../../maintenance/services/guide-scope.service';
 
 export default (router: express.Router) => {
   const instructionRouter = express.Router();
+  instructionRouter.use(hasRolePermission('procedures', 'view'));
   instructionRouter.get('/', instructionQueryValidator, validate, instructionController.getAll);
   instructionRouter.get('/:id', validateParamId, instructionController.getDataById);
-  instructionRouter.post('/', hasGuideMutationPermission, instructionValidator, validate, instructionController.create);
-  instructionRouter.put('/:id', validateParamId, hasGuideMutationPermission, instructionValidator, validate, instructionController.update);
-  instructionRouter.patch('/:id', validateParamId, hasGuideMutationPermission, instructionValidator, validate, instructionController.update);
-  instructionRouter.delete('/:id', validateParamId, instructionController.remove);
+  instructionRouter.post('/', hasRolePermission('procedures', 'add'), instructionValidator, validate, instructionController.create);
+  instructionRouter.put('/:id', validateParamId, hasRolePermission('procedures', 'edit'), instructionValidator, validate, instructionController.update);
+  instructionRouter.patch('/:id', validateParamId, hasRolePermission('procedures', 'edit'), instructionValidator, validate, instructionController.update);
+  instructionRouter.delete('/:id', validateParamId, hasRolePermission('procedures', 'delete'), instructionController.remove);
   router.use('/instructions', instructionRouter);
 };

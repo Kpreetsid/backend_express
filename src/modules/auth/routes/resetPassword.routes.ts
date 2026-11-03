@@ -1,7 +1,7 @@
 import express from 'express';
-import { resetPasswordController } from '../controllers/resetPassword.controller';
-import { userController } from '../../users/controllers/user.controller';
-import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
+import { resetPasswordController } from '@modules/auth/controllers/resetPassword.controller';
+import { userController } from '@modules/users/controllers/user.controller';
+import { rateLimiter } from '@common/middlewares/rate-limit.middleware';
 
 export default (router: express.Router) => {
     const resetPasswordRouter = express.Router();

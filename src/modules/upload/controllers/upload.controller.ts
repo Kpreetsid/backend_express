@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from 'express';
-import { uploadService } from '../services/upload.service';
+import { uploadService } from '@modules/upload/services/upload.service';
 
 class UploadController {
   async uploadController(req: Request, res: Response, next: NextFunction): Promise<any> {

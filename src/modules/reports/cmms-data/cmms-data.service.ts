@@ -4,7 +4,7 @@ import { LocationModel } from '../../locations/models/location.model';
 import { WorkOrderModel } from '../../work-orders/models/workOrder.model';
 import { PartsModel } from '../../inventory/models/part.model';
 import { PartsTypeModel } from '../../inventory/models/parts-types.model';
-import { ReportAssetModel } from '../../reports/models/assetReport.model';
+import { ReportAssetModel } from '../models/assetReport.model';
 import { cmmsMetrics, cmmsPeriod, cmmsSpareRows, cmmsSpareResponse, cmmsSummaryResponse, cmmsTabSummary } from './cmms-report';
 
 interface LocationRecord {

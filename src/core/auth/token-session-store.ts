@@ -1,7 +1,7 @@
 import crypto from 'crypto';
-import { redisConfig } from '../config/env.config';
-import { isRedisReady } from '../cache/redis.client';
-import { RedisUtils } from '../cache/redis.utils';
+import { redisConfig } from '@core/config/env.config';
+import { isRedisReady } from '@core/cache/redis.client';
+import { RedisUtils } from '@core/cache/redis.utils';
 
 export type TokenPrincipalType = 'user' | 'refresh_token';
 

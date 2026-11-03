@@ -1,19 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { auth } from '../config/env.config';
+import { auth } from '@core/config/env.config';
 import * as crypto from "crypto";
 import { merge } from 'lodash';
-import { usersService } from '../../modules/users/services/user.service';
-import { IUserRoleMenu } from '../../modules/users/models/userRoleMenu.model';
-import { IUser, UserLoginPayload } from '../../modules/users/models/user.model';
-import { rolesService } from '../../modules/users/services/roles.service';
-import { companyService } from '../../modules/company/services/company.service';
-import { TokenModel } from '../../modules/auth/models/userToken.model';
+import { usersService } from '@modules/users/services/user.service';
+import { IUserRoleMenu } from "@modules/users/models/userRoleMenu.model";
+import { IUser, UserLoginPayload } from '@modules/users/models/user.model';
+import { rolesService } from '@modules/users/services/roles.service';
+import { companyService } from '@modules/company/services/company.service';
+import { TokenModel } from '@modules/auth/models/userToken.model';
 import { TokenBlacklist } from './token-blacklist';
 import { tokenSessionStore, TokenSessionRecord } from './token-session-store';
 import { getAccessTokenFromCookies, getAccountIdFromCookies } from './auth-cookie.service';
-import { accountAccessService } from '../../modules/users/services/account-access.service';
-import { analysisFeatureService } from '../../modules/settings/services/analysisFeature.service';
+import { accountAccessService } from '@modules/users/services/account-access.service';
+import { analysisFeatureService } from '@modules/settings/services/analysisFeature.service';
 
 const invalidTokenError = (): Error => Object.assign(new Error('Invalid token'), { status: 401 });
 
@@ -136,7 +136,7 @@ export const authenticateTokenContext = async (token: string, accountId: string)
     throw Object.assign(new Error('User does not belong to the company'), { status: 403 });
   }
 
-  const effectivePermissions = accountAccessService.getEffectivePermissions(userRole, companyData);
+  const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(userData, userRole, companyData);
   const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: companyID })
 
   return {

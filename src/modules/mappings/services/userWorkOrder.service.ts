@@ -1,4 +1,4 @@
-import { WorkOrderAssigneeModel } from "../models/mapUserWorkOrder.model";
+import { WorkOrderAssigneeModel } from "@modules/mappings/models/mapUserWorkOrder.model";
 import { WorkOrderModel } from '../../work-orders/models/workOrder.model';
 import { UserModel } from '../../users/models/user.model';
 import { helperService } from '../../../common/utils/helper';

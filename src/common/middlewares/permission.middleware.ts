@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { get } from "lodash";
-import { IUserRoleMenu } from "../../modules/users/models/userRoleMenu.model";
-import { IUser, USER_ROLES } from "../../modules/users/models/user.model";
-import { AccountAction, accountAccessService } from "../../modules/users/services/account-access.service";
+import { IUserRoleMenu } from "@modules/users/models/userRoleMenu.model";
+import { IUser, USER_ROLES } from "@modules/users/models/user.model";
+import { AccountAction, accountAccessService } from "@modules/users/services/account-access.service";
 
 const denyAccountFeature = (
   req: Request,
@@ -43,12 +43,36 @@ export const hasRolePermission = (moduleName: string, action: string) => {
         throw Object.assign(new Error("Unauthorized access"), { status: 403 });
       }
       if (USER_ROLES.includes(user.user_role)) {
-        if (!roleMenu?.[moduleName]?.[action]) {
+        if (roleMenu?.[moduleName]?.[action] !== true) {
           throw Object.assign(new Error("You do not have permission to access."), { status: 403 });
         }
         return next();
       }
       throw Object.assign(new Error("Invalid user role"), { status: 403 });
+    } catch (err) {
+      next(err);
+    }
+  };
+};
+
+
+export const hasAnyRolePermission = (moduleOrRules: string | ReadonlyArray<readonly [string, string]>, actions: string[] = []) => {
+  const rules: ReadonlyArray<readonly [string, string]> = typeof moduleOrRules === 'string'
+    ? actions.map(action => [moduleOrRules, action] as const) : moduleOrRules;
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const user = get(req, "user", {}) as IUser;
+      const roleMenu: any = get(req, "role", {}) as IUserRoleMenu;
+      if (!user?.user_role) {
+        throw Object.assign(new Error("Unauthorized access"), { status: 403 });
+      }
+      if (!USER_ROLES.includes(user.user_role)) {
+        throw Object.assign(new Error("Invalid user role"), { status: 403 });
+      }
+      if (!rules.some(([moduleName, action]) => roleMenu?.[moduleName]?.[action] === true)) {
+        throw Object.assign(new Error("You do not have permission to access."), { status: 403 });
+      }
+      return next();
     } catch (err) {
       next(err);
     }
@@ -83,23 +107,5 @@ export const hasAccountFeatures = (menuKeys: string[], action: AccountAction = "
     }
     const deniedFeature = menuKeys.find((menuKey) => !hasEffectivePermission(req, menuKey, action)) || menuKeys[0];
     return denyAccountFeature(req, res, deniedFeature, action);
-  };
-};
-
-export const hasAnyRolePermission = (moduleName: string, actions: string[]) => {
-  return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const user = get(req, "user", {}) as IUser;
-      const roleMenu: any = get(req, "role", {}) as IUserRoleMenu;
-      if (!user?.user_role || !USER_ROLES.includes(user.user_role)) {
-        throw Object.assign(new Error("Invalid or missing user role"), { status: 403 });
-      }
-      if (!actions.some(action => roleMenu?.[moduleName]?.[action] === true)) {
-        throw Object.assign(new Error("You do not have permission to access."), { status: 403 });
-      }
-      next();
-    } catch (err) {
-      next(err);
-    }
   };
 };

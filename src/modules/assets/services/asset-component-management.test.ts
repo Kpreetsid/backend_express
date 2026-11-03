@@ -2,8 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import mongoose, { Types } from 'mongoose';
 import { buildChildComponent, componentIdentityForUpdate, deleteConfirmedChild } from './asset-component-management';
-import { AssetModel } from '../models/asset.model';
-import { MapUserAssetLocationModel } from '../../mappings/models/mapUserLocation.model';
+import { AssetModel } from '@modules/assets/models/asset.model';
+import { MapUserAssetLocationModel } from '@modules/mappings/models/mapUserLocation.model';
 
 const accountId = new Types.ObjectId('64a000000000000000000001');
 const userId = new Types.ObjectId('64a000000000000000000002');
@@ -111,9 +111,9 @@ test('deletion requires explicit confirmation and a direct leaf in the account',
 test('manual creation enforces capacity and sibling names and compensates only its new ID', async t => {
   const { assetService } = require('./asset.service');
   const { processorAPIService } = require('./processor-api.service');
-  const { subscriptionLimitService } = require('../../company/services/subscriptionLimit.service');
-  const { mapUserToAssetService } = require('../../mappings/services/userAsset.service');
-  const { externalAPI } = require('../../../core/config/env.config');
+  const { subscriptionLimitService } = require('@modules/company/services/subscriptionLimit.service');
+  const { mapUserToAssetService } = require('@modules/mappings/services/userAsset.service');
+  const { externalAPI } = require('@core/config/env.config');
   const previousUrl = externalAPI.URL;
   externalAPI.URL = 'http://processor.test';
   t.after(() => { externalAPI.URL = previousUrl; });

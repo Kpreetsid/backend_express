@@ -1,15 +1,15 @@
 import express from 'express';
-import { floorMapController } from '../controllers/floorMap.controller';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { floorMapValidator } from '../validators/floorMap.validator';
-import { validate } from '../../../common/middlewares/validate.middleware';
+import { floorMapController } from '@modules/locations/controllers/floorMap.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { floorMapValidator } from '@modules/locations/validators/floorMap.validator';
+import { validate } from '@common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const floorMapRouter = express.Router();
     floorMapRouter.get('/', hasRolePermission('floorMap', 'view_floor_map'), floorMapController.getAllFloorMaps);
     floorMapRouter.get('/coordinate', hasRolePermission('floorMap', 'view_floor_map'), floorMapController.getFloorMapCoordinates);
-    floorMapRouter.post('/coordinate', hasRolePermission('floorMap', 'create_kpi'), floorMapValidator, validate, floorMapController.setFloorMapCoordinates);
+    floorMapRouter.post('/coordinate', hasRolePermission('floorMap', 'upload_floor_map'), floorMapValidator, validate, floorMapController.setFloorMapCoordinates);
     floorMapRouter.delete('/coordinate/:id', validateParamId, hasRolePermission('floorMap', 'delete_kpi'), floorMapController.removeFloorMapCoordinates);
     floorMapRouter.get('/coordinate/asset/:id', validateParamId, hasRolePermission('floorMap', 'view_floor_map'), floorMapController.getFloorMapAssetCoordinates);
     floorMapRouter.get('/:id', validateParamId, hasRolePermission('floorMap', 'view_floor_map'), floorMapController.getFloorMapByID);

@@ -1,9 +1,9 @@
 import express from 'express';
 import multer from 'multer';
-import { assetReportController } from '../controllers/asset.controller';
-import { hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { payloadCryptoMultipartMiddleware } from '../../../common/middlewares/payload-crypto.middleware';
+import { assetReportController } from '@modules/reports/controllers/asset.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { payloadCryptoMultipartMiddleware } from '@common/middlewares/payload-crypto.middleware';
 
 const pdfChartUpload = multer({
     storage: multer.memoryStorage(),
@@ -23,11 +23,11 @@ const pdfChartUpload = multer({
 
 export default (router: express.Router) => {
     const assetReportRouter = express.Router();
-    assetReportRouter.get('/', assetReportController.getAssetsReport);
-    assetReportRouter.get('/latest/:id', validateParamId, assetReportController.getLatestReport);
-    assetReportRouter.get('/:id', validateParamId, assetReportController.getAssetsReportById);
+    assetReportRouter.get('/', hasRolePermission('asset', 'view'), assetReportController.getAssetsReport);
+    assetReportRouter.get('/latest/:id', validateParamId, hasRolePermission('asset', 'view'), assetReportController.getLatestReport);
+    assetReportRouter.get('/:id', validateParamId, hasRolePermission('asset', 'view'), assetReportController.getAssetsReportById);
     assetReportRouter.post('/', hasRolePermission('asset', 'create_report'), assetReportController.createAssetsReport);
-    assetReportRouter.post('/generate-pdf/:id', validateParamId, pdfChartUpload.array('chartImages', 25), payloadCryptoMultipartMiddleware, assetReportController.generateAssetReportPdf);
+    assetReportRouter.post('/generate-pdf/:id', validateParamId, hasRolePermission('asset', 'export'), pdfChartUpload.array('chartImages', 25), payloadCryptoMultipartMiddleware, assetReportController.generateAssetReportPdf);
     assetReportRouter.put('/:id', validateParamId, hasRolePermission('asset', 'edit_report'), assetReportController.updateAssetsReport);
     assetReportRouter.patch('/:id', validateParamId, hasRolePermission('asset', 'edit_report'), assetReportController.partialUpdateAssetsReport);
     assetReportRouter.delete('/:id', validateParamId, hasRolePermission('asset', 'delete_report'), assetReportController.deleteAssetsReport);

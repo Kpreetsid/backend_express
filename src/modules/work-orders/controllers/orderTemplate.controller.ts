@@ -1,8 +1,8 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { NextFunction, Request, Response } from 'express';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { orderTemplateService } from '../services/orderTemplate.service';
+import { IUser } from '@modules/users/models/user.model';
+import { orderTemplateService } from '@modules/work-orders/services/orderTemplate.service';
 
 class OrderTemplateController {
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {

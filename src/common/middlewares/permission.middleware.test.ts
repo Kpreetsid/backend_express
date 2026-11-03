@@ -1,0 +1,127 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { hasAnyRolePermission, hasRolePermission } from './permission.middleware';
+import { PlatformControlManager } from '@common/constants/roles.constant';
+
+const run = async (middleware: any, req: any): Promise<any> =>
+  await new Promise(resolve => middleware(req, {}, (error: any) => resolve(error || null)));
+
+test('role middleware consumes effective permissions and never bypasses account-capped authorization', async () => {
+  const deniedWithoutEffectivePermission = await run(
+    hasRolePermission('asset', 'delete_asset'),
+    { user: { user_role: 'employee', isFirstUser: true }, role: {} }
+  );
+  assert.equal(deniedWithoutEffectivePermission?.status, 403);
+
+  const allowedWithEffectivePermission = await run(
+    hasRolePermission('asset', 'delete_asset'),
+    { user: { user_role: 'employee', isFirstUser: true }, role: { asset: { delete_asset: true } } }
+  );
+  assert.equal(allowedWithEffectivePermission, null);
+
+  const missingUserError = await run(
+    hasRolePermission('asset', 'delete_asset'),
+    { user: {}, role: { asset: { delete_asset: true } } }
+  );
+  assert.equal(missingUserError?.status, 403);
+});
+
+test('ordinary users still require the requested module action', async () => {
+  const denied = await run(
+    hasRolePermission('inventory', 'delete'),
+    { user: { user_role: 'manager', isFirstUser: false }, role: { inventory: { delete: false } } }
+  );
+  assert.equal(denied?.status, 403);
+
+  const allowed = await run(
+    hasRolePermission('inventory', 'delete'),
+    { user: { user_role: 'manager', isFirstUser: false }, role: { inventory: { delete: true } } }
+  );
+  assert.equal(allowed, null);
+});
+
+test('admin platform control covers every currently routed CMMS module action', async () => {
+  const admin: any = await PlatformControlManager.getRoleMenuData('admin');
+
+  const required: Record<string, string[]> = {
+    asset: ['view', 'add', 'edit', 'delete', 'import', 'export', 'add_asset', 'delete_asset', 'add_child_asset', 'edit_asset', 'create_report', 'delete_report', 'download_report', 'edit_report', 'config_alarm', 'add_observation', 'edit_observation', 'delete_observation', 'create_endpoint', 'edit_endpoint', 'delete_end_point', 'attach_sensor', 'update_config'],
+    location: ['view', 'add', 'edit', 'delete', 'import', 'export', 'add_location', 'delete_location', 'add_child_location', 'edit_location', 'create_report', 'delete_report', 'download_report', 'edit_report'],
+    workOrder: ['view', 'add', 'edit', 'delete', 'import', 'export', 'create_work_order', 'edit_work_order', 'delete_work_order', 'update_work_order_status', 'add_comment_work_order', 'edit_comment_work_order', 'delete_comment_work_order', 'add_task_work_order', 'update_parts_work_order'],
+    floorMap: ['create_kpi', 'view_floor_map', 'delete_kpi', 'upload_floor_map'],
+    preventive: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    inspections: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    form: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    form_category: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    work_order_templates: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    procedures: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    work_request: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    work_request_status: ['view', 'edit'],
+    posts: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    inventory: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    gateways: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    peripheral_sensors: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    admin_panel: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    users: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    permission: ['view', 'add', 'edit', 'delete', 'import', 'export'],
+    asset_mail: ['view', 'add', 'edit', 'delete', 'import', 'export']
+  };
+
+  for (const [moduleName, actions] of Object.entries(required)) {
+    assert.ok(admin[moduleName], `missing admin module ${moduleName}`);
+    for (const action of actions) {
+      assert.equal(admin[moduleName][action], true, `admin must allow ${moduleName}.${action}`);
+    }
+  }
+});
+
+
+test('lower-role defaults preserve read access for core routed modules while mutations stay denied', async () => {
+  for (const roleName of ['manager', 'employee', 'customer', 'user']) {
+    const role: any = await PlatformControlManager.getRoleMenuData(roleName);
+    assert.equal(role.asset.view, true, `${roleName} should view assets`);
+    assert.equal(role.location.view, true, `${roleName} should view locations`);
+    assert.equal(role.workOrder.view, true, `${roleName} should view work orders`);
+    assert.equal(role.floorMap.view_floor_map, true, `${roleName} should view floor maps`);
+
+    assert.equal(role.asset.edit_asset, false, `${roleName} should not edit assets by default`);
+    assert.equal(role.location.edit_location, false, `${roleName} should not edit locations by default`);
+    assert.equal(role.workOrder.edit_work_order, false, `${roleName} should not edit work orders by default`);
+    assert.equal(role.floorMap.upload_floor_map, false, `${roleName} should not edit floor maps by default`);
+  }
+});
+
+
+test('lower roles expose every routed core action key so permissions remain delegatable', async () => {
+  const admin: any = await PlatformControlManager.getRoleMenuData('admin');
+  const modules = ['asset', 'location', 'workOrder', 'floorMap'];
+
+  for (const roleName of ['manager', 'employee', 'customer', 'user']) {
+    const role: any = await PlatformControlManager.getRoleMenuData(roleName);
+    for (const moduleName of modules) {
+      assert.ok(role[moduleName], `${roleName} missing module ${moduleName}`);
+      for (const action of Object.keys(admin[moduleName])) {
+        assert.ok(
+          Object.prototype.hasOwnProperty.call(role[moduleName], action),
+          `${roleName} must expose ${moduleName}.${action} for delegation`
+        );
+      }
+    }
+  }
+});
+
+
+test('alternative role permissions allow shared read endpoints without broadening mutation access', async () => {
+  const middleware = hasAnyRolePermission([['users', 'view'], ['asset_mail', 'view']]);
+  const run = async (role: any) => await new Promise<any>((resolve) => {
+    middleware(
+      { user: { user_role: 'employee' }, role } as any,
+      {} as any,
+      (error?: any) => resolve(error || null)
+    );
+  });
+
+  assert.equal(await run({ users: { view: false }, asset_mail: { view: true } }), null);
+  assert.equal(await run({ users: { view: true }, asset_mail: { view: false } }), null);
+  const denied = await run({ users: { view: false }, asset_mail: { view: false } });
+  assert.equal(denied?.status, 403);
+});

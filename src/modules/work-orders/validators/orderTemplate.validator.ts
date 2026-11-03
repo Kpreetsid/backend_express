@@ -1,6 +1,7 @@
-import { body, ValidationChain } from 'express-validator';
-import { WORK_ORDER_PRIORITIES } from '../models/workOrder.model';
-import { WORK_ORDER_TEMPLATE_MAINTENANCE_TYPES, WORK_ORDER_TEMPLATE_TIME_UNITS } from '../models/workOrderTemplate.model';
+import { body } from 'express-validator';
+import { WORK_ORDER_PRIORITIES } from '@modules/work-orders/models/workOrder.model';
+import { WORK_ORDER_TEMPLATE_MAINTENANCE_TYPES, WORK_ORDER_TEMPLATE_TIME_UNITS } from '@modules/work-orders/models/workOrderTemplate.model';
+import { ValidationChain } from 'express-validator';
 
 function templateRules(requireCoreFields: boolean): ValidationChain[] {
   const coreString = (field: string, label: string) => {

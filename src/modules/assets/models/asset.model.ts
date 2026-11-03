@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
-import { SUPPORTED_ASSET_TYPES } from '../catalog/asset-train-catalog';
+import { SUPPORTED_ASSET_TYPES } from '@modules/assets/catalog/asset-train-catalog';
 export const ASSET_COLLECTION_NAME = `asset_master`;
 export const ASSETS_TYPE = SUPPORTED_ASSET_TYPES;
 

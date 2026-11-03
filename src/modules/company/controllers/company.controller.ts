@@ -1,12 +1,12 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { get } from "lodash";
-import { USER_ROLES, IUser } from "../../users/models/user.model";
+import { USER_ROLES, IUser } from "@modules/users/models/user.model";
 import { NextFunction, Request, Response } from "express";
-import { companyService } from "../services/company.service";
-import { helperService } from "../../../common/utils/helper";
-import { applyRoleFilter } from "../../../common/utils/role-filter.helper";
-import { accountFeatureService } from "../services/accountFeature.service";
-import { subscriptionLimitService } from "../services/subscriptionLimit.service";
+import { companyService } from "@modules/company/services/company.service";
+import { helperService } from "@common/utils/helper";
+import { applyRoleFilter } from "@common/utils/role-filter.helper";
+import { accountFeatureService } from "@modules/company/services/accountFeature.service";
+import { subscriptionLimitService } from "@modules/company/services/subscriptionLimit.service";
 
 class CompanyController {
 
@@ -156,7 +156,10 @@ class CompanyController {
   removeCompany = async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { id } = req.params;
-      const { _id: userId } = get(req, "user", {}) as IUser;
+      const { account_id, _id: userId } = get(req, "user", {}) as IUser;
+      if (String(account_id) !== id) {
+        throw Object.assign(new Error("Invalid account ID"), { status: 400 });
+      }
       const deleted = await companyService.removeById(
         helperService.validateObjectId(String(id)),
         userId,

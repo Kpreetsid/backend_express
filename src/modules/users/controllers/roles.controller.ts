@@ -1,13 +1,12 @@
 import { controllerCache } from '../../../core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
-import { rolesService } from '../services/roles.service';
-import { IUser } from '../models/user.model';
-import { usersService } from '../services/user.service';
+import { rolesService } from '@modules/users/services/roles.service';
+import { IUser } from '@modules/users/models/user.model';
+import { usersService } from '@modules/users/services/user.service';
 import { get } from 'lodash';
 import { helperService } from '../../../common/utils/helper';
 import { RoleManager } from '../../../common/constants/new-user-roles.constant';
 import { PlatformControlManager } from '../../../common/constants/roles.constant';
-import { TokenModel } from '../../auth/models/userToken.model';
 import { clearAuthSessionCacheForUser } from '../../../core/auth/auth.middleware';
 import { companyService } from '../../company/services/company.service';
 import { accountAccessService } from '../services/account-access.service';
@@ -22,7 +21,18 @@ const getAccountRoleMenuOrThrow = async (accountId: unknown) => {
 
 const getConfigurableRoles = async (accountId: unknown, roles: any[]) => {
   const accountRoleMenu = await getAccountRoleMenuOrThrow(accountId);
-  return roles.map((role: any) => accountAccessService.toConfigurableRole(role, accountRoleMenu));
+  const userIds = roles.map((role: any) => role?.user_id).filter(Boolean);
+  const users = userIds.length
+    ? await usersService.getAllUsers({ _id: { $in: userIds }, account_id: accountId })
+    : [];
+  const usersById = new Map(users.map((user: any) => [String(user._id), user]));
+
+  return await Promise.all(roles.map(async (role: any) => {
+    const targetUser = usersById.get(String(role?.user_id || ''));
+    return targetUser
+      ? await accountAccessService.toConfigurableRoleForUser(targetUser, role, accountRoleMenu)
+      : accountAccessService.toConfigurableRole(role, accountRoleMenu);
+  }));
 };
 
 class RolesController {
@@ -36,7 +46,6 @@ class RolesController {
     this.assertAdminOrManager = this.assertAdminOrManager.bind(this);
     this.getRoleRecord = this.getRoleRecord.bind(this);
     this.getTargetUser = this.getTargetUser.bind(this);
-    this.revokeUserSessions = this.revokeUserSessions.bind(this);
   }
   async getAll(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
@@ -130,12 +139,19 @@ class RolesController {
       const existingRole: any = await this.getRoleRecord(String(req.params.id), actor.account_id);
       const targetUser = await this.getTargetUser(existingRole.user_id, actor.account_id);
       if (targetUser.isFirstUser) {
-        throw Object.assign(new Error('The primary account administrator permissions cannot be changed'), { status: 400 });
+        throw Object.assign(new Error('First user permissions cannot be modified'), { status: 403 });
       }
 
+      if (targetUser.user_role === 'admin' && actor.user_role !== 'admin') {
+        throw Object.assign(new Error('You cannot modify an administrator permission profile'), { status: 403 });
+      }
+      if (!accountAccessService.canDelegatePlatformControl((req as any).role || {}, req.body?.data || {})) {
+        throw Object.assign(new Error('You cannot grant permissions outside your effective access'), { status: 403 });
+      }
       const accountRoleMenu = await getAccountRoleMenuOrThrow(actor.account_id);
+      const roleDataWithDefaults = await accountAccessService.getRoleDataWithDefaultsForUser(targetUser, existingRole);
       const data = accountAccessService.mergeConfigurablePlatformControl(
-        existingRole.data,
+        roleDataWithDefaults.data,
         req.body.data,
         accountRoleMenu
       );
@@ -148,7 +164,8 @@ class RolesController {
       if (!updatedRole) {
         throw Object.assign(new Error('Role not updated'), { status: 404 });
       }
-      await this.revokeUserSessions(existingRole.user_id);
+      await usersService.revokeAuthorizationSessions(targetUser._id, actor.account_id);
+      clearAuthSessionCacheForUser(String(targetUser._id));
       res.status(200).json({ status: true, message: 'Role updated successfully. The user must sign in again.', data: updatedRole });
     } catch (error) {
       next(error);
@@ -162,14 +179,18 @@ class RolesController {
       const existingRole: any = await this.getRoleRecord(String(req.params.id), actor.account_id);
       const targetUser = await this.getTargetUser(existingRole.user_id, actor.account_id);
       if (targetUser.isFirstUser) {
-        throw Object.assign(new Error('The primary account administrator role cannot be removed'), { status: 400 });
+        throw Object.assign(new Error('First user permissions cannot be removed'), { status: 403 });
       }
 
+      if (targetUser.user_role === 'admin' && actor.user_role !== 'admin') {
+        throw Object.assign(new Error('You cannot modify an administrator permission profile'), { status: 403 });
+      }
       const removedRole = await rolesService.removeById(existingRole._id, actor.account_id);
       if (!removedRole) {
         throw Object.assign(new Error('Role not deleted'), { status: 404 });
       }
-      await this.revokeUserSessions(existingRole.user_id);
+      await usersService.revokeAuthorizationSessions(targetUser._id, actor.account_id);
+      clearAuthSessionCacheForUser(String(targetUser._id));
       res.status(200).json({ status: true, message: 'Role deleted successfully' });
     } catch (error) {
       next(error);
@@ -206,10 +227,6 @@ class RolesController {
     return users[0];
   }
 
-  private async revokeUserSessions(userId: any): Promise<void> {
-    await TokenModel.deleteMany({ userId });
-    clearAuthSessionCacheForUser(String(userId));
-  }
 }
 
 export const rolesController = controllerCache.withCache(new RolesController(), { namespace: 'roles', ttlSeconds: 300, tags: ['roles', 'users'] });

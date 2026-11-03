@@ -1,9 +1,10 @@
+import { emailLoginService } from '../../auth/email-login/email-login.service';
 import crypto from 'crypto';
-import { helperService } from "../../../common/utils/helper";
-import { AccountModel, IAccount } from "../models/account.model";
-import { RoleManager } from "../../users/constants/account-role-menu.constant";
+import { helperService } from "@common/utils/helper";
+import { AccountModel, IAccount } from "@modules/company/models/account.model";
+import { RoleManager } from "@modules/users/constants/account-role-menu.constant";
+import { AccountApiKeyModel } from "@modules/company/models/accountApiKey.model";
 import { normalizeExperienceProfile } from "../../../common/constants/experience-profile.constant";
-import { AccountApiKeyModel } from "../models/accountApiKey.model";
 
 class CompanyService {
 
@@ -47,6 +48,7 @@ class CompanyService {
   };
 
   async updateById(id: any, body: any) {
+    if (body.account_status === 'inactive' || (body as any).visible === false) await emailLoginService.revokeAccount(String(id), 'system', 'account-disabled');
     return await AccountModel.findByIdAndUpdate(id, body, { returnDocument: 'after' });
   };
 
@@ -55,6 +57,7 @@ class CompanyService {
     if (!data || !data.visible || data.account_status === 'inactive') {
       throw Object.assign(new Error('No records found'), { status: 404 });
     }
+    await emailLoginService.revokeAccount(String(id), String(userId), 'account-disabled');
     await AccountModel.findByIdAndUpdate(id, { visible: false, account_status: 'inactive', updated_by: userId }, { returnDocument: 'after' });
     return true;
   };

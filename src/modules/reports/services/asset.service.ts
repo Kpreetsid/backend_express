@@ -1,8 +1,9 @@
-import { ReportAssetModel, IReportAsset } from "../models/assetReport.model";
+import { ReportAssetModel, IReportAsset } from "@modules/reports/models/assetReport.model";
+import { orderService } from "@modules/work-orders/services/order.service";
+import { buildAssetReportScope } from "./report-scope";
 import { AssetModel } from "../../assets/models/asset.model";
 import { LocationModel } from "../../locations/models/location.model";
 import { ObservationModel } from "../../assets/models/observation.model";
-import { orderService } from "../../work-orders/services/order.service";
 
 class AssetReportService {
   private readonly resultLimit = 2000;
@@ -24,7 +25,7 @@ class AssetReportService {
 
   async getLatest(match: any, selectedFields: any) {
     return await ReportAssetModel.findOne(match).select(selectedFields).sort({ _id: -1 }).limit(1);
-  };
+  }
 
   async getAssetReportRecord(match: any): Promise<any> {
     return await ReportAssetModel.findOne(match).lean();
@@ -100,7 +101,7 @@ class AssetReportService {
 
   async updateAssetReport(id: any, body: Partial<IReportAsset>, account_id: any, user_id: any, token?: any) {
     return await ReportAssetModel.findOneAndUpdate(
-      { _id: id, accountId: account_id, visible: true },
+      buildAssetReportScope(account_id, id),
       { $set: { ...body, updatedBy: user_id } },
       { returnDocument: 'after', runValidators: true }
     );
@@ -128,7 +129,7 @@ class AssetReportService {
 
   async removeAssetReportById(id: any, accountId: any, userId: any) {
     return await ReportAssetModel.findOneAndUpdate(
-      { _id: id, accountId, visible: true },
+      buildAssetReportScope(accountId, id),
       { $set: { updatedBy: userId, visible: false } },
       { returnDocument: 'after' }
     );

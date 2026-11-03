@@ -10,15 +10,14 @@ import { applyRoleFilter } from '../../../common/utils/role-filter.helper';
 import { mailerService } from '../../../core/mailer/mailer.service';
 import { helperService } from '../../../common/utils/helper';
 import { notificationService } from '../../communications/services/notification-sender.service';
-import { TokenModel } from '../../auth/models/userToken.model';
 import { clearAuthSessionCacheForUser } from '../../../core/auth/auth.middleware';
 import { assertStrongPassword } from '../../../common/utils/password-policy.helper';
-import { rolesService } from '../services/roles.service';
 import { withTransaction } from '../../../common/utils/transaction.helper';
 import { subscriptionLimitService } from '../../company/services/subscriptionLimit.service';
 import { validateNewPassword } from '../../auth/services/verification-challenge.service';
 import { clearAuthCookies } from '../../../core/auth/auth-cookie.service';
 import { refreshTokenService } from '../../auth/services/refreshToken.service';
+import { canAssignUserRole, canModifyUserRecord, isProtectedFirstUserMutation, pickUserCreateFields, pickUserUpdateFields } from '../services/user-update-policy';
 
 class UserController {
   constructor() {
@@ -86,20 +85,26 @@ class UserController {
 
   async createUser(req: Request, res: Response, next: NextFunction) {
     try {
-      const currentUser = get(req, "user", {}) as IUser;
-      this.assertAccountAdmin(currentUser);
-      const { account_id, _id: user_id } = currentUser;
-      const body = req.body;
+      const actor = get(req, "user", {}) as IUser;
+      this.assertAccountAdmin(actor);
+      const { account_id, _id: user_id } = actor;
+      const body = pickUserCreateFields(req.body);
+      if (!canAssignUserRole(actor.user_role, body.user_role)) {
+        throw Object.assign(new Error("You cannot assign the requested user role"), { status: 403 });
+      }
       const emailExists = await usersService.getAllUsers({ email: body.email });
       if (emailExists.length) throw Object.assign(new Error("Email already exists"), { status: 400 });
 
       const usernameExists = await usersService.getAllUsers({ username: body.username });
       if (usernameExists.length) throw Object.assign(new Error("Username already exists"), { status: 400 });
 
-      body.account_id = account_id;
-      body.createdBy = user_id;
+      const createPayload = {
+        ...body,
+        account_id,
+        createdBy: user_id
+      } as IUser;
 
-      const data = await withTransaction(session => usersService.createNewUser(body, account_id, session));
+      const data = await withTransaction(session => usersService.createNewUser(createPayload, account_id, session));
       const sideEffects = await Promise.allSettled([
         mailerService.sendUserCreatedMail({ userName: data.userDetails.username, userEmail: data.userDetails.email }),
         notificationService.notifyAccountUsers({
@@ -128,13 +133,10 @@ class UserController {
   async updateUser(req: Request, res: Response, next: NextFunction) {
     try {
       const user = get(req, "user", {}) as IUser;
-      const { params: { id }, body } = req;
-
+      const { params: { id } } = req;
+      const body = pickUserUpdateFields(req.body);
+      if (!Object.keys(body).length) throw Object.assign(new Error('No permitted fields provided'), { status: 400 });
       const isAdmin = ['admin', 'super_admin', 'manager'].includes(String(user?.user_role || '').trim().toLowerCase());
-      const isSelf = String(user._id) === String(id);
-      if (!isAdmin && !isSelf) {
-        throw Object.assign(new Error('Only an account administrator can update another user'), { status: 403 });
-      }
       const baseFilter: any = { _id: helperService.validateObjectId(String(id)), user_status: 'active' };
       if (isAdmin) {
         delete baseFilter.user_status;
@@ -145,48 +147,27 @@ class UserController {
       if (!userData.length) {
         throw Object.assign(new Error("User not found"), { status: 404 });
       }
-      const allowedFields = isAdmin
-        ? ['firstName', 'lastName', 'username', 'email', 'phone_no', 'user_profile_img', 'user_status', 'user_role', 'isVerified']
-        : ['firstName', 'lastName', 'phone_no', 'user_profile_img'];
-      const safeUpdates = this.pickAllowedFields(body, allowedFields);
-      if (!Object.keys(safeUpdates).length) {
-        throw Object.assign(new Error('No permitted user fields were provided'), { status: 400 });
+      if (!canModifyUserRecord(user, userData[0], body)) {
+        throw Object.assign(new Error('User modification not authorized'), { status: 403 });
       }
-      const previousUser = userData[0];
-      if (previousUser.user_status !== 'active' && safeUpdates.user_status === 'active') {
+      if (isProtectedFirstUserMutation(userData[0], body)) {
+        throw Object.assign(new Error("First account user role and status are immutable"), { status: 403 });
+      }
+      if (!canAssignUserRole(user.user_role, body.user_role, userData[0].user_role)) {
+        throw Object.assign(new Error("You cannot assign the requested user role"), { status: 403 });
+      }
+      if (userData[0].user_status !== 'active' && body.user_status === 'active') {
         await subscriptionLimitService.assertCanCreate(user.account_id, 'user');
       }
-      if (previousUser.isFirstUser
-        && ((safeUpdates.user_role && safeUpdates.user_role !== 'admin')
-          || (safeUpdates.user_status && safeUpdates.user_status !== 'active')
-          || safeUpdates.isVerified === false)) {
-        throw Object.assign(new Error('The primary account administrator cannot be demoted, deactivated, or unverified'), { status: 400 });
-      }
-      if (isSelf
-        && ((safeUpdates.user_role && safeUpdates.user_role !== 'admin')
-          || (safeUpdates.user_status && safeUpdates.user_status !== 'active'))) {
-        throw Object.assign(new Error('An administrator cannot demote or deactivate their own active session'), { status: 400 });
-      }
-      const roleChanged = Object.prototype.hasOwnProperty.call(safeUpdates, 'user_role')
-        && safeUpdates.user_role !== previousUser.user_role;
-      const securityContextChanged = ['username', 'email', 'user_status', 'user_role', 'isVerified']
-        .some(field => Object.prototype.hasOwnProperty.call(safeUpdates, field)
-          && String(safeUpdates[field]) !== String((previousUser as any)[field]));
       const data = await usersService.updateUserDetails(
         String(id),
-        user.account_id,
-        { ...safeUpdates, updatedBy: user._id } as Partial<IUser>
+        { ...body, updatedBy: user._id } as Partial<IUser>,
+        user.account_id
       );
       if (!data) {
         throw Object.assign(new Error("Failed to update user"), { status: 500 });
       }
-      if (roleChanged) {
-        await rolesService.resetUserRole(data.user_role, data, user._id);
-      }
-      if (securityContextChanged) {
-        await TokenModel.deleteMany({ userId: data._id });
-        clearAuthSessionCacheForUser(String(data._id));
-      }
+      clearAuthSessionCacheForUser(String(data._id));
       await notificationService.notifyAccountUsers({
         accountId: String(user.account_id),
         module: 'User',
@@ -260,11 +241,13 @@ class UserController {
       const userData = await usersService.getAllUsers(filter);
       if (!userData.length)
         throw Object.assign(new Error("User not found or already deleted"), { status: 404 });
-      if (userData[0].isFirstUser) {
-        throw Object.assign(new Error('The primary account administrator cannot be deleted'), { status: 400 });
+      if (userData[0].isFirstUser === true) {
+        throw Object.assign(new Error("First account user cannot be deleted"), { status: 403 });
       }
-      await usersService.removeById(String(id), user.account_id);
-      await TokenModel.deleteMany({ userId: id });
+      const removed = await usersService.removeById(String(id), user.account_id);
+      if (!removed) {
+        throw Object.assign(new Error("User not found or outside account"), { status: 404 });
+      }
       clearAuthSessionCacheForUser(String(id));
       res.status(200).json({ status: true, message: "User deleted successfully" });
     } catch (error) {

@@ -46,6 +46,10 @@ test('upload routes retain account feature checks, role actions and account logo
   assert.equal(uploads, 1);
 
   roleMenu = {};
+  assert.equal((await post('/baseImage/logo')).status, 403);
+  assert.equal(uploads, 1);
+  roleMenu = { master_admin_panel: { view: true } };
+  role = { admin_panel: { edit: true } };
   assert.equal((await post('/baseImage/logo')).status, 200);
   assert.equal(uploads, 2);
 });

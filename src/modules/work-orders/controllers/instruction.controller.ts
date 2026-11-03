@@ -1,11 +1,9 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
-
-
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response, NextFunction } from 'express';
 import { get } from 'lodash';
-import { IUser } from '../../users/models/user.model';
-import { instructionService } from '../services/instruction.service';
-import { helperService } from '../../../common/utils/helper';
+import { IUser } from '@modules/users/models/user.model';
+import { instructionService } from '@modules/work-orders/services/instruction.service';
+import { helperService } from '@common/utils/helper';
 
 import { sanitizeInstructionPayload } from '../../maintenance/services/guide-payload.service';
 import {

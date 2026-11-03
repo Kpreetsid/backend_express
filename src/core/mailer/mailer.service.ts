@@ -1,11 +1,12 @@
 import nodemailer, { Transporter } from 'nodemailer';
-import { mailCredential } from '../config/env.config';
-import { generateExternalAccessToken } from '../auth/external-token.service';
+import { mailCredential } from '@core/config/env.config';
+import { emailLoginService } from '@modules/auth/email-login/email-login.service';
+import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { IMailLog, MailLogModel, createMailLog } from '../../modules/communications/models/mailLog.model';
-import { VERIFICATION_CODE_EXPIRY_SECONDS } from '../../modules/auth/models/userVerification.model';
-import { verificationChallenges, VerificationPurpose } from '../../modules/auth/services/verification-challenge.service';
+import { IMailLog, MailLogModel, createMailLog } from '@modules/communications/models/mailLog.model';
+import { VERIFICATION_CODE_EXPIRY_SECONDS } from '@modules/auth/models/userVerification.model';
+import { verificationChallenges, VerificationPurpose } from '@modules/auth/services/verification-challenge.service';
 import { normalizeExperienceProfile } from '../../common/constants/experience-profile.constant';
 
 interface MailPayload {
@@ -216,18 +217,9 @@ export class MailerService {
     const assetName = workOrder.asset?.asset_name || 'Not linked';
     const locationName = workOrder.location?.location_name || 'Not linked';
     const subject = `Work Order - [${workOrder.order_no}] ${workOrder.priority || 'Medium'} Priority • ${workOrder.title}`;
-
-    const targetRedirectPath = `/work-order/details/${workOrder._id}?source=email`;
-    const externalToken = generateExternalAccessToken(
-      {
-        email: assignedUser.email,
-        org_id: assignedUser.account_id,
-        isExternal: false,
-        isInternal: true,
-        redirectPath: targetRedirectPath
-      },
-      7 * 24 * 60 * 60
-    );
+    const loginLink = process.env.EMAIL_LOGIN_ENABLED === 'true'
+      ? await emailLoginService.createEmailLoginLink({ userId: String(assignedUser._id || assignedUser.id), accountId: String(assignedUser.account_id), destination: '/work-order/details/' + workOrder._id + '?source=email', mailCategory: 'work-order', dispatchId: crypto.randomUUID() })
+      : null;
     const html = this.replace(fileName,
       {
         userFullName: this.getFullName(assignedUser),
@@ -248,11 +240,16 @@ export class MailerService {
         workSource,
         procedureCount: String(procedureCount),
         plannedPartsCount: String(plannedPartsCount),
-        detailsLink: `${mailCredential.loginUrl}/external?token=${encodeURIComponent(externalToken)}`,
+        detailsLink: loginLink?.url || mailCredential.loginUrl,
         YEAR: new Date().getFullYear().toString()
       }
     );
-    await this.send({to: assignedUser.email, subject, html});
+    try {
+      await this.send({to: assignedUser.email, subject, html, sensitive: true});
+    } catch (error) {
+      if (loginLink) await emailLoginService.revokeCredential(loginLink.credentialId, String(assignedUser.account_id), String(assignedUser._id || assignedUser.id));
+      throw error;
+    }
   }
 
   async sendUserCreatedMail(data: { userName: string; userEmail: string;}): Promise<void> {

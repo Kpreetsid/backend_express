@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { schedulerService } from './scheduler.service';
-import { SchedulerModel } from '../../modules/maintenance/models/scheduleMaster.model';
+import { SchedulerModel } from '@modules/maintenance/models/scheduleMaster.model';
 import { calendarDateInTimeZone, isScheduleDueOnDate } from './schedule-cadence';
 import { isScheduleDue } from './schedule-calendar';
 const service = schedulerService as any;

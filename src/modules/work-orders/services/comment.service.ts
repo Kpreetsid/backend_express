@@ -1,4 +1,4 @@
-import { CommentsModel } from "../models/comment.model";
+import { CommentsModel } from "@modules/work-orders/models/comment.model";
 import { workOrderActivityService } from "./workOrderActivity.service";
 
 class CommentService {

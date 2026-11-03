@@ -1,7 +1,8 @@
-import { IAccount } from "../../company/models/account.model";
-import { Permission, RoleManager, RoleMenu } from "../constants/account-role-menu.constant";
-import { RoleManager as UserRoleManager } from "../../../common/constants/new-user-roles.constant";
-import { normalizeExperienceProfile } from "../../../common/constants/experience-profile.constant";
+import { IAccount } from "@modules/company/models/account.model";
+import { Permission, RoleManager, RoleMenu } from "@modules/users/constants/account-role-menu.constant";
+import { RoleManager as UserRoleManager } from "@common/constants/new-user-roles.constant";
+import { PlatformControlManager } from "@common/constants/roles.constant";
+import { normalizeExperienceProfile } from "@common/constants/experience-profile.constant";
 
 export type AccountAction = "view" | "add" | "edit" | "delete" | "import" | "export";
 type PlatformControl = Record<string, Record<string, boolean>>;
@@ -105,39 +106,44 @@ const ACCOUNT_ADDITIVE_FEATURES: Record<string, { level: number; parent?: string
 
 const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> = {
   asset: {
-    add_asset: { menuKey: "master_asset", action: "add" },
-    delete_asset: { menuKey: "master_asset", action: "delete" },
-    add_child_asset: { menuKey: "master_asset", action: "add" },
-    edit_asset: { menuKey: "master_asset", action: "edit" },
-    create_report: { menuKey: "master_asset", action: "add" },
-    delete_report: { menuKey: "master_asset", action: "delete" },
-    download_report: { menuKey: "master_asset", action: "export" },
-    edit_report: { menuKey: "master_asset", action: "edit" },
-    config_alarm: { menuKey: "master_asset", action: "edit" },
-    add_observation: { menuKey: "master_asset", action: "add" },
-    create_endpoint: { menuKey: "master_asset", action: "add" },
-    edit_endpoint: { menuKey: "master_asset", action: "edit" },
-    delete_end_point: { menuKey: "master_asset", action: "delete" },
-    attach_sensor: { menuKey: "master_asset", action: "add" },
-    update_config: { menuKey: "master_asset", action: "edit" }
+    add_asset: { menuKey: "asset", action: "add" },
+    delete_asset: { menuKey: "asset", action: "delete" },
+    add_child_asset: { menuKey: "child_asset", action: "add" },
+    edit_asset: { menuKey: "asset", action: "edit" },
+    create_report: { menuKey: "report_asset", action: "add" },
+    delete_report: { menuKey: "report_asset", action: "delete" },
+    download_report: { menuKey: "report_asset", action: "export" },
+    edit_report: { menuKey: "report_asset", action: "edit" },
+    config_alarm: { menuKey: "config_alarm", action: "edit" },
+    add_observation: { menuKey: "observation", action: "add" },
+    edit_observation: { menuKey: "observation", action: "edit" },
+    delete_observation: { menuKey: "observation", action: "delete" },
+    create_endpoint: { menuKey: "endpoint", action: "add" },
+    edit_endpoint: { menuKey: "endpoint", action: "edit" },
+    delete_end_point: { menuKey: "endpoint", action: "delete" },
+    attach_sensor: { menuKey: "attach_sensor", action: "add" },
+    update_config: { menuKey: "config", action: "edit" }
   },
   location: {
-    add_location: { menuKey: "master_location", action: "add" },
-    delete_location: { menuKey: "master_location", action: "delete" },
-    add_child_location: { menuKey: "master_location", action: "add" },
-    edit_location: { menuKey: "master_location", action: "edit" },
-    create_report: { menuKey: "master_location", action: "add" },
-    delete_report: { menuKey: "master_location", action: "delete" },
-    download_report: { menuKey: "master_location", action: "export" }
+    add_location: { menuKey: "location", action: "add" },
+    delete_location: { menuKey: "location", action: "delete" },
+    add_child_location: { menuKey: "child_location", action: "add" },
+    edit_location: { menuKey: "location", action: "edit" },
+    create_report: { menuKey: "location_report", action: "add" },
+    delete_report: { menuKey: "location_report", action: "delete" },
+    download_report: { menuKey: "location_report", action: "export" },
+    edit_report: { menuKey: "location_report", action: "edit" }
   },
   workOrder: {
-    create_work_order: { menuKey: "master_work_order", action: "add" },
-    edit_work_order: { menuKey: "master_work_order", action: "edit" },
-    delete_work_order: { menuKey: "master_work_order", action: "delete" },
-    update_work_order_status: { menuKey: "master_work_order", action: "edit" },
-    add_comment_work_order: { menuKey: "master_work_order", action: "add" },
-    add_task_work_order: { menuKey: "master_work_order", action: "add" },
-    update_parts_work_order: { menuKey: "master_work_order", action: "edit" }
+    create_work_order: { menuKey: "work_order", action: "add" },
+    edit_work_order: { menuKey: "work_order", action: "edit" },
+    delete_work_order: { menuKey: "work_order", action: "delete" },
+    update_work_order_status: { menuKey: "work_order_status", action: "edit" },
+    add_comment_work_order: { menuKey: "comment_work_order", action: "add" },
+    edit_comment_work_order: { menuKey: "comment_work_order", action: "edit" },
+    delete_comment_work_order: { menuKey: "comment_work_order", action: "delete" },
+    add_task_work_order: { menuKey: "inspections", action: "add" },
+    update_parts_work_order: { menuKey: "parts_work_order", action: "edit" }
   },
   floorMap: {
     create_kpi: { menuKey: "master_dashboard", action: "add" },
@@ -148,10 +154,39 @@ const PLATFORM_ACTION_RULES: Record<string, Record<string, PlatformActionRule>> 
 };
 
 const PLATFORM_MODULE_RULES: Record<string, string> = {
+  asset: "asset",
+  location: "location",
+  workOrder: "work_order",
+  preventive: "preventive",
+  form: "form",
+  form_category: "form_category",
+  inspections: "inspections",
+  work_order_templates: "work_order_templates",
+  procedures: "procedures",
+  work_request: "work_request",
+  work_request_status: "work_request_status",
+  posts: "posts",
+  inventory: "inventory",
+  gateways: "gateways",
+  peripheral_sensors: "peripheral_sensors",
+  users: "users",
+  permission: "permission",
+  asset_mail: "asset_mail"
+};
+
+const PLATFORM_PARENT_FEATURE_RULES: Record<string, string> = {
+  asset: "master_asset",
+  location: "master_location",
+  workOrder: "master_work_order",
+  floorMap: "master_dashboard",
   preventive: "master_preventive",
   form: "master_form",
   form_category: "master_form",
+  inspections: "master_inspections",
+  work_order_templates: "master_library",
+  procedures: "master_library",
   work_request: "master_work_request",
+  work_request_status: "master_work_request",
   posts: "master_posts",
   inventory: "master_inventory",
   devices: "master_devices",
@@ -169,16 +204,20 @@ const PARENT_PLATFORM_MODULE_RULES: Record<string, string> = {
 };
 
 const PLATFORM_MODULE_VIEW_RULES: Record<string, string | string[]> = {
-  asset: "master_asset",
-  location: "master_location",
-  workOrder: "master_work_order",
-  floorMap: "master_dashboard",
-  preventive: "master_preventive",
-  form: "master_form",
-  form_category: "master_form",
-  work_request: "master_work_request",
-  posts: "master_posts",
-  inventory: "master_inventory",
+  asset: "asset",
+  location: "location",
+  workOrder: "work_order",
+  floorMap: ["floor_map", "location_floor_map"],
+  preventive: "preventive",
+  form: "form",
+  form_category: "form_category",
+  inspections: "inspections",
+  work_order_templates: "work_order_templates",
+  procedures: "procedures",
+  work_request: "work_request",
+  work_request_status: "work_request_status",
+  posts: "posts",
+  inventory: "inventory",
   devices: "master_devices",
   gateways: "master_devices",
   peripheral_sensors: "master_devices",
@@ -286,6 +325,64 @@ class AccountAccessService {
       platformControl: this.applyPlatformControlCap(userRoleData?.data || {}, accountRoleMenu),
       roleMenu: this.applyRoleMenuCap(userRoleData?.roleMenu || {}, accountRoleMenu)
     };
+  }
+
+  async getRoleDataWithDefaultsForUser(
+    user: { user_role?: string; isFirstUser?: boolean } | null | undefined,
+    userRoleData: any
+  ): Promise<{ data: PlatformControl; roleMenu: RoleMenu }> {
+    const role = user?.isFirstUser === true ? "admin" : String(user?.user_role || "user");
+    const defaultRoleData = {
+      data: await PlatformControlManager.getRoleMenuData(role),
+      roleMenu: await UserRoleManager.getRoleMenuData(role)
+    };
+
+    if (user?.isFirstUser === true || role === "admin") {
+      return defaultRoleData;
+    }
+
+    return {
+      data: this.mergePermissionDefaults(defaultRoleData.data, userRoleData?.data),
+      roleMenu: this.mergePermissionDefaults(defaultRoleData.roleMenu, userRoleData?.roleMenu)
+    };
+  }
+
+  async getEffectivePermissionsForUser(
+    user: { user_role?: string; isFirstUser?: boolean } | null | undefined,
+    userRoleData: any,
+    account: IAccount | any
+  ): Promise<{ platformControl: PlatformControl; roleMenu: RoleMenu }> {
+    const sourceRoleData = await this.getRoleDataWithDefaultsForUser(user, userRoleData);
+    return this.getEffectivePermissions(sourceRoleData, account);
+  }
+
+  async toConfigurableRoleForUser(
+    user: { user_role?: string; isFirstUser?: boolean } | null | undefined,
+    role: any,
+    accountRoleMenu: RoleMenu
+  ): Promise<any> {
+    const roleObject = typeof role?.toObject === "function" ? role.toObject() : clone(role);
+    const sourceRoleData = await this.getRoleDataWithDefaultsForUser(user, roleObject);
+    return {
+      ...roleObject,
+      data: this.filterConfigurablePlatformControl(sourceRoleData.data, accountRoleMenu),
+      roleMenu: this.applyRoleMenuCap(sourceRoleData.roleMenu, accountRoleMenu)
+    };
+  }
+
+  private mergePermissionDefaults(defaults: any, stored: any): any {
+    const merged = clone(defaults);
+    if (!isRecord(stored)) {
+      return merged;
+    }
+    for (const [moduleName, storedValue] of Object.entries(stored)) {
+      if (isRecord(storedValue) && isRecord(merged[moduleName])) {
+        merged[moduleName] = { ...merged[moduleName], ...storedValue };
+      } else {
+        merged[moduleName] = clone(storedValue);
+      }
+    }
+    return merged;
   }
 
   applyRoleMenuCap(userRoleMenu: any, accountRoleMenu: RoleMenu): RoleMenu {
@@ -396,6 +493,27 @@ class AccountAccessService {
     return filtered;
   }
 
+  canDelegatePlatformControl(actorControl: any, submittedControl: any): boolean {
+    if (!isRecord(submittedControl)) {
+      return false;
+    }
+    for (const [moduleName, actions] of Object.entries(submittedControl)) {
+      if (!isRecord(actions) || !isRecord(actorControl?.[moduleName])) {
+        return false;
+      }
+      for (const [actionName, value] of Object.entries(actions)) {
+        const actorValue = actorControl[moduleName]?.[actionName];
+        if (typeof value !== "boolean" || typeof actorValue !== "boolean") {
+          return false;
+        }
+        if (value === true && actorValue !== true) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   mergeConfigurablePlatformControl(existingControl: any, submittedControl: any, accountRoleMenu: RoleMenu): PlatformControl {
     const merged = clone(isRecord(existingControl) ? existingControl : {});
     if (!isRecord(submittedControl)) {
@@ -435,6 +553,11 @@ class AccountAccessService {
   }
 
   isPlatformActionAllowed(accountRoleMenu: RoleMenu, moduleName: string, actionName: string): boolean {
+    const parentFeature = PLATFORM_PARENT_FEATURE_RULES[moduleName];
+    if (parentFeature && !this.isAccountPermissionEnabled(accountRoleMenu, parentFeature, "view")) {
+      return false;
+    }
+
     const mappedRule = PLATFORM_ACTION_RULES[moduleName]?.[actionName];
     if (mappedRule) {
       const keys = Array.isArray(mappedRule.menuKey) ? mappedRule.menuKey : [mappedRule.menuKey];

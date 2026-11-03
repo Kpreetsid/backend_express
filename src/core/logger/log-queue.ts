@@ -1,4 +1,4 @@
-import { IUserLog } from '../../modules/users/models/userLogs.model';
+import { IUserLog } from '@modules/users/models/userLogs.model';
 import { LogWriter } from './log-writer';
 
 export interface LogQueueOptions {

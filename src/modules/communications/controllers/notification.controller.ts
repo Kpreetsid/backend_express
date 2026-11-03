@@ -1,6 +1,6 @@
-import { controllerCache } from '../../../core/cache/controller-cache.service';
+import { controllerCache } from '@core/cache/controller-cache.service';
 import { Request, Response } from 'express';
-import { notificationRepository } from '../services/notification.service';
+import { notificationRepository } from '@modules/communications/services/notification.service';
 import { IUser } from '../../users/models/user.model';
 import { get } from 'lodash';
 
@@ -84,7 +84,7 @@ export class NotificationController {
     try {
       const user = get(req, "user", {}) as IUser;
       const { type, message } = req.body;
-      const { notificationService } = require('../services/notification-sender.service');
+      const { notificationService } = require('@modules/communications/services/notification-sender.service');
 
       await notificationService.notifyUser(
         user._id,

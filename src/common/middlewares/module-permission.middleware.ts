@@ -1,4 +1,4 @@
-import { AccountAction } from '../../modules/users/services/account-access.service';
+import { AccountAction } from '@modules/users/services/account-access.service';
 import { hasAccountFeature } from './permission.middleware';
 
 /**

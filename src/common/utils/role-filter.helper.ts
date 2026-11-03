@@ -1,6 +1,6 @@
-import { IUser } from "../../modules/users/models/user.model";
-import { mapUserToLocationService } from "../../modules/mappings/services/userLocation.service";
-import { mapUserToAssetService } from "../../modules/mappings/services/userAsset.service";
+import { IUser } from "@modules/users/models/user.model";
+import { mapUserToLocationService } from "@modules/mappings/services/userLocation.service";
+import { mapUserToAssetService } from "@modules/mappings/services/userAsset.service";
 
 type MappingType = "location" | "asset" | "";
 

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { UploadModel } from '../models/upload.model';
-import { storageProvider } from '../../../core/config/storage.config';
-import { uploadFilesService } from '../middlewares/upload.multer';
+import { UploadModel } from '@modules/upload/models/upload.model';
+import { storageProvider } from '@core/config/storage.config';
+import { uploadFilesService } from '@modules/upload/middlewares/upload.multer';
 
 class UploadService {
   private formatUploadResponse(file: any, req: Request, folderName?: string) {

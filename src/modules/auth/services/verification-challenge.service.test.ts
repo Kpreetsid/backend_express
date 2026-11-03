@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { VerificationCodeModel } from '../models/userVerification.model';
+import { VerificationCodeModel } from '@modules/auth/models/userVerification.model';
 import { verificationChallenges } from './verification-challenge.service';
 
 // An in-memory persistence boundary: never connect to MongoDB or Redis.

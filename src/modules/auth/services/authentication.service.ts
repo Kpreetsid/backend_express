@@ -1,25 +1,27 @@
 import mongoose from "mongoose";
-import { IUser, UserModel, UserLoginPayload } from "../../users/models/user.model";
+import { IUser, UserModel, UserLoginPayload } from "@modules/users/models/user.model";
 import { Request, Response, NextFunction } from 'express';
-import { passwordService } from '../../../common/utils/bcrypt.helper';
-import { decryptToken, generateAccessToken, generateExternalAccessToken } from '../../../core/auth/auth.middleware';
-import { getAccessTokenTypeFilter, TokenModel } from "../models/userToken.model";
-import { rolesService } from "../../users/services/roles.service";
+import { passwordService } from '@common/utils/bcrypt.helper';
+import { generateAccessToken } from '@core/auth/auth.middleware';
+import { getAccessTokenTypeFilter, TokenModel } from "@modules/auth/models/userToken.model";
+import { rolesService } from "@modules/users/services/roles.service";
 import { resetPasswordService } from './resetPassword.service';
-import { auth } from "../../../core/config/env.config";
-import { helperService } from "../../../common/utils/helper";
-import { IAccount } from "../../company/models/account.model";
-import { companyService } from "../../company/services/company.service";
+import { auth, supportLogin } from "@core/config/env.config";
+import { helperService } from "@common/utils/helper";
+import { IAccount } from "@modules/company/models/account.model";
+import { companyService } from "@modules/company/services/company.service";
 import { get } from "lodash";
-import { mapUserToLocationService } from "../../mappings/services/userLocation.service";
-import { TokenBlacklist } from "../../../core/auth/token-blacklist";
+import { mapUserToLocationService } from "@modules/mappings/services/userLocation.service";
+import { TokenBlacklist } from "@core/auth/token-blacklist";
 import { refreshTokenService } from "./refreshToken.service";
-import { parseTtlSeconds } from "../../../common/utils/ttl.helper";
-import { accountAccessService } from "../../users/services/account-access.service";
-import { tokenSessionStore } from "../../../core/auth/token-session-store";
-import { clearAuthCookies, setAccessCookies } from "../../../core/auth/auth-cookie.service";
-import { analysisFeatureService } from "../../settings/services/analysisFeature.service";
+import { parseTtlSeconds } from "@common/utils/ttl.helper";
+import { accountAccessService } from "@modules/users/services/account-access.service";
+import { tokenSessionStore } from "@core/auth/token-session-store";
+import { clearAuthCookies, setAccessCookies } from "@core/auth/auth-cookie.service";
+import { analysisFeatureService } from "@modules/settings/services/analysisFeature.service";
 import { passwordExpiryNotice } from './password-expiry';
+import { EXTERNAL_LOGIN_GRANT_TTL_SECONDS, consumeExternalLoginGrant, issueExternalLoginGrant, resolveSupportEnvironment } from './external-login-grant.service';
+import { authorizeSupportActor } from './support-login-actor.service';
 
 const persistAccessSession = async (
   token: string,
@@ -82,9 +84,8 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     const token_id = new mongoose.Types.ObjectId();
     const userTokenPayload = { id: String(user._id), username: user.username, companyID: String(user.account_id), jti: String(token_id), sessionStartedAt };
     const token = generateAccessToken(userTokenPayload);
-    let userRoleData: any = await rolesService.verifyUserRole(String(user._id), String(user.account_id));
-    if (!userRoleData) {
-      userRoleData = await rolesService.createUserRole(user.user_role, user);
+    if (!await rolesService.verifyUserRole(String(user._id), String(user.account_id))) {
+      await rolesService.createUserRole(user.user_role, user);
     }
     const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
     const expiresAt = new Date(Date.now() + accessTtlSeconds * 1000);
@@ -101,50 +102,28 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
     });
     await userTokenData.save();
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
-    const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id, new Date(sessionStartedAt));
-    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, userAccount[0]);
-    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
+    await refreshTokenService.issueForUser(req, res, user, token_id, new Date(sessionStartedAt));
 
-    const isCookieAuth = userAccount[0].cookie_status === 'enabled';
-    if (isCookieAuth) {
-      setAccessCookies(res, {
-        token,
-        tokenId: String(token_id),
-        userId: String(user._id),
-        accountId: String(user.account_id),
-        ttlSeconds: accessTtlSeconds
-      });
-
-      res.status(200).json({
-        status: true,
-        message: 'Login successful',
-        data: {
-          ...passwordExpiryNotice(user.passwordExpiredAt),
-          authMethod: 'cookie',
-          token_id,
-          token
-        }
-      });
-    } else {
-      clearAuthCookies(res);
-      res.status(200).json({
-        status: true,
-        message: 'Login successful',
-        data: {
-          ...passwordExpiryNotice(user.passwordExpiredAt),
-          authMethod: 'localStorage',
-          token,
-          token_id,
-          refreshToken: refreshSession.rawToken,
-          accountDetails: userAccount[0],
-          userDetails: safeUser,
-          platformControl: effectivePermissions.platformControl,
-          roleMenu: effectivePermissions.roleMenu,
-          analysisFeature: analysisFeature,
-          accountPermissionVersion: Number(userAccount[0].account_permission_version || 1)
-        }
-      });
-    }
+    // Cookie-backed browser login is mandatory for every eligible account.
+    // Keep the legacy response token temporarily for existing clients until the
+    // Angular browser credential migration removes token consumption.
+    setAccessCookies(res, {
+      token,
+      tokenId: String(token_id),
+      userId: String(user._id),
+      accountId: String(user.account_id),
+      ttlSeconds: accessTtlSeconds
+    });
+    res.status(200).json({
+      status: true,
+      message: 'Login successful',
+      data: {
+        ...passwordExpiryNotice(user.passwordExpiredAt),
+        authMethod: 'cookie',
+        token_id,
+        token
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -202,7 +181,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
     await userTokenData.save();
     await persistAccessSession(token, token_id, user, accessTtlSeconds, expiresAt);
     const refreshSession = await refreshTokenService.issueForUser(req, res, user, token_id, new Date(sessionStartedAt));
-    const isCookieAuth = userAccount[0].cookie_status === 'enabled';
+    // Machine-token authentication is a separate compatibility contract.
     res.status(200).json({
       status: true,
       message: 'Login successful',
@@ -210,7 +189,7 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
         ...passwordExpiryNotice(user.passwordExpiredAt),
         token,
         token_id,
-        ...(!isCookieAuth ? { refreshToken: refreshSession.rawToken } : {}),
+        refreshToken: refreshSession.rawToken,
         org_id: user.account_id,
         user_id: user._id
       }
@@ -222,44 +201,46 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
 
 export const createAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const identifier = String(req.params.email || req.params.id || '').trim();
-    if (!identifier) {
-      throw Object.assign(new Error('Bad request: identifier is required'), { status: 400 });
+    const identifier = String(req.body?.email || '').trim().toLowerCase();
+    const companyId = String(req.body?.company_id || '').trim();
+    const actorId = String(req.body?.actor_id || '').trim();
+    const stateChallenge = String(req.body?.state_challenge || '').trim();
+    const environment = resolveSupportEnvironment(req.body?.environment);
+
+    if (!identifier || !companyId || !actorId || stateChallenge.length < 32) {
+      throw Object.assign(new Error('Complete support login context is required'), { status: 400 });
     }
 
-    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const accountId = helperService.validateObjectId(companyId);
+    await authorizeSupportActor({ actorId, companyId: String(accountId), environment });
 
-    // Interactive user login token
-    const external_user = await UserModel.findOne({ email: identifier, user_status: 'active' });
-    if (!external_user) {
+    const externalUser = await UserModel.findOne({
+      email: identifier,
+      account_id: accountId,
+      user_status: 'active',
+      visible: { $ne: false }
+    });
+    if (!externalUser) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
 
-    const match: any = {
-      email: external_user.email,
-      org_id: external_user.account_id,
-      isExternal: false,
-      isInternal: true
-    };
-    const external_token = generateExternalAccessToken(match);
-    const userTokenData = new TokenModel({
-      _id: external_token,
-      tokenType: 'access',
-      token_id: new mongoose.Types.ObjectId(),
-      userId: external_user._id,
-      account_id: external_user.account_id,
-      principalType: 'user',
-      isExternal: true,
-      isInternal: false,
-      ttl: ttlSeconds,
-      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+    const grant = await issueExternalLoginGrant({
+      actorId,
+      targetUserId: externalUser._id as mongoose.Types.ObjectId,
+      companyId: externalUser.account_id as mongoose.Types.ObjectId,
+      environment,
+      stateChallenge
     });
-    await userTokenData.save();
 
     return res.status(200).json({
       status: true,
-      message: 'Login successful',
-      data: { external_token, org_id: external_user.account_id, user_id: external_user._id }
+      message: 'Login grant created',
+      data: {
+        external_token: grant.code,
+        org_id: externalUser.account_id,
+        user_id: externalUser._id,
+        expires_in: EXTERNAL_LOGIN_GRANT_TTL_SECONDS
+      }
     });
   } catch (error) {
     next(error);
@@ -268,31 +249,39 @@ export const createAuthenticationByToken = async (req: Request, res: Response, n
 
 export const userAuthenticationByToken = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
   try {
-    const { body: { external_token } } = req;
-    if (!external_token) {
-      throw Object.assign(new Error('Bad request'), { status: 404 });
+    const externalToken = String(req.body?.external_token || '').trim();
+    const stateProof = String(req.body?.state_proof || '').trim();
+    if (!externalToken || stateProof.length < 32) {
+      throw Object.assign(new Error('External login grant and browser state are required'), { status: 400 });
     }
-    const decoded = decryptToken(external_token);
-    const { email, org_id, isExternal, isInternal, isDownloadData, redirectPath } = decoded;
-    if (!email && !org_id) {
-      throw Object.assign(new Error('Invalid token'), { status: 401 });
+
+    const environment = resolveSupportEnvironment(supportLogin.environment);
+    const consumedGrant = await consumeExternalLoginGrant(externalToken, stateProof, environment);
+    if (!consumedGrant) {
+      throw Object.assign(new Error('Support login grant is expired, invalid, or already used'), { status: 401 });
     }
-    if (true === !!isDownloadData) {
-      throw Object.assign(new Error(`User can't access this application resource.`), { status: 401 });
-    }
-    const userDetails = await UserModel.findOne({ email, account_id: helperService.validateObjectId(org_id), user_status: 'active' });
+
+    await authorizeSupportActor({
+      actorId: consumedGrant.actorId,
+      companyId: String(consumedGrant.companyId),
+      environment
+    });
+
+    const userDetails = await UserModel.findOne({
+      _id: consumedGrant.targetUserId,
+      account_id: consumedGrant.companyId,
+      user_status: 'active',
+      visible: { $ne: false }
+    });
     if (!userDetails) {
       throw Object.assign(new Error('User data not found'), { status: 404 });
     }
-    const { password: _, ...safeUser } = userDetails.toObject();
-    const newSafeUserValue: any = { id: safeUser._id, ...safeUser }
     const accountDetails = await companyService.getAllCompanies({ _id: userDetails.account_id });
     if (!accountDetails || accountDetails.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
-    let userRoleMenu: any = await rolesService.verifyUserRole(String(userDetails._id), String(userDetails.account_id));
-    if (!userRoleMenu) {
-      userRoleMenu = await rolesService.createUserRole(userDetails.user_role, userDetails);
+    if (!await rolesService.verifyUserRole(String(userDetails._id), String(userDetails.account_id))) {
+      await rolesService.createUserRole(userDetails.user_role, userDetails);
     }
     const token_id = new mongoose.Types.ObjectId();
     const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id), jti: String(token_id) };
@@ -307,65 +296,101 @@ export const userAuthenticationByToken = async (req: Request, res: Response, nex
       userId: userDetails._id,
       account_id: userDetails.account_id,
       principalType: 'user',
-      isExternal,
-      isInternal,
+      isExternal: true,
+      isInternal: true,
       ttl: ttlSeconds,
       expiresAt: new Date(Date.now() + ttlSeconds * 1000)
     });
     await userTokenData.save();
-    await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal, isInternal });
-    const refreshSession = await refreshTokenService.issueForUser(req, res, userDetails, token_id);
-    const safeRedirectPath = typeof redirectPath === 'string' && redirectPath.startsWith('/')
-      ? redirectPath
-      : '/dashboard';
-    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleMenu, accountDetails[0]);
-    const isCookieAuth = accountDetails[0].cookie_status === 'enabled';
-    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id })
+    await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal: true, isInternal: true });
+    await refreshTokenService.issueForUser(req, res, userDetails, token_id);
+    const safeRedirectPath = '/dashboard';
+    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id });
 
-    if (isCookieAuth) {
-      setAccessCookies(res, {
+    setAccessCookies(res, {
+      token: newToken,
+      tokenId: String(token_id),
+      userId: String(userDetails._id),
+      accountId: String(userDetails.account_id),
+      ttlSeconds: accessTtlSeconds
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: 'Login successful',
+      data: {
+        authMethod: 'cookie',
+        token_id,
         token: newToken,
-        tokenId: String(token_id),
-        userId: String(userDetails._id),
-        accountId: String(userDetails.account_id),
-        ttlSeconds: accessTtlSeconds
-      });
+        isExternal: true,
+        isInternal: true,
+        redirectPath: safeRedirectPath,
+        analysisFeature
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
-      return res.status(200).json({
-        status: true,
-        message: 'Login successful',
-        data: {
-          authMethod: 'cookie',
-          token_id,
-          token: newToken,
-          isExternal: !!isExternal,
-          isInternal: !!isInternal,
-          redirectPath: safeRedirectPath,
-          analysisFeature: analysisFeature
-        }
-      });
+export const establishExternalSession = async (req: Request, res: Response, next: NextFunction, decoded: any): Promise<any> => {
+  try {
+    const userDetails = await UserModel.findOne({ _id: decoded.userId, account_id: decoded.org_id, user_status: 'active', visible: { $ne: false } });
+    if (!userDetails) {
+      throw Object.assign(new Error('User data not found'), { status: 404 });
     }
+    const accountDetails = await companyService.getAllCompanies({ _id: userDetails.account_id });
+    if (!accountDetails || accountDetails.length === 0) {
+      throw Object.assign(new Error('User account not found'), { status: 404 });
+    }
+    if (!await rolesService.verifyUserRole(String(userDetails._id), String(userDetails.account_id))) {
+      await rolesService.createUserRole(userDetails.user_role, userDetails);
+    }
+    const token_id = new mongoose.Types.ObjectId();
+    const userTokenPayload: UserLoginPayload = { id: String(userDetails._id), username: userDetails.username, companyID: String(userDetails.account_id), jti: String(token_id) };
+    const newToken = generateAccessToken(userTokenPayload);
+    const ttlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const accessTtlSeconds = parseTtlSeconds(auth.expiresIn, 24 * 60 * 60);
+    const expiresAt = new Date(Date.now() + accessTtlSeconds * 1000);
+    const userTokenData = new TokenModel({
+      _id: newToken,
+      tokenType: 'access',
+      token_id,
+      userId: userDetails._id,
+      account_id: userDetails.account_id,
+      principalType: 'user',
+      isExternal: false,
+      isInternal: true,
+      ttl: ttlSeconds,
+      expiresAt: new Date(Date.now() + ttlSeconds * 1000)
+    });
+    await userTokenData.save();
+    await persistAccessSession(newToken, token_id, userDetails, accessTtlSeconds, expiresAt, { isExternal: false, isInternal: true });
+    await refreshTokenService.issueForUser(req, res, userDetails, token_id);
+    const safeRedirectPath = decoded.redirectPath;
+    const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: userDetails.account_id });
 
-    clearAuthCookies(res);
-    res.status(200).json(
-      {
-        status: true,
-        message: 'Login successful',
-        data: {
-          authMethod: 'localStorage',
-          token: newToken,
-          token_id,
-          refreshToken: refreshSession.rawToken,
-          accountDetails: accountDetails[0],
-          userDetails: newSafeUserValue,
-          platformControl: effectivePermissions.platformControl,
-          roleMenu: effectivePermissions.roleMenu,
-          accountPermissionVersion: Number(accountDetails[0].account_permission_version || 1),
-          isExternal: !!isExternal,
-          isInternal: !!isInternal,
-          redirectPath: safeRedirectPath
-        }
-      });
+    setAccessCookies(res, {
+      token: newToken,
+      tokenId: String(token_id),
+      userId: String(userDetails._id),
+      accountId: String(userDetails.account_id),
+      ttlSeconds: accessTtlSeconds
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: 'Login successful',
+      data: {
+        authMethod: 'cookie',
+        token_id,
+        token: newToken,
+        isExternal: false,
+        isInternal: true,
+        redirectPath: safeRedirectPath,
+        analysisFeature
+      }
+    });
   } catch (error) {
     next(error);
   }
@@ -448,7 +473,7 @@ export const userGetMeService = async (req: Request, res: Response, next: NextFu
 
     const { password: _, ...safeUser } = user;
     safeUser.id = safeUser._id || safeUser.id;
-    const effectivePermissions = accountAccessService.getEffectivePermissions(userRoleData, accountDetails[0]);
+    const effectivePermissions = await accountAccessService.getEffectivePermissionsForUser(user, userRoleData, accountDetails[0]);
     const analysisFeature = await analysisFeatureService.getFeatureData({ account_id: user.account_id })
 
     const userToken = String(get(req, 'userToken') || '');

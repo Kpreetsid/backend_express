@@ -1,14 +1,16 @@
 import express from 'express';
-import { postController } from '../controllers/posts.controller';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
+import { hasRolePermission } from '@common/middlewares/permission.middleware';
+import { postController } from '@modules/communications/controllers/posts.controller';
+import { validateParamId } from '@common/middlewares/validate.middleware';
 import commentsRoutes from './comments.routes';
 
 import { postPatchValidator, postValidator } from '../validators/post.validator';
 import { validate } from '../../../common/middlewares/validate.middleware';
-import { hasRolePermission } from '../../../common/middlewares/permission.middleware';
+
 
 export default (router: express.Router) => {
     const postRouter = express.Router();
+    postRouter.use(hasRolePermission('posts', 'view'));
     postRouter.get('/', hasRolePermission('posts', 'view'), postController.getPosts.bind(postController));
     postRouter.get('/:id', validateParamId, hasRolePermission('posts', 'view'), postController.getPost.bind(postController));
     postRouter.post('/', hasRolePermission('posts', 'add'), postValidator, validate, postController.createPost.bind(postController));

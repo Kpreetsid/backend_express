@@ -1,26 +1,27 @@
 import mongoose from "mongoose";
-import { IWorkOrder, WorkOrderModel } from "../models/workOrder.model";
-import { IUser, UserModel } from "../../users/models/user.model";
-import { MailerService } from "../../../core/mailer/mailer.service";
-import { userWorkOrderService } from "../../mappings/services/userWorkOrder.service";
-import { partsService } from "../../inventory/services/parts.service";
+import { IWorkOrder, WorkOrderModel } from "@modules/work-orders/models/workOrder.model";
+import { IUser, UserModel } from "@modules/users/models/user.model";
+import { MailerService } from "@core/mailer/mailer.service";
+import { userWorkOrderService } from "@modules/mappings/services/userWorkOrder.service";
+import { partsService } from "@modules/inventory/services/parts.service";
 import { commentService } from "./comment.service";
 import { requestService } from "./request.service";
-import { helperService } from "../../../common/utils/helper";
-import { notificationService } from "../../communications/services/notification-sender.service";
-import { withTransaction } from "../../../common/utils/transaction.helper";
-import { ProcedureModel } from "../models/procedure.model";
-import { WorkOrderAssigneeModel } from "../../mappings/models/mapUserWorkOrder.model";
+import { helperService } from "@common/utils/helper";
+import { notificationService } from "@modules/communications/services/notification-sender.service";
+import { withTransaction } from "@common/utils/transaction.helper";
+import { ProcedureModel } from "@modules/work-orders/models/procedure.model";
+import { WorkOrderAssigneeModel } from "@modules/mappings/models/mapUserWorkOrder.model";
 import { workOrderActivityService } from "./workOrderActivity.service";
-import { WorkRequestModel, WORK_REQUEST_EDITABLE_STATUSES } from "../models/workRequest.model";
-import { SchedulerModel } from "../../maintenance/models/scheduleMaster.model";
-import { AssetModel } from "../../assets/models/asset.model";
-import { InventoryMovementModel } from "../../inventory/models/inventoryMovement.model";
-import { LocationModel } from "../../locations/models/location.model";
-import { PartsModel } from "../../inventory/models/part.model";
-import { PartsTypeModel } from "../../inventory/models/parts-types.model";
-import { SOPsModel } from "../../maintenance/models/sops.model";
-import { assertSyncVersion, createSyncConflict } from "../../../common/utils/sync-concurrency.helper";
+import { WorkRequestModel } from "@modules/work-orders/models/workRequest.model";
+import { SchedulerModel } from "@modules/maintenance/models/scheduleMaster.model";
+import { AssetModel } from "@modules/assets/models/asset.model";
+import { InventoryMovementModel } from "@modules/inventory/models/inventoryMovement.model";
+import { LocationModel } from "@modules/locations/models/location.model";
+import { PartsModel } from "@modules/inventory/models/part.model";
+import { PartsTypeModel } from "@modules/inventory/models/parts-types.model";
+import { SOPsModel } from "@modules/maintenance/models/sops.model";
+import { assertSyncVersion, createSyncConflict } from "@common/utils/sync-concurrency.helper";
+import { WORK_REQUEST_EDITABLE_STATUSES } from "../models/workRequest.model";
 import { sanitizeWorkOrderPayload } from '../policies/workOrder.policy';
 
 export interface WorkOrderSearchParams {
@@ -834,6 +835,7 @@ class OrderService {
       'sop_form_id',
       'work_request_id',
       'asset_report_id',
+      'source_inspection_id',
       'parentId',
       'updatedBy',
       'createdBy'
@@ -4205,13 +4207,18 @@ class OrderService {
   async createWorkOrder(
     body: any,
     user: IUser,
-    scheduleContext?: { scheduleId: any; executionKey: string }
+    scheduleContextOrSession?: { scheduleId: any; executionKey: string } | any,
+    inspectionContext?: { inspectionId: any; findingKey: string }
   ): Promise<any> {
+    const scheduleContext = scheduleContextOrSession?.scheduleId ? scheduleContextOrSession : undefined;
+    const existingSession = scheduleContext ? undefined : scheduleContextOrSession;
     return await withTransaction(async (session) => {
       const allowedBody = sanitizeWorkOrderPayload(body, 'create');
       allowedBody.status = allowedBody.status || 'Open';
       allowedBody.createdFrom = scheduleContext
         ? 'Preventive'
+        : inspectionContext
+          ? 'Inspection'
         : allowedBody.work_request_id
           ? 'Work Request'
           : allowedBody.asset_report_id
@@ -4311,6 +4318,8 @@ class OrderService {
         asset_report_id: normalizedBody.asset_report_id,
         cron_id: scheduleContext?.scheduleId,
         schedule_execution_key: scheduleContext?.executionKey,
+        source_inspection_id: inspectionContext?.inspectionId,
+        source_finding_key: inspectionContext?.findingKey.trim(),
         status_details: [{ status: normalizedBody.status, createdBy: user._id }],
         createdBy: user._id
       };
@@ -4470,7 +4479,7 @@ class OrderService {
         console.warn('Failed to fetch enriched work order after create, returning saved document instead:', readError?.message || readError);
         return data?.toObject ? data.toObject() : data;
       }
-    });
+    }, existingSession);
   };
 
   async updateById(id: any, body: any, user: IUser, expectedVersion?: number): Promise<any> {

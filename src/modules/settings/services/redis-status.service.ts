@@ -1,6 +1,6 @@
 import { Request } from 'express';
-import { redisConfig } from '../../../core/config/env.config';
-import { isRedisReady } from '../../../core/cache/redis.client';
+import { redisConfig } from '@core/config/env.config';
+import { isRedisReady } from '@core/cache/redis.client';
 
 export const getRequestAccountId = (req: Request): string => {
   const requestData = req as any;

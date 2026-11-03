@@ -1,13 +1,13 @@
-import { AssetModel } from '../models/asset.model';
-import { MapUserAssetLocationModel } from "../../mappings/models/mapUserLocation.model";
-import { mapUserToAssetService } from "../../mappings/services/userAsset.service";
+import { AssetModel } from '@modules/assets/models/asset.model';
+import { MapUserAssetLocationModel } from "@modules/mappings/models/mapUserLocation.model";
+import { mapUserToAssetService } from "@modules/mappings/services/userAsset.service";
 import { processorAPIService } from './processor-api.service';
-import { helperService } from '../../../common/utils/helper';
-import { withTransaction } from "../../../common/utils/transaction.helper";
+import { helperService } from '@common/utils/helper';
+import { withTransaction } from "@common/utils/transaction.helper";
 import mongoose from 'mongoose';
-import { LocationModel } from '../../locations/models/location.model';
-import { UserModel } from '../../users/models/user.model';
-import { subscriptionLimitService } from '../../company/services/subscriptionLimit.service';
+import { LocationModel } from '@modules/locations/models/location.model';
+import { UserModel } from '@modules/users/models/user.model';
+import { subscriptionLimitService } from '@modules/company/services/subscriptionLimit.service';
 
 class EquipmentService {
   private async assertAssetCapacity(accountId: any, session?: any): Promise<void> {

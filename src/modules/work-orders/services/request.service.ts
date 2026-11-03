@@ -1,5 +1,6 @@
-import { WorkRequestModel, IWorkRequest, WORK_REQUEST_EDITABLE_STATUSES, WORK_REQUEST_ORDER_SLA_HOURS, WORK_REQUEST_REVIEW_SLA_HOURS } from "../models/workRequest.model";
-import { createSyncConflict } from "../../../common/utils/sync-concurrency.helper";
+import { WorkRequestModel, IWorkRequest, WORK_REQUEST_ORDER_SLA_HOURS, WORK_REQUEST_REVIEW_SLA_HOURS } from "@modules/work-orders/models/workRequest.model";
+import { createSyncConflict } from "@common/utils/sync-concurrency.helper";
+import { WORK_REQUEST_EDITABLE_STATUSES } from "../models/workRequest.model";
 import { AssetModel } from "../../assets/models/asset.model";
 import { LocationModel } from "../../locations/models/location.model";
 
@@ -196,7 +197,7 @@ class RequestService {
   async markConverted(id: string, account_id: any, body: { workOrderId: any; orderNo: string; priority?: string; approvedBy?: any; approvedAt?: Date; convertedBy: any }, session?: any): Promise<any> {
     const convertedAt = new Date();
     const approvedAt = body.approvedAt ? new Date(body.approvedAt) : convertedAt;
-    return await this.updateRequest(id, {
+    const update = {
       status: 'Approved',
       approvedBy: body.approvedBy || body.convertedBy,
       approvedAt,
@@ -204,16 +205,21 @@ class RequestService {
       convertedAt,
       converted_work_order_id: body.workOrderId,
       converted_order_no: body.orderNo,
+      updatedBy: body.convertedBy,
       ...this.buildOrderGovernance(body.priority || 'Low', approvedAt)
-    }, body.convertedBy, session, {
-      account_id,
-      visible: true,
+    };
+    const result = await WorkRequestModel.updateOne({
+      _id: id, account_id, visible: true,
       status: 'Approved',
       $or: [
-        { converted_work_order_id: { $exists: false } },
-        { converted_work_order_id: null }
+        { converted_work_order_id: null },
+        { converted_work_order_id: { $exists: false } }
       ]
-    });
+    }, update, { session });
+    if (result.matchedCount !== 1) {
+      throw Object.assign(new Error('This work request has already been converted into a work order'), { status: 409 });
+    }
+    return result;
   }
 }
 

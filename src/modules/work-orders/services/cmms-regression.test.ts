@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { afterEach, mock, test } from 'node:test';
 import { orderService } from './order.service';
 import { requestService } from './request.service';
-import { WorkOrderModel } from '../models/workOrder.model';
-import { partsService } from '../../inventory/services/parts.service';
+import { WorkOrderModel } from '@modules/work-orders/models/workOrder.model';
+import { partsService } from '@modules/inventory/services/parts.service';
 import { workOrderActivityService } from './workOrderActivity.service';
-import { notificationService } from '../../communications/services/notification-sender.service';
-const transactions = require('../../../common/utils/transaction.helper');
+import { notificationService } from '@modules/communications/services/notification-sender.service';
+const transactions = require('@common/utils/transaction.helper');
 const id = '111111111111111111111111', account = '222222222222222222222222';
 const actor: any = { _id: '333333333333333333333333', account_id: account, firstName: 'Test', lastName: 'Technician' };
 afterEach(() => mock.restoreAll());
@@ -43,4 +43,28 @@ test('status completion preserves zero consumption through the real status servi
   mock.method(notificationService, 'notifyAccountUsers', async () => undefined as any);
   await orderService.orderStatusChange(id, 'Completed', actor);
   assert.equal(persisted.parts[0].actualQuantity, 0); assert.equal(persisted.parts[0].issuedQuantity, 0); assert.equal(persisted.parts[0].returnedQuantity, 5);
+});
+
+
+test('corrective creation preserves trusted inspection provenance while rejecting client provenance', async () => {
+  let persisted: any;
+  const inspectionId = '444444444444444444444444';
+  mock.method(transactions, 'withTransaction', async (callback: any) => callback(null));
+  mock.method(orderService as any, 'assertWorkOrderReferences', async () => undefined);
+  mock.method(orderService as any, 'syncProcedureEntries', async () => ({ procedure_ids: [], procedure_entries: [] }));
+  mock.method(orderService as any, 'generateOrderNo', async () => 'WO-TEST');
+  mock.method(partsService, 'validateInventoryByWorkOrder', async () => undefined as any);
+  mock.method(WorkOrderModel.prototype, 'save', async function (this: any) { persisted = this.toObject(); return this; });
+  mock.method(workOrderActivityService, 'logActivity', async () => undefined as any);
+  mock.method(notificationService, 'notifyAccountUsers', async () => undefined as any);
+  mock.method(orderService, 'getAllOrders', async () => [persisted] as any);
+  const payload = { title: 'Corrective action', source_inspection_id: inspectionId, source_finding_key: 'spoofed', createdFrom: 'Inspection' };
+  await orderService.createWorkOrder(payload, actor, undefined, { inspectionId, findingKey: 'bearing-temperature' });
+  assert.equal(String(persisted.source_inspection_id), inspectionId);
+  assert.equal(persisted.source_finding_key, 'bearing-temperature');
+  assert.equal(persisted.createdFrom, 'Inspection');
+  await orderService.createWorkOrder(payload, actor);
+  assert.equal(persisted.source_inspection_id, undefined);
+  assert.equal(persisted.source_finding_key, undefined);
+  assert.equal(persisted.createdFrom, 'Work Order');
 });

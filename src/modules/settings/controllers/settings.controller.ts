@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import { settingsService } from "../services/settings.service";
+import { settingsService } from "@modules/settings/services/settings.service";
 import { get } from "lodash";
-import { IUser } from "../../users/models/user.model";
+import { IUser } from "@modules/users/models/user.model";
 
 class SettingsController {
   async getAllSettings(req: Request, res: Response, next: NextFunction): Promise<any> {

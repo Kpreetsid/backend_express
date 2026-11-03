@@ -1,8 +1,8 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import { ObjectId } from 'mongodb';
-import { historyPlugin } from '../../../core/database/plugins/history.plugin';
+import { historyPlugin } from '@core/database/plugins/history.plugin';
 import { HistoryWorkOrderModel } from './history-work-order.model';
-import { syncVersionPlugin } from '../../../core/database/plugins/sync-version.plugin';
+import { syncVersionPlugin } from '@core/database/plugins/sync-version.plugin';
 
 export const WORK_ORDER_COLLECTION_NAME = 'work_orders';
 
@@ -213,6 +213,8 @@ export interface IWorkOrder extends Document {
   parts: IParts[];
   labor_entries: ILaborEntry[];
   work_request_id: ObjectId;
+  source_inspection_id?: ObjectId;
+  source_finding_key?: string;
   files: object[];
   visible: boolean;
   createdBy: ObjectId;
@@ -225,7 +227,7 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   title: { type: String, trim: true, required: true },
   description: { type: String, trim: true },
   estimated_time: { type: Number },
-  createdFrom: { type: String, trim: true, enum: [ 'Asset Report', 'Work Request', 'Work Order', 'Preventive'], default: "Work Order" },
+  createdFrom: { type: String, trim: true, enum: [ 'Asset Report', 'Work Request', 'Work Order', 'Preventive', 'Inspection'], default: "Work Order" },
   priority: { type: String, trim: true, enum: WORK_ORDER_PRIORITIES, default: "Low" },
   status: { type: String, trim: true, enum: WORK_ORDER_STATUSES, default: "Open" },
   parentId: { type: Schema.Types.ObjectId, ref: 'Schema_WorkOrder' },
@@ -265,6 +267,8 @@ const WorkOrderSchema = new Schema<IWorkOrder>({
   cron_id: { type: Schema.Types.ObjectId, ref: 'Schema_Schedule' },
   schedule_execution_key: { type: String, trim: true },
   work_request_id: { type: Schema.Types.ObjectId, ref: 'WorkRequestModel' },
+  source_inspection_id: { type: Schema.Types.ObjectId, ref: 'Schema_Inspection' },
+  source_finding_key: { type: String, trim: true, maxlength: 160 },
   files: { type: [Object] },
   visible: { type: Boolean, default: true },
   createdBy: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true },
@@ -294,6 +298,17 @@ WorkOrderSchema.index(
 WorkOrderSchema.index(
   { work_request_id: 1 },
   { unique: true, partialFilterExpression: { work_request_id: { $type: 'objectId' } } }
+);
+WorkOrderSchema.index(
+  { account_id: 1, source_inspection_id: 1, source_finding_key: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      visible: true,
+      source_inspection_id: { $exists: true },
+      source_finding_key: { $type: 'string' }
+    }
+  }
 );
 
 WorkOrderSchema.plugin(syncVersionPlugin);

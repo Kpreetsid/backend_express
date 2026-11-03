@@ -17,6 +17,9 @@ collect(path.join(root, 'test'));
 const env = { ...process.env, NODE_ENV: 'test', REDIS_ENABLED: 'false', TZ: 'UTC',
   AUTH_ISSUER: 'cmms-regression', AUTH_AUDIENCE: 'cmms-regression', AUTH_ALGORITHM: 'HS256' };
 for (const key of ['AUTH_SECRET', 'EXTERNAL_AUTH_SECRET', 'REFRESH_TOKEN_SECRET']) env[key] = randomBytes(48).toString('hex');
-const result = spawnSync(process.execPath, ['--require', 'ts-node/register/transpile-only', '--test', ...tests], { cwd: root, env, stdio: 'inherit' });
+// Keep TypeScript test workers within laptop and CI memory budgets.
+const concurrency = Number(process.env.CMMS_TEST_CONCURRENCY || 2);
+if (!Number.isInteger(concurrency) || concurrency < 1) throw new Error('CMMS_TEST_CONCURRENCY must be a positive integer');
+const result = spawnSync(process.execPath, ['--require', 'tsconfig-paths/register', '--require', 'ts-node/register/transpile-only', '--test', '--test-concurrency', String(concurrency), ...tests], { cwd: root, env, stdio: 'inherit' });
 if (result.error) throw result.error;
 process.exit(result.status ?? 1);

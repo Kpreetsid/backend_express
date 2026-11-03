@@ -1,5 +1,5 @@
-import { PartsTypeModel } from "../models/parts-types.model";
-import { UserModel } from "../../users/models/user.model";
+import { PartsTypeModel } from "@modules/inventory/models/parts-types.model";
+import { UserModel } from "@modules/users/models/user.model";
 import { sanitizePartTypePayload } from "../policies/part-type.policy";
 import { PartsModel } from "../models/part.model";
 

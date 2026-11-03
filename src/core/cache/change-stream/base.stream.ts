@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { RedisUtils } from '../redis.utils';
+import { RedisUtils } from '@core/cache/redis.utils';
 
 /**
  * Base Change Stream class that provides a robust, self-healing MongoDB 

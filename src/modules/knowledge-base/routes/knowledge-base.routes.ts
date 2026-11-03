@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { GUIDE_CATEGORIES } from '../models/knowledge-base.model';
-import { knowledgeBaseService, resolveGuidePdf } from '../services/knowledge-base.service';
+import { GUIDE_CATEGORIES } from '@modules/knowledge-base/models/knowledge-base.model';
+import { knowledgeBaseService, resolveGuidePdf } from '@modules/knowledge-base/services/knowledge-base.service';
 
 /** Mount behind isAuthenticated; viewing is available to every application user. */
 export const knowledgeBaseRoutes = (): Router => {

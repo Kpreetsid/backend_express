@@ -8,7 +8,7 @@ import { WorkOrderModel } from '../../work-orders/models/workOrder.model';
 import { HistoryWorkOrderModel } from '../../work-orders/models/history-work-order.model';
 import { PartsModel } from '../../inventory/models/part.model';
 import { PartsTypeModel } from '../../inventory/models/parts-types.model';
-import { ReportAssetModel } from '../../reports/models/assetReport.model';
+import { ReportAssetModel } from '../models/assetReport.model';
 
 const org = '68aff3fb2517f347390f5f01';
 

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import nodemailer from 'nodemailer';
-import { MailerService } from '../../../core/mailer/mailer.service';
-import { MailLogModel } from '../../communications/models/mailLog.model';
+import { MailerService } from '@core/mailer/mailer.service';
+import { MailLogModel } from '@modules/communications/models/mailLog.model';
 import { verificationChallenges } from './verification-challenge.service';
 
 test('OTP email sends the code but never persists delivery content or responses in mail logs', async t => {

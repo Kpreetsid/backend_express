@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { passwordExpiryNotice, nextPasswordExpiry } from './password-expiry';
-import { checkPasswordExpire } from '../../../common/middlewares/password-expire.middleware';
-import { usersService } from '../../users/services/user.service';
+import { checkPasswordExpire } from '@common/middlewares/password-expire.middleware';
+import { usersService } from '@modules/users/services/user.service';
 
 test('today and earlier expiry dates warn, future and absent dates do not', () => {
   const now = new Date('2026-10-19T05:00:00.000Z');

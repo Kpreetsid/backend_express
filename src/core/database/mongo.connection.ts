@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
-import { database } from "../config/env.config";
+import { database } from "@core/config/env.config";
+import { idStandardizationPlugin } from "./mongoose.plugins";
+
+mongoose.plugin(idStandardizationPlugin);
 
 const buildHostList = (): string => {
   const hosts = database.hosts || database.host;

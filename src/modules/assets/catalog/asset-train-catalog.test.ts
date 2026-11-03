@@ -6,8 +6,8 @@ import {
   getCatalogTrainType, getComponentDefinition, getEquipmentDefinition,
   normalizeCatalogName, SUPPORTED_ASSET_TYPES
 } from './asset-train-catalog';
-import { assetValidator } from '../validators/asset.validator';
-import { AssetModel } from '../models/asset.model';
+import { assetValidator } from '@modules/assets/validators/asset.validator';
+import { AssetModel } from '@modules/assets/models/asset.model';
 
 test('all CSV equipment is represented once, with the chosen Boiler Feed Pump definition', () => {
   assert.equal(ASSET_TRAIN_CATALOG.source.row_count, 155);

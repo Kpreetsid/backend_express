@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { CacheManager } from '../cache.manager';
-import { CacheKeys } from '../cache.keys';
+import { CacheManager } from '@core/cache/cache.manager';
+import { CacheKeys } from '@core/cache/cache.keys';
 import { BaseChangeStream } from './base.stream';
 
 export class RoleChangeStream extends BaseChangeStream {

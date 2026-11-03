@@ -1,12 +1,14 @@
 import express from 'express';
-import { equipmentController } from '../controllers/equipment.controller';
-import { hasAnyRolePermission, hasRolePermission } from '../../../common/middlewares/index';
-import { validateParamId } from '../../../common/middlewares/validate.middleware';
+import { equipmentController } from '@modules/assets/controllers/equipment.controller';
+import { hasRolePermission } from '@common/middlewares';
+import { validateParamId } from '@common/middlewares/validate.middleware';
+import { hasAnyRolePermission } from '../../../common/middlewares/index';
 import { validate } from '../../../common/middlewares/validate.middleware';
 import { equipmentValidator } from '../validators/equipment.validator';
 
 export default (router: express.Router) => {
     const equipmentRouter = express.Router();
+    equipmentRouter.use(hasRolePermission('asset', 'view'));
     equipmentRouter.get('/', equipmentController.getAssets);
     equipmentRouter.get('/tree', equipmentController.getAssetTree);
     equipmentRouter.get('/tree/:id', validateParamId, equipmentController.getAssetTreeById);

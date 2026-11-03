@@ -1,4 +1,4 @@
-import { getExternalData } from "../../../common/utils/external-api.helper";
+import { getExternalData } from "@common/utils/external-api.helper";
 
 class ProcessorAPIService {
     deleteChildComponent = async (rootAssetId: string, assetId: string, token: string, userId: any, environment?: string) => {

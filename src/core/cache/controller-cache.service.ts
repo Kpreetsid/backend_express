@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
-import { redisConfig } from '../config/env.config';
-import { canUseRedisForRequest, getRequestAccountId } from '../../modules/settings/services/redis-status.service';
+import { redisConfig } from '@core/config/env.config';
+import { canUseRedisForRequest, getRequestAccountId } from '@modules/settings/services/redis-status.service';
 import { RedisUtils } from './redis.utils';
 
 type CacheScope = 'account' | 'user';

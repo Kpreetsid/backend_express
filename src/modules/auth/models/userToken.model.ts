@@ -21,6 +21,7 @@ export interface IUserToken extends Document<string | mongoose.Types.ObjectId> {
   parentTokenHash?: string;
   userAgent?: string;
   ipAddress?: string;
+  supportActor?: { actorId: string; reason: string; credentialId: string };
 }
 
 const userTokenSchema = new Schema<IUserToken>({
@@ -68,7 +69,8 @@ const userTokenSchema = new Schema<IUserToken>({
   refreshFamilyId: { type: String },
   parentTokenHash: { type: String },
   userAgent: { type: String },
-  ipAddress: { type: String }
+  ipAddress: { type: String },
+  supportActor: { type: new Schema({ actorId: String, reason: String, credentialId: String }, { _id: false }) }
 }, {
   collection: USER_TOKEN_COLLECTION_NAME,
   versionKey: false

@@ -1,4 +1,4 @@
-import { UserLogModel } from "../models/userLogs.model";
+import { UserLogModel } from "@modules/users/models/userLogs.model";
 
 class UserLogsService {
   async getAllUserLogs (match: any): Promise<any> {

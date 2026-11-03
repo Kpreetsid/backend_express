@@ -1,11 +1,11 @@
 import { NextFunction, Request, RequestHandler, Response } from 'express';
-import { UserLogModel } from '../../modules/users/models/userLogs.model';
+import { UserLogModel } from '@modules/users/models/userLogs.model';
 import { get, merge, omit } from 'lodash';
 import fs from 'fs';
 import path from 'path';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
-import { UserLogProducer } from '../../core/messaging/user-log.producer';
+import { UserLogProducer } from '@core/messaging/user-log.producer';
 
 class AppLogger {
   private logDir: string;

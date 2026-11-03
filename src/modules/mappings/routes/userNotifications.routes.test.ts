@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Types } from 'mongoose';
-import { MapUserAssetLocationModel } from '../models/mapUserLocation.model';
-import { UserModel } from '../../users/models/user.model';
-import { AssetModel } from '../../assets/models/asset.model';
+import { MapUserAssetLocationModel } from '@modules/mappings/models/mapUserLocation.model';
+import { UserModel } from '@modules/users/models/user.model';
+import { AssetModel } from '@modules/assets/models/asset.model';
 
 const accountId = '64a000000000000000000001';
 const userId = '64a000000000000000000002';
@@ -213,9 +213,12 @@ test('notification routes register protected GET and PATCH handlers', () => {
   assert.equal(routes[1].path, '/user-notifications/:mappingId');
   assert.equal(routes[1].methods.patch, true);
   for (const route of routes) {
-    assert.equal(route.stack.length, 2);
+    assert.equal(route.stack.length, 3);
     let error: any;
     route.stack[0].handle({ user: { account_id: accountId }, roleMenu: {} }, {}, (e: any) => { error = e; });
+    assert.equal(error.status, 403);
+    error = undefined;
+    route.stack[1].handle({ user: { account_id: accountId, user_role: 'admin' }, role: {} }, {}, (e: any) => { error = e; });
     assert.equal(error.status, 403);
   }
 });

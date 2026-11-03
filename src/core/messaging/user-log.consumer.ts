@@ -1,5 +1,5 @@
-import { getRedisClient, isRedisReady } from '../cache/redis.client';
-import { UserLogModel } from '../../modules/users/models/userLogs.model';
+import { getRedisClient, isRedisReady } from '@core/cache/redis.client';
+import { UserLogModel } from '@modules/users/models/userLogs.model';
 import { USER_LOGS_STREAM_KEY, USER_LOGS_CONSUMER_GROUP } from './user-log.producer';
 
 const CONSUMER_NAME = `consumer-${process.pid}`;
