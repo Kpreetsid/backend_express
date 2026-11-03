@@ -10,7 +10,7 @@ export interface EmailCredential {
   destination: string;
   issuedAt: Date;
   expiresAt: Date;
-  keyId: string;
+  keyId?: string;
   revokedAt?: Date;
   revokedBy?: string;
   revokeReason?: string;
@@ -28,7 +28,7 @@ const schema = new Schema<EmailCredential>({
   destination: { type: String, required: true },
   issuedAt: { type: Date, required: true },
   expiresAt: { type: Date, required: true },
-  keyId: { type: String, required: true },
+  keyId: String,
   revokedAt: Date,
   revokedBy: String,
   revokeReason: String,

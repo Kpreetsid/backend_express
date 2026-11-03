@@ -109,6 +109,8 @@ const cryptoEnabled = envBoolean(
   requestDecryptEnabled || responseEncryptEnabled
 );
 
+export const loginServiceKey = envString(process.env.INTERNAL_LOGIN_SERVICE_KEY, '');
+
 export const payloadCrypto = {
   enabled: cryptoEnabled,
   strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),
