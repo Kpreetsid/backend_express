@@ -1,4 +1,4 @@
-import { supportLoginRoutes } from './modules/auth/support-login/support-login.service';
+import { supportLoginRoutes } from './modules/auth/support-login/support-login.routes';
 import express, { Express, Request, Response, NextFunction, ErrorRequestHandler, Router } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
