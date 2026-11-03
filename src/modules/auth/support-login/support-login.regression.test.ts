@@ -15,6 +15,17 @@ import { requestContextMiddleware } from '../../../common/middlewares/request-co
 const ids = { userId: '63a1492110c33e75c8232931', accountId: '63a1492110c33e75c8232932', actorId: '63a1492110c33e75c8232933' };
 const raw = `spt_${'a'.repeat(43)}`;
 
+test('support credential issuance rejects GET promptly and directs callers to POST', async t => {
+  const app = express(); app.use('/tokens', supportLoginRoutes());
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise<void>(resolve => server.on('listening', resolve));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/tokens`, { signal: AbortSignal.timeout(1500) });
+  assert.equal(response.status, 405);
+  assert.equal(response.headers.get('allow'), 'POST');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+});
+
 test('service key requires an exact dedicated secret of at least 32 characters', () => {
   for (const key of [undefined, [], '', 'short', 'b'.repeat(32)]) {
     assert.equal(supportServiceAuthorized(key, 'a'.repeat(32)), false);

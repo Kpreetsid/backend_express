@@ -1,5 +1,7 @@
 # CMMS ExpressJS
 
+See [Email login links](docs/email-login-links.md) for token issuance, mail button URLs, local setup, Postman validation, and revocation.
+
 ## Controller-based Redis caching
 
 Redis is optional and is used only when all runtime gates are open:

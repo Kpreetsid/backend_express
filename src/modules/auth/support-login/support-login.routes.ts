@@ -1,9 +1,14 @@
 import { Router } from 'express';
 import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
-import { issueSupportLogin } from './support-login.controller';
+import { issueSupportToken } from './support-login.controller';
 
 export const supportLoginRoutes = (): Router => {
   const router = Router();
+  router.get('/', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('Allow', 'POST');
+    res.status(405).json({ status: false, message: 'Use POST to issue a support login token' });
+  });
   router.post('/', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
     res.once('finish', () => {
@@ -15,6 +20,6 @@ export const supportLoginRoutes = (): Router => {
       });
     });
     next();
-  }, rateLimiter.authLimiter, issueSupportLogin);
+  }, rateLimiter.authLimiter, issueSupportToken);
   return router;
 };

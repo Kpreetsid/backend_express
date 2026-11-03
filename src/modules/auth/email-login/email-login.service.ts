@@ -3,36 +3,51 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { UserModel } from '../../users/models/user.model';
 import { AccountModel } from '../../company/models/account.model';
 import { EmailLoginCredentialModel } from './email-login.model';
+import { auth, mailCredential } from '../../../core/config/env.config';
 
 export const EMAIL_LOGIN_TTL_SECONDS = 604800;
 const invalid = () => Object.assign(new Error('This login link is invalid or expired.'), { status: 410 });
-const unavailable = () => Object.assign(new Error('Email login is unavailable.'), { status: 503 });
+const unavailable = (detail = 'Email login is unavailable.', code = 'EMAIL_LOGIN_UNAVAILABLE') =>
+  Object.assign(new Error(detail), { status: 503, code });
 const digest = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
 const validId = (value: unknown): value is string => typeof value === 'string' && /^[a-fA-F0-9]{24}$/.test(value);
 
 export function emailLoginDestination(value: unknown): string {
   if (typeof value !== 'string' || value.length > 2048 || !/^\/(?!\/)/.test(value)
     || /[\\\u0000-\u0020\u007f]/.test(value)) throw invalid();
-  let decoded: string;
-  try { decoded = decodeURIComponent(value); } catch { throw invalid(); }
-  if (decoded.startsWith('//') || /[\\\u0000-\u001f\u007f]/.test(decoded)
-    || /^\/(?:email-login|external|redirect|login|logout|register|reset-password|forgot-password)(?:[/?#;]|$)/i.test(decoded)) throw invalid();
-  return value;
+  let decoded = value;
+  for (let depth = 0; depth < 5; depth++) {
+    let next: string;
+    try { next = decodeURIComponent(decoded); } catch { throw invalid(); }
+    if (!/^\/(?!\/)/.test(next) || /[\\\u0000-\u001f\u007f]/.test(next)) throw invalid();
+    const pathname = new URL(next, 'https://cmms.invalid').pathname;
+    // Angular outlet expressions can resolve to a different primary route.
+    if (/[()]/.test(pathname)) throw invalid();
+    if (/^\/(?:email-login|external|redirect|login|logout|register|reset-password|forgot-password)(?:[\/;]|$)/i.test(pathname)) throw invalid();
+    if (next === decoded || !/%[a-f\d]{2}/i.test(next)) return value;
+    decoded = next;
+  }
+  throw invalid();
 }
 
-function configuration() {
-  if (process.env.EMAIL_LOGIN_ENABLED !== 'true') throw unavailable();
-  const issuer = process.env.EMAIL_LOGIN_ISSUER;
-  const audience = process.env.EMAIL_LOGIN_AUDIENCE;
-  const keyId = process.env.EMAIL_LOGIN_ACTIVE_KID;
-  if (!issuer || !audience || !keyId) throw unavailable();
-  // New issuance must not accidentally leave stateless legacy login enabled forever.
-  const cutoff = process.env.LEGACY_EXTERNAL_AUTH_CUTOFF;
-  if (!cutoff || !Number.isFinite(Date.parse(cutoff))) throw unavailable();
-  let publicKeys: Record<string, string>;
-  try { publicKeys = JSON.parse(process.env.EMAIL_LOGIN_PUBLIC_KEYS || '{}'); } catch { throw unavailable(); }
-  if (!publicKeys || typeof publicKeys !== 'object') throw unavailable();
-  return { issuer, audience, keyId, publicKeys };
+export function emailLoginPageUrl(): string {
+  const override = process.env.EMAIL_LOGIN_APP_URL?.trim();
+  const appUrl = override || mailCredential.loginUrl?.trim();
+  if (!appUrl) {
+    throw unavailable('Email login is unavailable: configure EMAIL_LOGIN_APP_URL or MAIL_LOGIN_URL.', 'EMAIL_LOGIN_APP_URL_NOT_CONFIGURED');
+  }
+  let base: URL;
+  try { base = new URL(appUrl); } catch {
+    throw unavailable('Email login is unavailable: the configured app URL is invalid.', 'EMAIL_LOGIN_APP_URL_INVALID');
+  }
+  const localHttp = base.protocol === 'http:' && process.env.NODE_ENV !== 'production'
+    && ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname);
+  if ((base.protocol !== 'https:' && !localHttp) || base.username || base.password || base.search || base.hash) {
+    throw unavailable('Email login is unavailable: the configured app URL must use HTTPS, or loopback HTTP outside production, without credentials, query or fragment.', 'EMAIL_LOGIN_APP_URL_INVALID');
+  }
+  // Existing mail configuration may point to the sign-in page rather than its app root.
+  if (!override) base.pathname = base.pathname.replace(/\/login\/?$/i, '/');
+  return `${base.toString().replace(/\/$/, '')}/email-login`;
 }
 
 export interface CreateEmailLoginInput {
@@ -53,16 +68,11 @@ async function activeIdentity(userId: string, accountId: string) {
 
 async function validate(token: unknown) {
   if (typeof token !== 'string' || token.length > 8192) throw invalid();
-  const config = configuration();
+  if (typeof auth.secret !== 'string' || !auth.secret.trim()) throw unavailable();
   let claims: JwtPayload;
-  let keyId: string;
   try {
-    const header = jwt.decode(token, { complete: true })?.header;
-    if (!header || header.alg !== 'RS256' || typeof header.kid !== 'string'
-      || !Object.prototype.hasOwnProperty.call(config.publicKeys, header.kid)) throw invalid();
-    keyId = header.kid;
-    const result = jwt.verify(token, config.publicKeys[keyId], {
-      algorithms: ['RS256'], issuer: config.issuer, audience: config.audience,
+    const result = jwt.verify(token, auth.secret, {
+      algorithms: ['HS256'],
       clockTimestamp: Math.floor(Date.now() / 1000), clockTolerance: 0
     });
     if (typeof result === 'string') throw invalid();
@@ -73,7 +83,7 @@ async function validate(token: unknown) {
     || !Number.isSafeInteger(claims.iat) || !Number.isSafeInteger(claims.exp)
     || claims.exp! - claims.iat! !== EMAIL_LOGIN_TTL_SECONDS || claims.iat! > Math.floor(Date.now() / 1000)) throw invalid();
   const record = await EmailLoginCredentialModel.findOne({ credentialId: claims.jti, tokenDigest: digest(token),
-    userId: claims.sub, accountId: claims.account_id, keyId, revokedAt: { $exists: false },
+    userId: claims.sub, accountId: claims.account_id, revokedAt: { $exists: false },
     issuedAt: new Date(claims.iat! * 1000), expiresAt: new Date(claims.exp! * 1000) }).lean();
   if (!record || Date.now() >= record.expiresAt.getTime()) throw invalid();
   const user = await activeIdentity(claims.sub!, claims.account_id);
@@ -81,28 +91,38 @@ async function validate(token: unknown) {
 }
 
 export const emailLoginService = {
+  async issueEmailLoginLink(input: unknown) {
+    const badRequest = () => Object.assign(new Error('Valid userId, accountId and redirect are required'), { status: 400 });
+    if (!input || typeof input !== 'object' || Array.isArray(input)) throw badRequest();
+    const { userId, accountId, redirect } = input as Record<string, unknown>;
+    if (!validId(userId) || !validId(accountId)) throw badRequest();
+    let destination: string;
+    try { destination = emailLoginDestination(redirect); } catch { throw badRequest(); }
+    return emailLoginService.createEmailLoginLink({ userId, accountId, destination,
+      dispatchId: crypto.randomUUID(), mailCategory: 'internal-email-login' });
+  },
   async createEmailLoginLink(input: CreateEmailLoginInput) {
-    const config = configuration();
+    if (typeof auth.secret !== 'string' || !auth.secret.trim()) {
+      throw unavailable('Email login is unavailable: AUTH_SECRET is not configured.', 'AUTH_SECRET_NOT_CONFIGURED');
+    }
     const destination = emailLoginDestination(input.destination);
     await activeIdentity(input.userId, input.accountId);
     if (!input.dispatchId || !input.mailCategory) throw invalid();
-    const privateKey = process.env.EMAIL_LOGIN_PRIVATE_KEY;
-    if (!privateKey || !config.publicKeys[config.keyId]) throw unavailable();
-    let base: URL;
-    try { base = new URL(process.env.EMAIL_LOGIN_APP_URL || ''); } catch { throw unavailable(); }
-    if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash) throw unavailable();
+    const pageUrl = emailLoginPageUrl();
     const now = Math.floor(Date.now() / 1000);
     const credentialId = crypto.randomBytes(32).toString('hex');
-    const token = jwt.sign({ v: 1, purpose: 'email-login', sub: input.userId, account_id: input.accountId,
-      jti: credentialId, iat: now, exp: now + EMAIL_LOGIN_TTL_SECONDS }, privateKey,
-      { algorithm: 'RS256', keyid: config.keyId, issuer: config.issuer, audience: config.audience });
-    // Catch a mismatched deployment key pair before delivering an unusable link.
-    jwt.verify(token, config.publicKeys[config.keyId], { algorithms: ['RS256'], issuer: config.issuer, audience: config.audience });
+    let token: string;
+    try {
+      token = jwt.sign({ v: 1, purpose: 'email-login', sub: input.userId, account_id: input.accountId,
+        jti: credentialId, iat: now, exp: now + EMAIL_LOGIN_TTL_SECONDS }, auth.secret,
+        { algorithm: 'HS256' });
+    } catch { throw unavailable(); }
     const expiresAt = new Date((now + EMAIL_LOGIN_TTL_SECONDS) * 1000);
     await EmailLoginCredentialModel.create({ credentialId, userId: input.userId, accountId: input.accountId,
       dispatchId: input.dispatchId, mailCategory: input.mailCategory, tokenDigest: digest(token), destination,
-      issuedAt: new Date(now * 1000), expiresAt, keyId: config.keyId, useCount: 0 });
-    return { url: `${base.toString().replace(/\/$/, '')}/email-login#token=${encodeURIComponent(token)}`, expiresAt, credentialId };
+      issuedAt: new Date(now * 1000), expiresAt, useCount: 0 });
+    return { url: `${pageUrl}#token=${encodeURIComponent(token)}`,
+      external_token: token, expiresAt, credentialId, redirectPath: destination };
   },
   async inspect(token: unknown) {
     const { record, user, redirectPath } = await validate(token);
