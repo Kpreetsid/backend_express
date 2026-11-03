@@ -31,19 +31,19 @@ export function emailLoginDestination(value: unknown): string {
 }
 
 export function emailLoginPageUrl(): string {
-  const override = process.env.EMAIL_LOGIN_APP_URL?.trim();
+  const override = process.env.MAIL_LOGIN_URL?.trim();
   const appUrl = override || mailCredential.loginUrl?.trim();
   if (!appUrl) {
-    throw unavailable('Email login is unavailable: configure EMAIL_LOGIN_APP_URL or MAIL_LOGIN_URL.', 'EMAIL_LOGIN_APP_URL_NOT_CONFIGURED');
+    throw unavailable('Email login is unavailable: configure MAIL_LOGIN_URL or MAIL_LOGIN_URL.', 'MAIL_LOGIN_URL_NOT_CONFIGURED');
   }
   let base: URL;
   try { base = new URL(appUrl); } catch {
-    throw unavailable('Email login is unavailable: the configured app URL is invalid.', 'EMAIL_LOGIN_APP_URL_INVALID');
+    throw unavailable('Email login is unavailable: the configured app URL is invalid.', 'MAIL_LOGIN_URL_INVALID');
   }
   const localHttp = base.protocol === 'http:' && process.env.NODE_ENV !== 'production'
     && ['localhost', '127.0.0.1', '[::1]'].includes(base.hostname);
   if ((base.protocol !== 'https:' && !localHttp) || base.username || base.password || base.search || base.hash) {
-    throw unavailable('Email login is unavailable: the configured app URL must use HTTPS, or loopback HTTP outside production, without credentials, query or fragment.', 'EMAIL_LOGIN_APP_URL_INVALID');
+    throw unavailable('Email login is unavailable: the configured app URL must use HTTPS, or loopback HTTP outside production, without credentials, query or fragment.', 'MAIL_LOGIN_URL_INVALID');
   }
   // Existing mail configuration may point to the sign-in page rather than its app root.
   if (!override) base.pathname = base.pathname.replace(/\/login\/?$/i, '/');
