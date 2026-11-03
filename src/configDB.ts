@@ -93,6 +93,8 @@ export const cookieAuth = {
   domain: envString(process.env.AUTH_COOKIE_DOMAIN, '')
 };
 
+export const loginServiceKey = envString(process.env.INTERNAL_LOGIN_SERVICE_KEY, '');
+
 export const payloadCrypto = {
   enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, true),
   strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),

@@ -16,7 +16,7 @@ import notificationRoutes from './notification/notification.routes';
 import { logger, errorMiddleware } from './middlewares';
 import { healthRouter, metricsRouter } from './routes/health.routes';
 import { accountPermissionEventRoutes } from './routes/accountPermissionEvent.routes';
-import { supportLoginRoutes } from './user/support-login/support-login.service';
+import { supportLoginRoutes } from './user/support-login/support-login.routes';
 import { requestContextMiddleware } from './middlewares/requestContext';
 import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
 import { cryptoRouter } from './routes/crypto.routes';
