@@ -42,7 +42,6 @@ export const issueSupportLoginToken = async (input: unknown) => {
       throw Object.assign(new Error('1. Target identity and a support reason are required'), { status: 400 });
     }
     const { userId, accountId, actorId, reason } = input as Partial<SupportLoginInput>;
-    console.info({ userId, accountId, actorId, reason });
     if (!validId(userId) || !validId(accountId) || !validId(actorId) || typeof reason !== 'string' || reason.trim().length < 5 || reason.length > 500) {
       throw Object.assign(new Error('2. Target identity and a support reason are required'), { status: 400 });
     }
@@ -57,7 +56,7 @@ export const issueSupportLoginToken = async (input: unknown) => {
       reason: reason.trim(), issuedAt, expiresAt
     });
     // Metadata only: never log the credential or the reason's user-supplied text.
-    console.info('support-login-issued', { credentialId: String(row._id), userId, accountId, actorId, external_token, expiresAt });
+    console.info('support-login-issued', { credentialId: String(row._id), userId, accountId, actorId, expiresAt });
     return { external_token, expiresAt };
   } catch (error) {
     console.error('support-login-issued', { error });

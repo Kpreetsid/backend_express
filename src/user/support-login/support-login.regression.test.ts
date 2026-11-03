@@ -10,6 +10,7 @@ import * as config from '../../configDB';
 import { UserModel } from '../../models/user.model';
 import { AccountModel } from '../../models/account.model';
 import { rateLimiter } from '../../middlewares/rateLimits';
+import { requestContextMiddleware } from '../../middlewares/requestContext';
 
 const ids = { userId: '63a1492110c33e75c8232931', accountId: '63a1492110c33e75c8232932', actorId: '63a1492110c33e75c8232933' };
 const raw = `spt_${'a'.repeat(43)}`;
@@ -68,12 +69,14 @@ test('redemption denies expired credentials and inactive target identities', asy
 });
 
 test('issuance authenticates, validates, hashes the credential and forwards persistence errors', async t => {
+  const logs = t.mock.method(console, 'info', () => {});
   t.mock.property(config, 'loginServiceKey', 'k'.repeat(32));
   t.mock.method(UserModel, 'findOne', (async () => ({ email: 'current@example.test' })) as any);
   t.mock.method(AccountModel, 'findOne', (async () => ({})) as any);
   let stored: any;
   const create = t.mock.method(SupportLoginCredential, 'create', (async (row: any) => { stored = row; return { _id: 'credential' }; }) as any);
   const app = express();
+  app.use(requestContextMiddleware());
   app.use(express.json());
   app.use('/tokens', supportLoginRoutes());
   app.use((error: any, _req: any, res: any, _next: any) => res.status(error.status || 500).json({ status: false }));
@@ -83,7 +86,11 @@ test('issuance authenticates, validates, hashes the credential and forwards pers
   const request = (body: unknown, key = 'k'.repeat(32)) => fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/tokens`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'x-internal-service-key': key }, body: JSON.stringify(body)
   });
-  assert.equal((await request({ ...ids, reason: 'Support reason' }, 'wrong')).status, 401);
+  const unauthorized = await request({ ...ids, reason: 'Support reason' }, 'wrong');
+  assert.equal(unauthorized.status, 401);
+  assert.ok(logs.mock.calls.some(call => call.arguments[0] === 'support-login-response'
+    && (call.arguments[1] as any)?.correlationId === unauthorized.headers.get('x-correlation-id')
+    && (call.arguments[1] as any)?.statusCode === 401));
   for (const body of [{}, { ...ids, actorId: [] }, { ...ids, userId: { $ne: null } }, { ...ids, userId: `${ids.userId}\n` }, { ...ids, reason: '    a   ' }, { ...ids, reason: 'a'.repeat(501) }]) {
     assert.equal((await request(body)).status, 400);
   }
@@ -91,11 +98,19 @@ test('issuance authenticates, validates, hashes the credential and forwards pers
   const response = await request({ ...ids, reason: '  Support reason  ' });
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store');
+  const correlationId = response.headers.get('x-correlation-id');
+  assert.ok(correlationId);
   const { data } = await response.json() as any;
   assert.match(data.external_token, /^spt_[A-Za-z0-9_-]{43}$/);
   assert.equal(stored.digest, crypto.createHash('sha256').update(data.external_token).digest('hex'));
   assert.equal(stored.reason, 'Support reason');
   assert.equal(stored.expiresAt.getTime() - stored.issuedAt.getTime(), 300000);
+  const logged = JSON.stringify(logs.mock.calls.map(call => call.arguments));
+  assert.equal(logged.includes(data.external_token), false, 'raw credentials must never be logged');
+  assert.equal(logged.includes('Support reason'), false, 'support reasons must never be logged');
+  assert.ok(logs.mock.calls.some(call => call.arguments[0] === 'support-login-response'
+    && (call.arguments[1] as any)?.correlationId === correlationId
+    && (call.arguments[1] as any)?.statusCode === 200));
   create.mock.mockImplementation((async () => { throw new Error('database unavailable'); }) as any);
   assert.equal((await request({ ...ids, reason: 'Support reason' })).status, 500);
 });
