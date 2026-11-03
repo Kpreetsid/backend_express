@@ -7,6 +7,40 @@ import * as sessions from '../services/authentication.service';
 import { registerEmailLoginRoutes } from './email-login.routes';
 import { emailLoginService } from './email-login.service';
 import { EmailLoginCredentialModel } from './email-login.model';
+import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
+
+test('opening the API mail-login URL forwards to the app without exchanging a credential', async t => {
+  const previous = process.env.EMAIL_LOGIN_APP_URL;
+  process.env.EMAIL_LOGIN_APP_URL = 'http://localhost:4200/cmms';
+  const mode = process.env.NODE_ENV;
+  process.env.NODE_ENV = 'development';
+  t.after(() => {
+    if (previous === undefined) delete process.env.EMAIL_LOGIN_APP_URL; else process.env.EMAIL_LOGIN_APP_URL = previous;
+    if (mode === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = mode;
+  });
+  const exchange = t.mock.method(emailLoginService, 'exchange', async () => { throw Error('GET must not authenticate'); });
+  const app = express(); registerEmailLoginRoutes(app);
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise<void>(resolve => server.on('listening', resolve));
+  t.after(() => server.close());
+  const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/users/email-login#token=credential`, { redirect: 'manual' });
+  assert.equal(response.status, 302);
+  assert.equal(response.headers.get('location'), 'http://localhost:4200/cmms/email-login');
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
+  assert.equal(exchange.mock.callCount(), 0);
+});
+
+test('internal email issuance is no-store when authentication attempts are throttled', async t => {
+  t.mock.method(rateLimiter, 'authLimiter', (_req: any, res: any) => res.status(429).json({ status: false }));
+  const app = express(); registerEmailLoginRoutes(app);
+  const server = app.listen(0, '127.0.0.1');
+  await new Promise<void>(resolve => server.on('listening', resolve));
+  t.after(() => server.close());
+  const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/internal/email-login-tokens`, { method: 'POST' });
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+});
 
 test('exchange delegates validated identity to the existing session flow and errors are no-store', async t => {
   const userId = '63a1492110c33e75c8232931';
