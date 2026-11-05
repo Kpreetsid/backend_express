@@ -5,20 +5,28 @@ import { cookieService } from '../utils/cookie.helper';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
-const EXCLUDED_PATHS = [
-  '/api/users/login',
-  '/api/users/authenticate',
-  '/api/users/two-step/verify',
-  '/api/users/two-step/resend',
-  '/api/users/external_auth',
-  '/api/users/updatePassword',
-  '/api/registration',
-  '/api/reset-password'
-];
+const EXCLUDED_PATHS = new Set([
+  '/users/login', 
+  '/users/create_external_token',
+  '/users/authenticate', 
+  '/users/two-step/verify',
+  '/users/two-step/resend', 
+  '/users/external_auth', 
+  '/users/updatepassword',
+  '/registration', 
+  '/registration/sendemail', 
+  '/registration/verifyotp',
+  '/reset-password/send-verification-email', 
+  '/reset-password/verify-otp',
+  '/reset-password/change-password'
+]);
 
 const isExcludedPath = (req: Request): boolean => {
-  const path = (req.originalUrl || req.path || '').toLowerCase();
-  return EXCLUDED_PATHS.some((excluded) => path.includes(excluded.toLowerCase()));
+  // Match Express's case-insensitive path and optional trailing slash, never queries.
+  const path = (req.originalUrl || req.path || '').split('?')[0].toLowerCase().replace(/\/$/, '');
+  const base = (process.env.API_BASE_PATH || '/cmms_express').toLowerCase();
+  const mounts = ['/api/v1', '/api', base + '/api/v1', base + '/api'];
+  return mounts.some(mount => path.startsWith(mount + '/') && EXCLUDED_PATHS.has(path.slice(mount.length)));
 };
 
 const isCookieAuthenticatedRequest = (req: Request): boolean => {
