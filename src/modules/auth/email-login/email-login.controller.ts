@@ -41,7 +41,7 @@ export const exchangeEmailLogin = async (req: Request, res: Response) => {
     email: user.email,
     org_id: String(user.account_id),
     isExternal: false,
-    isInternal: true,
+    isInternal: false,
     redirectPath,
     userId: String(user._id)
   });
