@@ -21,6 +21,7 @@ import { tokenSessionStore } from "../../_cache/session/tokenSessionStore";
 import { clearAuthCookies, setAccessCookies } from "./authCookie.service";
 import { analysisFeatureService } from "../../masters/analysisFeature/analysisFeature.service";
 import { passwordExpiryNotice } from './password-expiry';
+import { twoStepService } from '../two-step/two-step.service';
 
 const persistAccessSession = async (
   token: string,
@@ -77,6 +78,10 @@ export const userAuthentication = async (req: Request, res: Response, next: Next
       if (!locationList || locationList.length === 0) {
         throw Object.assign(new Error('User does not have any location'), { status: 401 });
       }
+    }
+    if (userAccount[0].two_step_auth_enabled === true) {
+      const data = await twoStepService.issue(user, userAccount[0], 'login', sessionStartedAt);
+      return res.status(202).json({ status: true, message: 'Email verification required', data });
     }
     const { password: _, ...safeUser } = user.toObject();
     safeUser.id = safeUser._id;
@@ -177,6 +182,10 @@ export const userAuthenticationToken = async (req: Request, res: Response, next:
       if (!locationList || locationList.length === 0) {
         throw Object.assign(new Error('User does not have any location'), { status: 401 });
       }
+    }
+    if (userAccount[0].two_step_auth_enabled === true) {
+      const data = await twoStepService.issue(user, userAccount[0], 'authenticate', sessionStartedAt);
+      return res.status(202).json({ status: true, message: 'Email verification required', data });
     }
     const { password: _, ...safeUser } = user.toObject();
     safeUser.id = safeUser._id;
@@ -306,6 +315,11 @@ export const establishExternalSession = async (req: Request, res: Response, next
     const accountDetails = await companyService.getAllCompanies({ _id: userDetails.account_id });
     if (!accountDetails || accountDetails.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
+    }
+    if (accountDetails[0].two_step_auth_enabled === true) {
+      throw Object.assign(new Error('Please use password login to complete two-step authentication.'), {
+        status: 403, code: 'TWO_STEP_PASSWORD_LOGIN_REQUIRED'
+      });
     }
     let userRoleMenu: any = await rolesService.verifyUserRole(String(userDetails._id), String(userDetails.account_id));
     if (!userRoleMenu) {

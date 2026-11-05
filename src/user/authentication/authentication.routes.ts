@@ -3,9 +3,13 @@ import { authentication, authenticationToken, authenticationByToken, resetPasswo
 import { isAuthenticated, isLogOutAuthenticated, verifyEncryptedToken } from '../../_config/auth';
 import { rateLimiter } from '../../middlewares/rateLimits';
 import { checkPasswordExpire } from '../../middlewares/passwordExpire';
+import { verifyTwoStepAuthentication, resendTwoStepAuthentication } from '../two-step/two-step.controller';
 
 export default (router: express.Router) => {
     const userRouter = express.Router();
+    userRouter.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+    userRouter.post('/two-step/verify', rateLimiter.twoStepVerifyLimiter, verifyTwoStepAuthentication);
+    userRouter.post('/two-step/resend', rateLimiter.twoStepSendLimiter, resendTwoStepAuthentication);
     userRouter.post('/login', rateLimiter.authLimiter, checkPasswordExpire, authentication);
     userRouter.post('/authenticate', rateLimiter.authLimiter, authenticationToken);
     // Issuance is available only through the authorized Internal service.

@@ -8,6 +8,8 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EXCLUDED_PATHS = [
   '/api/users/login',
   '/api/users/authenticate',
+  '/api/users/two-step/verify',
+  '/api/users/two-step/resend',
   '/api/users/external_auth',
   '/api/users/updatePassword',
   '/api/registration',
