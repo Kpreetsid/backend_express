@@ -108,11 +108,9 @@ export function createTwoStepService(deps: TwoStepDependencies) {
       expiresAt: record.expiresAt, resendAvailableAt: record.nextSendAt };
   }
 
-  async function reserve(record: TwoStepRecord, user: any, account: any, mode: ResponseMode, sessionStartedAt: number,
-    key: string, resend: boolean) {
+  async function reserve(record: TwoStepRecord, user: any, account: any, mode: ResponseMode, sessionStartedAt: number, key: string, resend: boolean) {
     const now = deps.now();
-    if (+record.lockedUntil > now || +record.nextSendAt > now
-      || (record.deliveryState === 'pending' && +record.expiresAt > now)) throw limited();
+    if (+record.lockedUntil > now || +record.nextSendAt > now || (record.deliveryState === 'pending' && +record.expiresAt > now)) throw limited();
     const sendTimes = record.sendTimes.filter(time => +time > now - WINDOW);
     if (sendTimes.length >= MAX_SENDS) throw limited();
     const token = crypto.randomBytes(32).toString('base64url');
