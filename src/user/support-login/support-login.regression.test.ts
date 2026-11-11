@@ -125,3 +125,13 @@ test('throttled issuance responses remain uncacheable', async t => {
   assert.equal(response.status, 429);
   assert.equal(response.headers.get('cache-control'), 'no-store');
 });
+
+test('protected support GET and POST reject missing keys without hanging', async t => {
+  const app = express(); app.use(express.json()); app.use('/tokens', supportLoginRoutes());
+  app.use((error: any, _req: any, res: any, _next: any) => res.status(error.status || 500).json({ status: false }));
+  const server = app.listen(0, '127.0.0.1'); await new Promise<void>(resolve => server.on('listening', resolve)); t.after(() => server.close());
+  for (const method of ['GET', 'POST']) {
+    const response = await fetch(`http://127.0.0.1:${(server.address() as AddressInfo).port}/tokens`, { method, signal: AbortSignal.timeout(1000) });
+    assert.equal(response.status, 401); assert.equal(response.headers.get('cache-control'), 'no-store');
+  }
+});
