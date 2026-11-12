@@ -1,6 +1,12 @@
 import { getExternalData } from "../../../common/utils/external-api.helper";
 
 class ProcessorAPIService {
+    getSingleAssetHealthHistory = async (asset_id: string, token: string, user_id: any) => {
+        return await getExternalData('/single_asset_health_history/', 'POST', {
+            asset_id, start_date: null, end_date: null
+        }, token, String(user_id));
+    }
+
     deleteChildComponent = async (rootAssetId: string, assetId: string, token: string, userId: any, environment?: string) => {
         return await getExternalData('/asset-train-metadata/child-component/', 'DELETE', {
             root_asset_id: rootAssetId, asset_id: assetId, delete_endpoints: true
