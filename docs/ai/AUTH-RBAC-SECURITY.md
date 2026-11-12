@@ -24,3 +24,7 @@ Test missing/malformed/expired challenge, wrong code, cooldown/resend, failed ma
 ## External, email and support session boundary
 
 The shared establishExternalSession function in authentication.service.ts checks current account two_step_auth_enabled before role creation, tokens, refresh/session persistence or cookies. When enabled it returns 403 with TWO_STEP_PASSWORD_LOGIN_REQUIRED, directing the user to password plus email verification. Email exchange and both legacy/support external authentication call this boundary. Preserve this gate rather than treating possession of another login credential as completed two-step verification; verify each affected entry path and policy-change race with isolated tests.
+
+## Account policy administration
+
+`src/masters/company/company.routes.ts` mounts GET/PATCH `/two-step-auth` under the company path; `two-step-settings.controller.ts` owns exact-admin access, authenticated account scope, payload validation and policy revision/audit updates. Enabling requires the existing TWO_STEP_AUTH_SECRET prerequisite; never expose the secret. The policy applies to subsequent password logins and does not force existing sessions to log out. Preserve this explicit behavior rather than silently adding session revocation. The Angular account-security UI must not treat a selected admin-panel user as the policy owner.

@@ -6,7 +6,7 @@ Resolve code paths and commands in these guides against the CMMS_API root. Scope
 
 ## Project map
 
-- Local snapshot: feature/two-step-auth, HEAD d55f2b46, inspected 2026-11-12. Express 5.3, TypeScript 6, Mongoose 9.11, CommonJS package with NodeNext resolution and strict TypeScript. Confirm versions and branch before work.
+- Local structure inspected on feature/two-step-auth, 2026-11-12; check current HEAD at task start. Historical SHAs are retained in docs/ai provenance. Express 5.3, TypeScript 6, Mongoose 9.11, CommonJS package with NodeNext resolution and strict TypeScript. Confirm versions and branch before work.
 - src/app.ts owns middleware and API mounts; src/nonAuthRoutes.ts registers public user flows; src/server.ts starts the listener and initializes MongoDB, Redis, change streams, Socket.IO, cron and the user-log consumer.
 - Domain modules use routes/controllers/services in src/masters/, src/work/, src/user/, src/reports/ and src/transaction/. Models live in src/models/; shared infrastructure in src/_config/, src/_db/, src/_role/, src/_cache/, src/middlewares/ and src/utils/.
 - Two-step authentication is in src/user/two-step/; email-login and support-login are separate credential flows. See [auth](docs/ai/AUTH-RBAC-SECURITY.md).
@@ -36,3 +36,11 @@ npm run typecheck is static when its compiler is already installed. npm run buil
 Use $cmms-backend-engineering for discovery/mixed work; specialized skills cover API features, auth/permissions, email login, Mongoose, uploads, scheduler/mail, testing/debugging and read-only PR/deployment review. [Setup and examples](docs/ai/README.md).
 
 From a parent workspace chat, child skills may be absent from the available catalog. Read the relevant `.agents/skills/<name>/SKILL.md` and references directly in that case; do not assume registration or install global copies. Scale route/test/report checklists to the requested change: instruction-only edits need static link, reference, scope and whitespace validation, not endpoint execution.
+
+## Four-application Codex guidance
+
+This checkout is CMMS_API in the local workspace. Read [local map](docs/ai-suite/CURRENT-WORKSPACE.md), [suite index](docs/ai-suite/INDEX.md) and [project overlay](docs/ai-suite/PROJECT.md) for cross-application ownership. Existing `docs/ai/` and scoped AGENTS.md remain the project playbooks; downloaded snapshots never override current source. Read `../AGENTS.md` explicitly when available for coordinated work; a standalone clone does not require siblings.
+
+Use [$presage-cross-repo-change](.agents/skills/presage-cross-repo-change/SKILL.md) for authorized cross-application work. Shared and local pack skills live under `.agents/skills/`; read the relevant SKILL.md directly when it is absent from this chat's catalog. Instruction-only changes require static metadata/link/path/whitespace checks, not app startup or runtime tests. Preserve existing specialized skills rather than replacing them with pack copies.
+
+Use [skill ownership](docs/ai-suite/SKILL-ROUTING.md) to choose established project specialists over overlapping pack compatibility names. From the parent workspace load shared suite skills from the root once; local copies support standalone checkouts.

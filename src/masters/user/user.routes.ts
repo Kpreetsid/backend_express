@@ -5,9 +5,11 @@ import userLogRouters from './logs/logs.routes';
 import { validateParamId } from '../../middlewares/validate';
 import { userValidator } from './user.validator';
 import { validate } from '../../middlewares/validator.middleware';
+import { userProfileController } from './user-profile.controller';
 
 export default (router: express.Router) => {
     const userRouter = express.Router();
+    userRouter.patch('/profile', userProfileController.updateProfile);
     rolesRoutes(userRouter);
     userLogRouters(userRouter);
     userRouter.get('/', userController.getUsers);

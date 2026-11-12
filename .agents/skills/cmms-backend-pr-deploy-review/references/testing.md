@@ -41,3 +41,11 @@ Inspect import-time initialization before testing. Isolate DB/Redis/network/stor
 For endpoint changes cover success, malformed input, missing auth, wrong role/account, missing object, DB failure, replay/stale-version and partial side effects where relevant. Add a regression for a bug's trigger. For two-step use createTwoStepService's dependency seams and assert pending versus authenticated state.
 
 For instruction-only edits validate YAML/frontmatter, local links/source paths, reference consistency, Git visibility and whitespace; no build/server/runtime test is required. Report PASS/FAIL/NOT RUN with actual evidence and distinguish static validation from application behavior.
+
+## Email two-step test coverage
+
+The current package.json has no `test:two-step` script, and no dedicated two-step/settings test files were found in this checkout during this audit. Dedicated coverage is NOT CONFIGURED / NOT RUN. The password-security suite does not establish two-step policy, atomic consumption or pending-versus-authenticated session behavior. For a future behavior change, inspect current dependency seams and add isolated regression cases with mocked DB, sessions, clocks and mail; do not claim existing coverage or invoke a nonexistent script.
+
+## Profile update contracts
+
+Run `node --require ts-node/register/transpile-only --test src/masters/user/profile.routes.test.ts` from this repository, followed by `npm run typecheck`. The route tests use actual domain routers, sanitization and cache mutation wrapping with injected authenticated principals and isolated model/Redis operations. They cover self/tenant binding, account-admin denial, literal route ordering, unknown fields/operators/prototype keys, text and phone boundaries, safe projections, server-only timestamps, duplicate account names and persistence failures. They do not verify live MongoDB indexes, Redis freshness, JWT/cookie/CSRF or a deployed frontend. The new UI requires the corresponding profile PATCH endpoints to deploy first or together.

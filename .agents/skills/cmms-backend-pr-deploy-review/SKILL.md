@@ -5,6 +5,10 @@ description: "Use when requested to review CMMS_API diffs, pull requests or rele
 
 # Pull request, CI and deployment review
 
+## Task mode and reference ownership
+
+Resolve project paths and commands from this skill's owning repository root, even when the chat starts in CMMS-Production. Read the owning AGENTS.md and relevant scoped guides. Read-only reviews inspect and report without implementation; instruction-only changes use static metadata, link/path, reference-consistency and whitespace checks without app startup. Apply implementation and runtime-test steps below only to behavior changes. For local work prefer the corresponding canonical `docs/ai/` guide; bundled `references/` remain synchronized portable copies, not independent sources of truth.
+
 Apply these instructions to the **current checked-out repository branch**, not a remembered branch. Read repository-root `AGENTS.md` and the affected scoped guides when present. In a cross-project CMMS-Production task, also read the workspace and frontend guides explicitly; a standalone API clone does not require them. Bundled references remain usable with this skill outside the repository, but their snapshots never replace current source. Scale the procedure to the request: for read-only review inspect and report rather than edit; instruction-only work uses static metadata/link/reference/whitespace checks rather than runtime tests.
 
 ## Procedure

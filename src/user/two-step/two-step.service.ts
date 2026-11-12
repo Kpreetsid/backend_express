@@ -3,7 +3,7 @@ import { UserModel } from '../../models/user.model';
 import { AccountModel } from '../../models/account.model';
 import { TwoStepRecord, TwoStepStore, twoStepStore } from './two-step.model';
 import { twoStepMailer } from './two-step.mail';
-import { failure } from '../../middlewares';
+import { failure } from '../../middlewares/error-handler';
 
 const EXPIRY = 5 * 60_000;
 const COOLDOWN = 60_000;
