@@ -1,0 +1,3 @@
+interface:
+  display_name: "Authentication, Roles And Tenant Isolation"
+  short_description: "Guidance for auth-permissions in CMMS_API"
