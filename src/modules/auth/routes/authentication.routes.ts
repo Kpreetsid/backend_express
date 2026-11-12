@@ -1,5 +1,5 @@
 import express from 'express';
-import { authentication, authenticationToken, authenticationByToken, resetPassword, userLogOut, refreshAccessToken, getMe, authorizeFeature, externalToken, externalToken } from '../controllers/authentication.controller';
+import { authentication, authenticationToken, authenticationByToken, resetPassword, userLogOut, refreshAccessToken, getMe, authorizeFeature, externalToken } from '../controllers/authentication.controller';
 import { isAuthenticated, isLogOutAuthenticated, verifyEncryptedToken } from '../../../core/auth/auth.middleware';
 import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
 import { verifyTwoStepAuthentication, resendTwoStepAuthentication } from '../../../user/two-step/two-step.controller';

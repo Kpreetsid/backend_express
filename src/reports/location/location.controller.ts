@@ -1,9 +1,9 @@
-import { controllerCache } from '../../_cache/controllerCache.service';
+import { helperService } from '../../common/utils/helper';
 import { Request, Response, NextFunction } from 'express';
 import { locationReportService } from './location.service';
 import { get } from 'lodash';
-import { IUser } from '../../models/user.model';
-import { helperService } from '../../utils/helper';
+import { controllerCache } from '../../core/cache/controller-cache.service';
+import { IUser } from '../../modules/users/models/user.model';
 
 class LocationReportController {
 

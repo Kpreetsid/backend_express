@@ -1,8 +1,8 @@
-import { AssetModel } from '../../models/asset.model';
-import { ReportAssetModel } from '../../models/assetReport.model';
-import { LocationModel } from '../../models/location.model';
-import { ILocationReport, ReportLocationModel } from '../../models/locationReport.model';
-import { processorAPIService } from '../../api-processor';
+import { AssetModel } from "../../modules/assets/models/asset.model";
+import { processorAPIService } from "../../modules/assets/services/processor-api.service";
+import { LocationModel } from "../../modules/locations/models/location.model";
+import { ReportAssetModel } from "../../modules/reports/models/assetReport.model";
+import { ILocationReport, ReportLocationModel } from "../../modules/reports/models/locationReport.model";
 
 class LocationReportService {
 
