@@ -1,0 +1,3 @@
+interface:
+  display_name: "Email Login And Support Token Flows"
+  short_description: "Guidance for email-login in CMMS_API"

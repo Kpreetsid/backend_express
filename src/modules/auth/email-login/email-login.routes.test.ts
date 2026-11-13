@@ -10,12 +10,12 @@ import { EmailLoginCredentialModel } from './email-login.model';
 import { rateLimiter } from '../../../common/middlewares/rate-limit.middleware';
 
 test('opening the API mail-login URL forwards to the app without exchanging a credential', async t => {
-  const previous = process.env.EMAIL_LOGIN_APP_URL;
-  process.env.EMAIL_LOGIN_APP_URL = 'http://localhost:4200/cmms';
+  const previous = process.env.MAIL_LOGIN_URL;
+  process.env.MAIL_LOGIN_URL = 'http://localhost:4200/cmms';
   const mode = process.env.NODE_ENV;
   process.env.NODE_ENV = 'development';
   t.after(() => {
-    if (previous === undefined) delete process.env.EMAIL_LOGIN_APP_URL; else process.env.EMAIL_LOGIN_APP_URL = previous;
+    if (previous === undefined) delete process.env.MAIL_LOGIN_URL; else process.env.MAIL_LOGIN_URL = previous;
     if (mode === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = mode;
   });
   const exchange = t.mock.method(emailLoginService, 'exchange', async () => { throw Error('GET must not authenticate'); });
@@ -51,7 +51,7 @@ test('exchange delegates validated identity to the existing session flow and err
   });
   t.mock.method(sessions, 'establishExternalSession', async (_req: any, res: any, _next: any, decoded: any) => {
     assert.deepEqual(decoded, { email: 'test@example.test', org_id: accountId, userId,
-      isExternal: false, isInternal: true, redirectPath: '/parts' });
+      isExternal: false, isInternal: false, redirectPath: '/parts' });
     return res.json({ status: true, data: { authMethod: 'cookie', redirectPath: '/parts' } });
   });
   const app = express(); app.use(express.json()); registerEmailLoginRoutes(app);

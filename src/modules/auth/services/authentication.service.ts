@@ -316,6 +316,10 @@ export const establishExternalSession = async (req: Request, res: Response, next
     if (!accountDetails || accountDetails.length === 0) {
       throw Object.assign(new Error('User account not found'), { status: 404 });
     }
+    if (accountDetails[0].two_step_auth_enabled === true) {
+      throw Object.assign(new Error('Sign in with your password and email verification code.'),
+        { status: 403, code: 'TWO_STEP_PASSWORD_LOGIN_REQUIRED' });
+    }
     let userRoleMenu: any = await rolesService.verifyUserRole(String(userDetails._id), String(userDetails.account_id));
     if (!userRoleMenu) {
       userRoleMenu = await rolesService.createUserRole(userDetails.user_role, userDetails);

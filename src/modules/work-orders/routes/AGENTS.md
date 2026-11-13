@@ -1,0 +1,3 @@
+# Scoped work instructions
+
+Work orders and requests often affect parts, users, maps, comments, status histories, notifications, schedules and mail. Inspect `src/modules/work-orders/routes/work-orders.routes.ts`, `src/modules/work-orders/routes/order.routes.ts`, related services/models and relevant side effects before editing. Preserve status/priority enums in `src/modules/work-orders/models/workOrder.model.ts`, workflow invariants, tenant scoping, permission keys, soft delete, idempotent retries and frontend API compatibility. Test failed partial writes and concurrent status transitions when affected.

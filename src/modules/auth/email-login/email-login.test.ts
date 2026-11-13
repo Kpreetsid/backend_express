@@ -87,32 +87,32 @@ test('internal issuance fails closed for configuration, identity and database fa
 test('app base URLs preserve prefixes and permit HTTP only for loopback development', async t => {
   setup(t);
   for (const base of ['http://localhost:4200', 'http://127.0.0.1:4200/cmms/', 'http://[::1]:4200/cmms']) {
-    process.env.NODE_ENV = 'development'; process.env.EMAIL_LOGIN_APP_URL = base;
+    process.env.NODE_ENV = 'development'; process.env.MAIL_LOGIN_URL = base;
     const result = await issue();
     assert.equal(new URL(result.url).pathname, `${new URL(base).pathname.replace(/\/$/, '')}/email-login`);
   }
   for (const [mode, base] of [['production', 'http://localhost:4200'], ['development', 'http://evil.test'], ['development', 'https://u:p@example.test'], ['development', 'https://example.test/?x=1']]) {
-    process.env.NODE_ENV = mode; process.env.EMAIL_LOGIN_APP_URL = base;
+    process.env.NODE_ENV = mode; process.env.MAIL_LOGIN_URL = base;
     await assert.rejects(issue(), { status: 503 });
   }
 });
 
 test('missing app override uses the existing mail login URL and preserves its deployment prefix', async t => {
   setup(t);
-  delete process.env.EMAIL_LOGIN_APP_URL;
+  delete process.env.MAIL_LOGIN_URL;
   t.mock.property(config.mailCredential, 'loginUrl', 'https://example.test/cmms-staging');
   assert.equal(new URL((await issue()).url).pathname, '/cmms-staging/email-login');
   config.mailCredential.loginUrl = 'https://example.test/cmms/login/';
   assert.equal(new URL((await issue()).url).pathname, '/cmms/email-login');
   config.mailCredential.loginUrl = '';
-  await assert.rejects(issue(), error => (error as any).status === 503 && /EMAIL_LOGIN_APP_URL.*MAIL_LOGIN_URL/.test((error as Error).message));
+  await assert.rejects(issue(), error => (error as any).status === 503 && /MAIL_LOGIN_URL/.test((error as Error).message));
 });
 
 function setup(t: any) {
   const previous = { ...process.env };
   for (const name of ['EMAIL_LOGIN_ISSUER', 'EMAIL_LOGIN_AUDIENCE', 'EMAIL_LOGIN_ACTIVE_KID',
     'EMAIL_LOGIN_PRIVATE_KEY', 'EMAIL_LOGIN_PUBLIC_KEYS', 'LEGACY_EXTERNAL_AUTH_CUTOFF']) delete process.env[name];
-  process.env.EMAIL_LOGIN_APP_URL = 'https://example.test/cmms';
+  process.env.MAIL_LOGIN_URL = 'https://example.test/cmms';
   t.mock.property(config.auth, 'secret', 'existing-project-secret-for-email-tests');
   t.after(() => { process.env = previous; });
   const state: any = { records: [], userActive: true, accountActive: true };

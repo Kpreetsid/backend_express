@@ -12,6 +12,8 @@ const EXCLUDED_PATHS = new Set([
   '/users/two-step/verify',
   '/users/two-step/resend', 
   '/users/external_auth', 
+  '/users/email-login/inspect',
+  '/users/email-login/exchange',
   '/users/updatepassword',
   '/registration', 
   '/registration/sendemail', 

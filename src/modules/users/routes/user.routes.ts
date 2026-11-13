@@ -1,4 +1,5 @@
 import express from 'express';
+import { userProfileController } from '../controllers/user-profile.controller';
 import { userController } from '../controllers/user.controller';
 import rolesRoutes from './roles.routes';
 import userLogRouters from './logs.routes';
@@ -10,6 +11,7 @@ import { validate } from '../../../common/middlewares/validator.middleware';
 
 export default (router: express.Router) => {
     const userRouter = express.Router();
+    userRouter.patch('/profile', userProfileController.updateProfile);
     rolesRoutes(userRouter);
     userLogRouters(userRouter);
 
