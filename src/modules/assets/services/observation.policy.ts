@@ -30,7 +30,6 @@ export interface SanitizedObservationCreatePayload {
   top_level_asset_id: string;
   report_id?: string;
   alarmId?: number;
-  alarmStatus: boolean;
 }
 
 export type SanitizedObservationUpdatePayload = Pick<
@@ -59,7 +58,6 @@ export function sanitizeObservationCreatePayload(
     files: sanitizeObservationFiles(body.files, accountId),
     assetId: objectIdString(body.assetId, 'Asset ID'),
     locationId: objectIdString(body.locationId, 'Location ID'),
-    alarmStatus: booleanValue(body.alarmStatus, 'Alarm status'),
     top_level_asset_id: objectIdString(body.top_level_asset_id, 'Top level asset ID')
   };
 
@@ -249,15 +247,15 @@ function enumValue<T extends readonly string[]>(value: unknown, allowed: T, labe
   return normalized as T[number];
 }
 
-function booleanValue(value: unknown, label: string): boolean {
-  if (typeof value === 'boolean') return value;
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (normalized === 'true') return true;
-    if (normalized === 'false') return false;
-  }
-  throw badRequest(`${label} must be a boolean`);
-}
+// function booleanValue(value: unknown, label: string): boolean {
+//   if (typeof value === 'boolean') return value;
+//   if (typeof value === 'string') {
+//     const normalized = value.trim().toLowerCase();
+//     if (normalized === 'true') return true;
+//     if (normalized === 'false') return false;
+//   }
+//   throw badRequest(`${label} must be a boolean`);
+// }
 
 function requiredString(value: unknown, label: string, maxLength: number): string {
   if (typeof value !== 'string') throw badRequest(`${label} must be a string`);
