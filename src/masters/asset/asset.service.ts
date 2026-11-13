@@ -243,8 +243,26 @@ class AssetService {
     return rootNodes.map((root) => attachChildren(root));
   };
 
-  async updateAssetImageById(id: any, image_path: string, user_id: any) {
-    return await AssetModel.findOneAndUpdate({ _id: id }, { image_path: image_path, updatedBy: user_id }, { returnDocument: 'after' });
+  async updateAssetImageById(
+    id: any,
+    payload: { image_path?: string; images?: object[] },
+    user_id: any,
+    account_id: any,
+  ) {
+    const update: any = { $set: { updatedBy: user_id } };
+    if (payload.image_path !== undefined) {
+      update.$set.image_path = payload.image_path;
+    }
+    if (payload.images?.length) {
+      // The caller sends only newly uploaded attachments. Append atomically so
+      // simultaneous uploads do not overwrite one another's attachments.
+      update.$push = { images: { $each: payload.images } };
+    }
+    return await AssetModel.findOneAndUpdate(
+      { _id: id, account_id, visible: true },
+      update,
+      { returnDocument: 'after', runValidators: true },
+    );
   }
 
   async removeById(match: any, userID: any, confirmedIds?: string[]) {
