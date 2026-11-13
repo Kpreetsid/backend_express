@@ -54,14 +54,7 @@ export const database = {
   databaseName: envString(process.env.DB_NAME, 'cmms'),
   authSource: process.env.DB_AUTH_SOURCE || 'admin',
   maxPoolSize: envNumber(process.env.DB_MAX_POOL_SIZE, 100),
-  minPoolSize: envNumber(process.env.DB_MIN_POOL_SIZE, 10),
-  directConnection: envBoolean(process.env.DB_DIRECT_CONNECTION, false),
-  retryWrites: envBoolean(process.env.DB_RETRY_WRITES, false),
-  autoIndex: envBoolean(process.env.DB_AUTO_INDEX, environment.type !== 'production'),
-  connectTimeoutMS: envNumber(process.env.DB_CONNECT_TIMEOUT_MS, 10000),
-  serverSelectionTimeoutMS: envNumber(process.env.DB_SERVER_SELECTION_TIMEOUT_MS, 5000),
-  socketTimeoutMS: envNumber(process.env.DB_SOCKET_TIMEOUT_MS, 45000),
-  maxIdleTimeMS: envNumber(process.env.DB_MAX_IDLE_TIME_MS, 60000)
+  minPoolSize: envNumber(process.env.DB_MIN_POOL_SIZE, 10)
 };
 
 export const server = {
@@ -100,6 +93,8 @@ export const cookieAuth = {
   domain: envString(process.env.AUTH_COOKIE_DOMAIN, '')
 };
 
+export const loginServiceKey = envString(process.env.INTERNAL_LOGIN_SERVICE_KEY, '');
+
 export const payloadCrypto = {
   enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, true),
   strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),
@@ -128,10 +123,8 @@ export const cacheConfig = {
 };
 
 export const mailCredential = {
-  service: process.env.MAIL_SERVICE!,
   host: process.env.MAIL_HOST!,
   port: parseInt(process.env.MAIL_PORT!),
-  secure: process.env.MAIL_SECURE === 'true',
   user: process.env.MAIL_USER!,
   pass: process.env.MAIL_PASS!,
   from: process.env.MAIL_FROM!,

@@ -16,6 +16,7 @@ import notificationRoutes from './notification/notification.routes';
 import { logger, errorMiddleware } from './middlewares';
 import { healthRouter, metricsRouter } from './routes/health.routes';
 import { accountPermissionEventRoutes } from './routes/accountPermissionEvent.routes';
+import { supportLoginRoutes } from './user/support-login/support-login.routes';
 import { requestContextMiddleware } from './middlewares/requestContext';
 import { mongoSanitizeMiddleware } from './middlewares/mongoSanitize';
 import { cryptoRouter } from './routes/crypto.routes';
@@ -25,7 +26,6 @@ import { csrfProtection } from './middlewares/csrf.middleware';
 import { authenticatedStatic } from './middlewares/authenticatedStatic';
 import { opcuaRoutes } from './routes/opcua.routes';
 import { knowledgeBaseRoutes } from './knowledge-base/knowledge-base.routes';
-import { guidePublishingRoutes } from './knowledge-base/knowledge-base.publishing.routes';
 
 const app: Express = express();
 app.set('trust proxy', 1);
@@ -64,7 +64,9 @@ const uploadDirs = [
   'work_order'
 ];
 
-app.use('/', authenticatedStatic(path.join(__dirname, '../uploadFiles')));
+app.use('/', authenticatedStatic(path.join(__dirname, '../uploadFiles'), {
+  excludedTopLevelDirectories: ['knowledge_base']
+}));
 uploadDirs.forEach((dir) => {
   const dirPath = path.join(__dirname, '../uploadFiles', dir);
   app.use('/', authenticatedStatic(dirPath));
@@ -83,6 +85,7 @@ app.use('/metrics', metricsRouter);
 const apiRouter: Router = Router();
 apiRouter.use('/crypto', cryptoRouter);
 apiRouter.use('/internal/account-permissions', accountPermissionEventRoutes());
+apiRouter.use('/internal/support-login-tokens', supportLoginRoutes());
 apiRouter.use('/', routerIndex());
 apiRouter.use('/upload', isAuthenticated, uploadRoutes());
 apiRouter.use('/master', isAuthenticated, masterRoutes());
@@ -92,7 +95,6 @@ apiRouter.use('/reports', isAuthenticated, reportsRoutes());
 apiRouter.use('/map', isAuthenticated, transactionRoutes());
 apiRouter.use('/notifications', isAuthenticated, notificationRoutes);
 apiRouter.use('/knowledge-base', isAuthenticated, knowledgeBaseRoutes());
-apiRouter.use('/internal/knowledge-base', guidePublishingRoutes());
 
 const apiBasePath = process.env.API_BASE_PATH || '/cmms_express';
 app.use(['/api/v1', '/api', `${apiBasePath}/api/v1`, `${apiBasePath}/api`], apiRouter);

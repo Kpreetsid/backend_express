@@ -3,9 +3,7 @@ import path from 'node:path';
 import { Types } from 'mongoose';
 import { KnowledgeBaseGuide, KnowledgeBaseGuideModel } from './knowledge-base.model';
 
-export const guideFilesDirectory = (): string => path.resolve(
-  process.env.KNOWLEDGE_BASE_FILES_DIR || path.join(__dirname, '../../knowledge_base')
-);
+export const guideFilesDirectory = (): string => path.resolve(path.join(__dirname, '../../uploadFiles/knowledge_base'));
 
 const unavailable = (): Error => Object.assign(new Error('This guide is unavailable.'), { status: 404 });
 

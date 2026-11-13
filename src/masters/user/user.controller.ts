@@ -10,6 +10,9 @@ import { mailerService } from '../../_config/mailer';
 import { helperService } from '../../utils/helper';
 import { notificationService } from '../../utils/notification.service';
 import { subscriptionLimitService } from '../company/subscriptionLimit.service';
+import { validateNewPassword } from '../../user/verification/verification-challenge.service';
+import { clearAuthCookies } from '../../user/authentication/authCookie.service';
+import { refreshTokenService } from '../../user/authentication/refreshToken.service';
 
 class UserController {
 
@@ -149,9 +152,10 @@ class UserController {
 
       const isCorrect = await passwordService.comparePassword(password, userData.password);
       if (!isCorrect) throw Object.assign(new Error("Incorrect current password"), { status: 400 });
-      userData.password = newPassword;
-      userData.passwordExpiredAt = new Date();
-      await usersService.updateUserPassword(user_id, userData);
+      validateNewPassword(newPassword, confirmNewPassword);
+      await usersService.updateUserPassword(user_id, newPassword, account_id);
+      clearAuthCookies(res);
+      refreshTokenService.clearCookie(res);
       res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
       next(error);
@@ -160,20 +164,15 @@ class UserController {
 
   async changeUserPassword(req: Request, res: Response, next: NextFunction) {
     try {
-      const { email, newPassword, confirmNewPassword } = req.body;
+      const { email, resetToken, newPassword, confirmNewPassword } = req.body;
       if (!email || !newPassword || !confirmNewPassword)
         throw Object.assign(new Error("Email, new password and confirm password are required"), { status: 400 });
       if (newPassword !== confirmNewPassword)
         throw Object.assign(new Error("Passwords do not match"), { status: 400 });
 
-      const userData = await usersService.getAllUsers({ email, user_status: "active" });
-      if (!userData.length) throw Object.assign(new Error("User not found"), { status: 404 });
-      const otpExists = await resetPasswordService.verifyOTPExists({ email });
-      if (!otpExists) throw Object.assign(new Error("OTP has expired. Please request a new one."), { status: 410 });
-      userData[0].password = newPassword;
-      userData[0].passwordExpiredAt = new Date();
-      await usersService.updateUserPassword(`${userData[0]._id}`, userData[0]);
-      await resetPasswordService.deleteVerificationCode({ email });
+      await resetPasswordService.completeReset({ email, token: resetToken, password: newPassword, confirmation: confirmNewPassword });
+      clearAuthCookies(res);
+      refreshTokenService.clearCookie(res);
       res.status(200).json({ status: true, message: "User password updated successfully" });
     } catch (error) {
       next(error);

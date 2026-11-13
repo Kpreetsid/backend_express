@@ -28,11 +28,20 @@ const remainingTtlSeconds = (expiresAt: unknown): number => {
 const getAccessSession = async (token: string, decoded: JwtPayload): Promise<TokenSessionRecord | null> => {
   const cachedSession = await tokenSessionStore.getAccessSession(token);
   if (cachedSession) {
+    // Expiry dates are not revocation timestamps. Persistence remains authoritative
+    // even when a password change could not evict a stale Redis entry.
+    const persisted = await TokenModel.exists({ _id: token, principalType: 'user', userId: decoded.id,
+      expiresAt: { $gt: new Date() } }).read('primary');
+    if (!persisted) {
+      await tokenSessionStore.deleteAccessSession(token);
+      return null;
+    }
     return cachedSession;
   }
 
   const tokenDocument: any = await TokenModel
     .findOne({ _id: token, principalType: 'user' })
+    .read('primary')
     .lean();
   if (!tokenDocument) {
     return null;

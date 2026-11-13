@@ -2,7 +2,7 @@ import { MailerService } from "../../_config/mailer";
 import { companyService } from "../../masters/company/company.service";
 import { usersService } from "../../masters/user/user.service";
 import { IAccount } from "../../models/account.model";
-import { VerificationCodeModel } from "../../models/userVerification.model";
+import { verificationChallenges, verificationEmail, validateNewPassword } from '../verification/verification-challenge.service';
 import { withTransaction } from "../../utils/transaction.helper";
 
 class RegistrationService {
@@ -12,18 +12,13 @@ class RegistrationService {
     this.mailerService = new MailerService();
   }
   async verifyOTPCode(body: any) {
-    const otpExists = await VerificationCodeModel.findOne({ email: body.email });
-    if (!otpExists) {
-      throw Object.assign(new Error('OTP has expired. Please request a new one.'), { status: 410 });
-    }
-    if (otpExists.code !== body.verificationCode.toString()) {
-      throw Object.assign(new Error('invalid OTP (One Time Password)'), { status: 400 });
-    }
+    body.email = verificationEmail(body.email);
+    validateNewPassword(body.password);
+    await verificationChallenges.consumeOtp(body.email, body.verificationCode, 'registration');
 
     let createdAccountId: any = null;
     try {
       return await withTransaction(async (session) => {
-        const userVerification = otpExists;
         const accountBody = {
           account_name: body.account_name,
           type: body.type,
@@ -46,7 +41,6 @@ class RegistrationService {
         }
         
         await this.mailerService.sendRegistrationConfirmation(userDetails.userDetails, account);
-        await userVerification.deleteOne({ session });
         return userDetails;
       });
     } catch (error) {
@@ -64,7 +58,7 @@ class RegistrationService {
   }
 
   async emailVerificationCode(match: any) {
-    return await this.mailerService.sendVerificationCode(match);
+    return await this.mailerService.sendVerificationCode(match, 'registration');
   }
 }
 

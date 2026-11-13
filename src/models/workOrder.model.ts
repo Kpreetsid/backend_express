@@ -110,6 +110,7 @@ export interface ILaborEntry {
   vendor_name?: string;
   work_date?: Date;
   hours: number;
+  labor_cost?: number | null;
   notes?: string;
   user?: any;
 }
@@ -119,6 +120,7 @@ const LaborEntrySchema = new Schema<ILaborEntry>({
   vendor_name: { type: String, trim: true },
   work_date: { type: Date },
   hours: { type: Number, required: true },
+  labor_cost: { type: Number, min: 0, validate: { validator: (value: number | null) => value == null || Number.isFinite(value), message: 'Labor cost must be a finite non-negative number' } },
   notes: { type: String, trim: true }
 }, { _id: false, versionKey: false });
 

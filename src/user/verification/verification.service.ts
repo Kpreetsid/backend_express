@@ -1,5 +1,5 @@
 import { MailerService } from "../../_config/mailer";
-import { VerificationCodeModel } from "../../models/userVerification.model";
+import { verificationChallenges } from './verification-challenge.service';
 
 class VerificationService {
     private mailerService: MailerService;
@@ -9,19 +9,12 @@ class VerificationService {
     }
 
     async sendVerificationEmailCode (match: { email: string; firstName: string; lastName: string }) {
-        return await this.mailerService.sendVerificationCode(match);
-    }
-    
-    async verifyOTPExists (match: { email: string; firstName: string; lastName: string }) {
-        return await VerificationCodeModel.findOne(match);
+        return await this.mailerService.sendVerificationCode(match, 'email-verification');
     }
     
     async verifyUserOTP (match: { email: string; firstName: string; lastName: string; code: string }) {
-        return await VerificationCodeModel.findOne(match);
-    }
-    
-    async deleteVerificationCode (match: { email: string }) {
-        return await VerificationCodeModel.deleteOne(match);
+        await verificationChallenges.consumeOtp(match.email, match.code, 'email-verification');
+        return true;
     }
 }
 

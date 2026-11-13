@@ -2,6 +2,7 @@ import { AssetModel } from '../../models/asset.model';
 import { ReportAssetModel } from '../../models/assetReport.model';
 import { LocationModel } from '../../models/location.model';
 import { ILocationReport, ReportLocationModel } from '../../models/locationReport.model';
+import { processorAPIService } from '../../api-processor';
 
 class LocationReportService {
 
@@ -43,7 +44,7 @@ class LocationReportService {
     return result;
   };
 
-  async createLocationReport(location_id: string, user: any): Promise<any> {
+  async createLocationReport(location_id: string, user: any, token: string): Promise<any> {
     const locationIds = await this.fetchAllChildLocationIds(location_id, `${user.account_id}`);
     locationIds.push(location_id);
     const assets = await AssetModel.find({ locationId: { $in: locationIds }, account_id: user.account_id, top_level: true, visible: true });
@@ -54,7 +55,7 @@ class LocationReportService {
       const [latestReport] = await ReportAssetModel.find({ top_level_asset_id: asset._id, accountId: user.account_id }).sort({ createdOn: -1 }).populate([{ path: 'userId', model: "Schema_User", select: 'firstName lastName email username user_role user_profile_img user_status' }, { path: 'locationId', model: "Schema_Location", select: 'id location_name location_type top_level parent_id visible' }, { path: 'assetId', model: "Schema_Asset", select: 'id asset_name asset_type asset_model top_level parent_id visible' }]).limit(1);
       return latestReport || null;
     }));
-    const validReports = reportList.filter(Boolean);
+    const validReports: any[] = reportList.filter(Boolean);
     if (validReports.length === 0) {
       throw Object.assign(new Error('No asset report found under this location.'), { status: 404 });
     }
@@ -76,9 +77,15 @@ class LocationReportService {
     ];
 
     const subLocationMap: Record<string, any> = {};
-    validReports.forEach((report: any) => {
+    const healthFlags: Record<string, string> = {
+      Critical: '1', Danger: '2', Alert: '3', Healthy: '4', 'Not Defined': '5'
+    };
+    for (const report of validReports) {
       const locationId = report?.locationId?._id;
-      const health = report.EquipmentHealth || '1';
+      const healthHistory = await processorAPIService.getSingleAssetHealthHistory(
+        String(report.top_level_asset_id), token, user._id
+      );
+      const health = healthFlags[healthHistory?.data?.assetHealth] || '5';
       const faults = report.faultData || [];
 
       switch (health) {
@@ -113,7 +120,7 @@ class LocationReportService {
         location_name: report?.locationId?.location_name,
         fault_data: report?.faultData,
         endpointRMSData: report?.endpointRMSData,
-        healthFlag: report?.EquipmentHealth,
+        healthFlag: health,
         locationId,
         asset_health_history: report?.asset_health_history || this.getAssetHealthHistory(),
         dummyList: this.getDummyMonthList().map((month: any) => {
@@ -121,7 +128,7 @@ class LocationReportService {
           return month;
         })
       });
-    });
+    }
 
     for (const loc of Object.values(subLocationMap)) {
       const conditionSummary = assetConditionSummaryData.map(item => ({ ...item, value: { ...item.value, value: 0 } }));
