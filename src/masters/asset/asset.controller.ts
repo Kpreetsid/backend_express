@@ -349,31 +349,32 @@ class AssetController {
   updateAssetImage = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
     try {
       const { account_id, _id: user_id } = get(req, "user", {}) as IUser;
-      const {
-        params: { id },
-      } = req;
-      const { image_path } = req.body;
-      if (!image_path) {
-        throw Object.assign(new Error("Image path is required"), {
-          status: 400,
-        });
+      const { image_path, images } = req.body || {};
+      if (image_path !== undefined && (typeof image_path !== 'string' || !image_path.trim())) {
+        throw Object.assign(new Error("Image path must be a non-empty string"), { status: 400 });
       }
-      const dataExists: any = await assetService.getAllAssets({
-        _id: helperService.validateObjectId(String(id)),
+      if (images !== undefined && (!Array.isArray(images) || !images.length || images.length > 12
+        || images.some((image: any) => !image || typeof image !== 'object' || Array.isArray(image)
+          || typeof image.fileName !== 'string' || !image.fileName.trim()))) {
+        throw Object.assign(new Error("Images must contain 1 to 12 uploaded attachments with file names"), { status: 400 });
+      }
+      if (image_path === undefined && images === undefined) {
+        throw Object.assign(new Error("Image path or attachments are required"), { status: 400 });
+      }
+
+      const updatedAsset = await assetService.updateAssetImageById(
+        helperService.validateObjectId(String(req.params.id)),
+        { image_path: image_path?.trim(), images },
+        user_id,
         account_id,
-        visible: true,
-      });
-      if (!dataExists || dataExists.length === 0) {
+      );
+      if (!updatedAsset) {
         throw Object.assign(new Error("Asset not found"), { status: 404 });
       }
-      await assetService.updateAssetImageById(
-        helperService.validateObjectId(String(id)),
-        image_path,
-        user_id,
-      );
-      res
-        .status(200)
-        .json({ status: true, message: "Asset image updated successfully" });
+      res.status(200).json({
+        status: true,
+        message: images ? "Asset attachments added successfully" : "Asset image updated successfully",
+      });
     } catch (error) {
       next(error);
     }
