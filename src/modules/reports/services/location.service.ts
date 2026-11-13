@@ -2,6 +2,7 @@ import { AssetModel } from '../../assets/models/asset.model';
 import { ReportAssetModel } from '../models/assetReport.model';
 import { LocationModel } from '../../locations/models/location.model';
 import { ILocationReport, ReportLocationModel } from '../models/locationReport.model';
+import { processorAPIService } from '../../assets/services/processor-api.service';
 
 class LocationReportService {
   private readonly reportLimit = 2000;
@@ -82,7 +83,7 @@ class LocationReportService {
     return result;
   }
 
-  async createLocationReport(locationId: string, user: any): Promise<any> {
+  async createLocationReport(locationId: string, user: any, token: string): Promise<any> {
     const rootLocation = await LocationModel.findOne({
       _id: locationId,
       account_id: user.account_id,
@@ -149,11 +150,18 @@ class LocationReportService {
     const assetConditionSummaryData = this.emptyConditionSummary();
     const assetFaultSummaryData = this.emptyFaultSummary();
     const subLocationMap: Record<string, any> = {};
+    const healthFlags: Record<string, string> = {
+      Critical: '1', Danger: '2', Alert: '3', Healthy: '4', 'Not Defined': '5'
+    };
 
-    validReports.forEach((report: any) => {
+    for (const report of validReports) {
       const reportLocationId = String(report.locationId._id || report.locationId.id || '');
-      if (!reportLocationId) return;
-      const health = String(report.EquipmentHealth || '1');
+      if (!reportLocationId) continue;
+
+      const healthHistory = await processorAPIService.getSingleAssetHealthHistory(
+        String(report.top_level_asset_id), token, user._id
+      );
+      const health = healthFlags[healthHistory?.data?.assetHealth] || '5';
       const faults = Array.isArray(report.faultData) ? report.faultData : [];
       this.incrementCondition(assetConditionSummaryData, health);
       this.incrementFaults(assetFaultSummaryData, faults);
@@ -180,7 +188,7 @@ class LocationReportService {
           : this.getAssetHealthHistory(),
         dummyList: this.getDummyMonthList().map((month: any) => ({ ...month, status: '1' }))
       });
-    });
+    }
 
     for (const location of Object.values(subLocationMap)) {
       const conditionSummary = this.emptyConditionSummary();

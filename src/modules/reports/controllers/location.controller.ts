@@ -36,7 +36,8 @@ class LocationReportController {
       }
       const validatedLocationId = helperService.validateObjectId(String(location_id));
       await assertLocationAccess(user, validatedLocationId);
-      const data = await locationReportService.createLocationReport(String(validatedLocationId), user);
+      const userToken = get(req, 'userToken', '') as string;
+      const data = await locationReportService.createLocationReport(String(validatedLocationId), user, userToken);
       if (!data) {
         throw Object.assign(new Error('Report not found'), { status: 404 });
       }
