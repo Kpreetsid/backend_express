@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 
+export const failure = (status: number, code: string, message: string) => Object.assign(new Error(message), { status, code });
+
 export const errorMiddleware = (err: any, req: Request, res: Response, next: NextFunction): Response | void => {
   if (res.headersSent) {
     return next(err);

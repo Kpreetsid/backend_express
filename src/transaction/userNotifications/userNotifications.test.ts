@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Types } from 'mongoose';
-import { MapUserAssetLocationModel } from '../models/mapUserLocation.model';
-import { UserModel } from '../models/user.model';
-import { AssetModel } from '../models/asset.model';
+import { MapUserAssetLocationModel } from '../../models/mapUserLocation.model';
+import { UserModel } from '../../models/user.model';
+import { AssetModel } from '../../models/asset.model';
 
 const accountId = '64a000000000000000000001';
 const userId = '64a000000000000000000002';
@@ -23,7 +23,7 @@ test('new mappings default every channel severity to false without changing lega
 });
 
 test('notification patches accept only known nonempty boolean leaves', () => {
-  const { notificationPatch } = require('./userNotifications');
+  const { notificationPatch } = require('./index');
   assert.deepEqual(notificationPatch({ notifications: { email: { alert: false }, sms: { critical: true } } }), {
     'notifications.email.alert': false, 'notifications.sms.critical': true
   });
@@ -38,7 +38,7 @@ test('notification patches accept only known nonempty boolean leaves', () => {
 });
 
 test('legacy normalization ignores legacy mail flags and returns exactly twelve booleans', () => {
-  const { normalizeNotifications } = require('./userNotifications');
+  const { normalizeNotifications } = require('./index');
   const value = normalizeNotifications({ email: { alert: true, danger: 'true' }, push: null });
   assert.equal(value.email.alert, true);
   assert.equal(value.email.danger, false);
@@ -47,7 +47,7 @@ test('legacy normalization ignores legacy mail flags and returns exactly twelve 
 });
 
 test('GET returns only tenant asset assignments with hierarchy context and normalized legacy notifications', async t => {
-  const { getUserNotifications } = require('./userNotifications');
+  const { getUserNotifications } = require('./index');
   t.mock.method(UserModel, 'findOne', (filter: any) => {
     assert.deepEqual(filter, { _id: userId, account_id: accountId }); return query({ _id: userId });
   });
@@ -69,7 +69,7 @@ test('GET returns only tenant asset assignments with hierarchy context and norma
 });
 
 test('GET returns 404 for nonexistent or foreign users, but an empty assigned list is valid', async t => {
-  const { getUserNotifications } = require('./userNotifications');
+  const { getUserNotifications } = require('./index');
   t.mock.method(UserModel, 'findOne', () => query(null));
   await assert.rejects(getUserNotifications(accountId, userId), (e: any) => e.status === 404);
   t.mock.method(UserModel, 'findOne', () => query({ _id: userId }));
@@ -78,7 +78,7 @@ test('GET returns 404 for nonexistent or foreign users, but an empty assigned li
 });
 
 test('PATCH updates only supplied notification leaves with validators and no legacy flag writes', async t => {
-  const { patchUserNotifications } = require('./userNotifications');
+  const { patchUserNotifications } = require('./index');
   const mapping = { _id: mappingId, userId, assetId, sendMail: true, alert: true, notifications: { email: { alert: true } } };
   t.mock.method(MapUserAssetLocationModel, 'findOne', (filter: any) => {
     assert.equal(filter._id, mappingId);
@@ -105,7 +105,7 @@ test('PATCH updates only supplied notification leaves with validators and no leg
 });
 
 test('PATCH rejects tenant conflicts, missing users, invisible assets, and location-only mappings before any write', async t => {
-  const { patchUserNotifications } = require('./userNotifications');
+  const { patchUserNotifications } = require('./index');
   let mapping: any = { _id: mappingId, userId, assetId };
   let user: any = { _id: userId };
   let asset: any = { _id: assetId, asset_name: 'Motor' };
@@ -126,7 +126,7 @@ test('PATCH rejects tenant conflicts, missing users, invisible assets, and locat
 });
 
 test('channel saves across assignments preserve other channels and legacy mail values', async t => {
-  const { patchUserNotifications } = require('./userNotifications');
+  const { patchUserNotifications } = require('./index');
   const secondMappingId = '64a000000000000000000007';
   const mappings = new Map([mappingId, secondMappingId].map(id => [id, {
     _id: id, userId, assetId, account_id: accountId,
@@ -159,7 +159,7 @@ test('channel saves across assignments preserve other channels and legacy mail v
 });
 
 test('permission guard requires authenticated tenant and capped menu view/edit including admin panel', () => {
-  const { notificationPermission } = require('./userNotifications');
+  const { notificationPermission } = require('./index');
   const req: any = { user: { account_id: accountId }, roleMenu: {
     master_admin_panel: { view: true }, asset_mail: { view: true, edit: false }
   } };
@@ -178,7 +178,7 @@ test('permission guard requires authenticated tenant and capped menu view/edit i
 });
 
 test('invalid target IDs and invalid patches fail before accessing persistence', async t => {
-  const { getUserNotifications, patchUserNotifications } = require('./userNotifications');
+  const { getUserNotifications, patchUserNotifications } = require('./index');
   t.mock.method(UserModel, 'findOne', () => { assert.fail('must validate before querying users'); });
   t.mock.method(MapUserAssetLocationModel, 'findOne', () => { assert.fail('must validate before querying mappings'); });
   for (const id of [undefined, '', 'invalid', [userId], { $ne: null }]) {
@@ -190,7 +190,7 @@ test('invalid target IDs and invalid patches fail before accessing persistence',
 });
 
 test('GET drops explicit conflicting tenant rows and assets outside the visible tenant set', async t => {
-  const { getUserNotifications } = require('./userNotifications');
+  const { getUserNotifications } = require('./index');
   t.mock.method(UserModel, 'findOne', () => query({ _id: userId }));
   t.mock.method(AssetModel, 'find', () => query([{ _id: assetId, asset_name: 'Motor' }]));
   t.mock.method(MapUserAssetLocationModel, 'find', () => query([
@@ -204,7 +204,7 @@ test('GET drops explicit conflicting tenant rows and assets outside the visible 
 
 test('notification routes register protected GET and PATCH handlers', () => {
   const express = require('express');
-  const { userNotificationRoutes } = require('./userNotifications');
+  const { userNotificationRoutes } = require('./index');
   const router = express.Router();
   userNotificationRoutes(router);
   const routes = router.stack.map((layer: any) => layer.route);
@@ -212,10 +212,104 @@ test('notification routes register protected GET and PATCH handlers', () => {
   assert.equal(routes[0].methods.get, true);
   assert.equal(routes[1].path, '/user-notifications/:mappingId');
   assert.equal(routes[1].methods.patch, true);
+  assert.equal(routes[2].path, '/user-notifications');
+  assert.equal(routes[2].methods.patch, true);
+  assert.equal(routes[3].path, '/user-notifications');
+  assert.equal(routes[3].methods.put, true);
   for (const route of routes) {
     assert.equal(route.stack.length, 2);
     let error: any;
     route.stack[0].handle({ user: { account_id: accountId }, roleMenu: {} }, {}, (e: any) => { error = e; });
     assert.equal(error.status, 403);
+  }
+});
+
+test('updateUserNotificationsByUser performs a single bulkWrite for multiple mappings', async t => {
+  const { updateUserNotificationsByUser } = require('./index');
+  const secondMappingId = '64a000000000000000000007';
+  t.mock.method(UserModel, 'findOne', (filter: any) => {
+    assert.deepEqual(filter, { _id: userId, account_id: accountId });
+    return query({ _id: userId });
+  });
+
+  let capturedBulkOps: any = null;
+  t.mock.method(MapUserAssetLocationModel, 'bulkWrite', (ops: any, opts: any) => {
+    capturedBulkOps = ops;
+    assert.equal(opts.ordered, false);
+    return Promise.resolve({ matchedCount: 2, modifiedCount: 2 });
+  });
+
+  const payload = {
+    userId,
+    mappings: [
+      { mappingId, notifications: { email: { alert: true, danger: false } } },
+      { mappingId: secondMappingId, notifications: { push: { critical: true } } }
+    ]
+  };
+
+  const res = await updateUserNotificationsByUser(accountId, payload);
+  assert.equal(res.status, true);
+  assert.equal(res.matchedCount, 2);
+  assert.equal(res.modifiedCount, 2);
+  assert.equal(capturedBulkOps.length, 2);
+  assert.deepEqual(capturedBulkOps[0].updateOne.filter._id, mappingId);
+  assert.deepEqual(capturedBulkOps[0].updateOne.update.$set, {
+    'notifications.email.alert': true,
+    'notifications.email.danger': false
+  });
+  assert.deepEqual(capturedBulkOps[1].updateOne.filter._id, secondMappingId);
+  assert.deepEqual(capturedBulkOps[1].updateOne.update.$set, {
+    'notifications.push.critical': true
+  });
+});
+
+test('updateUserNotificationsByUser applies global notifications to all user assets with updateMany', async t => {
+  const { updateUserNotificationsByUser } = require('./index');
+  t.mock.method(UserModel, 'findOne', () => query({ _id: userId }));
+  t.mock.method(AssetModel, 'find', () => query([{ _id: assetId }, { _id: parentId }]));
+
+  let capturedFilter: any = null;
+  let capturedUpdate: any = null;
+  t.mock.method(MapUserAssetLocationModel, 'updateMany', (filter: any, update: any) => {
+    capturedFilter = filter;
+    capturedUpdate = update;
+    return Promise.resolve({ matchedCount: 2, modifiedCount: 2 });
+  });
+
+  const res = await updateUserNotificationsByUser(accountId, {
+    userId,
+    notifications: { email: { critical: true } }
+  });
+
+  assert.equal(res.status, true);
+  assert.equal(capturedFilter.userId, userId);
+  assert.deepEqual(capturedFilter.assetId, { $in: [assetId, parentId] });
+  assert.deepEqual(capturedUpdate.$set, { 'notifications.email.critical': true });
+});
+
+test('updateUserNotificationsByUser validates userId and mapping structure', async t => {
+  const { updateUserNotificationsByUser } = require('./index');
+  t.mock.method(UserModel, 'findOne', () => query(null));
+
+  await assert.rejects(
+    updateUserNotificationsByUser(accountId, { userId, mappings: [{ mappingId, notifications: { email: { alert: true } } }] }),
+    (e: any) => e.status === 404
+  );
+
+  t.mock.method(UserModel, 'findOne', () => query({ _id: userId }));
+
+  for (const badPayload of [
+    null,
+    {},
+    { userId: 'not-an-id' },
+    { userId, mappings: [] },
+    { userId, mappings: [{ notifications: { email: { alert: true } } }] },
+    { userId, mappings: [{ mappingId, notifications: {} }] },
+    { userId, mappings: [{ mappingId, notifications: { invalid: { alert: true } } }] }
+  ]) {
+    await assert.rejects(
+      updateUserNotificationsByUser(accountId, badPayload),
+      (e: any) => e.status === 400
+    );
   }
 });

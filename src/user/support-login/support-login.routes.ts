@@ -6,6 +6,7 @@ export const supportLoginRoutes = (): Router => {
   const router = Router();
   router.get('/', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');
+    next();
   }, rateLimiter.authLimiter, issueSupportLogin);
   router.post('/', (req, res, next) => {
     res.setHeader('Cache-Control', 'no-store');

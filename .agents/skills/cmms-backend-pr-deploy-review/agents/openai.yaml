@@ -1,0 +1,3 @@
+interface:
+  display_name: "Pull Request, Ci And Deployment Review"
+  short_description: "Guidance for pr-deploy-review in CMMS_API"

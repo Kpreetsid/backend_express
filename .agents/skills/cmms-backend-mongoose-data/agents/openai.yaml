@@ -1,0 +1,3 @@
+interface:
+  display_name: "Mongoose Models And Database Integrity"
+  short_description: "Guidance for mongoose-data in CMMS_API"

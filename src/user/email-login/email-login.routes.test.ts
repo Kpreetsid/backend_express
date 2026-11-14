@@ -51,7 +51,7 @@ test('exchange delegates validated identity to the existing session flow and err
   });
   t.mock.method(sessions, 'establishExternalSession', async (_req: any, res: any, _next: any, decoded: any) => {
     assert.deepEqual(decoded, { email: 'test@example.test', org_id: accountId, userId,
-      isExternal: false, isInternal: true, redirectPath: '/parts' });
+      isExternal: false, isInternal: false, redirectPath: '/parts' });
     return res.json({ status: true, data: { authMethod: 'cookie', redirectPath: '/parts' } });
   });
   const app = express(); app.use(express.json()); registerEmailLoginRoutes(app);

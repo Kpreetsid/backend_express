@@ -1,0 +1,3 @@
+interface:
+  display_name: "Secure Uploads And File Access"
+  short_description: "Guidance for upload-security in CMMS_API"
