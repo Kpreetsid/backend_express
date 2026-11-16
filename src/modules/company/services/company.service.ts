@@ -30,7 +30,7 @@ class CompanyService {
     const userIds = [...new Set(usersDetail.map(user => user.user_id))];
     const users = userIds.length ? await UserModel.find({
       _id: { $in: userIds }, account_id: account._id
-    }).select({ _id: 1, firstName: 1, lastName: 1, email: 1, user_role: 1 }) : [];
+    }).select({ _id: 1, firstName: 1, lastName: 1, email: 1, user_role: 1, user_status: 1 }) : [];
     const byId = new Map(users.map(user => [String(user._id), user]));
     if (userIds.some(id => !byId.has(id))) {
       throw Object.assign(new Error('One or more selected users do not belong to this account or are unavailable'), { status: 400 });
@@ -40,7 +40,7 @@ class CompanyService {
       if (!user.email?.trim()) throw Object.assign(new Error('Selected users must have an email address'), { status: 400 });
       return {
         user_id: user._id, firstName: user.firstName || '', lastName: user.lastName || '',
-        email: user.email.trim().toLowerCase(), user_role: user.user_role || ''
+        email: user.email.trim().toLowerCase(), user_role: user.user_role || '', user_status: user.user_status || ''
       };
     });
     // Create an empty document first. A failed link never changes saved details;
