@@ -1,11 +1,70 @@
 import { emailLoginService } from '../../user/email-login/email-login.service';
 import crypto from 'crypto';
 import { helperService } from "../../utils/helper";
-import { AccountModel, IAccount } from "../../models/account.model";
+import { AccountModel, IAccount, SensorUptimeEmailRecipientsModel, SensorRecipientUserDetail } from "../../models/account.model";
 import { RoleManager } from "../../_role/accountRoleMenu";
 import { AccountApiKeyModel } from "../../models/accountApiKey.model";
 
+import { UserModel } from '../../models/user.model';
+
+const sensorEmailAccountScope = (accountId: string) => ({
+  _id: accountId, visible: { $ne: false }, account_status: { $ne: 'inactive' }
+});
+
 class CompanyService {
+  async getSensorUptimeEmails(accountId: string): Promise<SensorRecipientUserDetail[]> {
+    const account = await AccountModel.findOne(sensorEmailAccountScope(accountId)).select({ sensor_uptime_email_mapping: 1 });
+    if (!account) throw Object.assign(new Error('Account not found'), { status: 404 });
+    if (!account.sensor_uptime_email_mapping) return [];
+    const recipients = await SensorUptimeEmailRecipientsModel.findOne({
+      _id: account.sensor_uptime_email_mapping, account_id: account._id
+    }).select({ usersDetail: 1 });
+    if (!recipients) throw Object.assign(new Error('Email recipient mapping not found'), { status: 404 });
+    return recipients.usersDetail;
+  };
+
+  async updateSensorUptimeEmails(accountId: string, usersDetail: { user_id: string }[]): Promise<SensorRecipientUserDetail[]> {
+    const scope = sensorEmailAccountScope(accountId);
+    const account = await AccountModel.findOne(scope).select({ _id: 1 });
+    if (!account) throw Object.assign(new Error('Account not found'), { status: 404 });
+    const userIds = [...new Set(usersDetail.map(user => user.user_id))];
+    const users = userIds.length ? await UserModel.find({
+      _id: { $in: userIds }, account_id: account._id
+    }).select({ _id: 1, firstName: 1, lastName: 1, email: 1, user_role: 1 }) : [];
+    const byId = new Map(users.map(user => [String(user._id), user]));
+    if (userIds.some(id => !byId.has(id))) {
+      throw Object.assign(new Error('One or more selected users do not belong to this account or are unavailable'), { status: 400 });
+    }
+    const canonicalUsers = userIds.map(id => {
+      const user = byId.get(id)!;
+      if (!user.email?.trim()) throw Object.assign(new Error('Selected users must have an email address'), { status: 400 });
+      return {
+        user_id: user._id, firstName: user.firstName || '', lastName: user.lastName || '',
+        email: user.email.trim().toLowerCase(), user_role: user.user_role || ''
+      };
+    });
+    // Create an empty document first. A failed link never changes saved details;
+    // the deterministic ID lets a later retry reuse an unlinked document.
+    const recipients = await SensorUptimeEmailRecipientsModel.findOneAndUpdate(
+      { _id: account._id },
+      { $setOnInsert: { account_id: account._id, usersDetail: [] } },
+      { upsert: true, returnDocument: 'after', runValidators: true }
+    );
+    if (!recipients || String(recipients.account_id) !== String(account._id)) {
+      throw Object.assign(new Error('Email recipient mapping not found'), { status: 404 });
+    }
+    const linked = await AccountModel.findOneAndUpdate(scope,
+      { $set: { sensor_uptime_email_mapping: recipients._id } },
+      { returnDocument: 'after', runValidators: true, projection: { _id: 1 } });
+    if (!linked) throw Object.assign(new Error('Account not found'), { status: 404 });
+    const saved = await SensorUptimeEmailRecipientsModel.findOneAndUpdate(
+      { _id: recipients._id, account_id: account._id },
+      { $set: { usersDetail: canonicalUsers } },
+      { returnDocument: 'after', runValidators: true, projection: { usersDetail: 1 } }
+    );
+    if (!saved) throw Object.assign(new Error('Email recipient mapping not found'), { status: 404 });
+    return saved.usersDetail;
+  }
 
   async getAllCompanies(filter: any) {
     return await AccountModel.find(filter);
