@@ -98,6 +98,7 @@ export interface SensorRecipientUserDetail {
   lastName: string;
   email: string;
   user_role: string;
+  user_status: string;
 }
 
 export interface ISensorUptimeEmailRecipients extends Document {
@@ -110,7 +111,8 @@ const sensorRecipientUserSchema = new Schema<SensorRecipientUserDetail>({
   firstName: { type: String, trim: true, default: '' },
   lastName: { type: String, trim: true, default: '' },
   email: { type: String, trim: true, lowercase: true, required: true },
-  user_role: { type: String, trim: true, default: '' }
+  user_role: { type: String, trim: true, default: '' },
+  user_status: { type: String, enum: ['active', 'inactive', ''], default: '' }
 }, { _id: false });
 
 // Reuse the account ID so concurrent first saves and retries share one mapping.
