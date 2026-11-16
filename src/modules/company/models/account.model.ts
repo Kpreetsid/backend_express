@@ -8,6 +8,14 @@ export const COOKIES_ENUM = ['enabled', 'disabled'];
 export const SUBSCRIPTION_TYPES = ['free', 'trial', 'monthly', 'yearly', 'one_time', 'lifetime'] as const;
 export const SUBSCRIPTION_STATUSES = ['active', 'inactive', 'expired', 'cancelled', 'suspended'] as const;
 
+export interface CompanyAssignment {
+  user_ids: string[];
+  status: 'registering' | 'pending' | 'assigned';
+  attempts: number;
+  next_attempt_at: Date;
+  last_error?: string;
+}
+
 export interface IAccount extends Document {
   account_name: string;
   type: string;
@@ -15,6 +23,7 @@ export interface IAccount extends Document {
   description: string;
   fileName?: string;
   default_language?: string;
+  sensor_uptime_email_mapping?: mongoose.Types.ObjectId;
   cookie_status?: string;
   two_step_auth_enabled?: boolean;
   two_step_auth_revision?: number;
@@ -47,6 +56,8 @@ const accountSchema = new Schema<IAccount>(
     experience_profile: { type: String, trim: true, enum: EXPERIENCE_PROFILES, default: EXPERIENCE_PROFILES[0] },
     description: { type: String, trim: true },
     fileName: { type: String, trim: true },
+    // Optional until recipients are first saved; existing accounts need no backfill.
+    sensor_uptime_email_mapping: { type: Schema.Types.ObjectId, ref: 'Schema_SensorUptimeEmailRecipients' },
     default_language: { type: String, trim: true, default: 'en' },
     cookie_status: { type: String, trim: true, enum: COOKIES_ENUM, default: COOKIES_ENUM[1] },
     two_step_auth_enabled: { type: Boolean, default: false },
@@ -93,3 +104,37 @@ const accountSchema = new Schema<IAccount>(
 );
 
 export const AccountModel = mongoose.model<IAccount>('Schema_Account', accountSchema);
+
+export interface SensorRecipientUserDetail {
+  user_id: mongoose.Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  email: string;
+  user_role: string;
+}
+
+export interface ISensorUptimeEmailRecipients extends Document {
+  account_id: mongoose.Types.ObjectId;
+  usersDetail: SensorRecipientUserDetail[];
+}
+
+const sensorRecipientUserSchema = new Schema<SensorRecipientUserDetail>({
+  user_id: { type: Schema.Types.ObjectId, ref: 'Schema_User', required: true },
+  firstName: { type: String, trim: true, default: '' },
+  lastName: { type: String, trim: true, default: '' },
+  email: { type: String, trim: true, lowercase: true, required: true },
+  user_role: { type: String, trim: true, default: '' }
+}, { _id: false });
+
+// Reuse the account ID so concurrent first saves and retries share one mapping.
+const sensorUptimeEmailRecipientsSchema = new Schema<ISensorUptimeEmailRecipients>({
+  account_id: { type: Schema.Types.ObjectId, ref: 'Schema_Account', required: true, unique: true, immutable: true },
+  usersDetail: {
+    type: [sensorRecipientUserSchema], default: [],
+    validate: { validator: (users: SensorRecipientUserDetail[]) => users.length <= 500, message: 'At most 500 users are allowed' }
+  }
+}, { collection: 'sensor_uptime_email_recipients', timestamps: true, versionKey: false });
+
+export const SensorUptimeEmailRecipientsModel = mongoose.model<ISensorUptimeEmailRecipients>(
+  'Schema_SensorUptimeEmailRecipients', sensorUptimeEmailRecipientsSchema
+);

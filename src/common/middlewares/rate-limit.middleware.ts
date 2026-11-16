@@ -7,26 +7,26 @@ const configuredLimit = (name: string, fallback: number): number => {
 
 class RateLimiterService {
   public readonly twoStepVerifyLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, 
-    limit: 50, 
-    standardHeaders: true, 
+    windowMs: 15 * 60 * 1000,
+    limit: 50,
+    standardHeaders: true,
     legacyHeaders: false,
-    message: { 
-      status: false, 
-      code: 'TWO_STEP_RATE_LIMITED', 
-      message: 'Too many verification attempts. Please try later.' 
+    message: {
+      status: false,
+      code: 'TWO_STEP_RATE_LIMITED',
+      message: 'Too many verification attempts. Please try later.'
     }
   });
 
   public readonly twoStepSendLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, 
-    limit: 20, 
-    standardHeaders: true, 
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: true,
     legacyHeaders: false,
-    message: { 
-      status: false, 
-      code: 'TWO_STEP_RATE_LIMITED', 
-      message: 'Too many verification requests. Please try later.' 
+    message: {
+      status: false,
+      code: 'TWO_STEP_RATE_LIMITED',
+      message: 'Too many verification requests. Please try later.'
     }
   });
 

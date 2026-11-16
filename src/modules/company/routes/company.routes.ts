@@ -1,14 +1,17 @@
 import express from 'express';
 import { companyController } from '../controllers/company.controller';
 import { validateParamId } from '../../../common/middlewares/validate.middleware';
-import { companyValidator } from '../validators/company.validator';
+import { companyValidator, sensorEmailValidator } from '../validators/company.validator';
 import { validate } from '../../../common/middlewares/validator.middleware';
 import { requireFirstUser } from '../../../common/middlewares/firstUser.middleware';
 import { getTwoStepSettings, updateTwoStepSettings } from '../services/two-step-settings.controller';
 import { companyProfileController } from '../controllers/company-profile.controller';
+import { hasAccountFeature } from '../../../common/middlewares';
 
 export default (router: express.Router) => {
     const companyRouter = express.Router();
+    companyRouter.get('/sensor-uptime-emails', hasAccountFeature('reports_sensor_data_tracking'), companyController.getSensorUptimeEmails);
+    companyRouter.patch('/sensor-uptime-emails', hasAccountFeature('reports_sensor_data_tracking', 'edit'), sensorEmailValidator, validate, companyController.updateSensorUptimeEmails);
     companyRouter.patch('/profile', companyProfileController.updateProfile);
     companyRouter.get('/two-step-auth', getTwoStepSettings);
     companyRouter.patch('/two-step-auth', updateTwoStepSettings);

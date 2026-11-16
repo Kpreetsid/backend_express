@@ -7,8 +7,28 @@ import { helperService } from "../../../common/utils/helper";
 import { applyRoleFilter } from "../../../common/utils/role-filter.helper";
 import { accountFeatureService } from "../services/accountFeature.service";
 import { subscriptionLimitService } from "../services/subscriptionLimit.service";
+import { profilePrincipal, profileRequestBody } from '../../../common/utils/profile.validation';
 
 class CompanyController {
+
+  getSensorUptimeEmails = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const user = profilePrincipal(req);
+      const usersDetail = await companyService.getSensorUptimeEmails(user.account_id);
+      return res.json({ status: true, data: { usersDetail } });
+    } catch (error) { return next(error); }
+  }
+
+  updateSensorUptimeEmails = async (req: Request, res: Response, next: NextFunction): Promise<any> => {
+    res.setHeader('Cache-Control', 'no-store');
+    try {
+      const user = profilePrincipal(req);
+      const fields = profileRequestBody(req, ['usersDetail']);
+      const usersDetail = await companyService.updateSensorUptimeEmails(user.account_id, fields.usersDetail as { user_id: string }[]);
+      return res.json({ status: true, message: 'Sensor uptime email recipients saved', data: { usersDetail } });
+    } catch (error) { return next(error); }
+  }
 
   getSubscriptionLimits = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -222,5 +242,5 @@ export const companyController = controllerCache.withCache(new CompanyController
   namespace: 'companies',
   ttlSeconds: 300,
   tags: ['companies', 'settings', 'users'],
-  skipMethods: ['getSubscriptionLimits', 'getApiKey', 'generateApiKey', 'regenerateApiKey', 'toggleApiKeyStatus']
+  skipMethods: ['getSensorUptimeEmails', 'getSubscriptionLimits', 'getApiKey', 'generateApiKey', 'regenerateApiKey', 'toggleApiKeyStatus']
 });

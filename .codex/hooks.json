@@ -1,0 +1,7 @@
+{
+  "description": "Review API context when backend_express source changes.",
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "node \"D:/presage/development/.codex/context-check.cjs\" hook --project backend_express", "timeout": 30, "statusMessage": "Checking backend context", "additionalContextLimit": 6000 }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "node \"D:/presage/development/.codex/context-check.cjs\" hook --project backend_express", "timeout": 30, "statusMessage": "Checking backend context review" }] }]
+  }
+}

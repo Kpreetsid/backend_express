@@ -2,7 +2,7 @@ import express from 'express';
 import userWorkOrderRoutes from './userWorkOrder.routes';
 import userLocationRoutes from './userLocation.routes';
 import userAssetRoutes from './userAsset.routes';
-import { userNotificationRoutes } from './userNotifications';
+import { userNotificationRoutes } from '../../../transaction/userNotifications';
 const router = express.Router();
 
 export default (): express.Router => {
