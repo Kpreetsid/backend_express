@@ -34,6 +34,7 @@ class ProcessorAPIService {
             payload.alarm_id = body.alarmId;
             payload.alarm_status = body.alarmStatus;
         }
+        console.log("---payload---", payload);
         await getExternalData(`/asset_health_status/`, 'PATCH', payload, token, user_id);
     }
 
