@@ -8,6 +8,9 @@ export const OBSERVATION_LIMITS = Object.freeze({
   faultLength: 100,
   files: 12,
   fileSize: 5 * 1024 * 1024,
+  alarmReasons: 2500,
+  alarmReasonLength: 500,
+  alarmOtherReason: 2_000,
   alarmId: 2_147_483_647
 });
 
@@ -31,6 +34,8 @@ export interface SanitizedObservationCreatePayload {
   report_id?: string;
   alarmId?: number;
   alarmStatus?: boolean;
+  alarmReasons: string[];
+  alarmOtherReason: string;
 }
 
 export type SanitizedObservationUpdatePayload = Pick<
@@ -57,6 +62,8 @@ export function sanitizeObservationCreatePayload(
     status: enumValue(body.status, OBSERVATION_STATUSES, 'Status'),
     faults: stringArray(body.faults, 'Faults', OBSERVATION_LIMITS.faults, OBSERVATION_LIMITS.faultLength),
     files: sanitizeObservationFiles(body.files, accountId),
+    alarmReasons: stringArray(body.alarmReasons, 'Alarm reasons', OBSERVATION_LIMITS.alarmReasons, OBSERVATION_LIMITS.alarmReasonLength),
+    alarmOtherReason: optionalString(body.alarmOtherReason, 'Other alarm reason', OBSERVATION_LIMITS.alarmOtherReason),
     assetId: objectIdString(body.assetId, 'Asset ID'),
     locationId: objectIdString(body.locationId, 'Location ID'),
     top_level_asset_id: objectIdString(body.top_level_asset_id, 'Top level asset ID'),

@@ -31,6 +31,14 @@ const mutableObservationValidators = [
 
 export const observationCreateValidator = [
   ...mutableObservationValidators,
+  body('alarmReasons').optional({ nullable: true })
+    .isArray({ max: OBSERVATION_LIMITS.alarmReasons }).withMessage('Alarm reasons must be a bounded array'),
+  body('alarmReasons.*').optional()
+    .isString().withMessage('Each alarm reason must be a string')
+    .isLength({ max: OBSERVATION_LIMITS.alarmReasonLength }).withMessage('Alarm reason is too long'),
+  body('alarmOtherReason').optional({ nullable: true })
+    .isString().withMessage('Other alarm reason must be a string')
+    .isLength({ max: OBSERVATION_LIMITS.alarmOtherReason }).withMessage('Other alarm reason is too long'),
   body('assetId').notEmpty().withMessage('Asset ID is required').isMongoId().withMessage('Invalid Asset ID format'),
   body('locationId').notEmpty().withMessage('Location ID is required').isMongoId().withMessage('Invalid Location ID format'),
   body('top_level_asset_id').notEmpty().withMessage('Top level asset ID is required').isMongoId().withMessage('Invalid Top level asset ID format'),
