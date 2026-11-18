@@ -21,6 +21,8 @@ export interface IObservation extends Document {
   createdBy: ObjectId;
   updatedBy?: ObjectId;
   alarmStatus?: boolean;
+  alarmReasons?: string[];
+  alarmOtherReason?: string;
 }
 
 const ObservationSchema = new Schema<IObservation>({
@@ -40,7 +42,9 @@ const ObservationSchema = new Schema<IObservation>({
   visible: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'UserModel' },
-  alarmStatus: { type: Boolean }
+  alarmStatus: { type: Boolean },
+  alarmReasons: { type: [String], default: [] },
+  alarmOtherReason: { type: String, trim: true, default: '' }
 }, {
   collection: OBSERVATION_COLLECTION_NAME,
   timestamps: true,

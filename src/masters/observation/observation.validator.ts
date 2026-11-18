@@ -28,6 +28,22 @@ export const observationValidator = [
     .notEmpty().withMessage('Top level asset ID is required')
     .isMongoId().withMessage('Invalid Top level asset ID format'),
 
+  body('alarmReasons')
+    .optional()
+    .isArray().withMessage('Alarm reasons must be an array')
+    .bail()
+    .custom((reasons: unknown[]) => reasons.every(reason => typeof reason === 'string' && reason.trim().length > 0))
+    .withMessage('Alarm reasons must contain non-empty strings'),
+
+  body('alarmOtherReason')
+    .if((value, { req }) => value !== undefined
+      || (Array.isArray(req.body.alarmReasons) && req.body.alarmReasons.includes('Other (Specify Reason)')))
+    .isString().withMessage('Other alarm reason must be a string')
+    .bail()
+    .trim()
+    .custom((value: string, { req }) => !Array.isArray(req.body.alarmReasons) || !req.body.alarmReasons.includes('Other (Specify Reason)') || value.length > 0)
+    .withMessage('Other alarm reason is required when Other is selected'),
+
   body('faults')
     .optional()
     .isArray().withMessage('Faults must be an array')
