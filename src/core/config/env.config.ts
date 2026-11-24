@@ -98,8 +98,8 @@ export const loginServiceKey = envString(process.env.INTERNAL_LOGIN_SERVICE_KEY,
 export const payloadCrypto = {
   enabled: envBoolean(process.env.PAYLOAD_CRYPTO_ENABLED, false),
   strictMode: envBoolean(process.env.PAYLOAD_CRYPTO_STRICT_MODE, false),
-  requestDecryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_REQUEST_DECRYPT_ENABLED, false),
-  responseEncryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_RESPONSE_ENCRYPT_ENABLED, false),
+  requestDecryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_REQUEST_ENABLED, false),
+  responseEncryptEnabled: envBoolean(process.env.PAYLOAD_CRYPTO_RESPONSE_ENABLED, false),
   masterSecret: process.env.PAYLOAD_CRYPTO_MASTER_SECRET,
   bootstrapTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_BOOTSTRAP_TTL_SECONDS || '300', 10),
   replayTtlSeconds: parseInt(process.env.PAYLOAD_CRYPTO_REPLAY_TTL_SECONDS || '300', 10)
